@@ -1,0 +1,22 @@
+version: '3.8'
+
+# DB만 Docker로 실행
+# Backend(NestJS), Frontend(Vite)는 호스트에서 직접 실행
+# 이유: Claude Code CLI + Docker 소켓 접근이 호스트에서만 가능
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: claude-infra-db
+    environment:
+      POSTGRES_DB: claude_infra
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: admin123
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    restart: unless-stopped
+
+volumes:
+  postgres-data:
