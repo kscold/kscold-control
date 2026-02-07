@@ -1,0 +1,14 @@
+node_modules
+dist
+.turbo
+.env
+*.env.local
+.DS_Store
+
+# Documentation
+docs/
+CLAUDE.md
+
+# Logs
+logs/
+*.log
