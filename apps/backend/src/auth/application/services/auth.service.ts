@@ -1,43 +1,50 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Injectable, UnauthorizedException, Inject } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
-import { User } from '../entities/user.entity';
-import { Role } from '../entities/role.entity';
+import {
+  IUserRepository,
+  USER_REPOSITORY,
+} from '../../domain/repositories/user.repository.interface';
+import {
+  IRoleRepository,
+  ROLE_REPOSITORY,
+} from '../../domain/repositories/role.repository.interface';
+import { LoginDto, RegisterDto } from '../dto';
 
 @Injectable()
 export class AuthService {
   constructor(
-    @InjectRepository(User)
-    private userRepo: Repository<User>,
-    @InjectRepository(Role)
-    private roleRepo: Repository<Role>,
-    private jwtService: JwtService,
+    @Inject(USER_REPOSITORY)
+    private readonly userRepository: IUserRepository,
+    @Inject(ROLE_REPOSITORY)
+    private readonly roleRepository: IRoleRepository,
+    private readonly jwtService: JwtService,
   ) {}
 
   /**
    * 회원가입
    */
-  async register(email: string, password: string, roleName = 'user') {
+  async register(dto: RegisterDto) {
+    const { email, password, role: roleName = 'user' } = dto;
+
     // 비밀번호 해시
     const hashedPassword = await bcrypt.hash(password, 10);
 
     // Role 조회 또는 생성
-    let role = await this.roleRepo.findOne({ where: { name: roleName } });
+    let role = await this.roleRepository.findByName(roleName);
     if (!role) {
-      role = this.roleRepo.create({ name: roleName });
-      await this.roleRepo.save(role);
+      role = this.roleRepository.create({ name: roleName });
+      await this.roleRepository.save(role);
     }
 
     // User 생성
-    const user = this.userRepo.create({
+    const user = this.userRepository.create({
       email,
       password: hashedPassword,
       roles: [role],
     });
 
-    await this.userRepo.save(user);
+    await this.userRepository.save(user);
 
     return { email: user.email, id: user.id };
   }
@@ -45,19 +52,22 @@ export class AuthService {
   /**
    * 로그인
    */
-  async login(email: string, password: string) {
-    const user = await this.userRepo.findOne({
-      where: { email },
-      relations: ['roles', 'roles.permissions'],
-    });
+  async login(dto: LoginDto) {
+    const { email, password } = dto;
+
+    const user = await this.userRepository.findByEmailWithRelations(email);
 
     if (!user) {
-      throw new UnauthorizedException('Invalid credentials');
+      throw new UnauthorizedException(
+        '이메일 또는 비밀번호가 올바르지 않습니다.',
+      );
     }
 
     const isPasswordValid = await bcrypt.compare(password, user.password);
     if (!isPasswordValid) {
-      throw new UnauthorizedException('Invalid credentials');
+      throw new UnauthorizedException(
+        '이메일 또는 비밀번호가 올바르지 않습니다.',
+      );
     }
 
     // JWT 토큰 생성
@@ -84,10 +94,7 @@ export class AuthService {
    * JWT 검증
    */
   async validateUser(userId: string) {
-    return this.userRepo.findOne({
-      where: { id: userId },
-      relations: ['roles', 'roles.permissions'],
-    });
+    return this.userRepository.findById(userId);
   }
 
   /**
@@ -97,10 +104,7 @@ export class AuthService {
     userId: string,
     permissionName: string,
   ): Promise<boolean> {
-    const user = await this.userRepo.findOne({
-      where: { id: userId },
-      relations: ['roles', 'roles.permissions'],
-    });
+    const user = await this.userRepository.findById(userId);
 
     if (!user) return false;
 

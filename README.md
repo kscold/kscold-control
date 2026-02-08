@@ -9,18 +9,21 @@ kscold-control은 Claude Code 터미널 세션과 Docker 컨테이너 오케스�
 ## 핵심 기능
 
 ### Claude Code 웹 터미널
+
 - 브라우저를 통한 실시간 Claude Code CLI 제어
 - 네이티브 슬래시 명령어 지원 (`/help`, `/clear`, `/cd`)
 - 영구 세션 히스토리 저장 및 복원 기능
 - WebSocket 기반 양방향 통신
 
 ### Docker 인프라 관리
+
 - 원클릭 우분투 컨테이너 프로비저닝
 - 실시간 리소스 모니터링 (CPU, 메모리, 네트워크, I/O)
 - 컨테이너 라이프사이클 관리 (시작, 중지, 삭제)
 - 실시간 로그 스트리밍 및 통계
 
 ### 보안 및 접근 제어
+
 - 리프레시 토큰 로테이션을 포함한 JWT 기반 인증
 - 3단계 권한을 가진 역할 기반 접근 제어 (RBAC)
 - 사용자 역할: Admin, Developer, Viewer

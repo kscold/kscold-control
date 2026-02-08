@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, NestModule, MiddlewareConsumer } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ConfigModule } from '@nestjs/config';
 import { ServeStaticModule } from '@nestjs/serve-static';
@@ -6,12 +6,14 @@ import { join } from 'path';
 import { AuthModule } from './auth/auth.module';
 import { ClaudeModule } from './claude/claude.module';
 import { DockerModule } from './docker/docker.module';
+import { SystemModule } from './system/system.module';
 import { User } from './entities/user.entity';
 import { Role } from './entities/role.entity';
 import { Permission } from './entities/permission.entity';
 import { Session } from './entities/session.entity';
 import { Message } from './entities/message.entity';
 import { Container } from './entities/container.entity';
+import { HttpLoggerMiddleware } from './common/middleware/http-logger.middleware';
 
 @Module({
   imports: [
@@ -21,7 +23,8 @@ import { Container } from './entities/container.entity';
     // React 빌드 파일 서빙 (프로덕션)
     ServeStaticModule.forRoot({
       rootPath: join(__dirname, '..', '..', 'frontend', 'dist'),
-      exclude: ['/api/(.*)', '/claude/(.*)', '/docker/(.*)'],
+      exclude: ['/api/(.*)'], // API 라우트만 제외, SPA 라우팅(/docker, /claude 등)은 index.html로
+      serveRoot: '/',
     }),
 
     // TypeORM + PostgreSQL
@@ -39,6 +42,11 @@ import { Container } from './entities/container.entity';
     AuthModule,
     ClaudeModule,
     DockerModule,
+    SystemModule,
   ],
 })
-export class AppModule {}
+export class AppModule implements NestModule {
+  configure(consumer: MiddlewareConsumer) {
+    consumer.apply(HttpLoggerMiddleware).forRoutes('*');
+  }
+}

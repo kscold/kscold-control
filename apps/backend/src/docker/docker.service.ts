@@ -31,33 +31,66 @@ export class DockerService implements OnModuleInit {
   }
 
   /**
-   * 컨테이너 목록 조회
+   * 컨테이너 목록 조회 (Docker에서 직접 가져오기)
    */
   async listContainers(userId?: string) {
+    // Docker에서 모든 컨테이너 가져오기
+    const dockerContainers = await this.docker.listContainers({ all: true });
+
+    // DB 컨테이너 가져오기
     const dbContainers = userId
       ? await this.containerRepo.find({ where: { userId } })
       : await this.containerRepo.find();
 
-    // Docker 실제 상태와 동기화
-    const dockerContainers = await this.docker.listContainers({ all: true });
-
-    return dbContainers.map((container) => {
-      const dockerInfo = dockerContainers.find((dc) =>
-        dc.Id.startsWith(container.dockerId),
+    // Docker 컨테이너를 기준으로 목록 생성
+    const containerPromises = dockerContainers.map(async (dc) => {
+      const dbContainer = dbContainers.find((dbc) =>
+        dc.Id.startsWith(dbc.dockerId),
       );
 
+      // 포트 매핑 파싱
+      const ports: Record<string, number> = {};
+      dc.Ports.forEach((p) => {
+        if (p.PublicPort && p.PrivatePort) {
+          ports[p.PrivatePort.toString()] = p.PublicPort;
+        }
+      });
+
+      // Docker inspect를 사용하여 실제 리소스 정보 가져오기
+      let resources = dbContainer?.resources || { cpus: 0, memory: '0' };
+
+      try {
+        const dockerContainer = this.docker.getContainer(dc.Id);
+        const inspectData = await dockerContainer.inspect();
+
+        // NanoCPUs를 cores로 변환
+        const nanoCpus = inspectData.HostConfig?.NanoCpus || 0;
+        const cpus = nanoCpus > 0 ? nanoCpus / 1e9 : 0;
+
+        // Memory를 human readable 형식으로 변환
+        const memoryBytes = inspectData.HostConfig?.Memory || 0;
+        const memory = memoryBytes > 0 ? this.formatMemory(memoryBytes) : '0';
+
+        resources = { cpus, memory };
+      } catch (error) {
+        console.error(`Failed to inspect container ${dc.Id}:`, error);
+      }
+
       return {
-        ...container,
-        liveStatus: dockerInfo?.State || 'unknown',
-        dockerInfo: dockerInfo
-          ? {
-              state: dockerInfo.State,
-              status: dockerInfo.Status,
-              ports: dockerInfo.Ports,
-            }
-          : null,
+        id: dbContainer?.id || dc.Id,
+        dockerId: dc.Id,
+        name: dc.Names[0].replace('/', ''),
+        image: dc.Image,
+        status: dbContainer?.status || dc.Status,
+        liveStatus: dc.State,
+        ports: dbContainer?.ports || ports,
+        resources,
+        createdAt: dbContainer?.createdAt || new Date(dc.Created * 1000),
+        userId: dbContainer?.userId || null,
       };
     });
+
+    return Promise.all(containerPromises);
   }
 
   /**
@@ -216,6 +249,17 @@ export class DockerService implements OnModuleInit {
     const match = memory.match(/^(\d+)([bkmg])$/i);
     if (!match) throw new Error('Invalid memory format');
     return parseInt(match[1]) * units[match[2].toLowerCase()];
+  }
+
+  private formatMemory(bytes: number): string {
+    if (bytes === 0) return '0';
+    const gb = bytes / (1024 ** 3);
+    if (gb >= 1) return `${gb.toFixed(1)}g`;
+    const mb = bytes / (1024 ** 2);
+    if (mb >= 1) return `${mb.toFixed(0)}m`;
+    const kb = bytes / 1024;
+    if (kb >= 1) return `${kb.toFixed(0)}k`;
+    return `${bytes}b`;
   }
 
   private calculateCpuPercent(stats: any): number {
