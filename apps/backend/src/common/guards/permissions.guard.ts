@@ -5,14 +5,10 @@ import {
   ForbiddenException,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { AuthService } from './auth.service';
 
 @Injectable()
 export class PermissionsGuard implements CanActivate {
-  constructor(
-    private reflector: Reflector,
-    private authService: AuthService,
-  ) {}
+  constructor(private reflector: Reflector) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const requiredPermissions = this.reflector.get<string[]>(
@@ -31,21 +27,21 @@ export class PermissionsGuard implements CanActivate {
       throw new ForbiddenException('Authentication required');
     }
 
-    // 모든 필요 권한 확인
-    for (const permission of requiredPermissions) {
-      const hasPermission = await this.authService.hasPermission(
-        user.sub,
-        permission,
+    // user.permissions에 필요한 권한이 모두 있는지 확인
+    const userPermissions = user.permissions || [];
+    const hasAllPermissions = requiredPermissions.every((permission) =>
+      userPermissions.includes(permission),
+    );
+
+    if (!hasAllPermissions) {
+      const missingPermissions = requiredPermissions.filter(
+        (permission) => !userPermissions.includes(permission),
       );
-      if (!hasPermission) {
-        throw new ForbiddenException(`Missing permission: ${permission}`);
-      }
+      throw new ForbiddenException(
+        `Missing permissions: ${missingPermissions.join(', ')}`,
+      );
     }
 
     return true;
   }
 }
-
-// 데코레이터
-export const RequirePermissions = (...permissions: string[]) =>
-  Reflect.metadata('permissions', permissions);

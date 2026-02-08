@@ -25,7 +25,7 @@ export default function App() {
         }
       >
         <Route index element={<DashboardPage />} />
-        <Route path="claude" element={<ClaudePage />} />
+        <Route path="terminal" element={<ClaudePage />} />
         <Route path="docker" element={<DockerPage />} />
       </Route>
     </Routes>

@@ -8,105 +8,144 @@ import {
   ConnectedSocket,
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
-import { spawn, ChildProcess } from 'child_process';
-import { Injectable } from '@nestjs/common';
+import { Injectable, UnauthorizedException } from '@nestjs/common';
+import * as pty from 'node-pty';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Session } from '../entities/session.entity';
 import { Message } from '../entities/message.entity';
+import { JwtService } from '@nestjs/jwt';
 
 @Injectable()
 @WebSocketGateway({
   cors: { origin: '*' },
-  namespace: '/claude',
+  namespace: '/terminal',
 })
 export class ClaudeGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer()
   server: Server;
 
-  private claudeProcesses = new Map<string, ChildProcess>();
-  private sessionBuffers = new Map<string, string>(); // 세션별 출력 버퍼
+  private terminalProcesses = new Map<string, pty.IPty>();
 
   constructor(
     @InjectRepository(Session)
     private sessionRepo: Repository<Session>,
     @InjectRepository(Message)
     private messageRepo: Repository<Message>,
+    private jwtService: JwtService,
   ) {}
 
-  handleConnection(client: Socket) {
-    console.log(`[Claude] Client connected: ${client.id}`);
+  async handleConnection(client: Socket) {
+    try {
+      // JWT 토큰 검증
+      const token = client.handshake.auth.token;
+      if (!token) {
+        throw new UnauthorizedException('No token provided');
+      }
 
-    // Claude Code 프로세스 시작
-    const claude = spawn('claude', ['code'], {
-      cwd: process.env.CLAUDE_WORKING_DIR || process.cwd(),
-      env: { ...process.env },
-      shell: true,
-    });
+      const payload = this.jwtService.verify(token);
+      (client as any).user = payload; // 사용자 정보를 client에 저장
 
-    this.claudeProcesses.set(client.id, claude);
+      console.log(
+        `[Terminal] Client connected: ${client.id} (user: ${payload.email})`,
+      );
+    } catch (error) {
+      console.error('[Terminal] Authentication failed:', error.message);
+      client.emit('terminal:error', { message: '인증 실패: ' + error.message });
+      client.disconnect();
+      return;
+    }
 
-    // Claude 출력 → 클라이언트로 스트리밍
-    claude.stdout.on('data', (data) => {
-      client.emit('claude:output', {
-        type: 'stdout',
-        content: data.toString(),
+    // zsh 셸 시작 (PTY 사용) - 키보드 입력이 가능한 interactive shell
+    console.log('[Terminal] Spawning interactive zsh shell with PTY...');
+    const homeDir = process.env.HOME || '/Users/kscold';
+    console.log('[Terminal] Using HOME:', homeDir);
+
+    let shell: pty.IPty;
+    try {
+      // bash 사용 (zsh보다 안정적)
+      shell = pty.spawn('/bin/bash', ['-l'], {
+        name: 'xterm-256color',
+        cols: 100,
+        rows: 30,
+        cwd: homeDir,
+        env: {
+          ...process.env,
+          HOME: homeDir,
+          USER: process.env.USER || 'kscold',
+          SHELL: '/bin/bash',
+          TERM: 'xterm-256color',
+        },
       });
-    });
 
-    claude.stderr.on('data', (data) => {
-      client.emit('claude:output', {
-        type: 'stderr',
-        content: data.toString(),
+      this.terminalProcesses.set(client.id, shell);
+
+      // 터미널 출력 → 클라이언트로 스트리밍
+      shell.onData((data) => {
+        client.emit('terminal:output', {
+          type: 'stdout',
+          content: data,
+        });
       });
-    });
 
-    claude.on('error', (error) => {
-      client.emit('claude:error', { message: error.message });
-    });
+      shell.onExit(({ exitCode, signal }) => {
+        console.log('[Terminal] Process exited:', { exitCode, signal });
+        client.emit('terminal:exit', { code: exitCode });
+        this.terminalProcesses.delete(client.id);
+      });
 
-    claude.on('exit', (code) => {
-      client.emit('claude:exit', { code });
-      this.claudeProcesses.delete(client.id);
-    });
-  }
-
-  handleDisconnect(client: Socket) {
-    console.log(`[Claude] Client disconnected: ${client.id}`);
-
-    // 프로세스 종료
-    const claude = this.claudeProcesses.get(client.id);
-    if (claude) {
-      claude.kill();
-      this.claudeProcesses.delete(client.id);
+      console.log('[Terminal] Interactive shell started successfully');
+    } catch (error) {
+      console.error('[Terminal] Failed to spawn zsh:', error);
+      console.error('[Terminal] Error details:', {
+        name: error.name,
+        message: error.message,
+      });
+      client.emit('terminal:error', {
+        message: 'Failed to start terminal: ' + error.message
+      });
+      client.disconnect();
+      return;
     }
   }
 
-  @SubscribeMessage('claude:input')
+  handleDisconnect(client: Socket) {
+    console.log(`[Terminal] Client disconnected: ${client.id}`);
+
+    // 프로세스 종료
+    const shell = this.terminalProcesses.get(client.id);
+    if (shell) {
+      shell.kill();
+      this.terminalProcesses.delete(client.id);
+    }
+  }
+
+  @SubscribeMessage('terminal:input')
   handleInput(
     @ConnectedSocket() client: Socket,
     @MessageBody() data: { message: string },
   ) {
-    const claude = this.claudeProcesses.get(client.id);
-    if (claude?.stdin) {
-      claude.stdin.write(data.message + '\n');
+    const shell = this.terminalProcesses.get(client.id);
+    if (shell) {
+      // PTY로 입력 전송 (모든 키 입력을 그대로 전송)
+      shell.write(data.message);
     } else {
-      client.emit('claude:error', { message: 'Claude process not found' });
+      client.emit('terminal:error', { message: 'Terminal process not found' });
     }
   }
 
-  @SubscribeMessage('claude:interrupt')
+  @SubscribeMessage('terminal:interrupt')
   handleInterrupt(@ConnectedSocket() client: Socket) {
-    const claude = this.claudeProcesses.get(client.id);
-    if (claude) {
-      claude.kill('SIGINT'); // Ctrl+C
+    const shell = this.terminalProcesses.get(client.id);
+    if (shell) {
+      shell.kill('SIGINT'); // Ctrl+C
     }
   }
 
   /**
    * 세션 생성 (히스토리 저장용)
    */
-  @SubscribeMessage('claude:create-session')
+  @SubscribeMessage('terminal:create-session')
   async handleCreateSession(
     @ConnectedSocket() client: Socket,
     @MessageBody() data: { userId: string; title: string },
@@ -118,14 +157,14 @@ export class ClaudeGateway implements OnGatewayConnection, OnGatewayDisconnect {
     });
     await this.sessionRepo.save(session);
 
-    client.emit('claude:session-created', { sessionId: session.id });
+    client.emit('terminal:session-created', { sessionId: session.id });
     return session;
   }
 
   /**
    * 메시지 저장 (히스토리)
    */
-  @SubscribeMessage('claude:save-message')
+  @SubscribeMessage('terminal:save-message')
   async handleSaveMessage(
     @ConnectedSocket() client: Socket,
     @MessageBody()
@@ -147,7 +186,7 @@ export class ClaudeGateway implements OnGatewayConnection, OnGatewayDisconnect {
   /**
    * 세션 히스토리 불러오기
    */
-  @SubscribeMessage('claude:load-session')
+  @SubscribeMessage('terminal:load-session')
   async handleLoadSession(
     @ConnectedSocket() client: Socket,
     @MessageBody() data: { sessionId: string },
@@ -158,7 +197,7 @@ export class ClaudeGateway implements OnGatewayConnection, OnGatewayDisconnect {
     });
 
     if (!session) {
-      client.emit('claude:error', { message: 'Session not found' });
+      client.emit('terminal:error', { message: 'Session not found' });
       return;
     }
 
@@ -167,7 +206,7 @@ export class ClaudeGateway implements OnGatewayConnection, OnGatewayDisconnect {
       (a, b) => a.timestamp.getTime() - b.timestamp.getTime(),
     );
 
-    client.emit('claude:session-loaded', {
+    client.emit('terminal:session-loaded', {
       session: {
         id: session.id,
         title: session.title,
@@ -186,23 +225,23 @@ export class ClaudeGateway implements OnGatewayConnection, OnGatewayDisconnect {
   /**
    * / 슬래시 명령어 처리
    */
-  @SubscribeMessage('claude:slash-command')
+  @SubscribeMessage('terminal:slash-command')
   handleSlashCommand(
     @ConnectedSocket() client: Socket,
     @MessageBody() data: { command: string; args?: string[] },
   ) {
-    const claude = this.claudeProcesses.get(client.id);
-    if (!claude) {
-      client.emit('claude:error', { message: 'Claude process not found' });
+    const shell = this.terminalProcesses.get(client.id);
+    if (!shell) {
+      client.emit('terminal:error', { message: 'Terminal process not found' });
       return;
     }
 
-    // 슬래시 명령어를 그대로 전달 (Claude Code가 해석)
+    // 슬래시 명령어를 그대로 전달
     const commandStr = `/${data.command}${
       data.args ? ' ' + data.args.join(' ') : ''
     }\n`;
 
-    claude.stdin?.write(commandStr);
+    shell.write(commandStr);
     return { success: true };
   }
 }

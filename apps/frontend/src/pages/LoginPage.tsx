@@ -30,10 +30,10 @@ export function LoginPage() {
       <div className="w-full max-w-sm">
         <div className="bg-gray-900 border border-gray-800 rounded-xl p-8">
           <h1 className="text-2xl font-bold text-white text-center mb-2">
-            Claude Infra Manager
+            kscold-control
           </h1>
           <p className="text-gray-500 text-center text-sm mb-8">
-            Mac Mini Infrastructure Control
+            맥 미니 인프라 관리 시스템
           </p>
 
           {error && (
@@ -44,27 +44,27 @@ export function LoginPage() {
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="block text-sm text-gray-400 mb-1">Email</label>
+              <label className="block text-sm text-gray-400 mb-1">이메일</label>
               <input
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-blue-500"
-                placeholder="admin@kscold.dev"
+                placeholder="email"
                 required
               />
             </div>
 
             <div>
               <label className="block text-sm text-gray-400 mb-1">
-                Password
+                비밀번호
               </label>
               <input
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 className="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-blue-500"
-                placeholder="Password"
+                placeholder="비밀번호"
                 required
               />
             </div>
@@ -74,7 +74,7 @@ export function LoginPage() {
               disabled={isLoading}
               className="w-full py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50"
             >
-              {isLoading ? 'Logging in...' : 'Login'}
+              {isLoading ? '로그인 중...' : '로그인'}
             </button>
           </form>
         </div>
