@@ -32,13 +32,16 @@ export class AuthController {
   @Get('me')
   async getMe(@Request() req: any) {
     const user = req.user;
+    const permissions =
+      user.roles?.flatMap(
+        (r: any) => r.permissions?.map((p: any) => p.name) || [],
+      ) || [];
+
     return {
       id: user.id,
       email: user.email,
-      roles: user.roles.map((r: any) => r.name),
-      permissions: user.roles.flatMap((r: any) =>
-        r.permissions.map((p: any) => p.name),
-      ),
+      roles: user.roles?.map((r: any) => r.name) || [],
+      permissions,
     };
   }
 }

@@ -10,10 +10,14 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     private readonly configService: ConfigService,
     private readonly authService: AuthService,
   ) {
+    const secret = configService.get<string>('JWT_SECRET');
+    if (!secret) {
+      throw new Error('JWT_SECRET environment variable is required');
+    }
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       ignoreExpiration: false,
-      secretOrKey: configService.get('JWT_SECRET', 'default-secret-change-me'),
+      secretOrKey: secret,
     });
   }
 
@@ -22,6 +26,15 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     if (!user) {
       throw new UnauthorizedException('유효하지 않은 토큰입니다.');
     }
-    return user;
+
+    // PermissionsGuard를 위한 평탄화된 permissions 배열 추가
+    const permissions = user.roles
+      ? user.roles.flatMap((role) => role.permissions.map((p) => p.name))
+      : [];
+
+    return {
+      ...user,
+      permissions,
+    };
   }
 }

@@ -86,6 +86,9 @@ export class AuthService {
         id: user.id,
         email: user.email,
         roles: user.roles.map((r) => r.name),
+        permissions: user.roles.flatMap((r) =>
+          r.permissions.map((p) => p.name),
+        ),
       },
     };
   }

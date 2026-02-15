@@ -1,8 +1,9 @@
-import { Injectable, OnModuleInit } from '@nestjs/common';
+import { Injectable, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
 import Docker from 'dockerode';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Container } from '../entities/container.entity';
+import { PortForwardingService } from './port-forwarding.service';
 
 export interface CreateContainerDto {
   name: string;
@@ -17,17 +18,23 @@ export interface CreateContainerDto {
 }
 
 @Injectable()
-export class DockerService implements OnModuleInit {
+export class DockerService implements OnModuleInit, OnModuleDestroy {
   private docker: Docker;
 
   constructor(
     @InjectRepository(Container)
     private containerRepo: Repository<Container>,
+    private portForwardingService: PortForwardingService,
   ) {}
 
   onModuleInit() {
     // Docker 소켓 연결
     this.docker = new Docker({ socketPath: '/var/run/docker.sock' });
+  }
+
+  async onModuleDestroy() {
+    // UPnP 클라이언트 정리
+    await this.portForwardingService.close();
   }
 
   /**
@@ -76,6 +83,11 @@ export class DockerService implements OnModuleInit {
         console.error(`Failed to inspect container ${dc.Id}:`, error);
       }
 
+      // 외부 접속 정보 추가
+      const externalAccess = this.portForwardingService.getExternalAccess(
+        dbContainer?.ports || ports,
+      );
+
       return {
         id: dbContainer?.id || dc.Id,
         dockerId: dc.Id,
@@ -87,6 +99,7 @@ export class DockerService implements OnModuleInit {
         resources,
         createdAt: dbContainer?.createdAt || new Date(dc.Created * 1000),
         userId: dbContainer?.userId || null,
+        externalAccess, // 외부 접속 정보
       };
     });
 
@@ -97,6 +110,23 @@ export class DockerService implements OnModuleInit {
    * 컨테이너 생성 (우분투 템플릿)
    */
   async createContainer(dto: CreateContainerDto) {
+    // 이미지가 없으면 자동으로 pull
+    try {
+      await this.docker.getImage(dto.image).inspect();
+    } catch (error) {
+      console.log(`[Docker] Image ${dto.image} not found, pulling...`);
+      await new Promise((resolve, reject) => {
+        this.docker.pull(dto.image, (err: any, stream: any) => {
+          if (err) return reject(err);
+          this.docker.modem.followProgress(stream, (err: any, output: any) => {
+            if (err) return reject(err);
+            console.log(`[Docker] Successfully pulled ${dto.image}`);
+            resolve(output);
+          });
+        });
+      });
+    }
+
     // Docker 컨테이너 생성
     const container = await this.docker.createContainer({
       Image: dto.image,
@@ -139,7 +169,26 @@ export class DockerService implements OnModuleInit {
 
     await this.containerRepo.save(dbContainer);
 
+    // 포트포워딩 규칙 추가 (백그라운드에서 비동기 실행)
+    this.addPortForwardingRules(dto.name, dto.ports);
+
     return { container: dbContainer, dockerId: container.id };
+  }
+
+  /**
+   * 포트포워딩 규칙 추가 (비동기)
+   */
+  private async addPortForwardingRules(
+    containerName: string,
+    ports: Record<string, number>,
+  ) {
+    for (const [internalPort, externalPort] of Object.entries(ports)) {
+      await this.portForwardingService.addPortMapping(
+        parseInt(internalPort),
+        externalPort,
+        `${containerName}-port-${internalPort}`,
+      );
+    }
   }
 
   /**
@@ -191,6 +240,14 @@ export class DockerService implements OnModuleInit {
     }
 
     await dockerContainer.remove();
+
+    // 포트포워딩 규칙 제거
+    if (container.ports) {
+      for (const externalPort of Object.values(container.ports)) {
+        await this.portForwardingService.removePortMapping(externalPort);
+      }
+    }
+
     await this.containerRepo.delete(id);
 
     return { success: true };
@@ -253,9 +310,9 @@ export class DockerService implements OnModuleInit {
 
   private formatMemory(bytes: number): string {
     if (bytes === 0) return '0';
-    const gb = bytes / (1024 ** 3);
+    const gb = bytes / 1024 ** 3;
     if (gb >= 1) return `${gb.toFixed(1)}g`;
-    const mb = bytes / (1024 ** 2);
+    const mb = bytes / 1024 ** 2;
     if (mb >= 1) return `${mb.toFixed(0)}m`;
     const kb = bytes / 1024;
     if (kb >= 1) return `${kb.toFixed(0)}k`;

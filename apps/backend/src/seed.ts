@@ -12,11 +12,13 @@ import { Container } from './entities/container.entity';
  * 실행: npx ts-node src/seed.ts
  */
 async function seed() {
+  if (!process.env.DATABASE_URL) {
+    throw new Error('DATABASE_URL environment variable is required');
+  }
+
   const dataSource = new DataSource({
     type: 'postgres',
-    url:
-      process.env.DATABASE_URL ||
-      'postgresql://admin:admin123@localhost:5432/claude_infra',
+    url: process.env.DATABASE_URL,
     entities: [User, Role, Permission, Session, Message, Container],
     synchronize: true,
   });
@@ -96,21 +98,28 @@ async function seed() {
   console.log('3 roles created (admin, developer, viewer)');
 
   // 3. Admin 계정 생성
-  const existingAdmin = await userRepo.findOne({
-    where: { email: 'admin@kscold.dev' },
-  });
+  const adminEmail = process.env.ADMIN_EMAIL || 'admin@kscold.dev';
+  const adminPassword = process.env.ADMIN_PASSWORD;
 
-  if (!existingAdmin) {
-    const hashedPassword = await bcrypt.hash('admin123', 10);
-    const adminUser = userRepo.create({
-      email: 'admin@kscold.dev',
-      password: hashedPassword,
-      roles: [adminRole],
-    });
-    await userRepo.save(adminUser);
-    console.log('Admin user created: admin@kscold.dev / admin123');
+  if (!adminPassword) {
+    console.warn('ADMIN_PASSWORD not set, skipping admin user creation');
   } else {
-    console.log('Admin user already exists');
+    const existingAdmin = await userRepo.findOne({
+      where: { email: adminEmail },
+    });
+
+    if (!existingAdmin) {
+      const hashedPassword = await bcrypt.hash(adminPassword, 10);
+      const adminUser = userRepo.create({
+        email: adminEmail,
+        password: hashedPassword,
+        roles: [adminRole],
+      });
+      await userRepo.save(adminUser);
+      console.log(`Admin user created: ${adminEmail}`);
+    } else {
+      console.log('Admin user already exists');
+    }
   }
 
   await dataSource.destroy();

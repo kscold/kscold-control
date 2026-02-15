@@ -1,9 +1,13 @@
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { AppModule } from './app.module';
+import { SpaFallbackFilter } from './common/filters/spa-fallback.filter';
+import { WinstonLoggerService } from './common/logger/winston.logger';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create(AppModule, {
+    logger: new WinstonLoggerService(),
+  });
 
   // CORS 설정
   app.enableCors({
@@ -19,6 +23,9 @@ async function bootstrap() {
       transform: true,
     }),
   );
+
+  // SPA Fallback Filter (404 처리)
+  app.useGlobalFilters(new SpaFallbackFilter());
 
   // 글로벌 prefix
   app.setGlobalPrefix('api');
