@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { ClaudeTerminal } from '../components/ClaudeTerminal';
+import { Terminal } from '../features/terminal/ui';
 import { Plus, X } from 'lucide-react';
+import { useModalStore } from '../stores/modal.store';
 
 interface Terminal {
   id: string;
@@ -12,6 +13,7 @@ export function ClaudePage() {
     { id: '1', title: 'Terminal 1' },
   ]);
   const [activeTerminalId, setActiveTerminalId] = useState('1');
+  const { showAlert } = useModalStore();
 
   const createTerminal = () => {
     const newId = Date.now().toString();
@@ -25,7 +27,7 @@ export function ClaudePage() {
 
   const closeTerminal = (id: string) => {
     if (terminals.length === 1) {
-      alert('최소 1개의 터미널이 필요합니다');
+      showAlert('최소 1개의 터미널이 필요합니다');
       return;
     }
 
@@ -43,9 +45,7 @@ export function ClaudePage() {
       {/* Header */}
       <div className="px-6 py-4 border-b border-gray-800">
         <h2 className="text-xl font-bold text-white">Terminal</h2>
-        <p className="text-sm text-gray-500">
-          Mac Mini 터미널 (zsh 셸)
-        </p>
+        <p className="text-sm text-gray-500">Mac Mini 터미널 (zsh 셸)</p>
       </div>
 
       {/* Terminal Tabs */}
@@ -90,7 +90,7 @@ export function ClaudePage() {
               activeTerminalId === terminal.id ? 'block' : 'hidden'
             }`}
           >
-            <ClaudeTerminal terminalId={terminal.id} />
+            <Terminal terminalId={terminal.id} />
           </div>
         ))}
       </div>

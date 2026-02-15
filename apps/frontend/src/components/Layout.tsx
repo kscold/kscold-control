@@ -1,6 +1,15 @@
 import { useState } from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
-import { Terminal, Container, LayoutDashboard, LogOut, Menu, X } from 'lucide-react';
+import {
+  Terminal,
+  Container,
+  LayoutDashboard,
+  LogOut,
+  Menu,
+  X,
+  Shield,
+  FileText,
+} from 'lucide-react';
 import { useAuthStore } from '../stores/auth.store';
 
 export function Layout() {
@@ -54,6 +63,36 @@ export function Layout() {
         <Container size={18} />
         Docker 관리
       </NavLink>
+
+      <NavLink
+        to="/rbac"
+        onClick={() => setIsMobileMenuOpen(false)}
+        className={({ isActive }) =>
+          `flex items-center gap-3 px-3 py-2 rounded-lg text-sm ${
+            isActive
+              ? 'bg-blue-600 text-white'
+              : 'text-gray-400 hover:bg-gray-800 hover:text-white'
+          }`
+        }
+      >
+        <Shield size={18} />
+        권한 관리
+      </NavLink>
+
+      <NavLink
+        to="/logs"
+        onClick={() => setIsMobileMenuOpen(false)}
+        className={({ isActive }) =>
+          `flex items-center gap-3 px-3 py-2 rounded-lg text-sm ${
+            isActive
+              ? 'bg-blue-600 text-white'
+              : 'text-gray-400 hover:bg-gray-800 hover:text-white'
+          }`
+        }
+      >
+        <FileText size={18} />
+        시스템 로그
+      </NavLink>
     </>
   );
 
@@ -98,9 +137,7 @@ export function Layout() {
           <p className="text-xs text-gray-500 mt-1">{user?.email}</p>
         </div>
 
-        <nav className="flex-1 p-3 space-y-1 mt-16 md:mt-0">
-          {navLinks}
-        </nav>
+        <nav className="flex-1 p-3 space-y-1 mt-16 md:mt-0">{navLinks}</nav>
 
         <div className="p-3 border-t border-gray-800">
           <button
