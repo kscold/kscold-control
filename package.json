@@ -2,11 +2,7 @@
   "name": "kscold-control",
   "version": "1.0.0",
   "private": true,
-  "packageManager": "yarn@1.22.22",
-  "workspaces": [
-    "apps/*",
-    "packages/*"
-  ],
+  "packageManager": "pnpm@10.29.3",
   "scripts": {
     "dev": "turbo run dev",
     "build": "turbo run build",
