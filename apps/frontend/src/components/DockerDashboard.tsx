@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Play, Square, Trash2, Plus, Activity } from 'lucide-react';
 import { useModalStore } from '../stores/modal.store';
 import { usePermissions } from '../hooks/usePermissions';
+import { useAuthStore } from '../stores/auth.store';
 import { api } from '../lib/api';
 
 interface Container {
@@ -34,6 +35,7 @@ export function DockerDashboard() {
   });
   const { showAlert, showConfirm } = useModalStore();
   const { hasPermission, checkPermission } = usePermissions();
+  const { user } = useAuthStore();
 
   useEffect(() => {
     loadContainers();
@@ -43,7 +45,7 @@ export function DockerDashboard() {
 
   const loadContainers = async () => {
     try {
-      const { data } = await api.get('/docker/containers');
+      const { data } = await api.get('/docker/containers/all');
       setContainers(data);
     } catch (error) {
       console.error('Failed to load containers:', error);
@@ -100,9 +102,14 @@ export function DockerDashboard() {
       showAlert('컨테이너 이름을 입력하세요');
       return;
     }
+    if (!user?.id) {
+      showAlert('사용자 정보를 찾을 수 없습니다');
+      return;
+    }
     setIsCreating(true);
     try {
       await api.post('/docker/containers', {
+        userId: user.id,
         name: containerConfig.name,
         image: containerConfig.image,
         ports: {
