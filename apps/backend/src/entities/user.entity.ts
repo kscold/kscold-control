@@ -37,6 +37,12 @@ export class User {
   @OneToMany(() => Container, (container) => container.user)
   containers: Container[];
 
+  @Column({ default: 0 })
+  terminalCommandCount: number; // 사용한 터미널 명령어 횟수
+
+  @Column({ default: -1 })
+  terminalCommandLimit: number; // 명령어 제한 (-1 = 무제한)
+
   @CreateDateColumn()
   createdAt: Date;
 

@@ -5,17 +5,24 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { ClaudeGateway } from './claude.gateway';
 import { Session } from '../entities/session.entity';
 import { Message } from '../entities/message.entity';
+import { User } from '../entities/user.entity';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Session, Message]),
+    TypeOrmModule.forFeature([Session, Message, User]),
     JwtModule.registerAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
-      useFactory: (config: ConfigService) => ({
-        secret: config.get<string>('JWT_SECRET') || 'your-secret-key',
-        signOptions: { expiresIn: '1d' },
-      }),
+      useFactory: (config: ConfigService) => {
+        const secret = config.get<string>('JWT_SECRET');
+        if (!secret) {
+          throw new Error('JWT_SECRET environment variable is required');
+        }
+        return {
+          secret,
+          signOptions: { expiresIn: '1d' },
+        };
+      },
     }),
   ],
   providers: [ClaudeGateway],

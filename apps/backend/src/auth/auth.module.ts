@@ -4,9 +4,9 @@ import { JwtModule } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
 import { ConfigService } from '@nestjs/config';
 
-// Entities
-import { User } from '../entities/user.entity';
-import { Role } from '../entities/role.entity';
+// Entities (Clean Architecture)
+import { User } from '../rbac/domain/entities/user.entity';
+import { Role } from '../rbac/domain/entities/role.entity';
 
 // Controllers
 import { AuthController } from './presentation/controllers/auth.controller';
@@ -29,10 +29,16 @@ import { JwtStrategy } from './infrastructure/strategies/jwt.strategy';
     PassportModule,
     JwtModule.registerAsync({
       inject: [ConfigService],
-      useFactory: (config: ConfigService) => ({
-        secret: config.get('JWT_SECRET', 'default-secret-change-me'),
-        signOptions: { expiresIn: '1d' },
-      }),
+      useFactory: (config: ConfigService) => {
+        const secret = config.get<string>('JWT_SECRET');
+        if (!secret) {
+          throw new Error('JWT_SECRET environment variable is required');
+        }
+        return {
+          secret,
+          signOptions: { expiresIn: '1d' },
+        };
+      },
     }),
   ],
   controllers: [AuthController],
