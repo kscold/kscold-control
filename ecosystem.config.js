@@ -9,9 +9,13 @@ module.exports = {
       env: {
         NODE_ENV: 'production',
         PORT: 4000,
-        DATABASE_URL: 'postgresql://admin:admin123@localhost:5432/claude_infra',
-        JWT_SECRET: 'kscold-infra-secret-change-in-production',
-        CLAUDE_WORKING_DIR: '/Users/kscold/Desktop',
+        // SECURITY: Never commit real credentials! Set these via:
+        // 1. PM2 ecosystem file with env_file option, or
+        // 2. PM2 startup command: pm2 start ecosystem.config.js --update-env
+        // 3. System environment variables
+        DATABASE_URL: process.env.DATABASE_URL || 'postgresql://admin:admin123@localhost:5432/claude_infra',
+        JWT_SECRET: process.env.JWT_SECRET || 'kscold-infra-secret-change-in-production',
+        CLAUDE_WORKING_DIR: process.env.CLAUDE_WORKING_DIR || '/Users/kscold/Desktop',
       },
       // 자동 재시작
       watch: false,
