@@ -17,7 +17,13 @@ interface ContainerInfo {
 interface SystemInfo {
   cpu: { count: number; model: string };
   memory: { total: number; used: number; free: number; usedPercent: number };
-  disk: { total: number; used: number; available: number; usedPercent: number };
+  disk: {
+    total: number;
+    used: number;
+    available: number;
+    usedPercent: number;
+    breakdown: { docker: number; applications: number; other: number };
+  };
   platform: string;
   hostname: string;
   uptime: number;
@@ -115,15 +121,45 @@ export function DashboardPage() {
                 {formatBytes(systemInfo.disk.used)} /{' '}
                 {formatBytes(systemInfo.disk.total)}
               </p>
-              <div className="mt-2 w-full bg-gray-700 rounded-full h-2">
-                <div
-                  className="bg-amber-400 h-2 rounded-full transition-all"
-                  style={{ width: `${systemInfo.disk.usedPercent}%` }}
-                />
+              {/* 스택 바: Docker / Apps / Other */}
+              <div className="mt-2 w-full bg-gray-700 rounded-full h-2 flex overflow-hidden">
+                {systemInfo.disk.breakdown && (
+                  <>
+                    <div
+                      className="bg-blue-400 h-2 transition-all"
+                      style={{ width: `${(systemInfo.disk.breakdown.docker / systemInfo.disk.total) * 100}%` }}
+                    />
+                    <div
+                      className="bg-purple-400 h-2 transition-all"
+                      style={{ width: `${(systemInfo.disk.breakdown.applications / systemInfo.disk.total) * 100}%` }}
+                    />
+                    <div
+                      className="bg-amber-400 h-2 transition-all"
+                      style={{ width: `${(systemInfo.disk.breakdown.other / systemInfo.disk.total) * 100}%` }}
+                    />
+                  </>
+                )}
               </div>
               <p className="text-xs text-gray-400 mt-1">
                 {systemInfo.disk.usedPercent.toFixed(1)}% used
               </p>
+              {/* 범례 */}
+              {systemInfo.disk.breakdown && (
+                <div className="flex flex-wrap gap-x-3 gap-y-1 mt-2 text-xs">
+                  <span className="flex items-center gap-1">
+                    <span className="w-2 h-2 rounded-full bg-blue-400 inline-block" />
+                    <span className="text-gray-400">Docker {formatBytes(systemInfo.disk.breakdown.docker)}</span>
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <span className="w-2 h-2 rounded-full bg-purple-400 inline-block" />
+                    <span className="text-gray-400">Apps {formatBytes(systemInfo.disk.breakdown.applications)}</span>
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <span className="w-2 h-2 rounded-full bg-amber-400 inline-block" />
+                    <span className="text-gray-400">Other {formatBytes(systemInfo.disk.breakdown.other)}</span>
+                  </span>
+                </div>
+              )}
             </div>
           ) : (
             <p className="text-2xl sm:text-3xl font-bold text-white">...</p>
