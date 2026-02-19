@@ -106,7 +106,7 @@ export function useTerminalSocket({
         });
 
         xterm.writeln(
-          `${TERMINAL_COLORS.cyan}━━━ 현재 세션 ━━━${TERMINAL_COLORS.reset}\r\n`,
+          `\r\n${TERMINAL_COLORS.cyan}━━━ 현재 세션 ━━━${TERMINAL_COLORS.reset}\r\n`,
         );
       },
     );
