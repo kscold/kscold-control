@@ -1,10 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Terminal, Container, Cpu, HardDrive } from 'lucide-react';
-import axios from 'axios';
-import { useAuthStore } from '../stores/auth.store';
-
-const API_URL = import.meta.env.VITE_API_URL || '';
+import { api } from '../lib/api';
 
 interface ContainerInfo {
   id: string;
@@ -32,7 +29,6 @@ interface SystemInfo {
 export function DashboardPage() {
   const [containers, setContainers] = useState<ContainerInfo[]>([]);
   const [systemInfo, setSystemInfo] = useState<SystemInfo | null>(null);
-  const { token } = useAuthStore();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -42,9 +38,7 @@ export function DashboardPage() {
 
   const loadContainers = async () => {
     try {
-      const { data } = await axios.get(`${API_URL}/api/docker/containers`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const { data } = await api.get('/docker/containers/all');
       setContainers(data);
     } catch (e) {
       console.error(e);
@@ -53,9 +47,7 @@ export function DashboardPage() {
 
   const loadSystemInfo = async () => {
     try {
-      const { data } = await axios.get(`${API_URL}/api/system/info`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const { data } = await api.get('/system/info');
       setSystemInfo(data);
     } catch (e) {
       console.error(e);
