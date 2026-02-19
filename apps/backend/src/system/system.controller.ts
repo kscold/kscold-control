@@ -28,29 +28,51 @@ export class SystemController {
       available: 0,
       usedPercent: 0,
     };
+    let diskBreakdown = {
+      docker: 0,
+      applications: 0,
+      other: 0,
+    };
 
     try {
-      // df -k / 명령어로 루트 파티션 정보 가져오기 (KB 단위)
-      const { stdout } = await execAsync('df -k /');
-      const lines = stdout.trim().split('\n');
+      const home = process.env.HOME || '/Users/' + process.env.USER;
 
+      // df 와 카테고리별 du를 병렬로 실행
+      const [dfResult, dockerResult, appsResult] = await Promise.all([
+        execAsync('df -k /'),
+        execAsync(`du -sk "${home}/Library/Containers/com.docker.docker" 2>/dev/null || echo "0\t-"`),
+        execAsync(`du -sk /Applications 2>/dev/null || echo "0\t-"`),
+      ]);
+
+      // df 파싱
+      const lines = dfResult.stdout.trim().split('\n');
       if (lines.length >= 2) {
-        // 두 번째 줄이 실제 데이터
         const parts = lines[1].split(/\s+/);
-
-        // macOS의 df 출력 형식:
-        // Filesystem   1024-blocks      Used Available Capacity  Mounted on
-        // /dev/disk3s1   256901120  93163344 159827240    37%    /
-
         const totalKB = parseInt(parts[1]) || 0;
-        const usedKB = parseInt(parts[2]) || 0;
         const availableKB = parseInt(parts[3]) || 0;
 
+        // macOS APFS는 여러 볼륨이 같은 컨테이너 공유
+        // df "Used" = 루트 볼륨만 → 실제 사용량은 total - available
+        const realUsedKB = totalKB - availableKB;
+
         diskInfo = {
-          total: totalKB * 1024, // bytes
-          used: usedKB * 1024,
+          total: totalKB * 1024,
+          used: realUsedKB * 1024,
           available: availableKB * 1024,
-          usedPercent: totalKB > 0 ? (usedKB / totalKB) * 100 : 0,
+          usedPercent: totalKB > 0 ? (realUsedKB / totalKB) * 100 : 0,
+        };
+
+        // 카테고리별 breakdown
+        const dockerKB = parseInt(dockerResult.stdout.trim().split(/\s+/)[0]) || 0;
+        const appsKB = parseInt(appsResult.stdout.trim().split(/\s+/)[0]) || 0;
+        const dockerBytes = dockerKB * 1024;
+        const appsBytes = appsKB * 1024;
+        const otherBytes = Math.max(0, diskInfo.used - dockerBytes - appsBytes);
+
+        diskBreakdown = {
+          docker: dockerBytes,
+          applications: appsBytes,
+          other: otherBytes,
         };
       }
     } catch (error) {
@@ -68,7 +90,7 @@ export class SystemController {
         free: freeMemory,
         usedPercent: (usedMemory / totalMemory) * 100,
       },
-      disk: diskInfo,
+      disk: { ...diskInfo, breakdown: diskBreakdown },
       platform: os.platform(),
       hostname: os.hostname(),
       uptime: os.uptime(),
