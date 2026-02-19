@@ -1,6 +1,7 @@
 import { useRef, useEffect } from 'react';
 import { Terminal } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
+import { Unicode11Addon } from '@xterm/addon-unicode11';
 import '@xterm/xterm/css/xterm.css';
 import { TERMINAL_THEME, TERMINAL_FONT } from '../lib/terminal.constants';
 
@@ -37,11 +38,14 @@ export function useTerminalSetup({
       fontSize: isMobile ? TERMINAL_FONT.mobile : TERMINAL_FONT.desktop,
       fontFamily: TERMINAL_FONT.family,
       theme: TERMINAL_THEME,
-      allowProposedApi: true, // 복사/붙여넣기를 위해 필요
+      allowProposedApi: true,
     });
 
     const fitAddon = new FitAddon();
+    const unicode11Addon = new Unicode11Addon();
     xterm.loadAddon(fitAddon);
+    xterm.loadAddon(unicode11Addon);
+    xterm.unicode.activeVersion = '11'; // Unicode 11 활성화 (한글 2칸 너비)
     xterm.open(terminalRef.current);
 
     // fitAddon을 비동기로 실행
@@ -68,24 +72,38 @@ export function useTerminalSetup({
     };
     window.addEventListener('resize', handleResize);
 
-    // 키보드 이벤트 핸들러 (Ctrl+C, Ctrl+V 처리)
+    // 클립보드에서 읽어 터미널에 붙여넣기
+    const pasteFromClipboard = async (e: KeyboardEvent) => {
+      e.preventDefault();
+      try {
+        const text = await navigator.clipboard.readText();
+        xterm.paste(text);
+      } catch {
+        // clipboard API 미지원 시 무시
+      }
+    };
+
+    // 키보드 이벤트 핸들러
     const handleKeyDown = (e: KeyboardEvent) => {
       // Ctrl+C (또는 Cmd+C): 복사 허용 (선택된 텍스트가 있을 때만)
       if ((e.ctrlKey || e.metaKey) && e.key === 'c') {
         const selection = xterm.getSelection();
         if (selection) {
-          // 선택된 텍스트가 있으면 복사 허용
-          return;
+          return; // 선택 텍스트 있으면 복사 허용
         } else {
-          // 선택된 텍스트가 없으면 Ctrl+C를 터미널에 전송 (interrupt)
           e.preventDefault();
-          onInterrupt();
+          onInterrupt(); // 선택 없으면 interrupt 전송
         }
       }
 
-      // Ctrl+V (또는 Cmd+V): 붙여넣기
+      // Ctrl+Shift+V (또는 Cmd+Shift+V): 터미널 붙여넣기 (브라우저 기본 동작 차단)
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'V') {
+        pasteFromClipboard(e);
+        return;
+      }
+
+      // Ctrl+V (또는 Cmd+V): 붙여넣기 (xterm.js 자동 처리)
       if ((e.ctrlKey || e.metaKey) && e.key === 'v') {
-        // xterm.js가 자동으로 처리하도록 허용
         return;
       }
     };

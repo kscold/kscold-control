@@ -12,11 +12,12 @@ export const TERMINAL_THEME = {
 
 /**
  * Terminal Font Settings
+ * 한글 지원을 위해 D2Coding, Noto Sans Mono 추가
  */
 export const TERMINAL_FONT = {
   desktop: 14,
   mobile: 12,
-  family: 'Menlo, Monaco, "Courier New", monospace',
+  family: '"D2Coding", "Noto Sans Mono", "Apple SD Gothic Neo", Menlo, Monaco, "Courier New", monospace',
 };
 
 /**
