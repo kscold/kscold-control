@@ -169,6 +169,11 @@ export class DockerService implements OnModuleInit, OnModuleDestroy {
 
     await this.containerRepo.save(dbContainer);
 
+    // 컨테이너 자동 시작
+    await container.start();
+    dbContainer.status = 'running';
+    await this.containerRepo.save(dbContainer);
+
     // 포트포워딩 규칙 추가 (백그라운드에서 비동기 실행)
     this.addPortForwardingRules(dto.name, dto.ports);
 
