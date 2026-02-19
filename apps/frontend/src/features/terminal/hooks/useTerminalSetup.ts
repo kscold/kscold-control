@@ -1,4 +1,4 @@
-import { useRef, useEffect } from 'react';
+import { useRef, useEffect, useState } from 'react';
 import { Terminal } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
 import { Unicode11Addon } from '@xterm/addon-unicode11';
@@ -25,6 +25,8 @@ export function useTerminalSetup({
   const terminalRef = useRef<HTMLDivElement>(null);
   const xtermRef = useRef<Terminal | null>(null);
   const fitAddonRef = useRef<FitAddon | null>(null);
+  // xterm을 state로 노출 → 초기화 완료 시 리렌더 트리거 → 소켓 연결 가능
+  const [xtermInstance, setXtermInstance] = useState<Terminal | null>(null);
 
   useEffect(() => {
     if (!terminalRef.current) return;
@@ -55,6 +57,15 @@ export function useTerminalSetup({
 
     xtermRef.current = xterm;
     fitAddonRef.current = fitAddon;
+    setXtermInstance(xterm); // state 업데이트 → 리렌더 → 소켓 연결 트리거
+
+    // 드래그로 텍스트 선택 시 자동 클립보드 복사 (copyOnSelect 대체)
+    xterm.onSelectionChange(() => {
+      const selection = xterm.getSelection();
+      if (selection) {
+        navigator.clipboard.writeText(selection).catch(() => {});
+      }
+    });
 
     // 사용자 입력 → PTY로 즉시 전송
     xterm.onData((data) => {
@@ -83,43 +94,49 @@ export function useTerminalSetup({
       }
     };
 
-    // 키보드 이벤트 핸들러
+    // 키보드 이벤트 핸들러 (capture: true → 브라우저보다 먼저 실행)
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Ctrl+C (또는 Cmd+C): 복사 허용 (선택된 텍스트가 있을 때만)
-      if ((e.ctrlKey || e.metaKey) && e.key === 'c') {
+      // Ctrl+Shift+C (또는 Cmd+Shift+C): 선택 텍스트 복사 (Chrome 가로채기 방지)
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'C') {
+        e.preventDefault();
+        e.stopPropagation();
         const selection = xterm.getSelection();
         if (selection) {
-          return; // 선택 텍스트 있으면 복사 허용
-        } else {
-          e.preventDefault();
-          onInterrupt(); // 선택 없으면 interrupt 전송
+          navigator.clipboard.writeText(selection).catch(() => {});
         }
+        return;
       }
 
-      // Ctrl+Shift+V (또는 Cmd+Shift+V): 터미널 붙여넣기 (브라우저 기본 동작 차단)
+      // Ctrl+Shift+V (또는 Cmd+Shift+V): 붙여넣기 (브라우저 기본 동작 차단)
       if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'V') {
         pasteFromClipboard(e);
         return;
       }
 
-      // Ctrl+V (또는 Cmd+V): 붙여넣기 (xterm.js 자동 처리)
-      if ((e.ctrlKey || e.metaKey) && e.key === 'v') {
+      // Ctrl+C (또는 Cmd+C): 선택 없으면 interrupt, 있으면 브라우저 복사 허용
+      if ((e.ctrlKey || e.metaKey) && e.key === 'c') {
+        const selection = xterm.getSelection();
+        if (!selection) {
+          e.preventDefault();
+          onInterrupt();
+        }
         return;
       }
     };
 
-    terminalRef.current.addEventListener('keydown', handleKeyDown);
+    // capture: true → 브라우저 단축키보다 먼저 실행
+    terminalRef.current.addEventListener('keydown', handleKeyDown, true);
 
     return () => {
       window.removeEventListener('resize', handleResize);
-      terminalRef.current?.removeEventListener('keydown', handleKeyDown);
+      terminalRef.current?.removeEventListener('keydown', handleKeyDown, true);
       xterm.dispose();
     };
   }, []);
 
   return {
     terminalRef,
-    xterm: xtermRef.current,
+    xterm: xtermInstance, // ref 대신 state 반환 → 초기화 완료 시 리렌더
     fitAddon: fitAddonRef.current,
   };
 }
