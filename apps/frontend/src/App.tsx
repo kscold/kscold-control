@@ -8,6 +8,9 @@ import { ClaudePage } from './pages/ClaudePage';
 import { DockerPage } from './pages/DockerPage';
 import { RbacPage } from './pages/RbacPage';
 import { LogsPage } from './pages/LogsPage';
+import { NginxPage } from './pages/NginxPage';
+import { NetworkPage } from './pages/NetworkPage';
+import { TopologyPage } from './pages/TopologyPage';
 import { Modal } from './components/Modal';
 import { ErrorBoundary } from './app/providers';
 
@@ -74,6 +77,30 @@ export default function App() {
             element={
               <ErrorBoundary>
                 <LogsPage />
+              </ErrorBoundary>
+            }
+          />
+          <Route
+            path="nginx"
+            element={
+              <ErrorBoundary>
+                <NginxPage />
+              </ErrorBoundary>
+            }
+          />
+          <Route
+            path="network"
+            element={
+              <ErrorBoundary>
+                <NetworkPage />
+              </ErrorBoundary>
+            }
+          />
+          <Route
+            path="topology"
+            element={
+              <ErrorBoundary>
+                <TopologyPage />
               </ErrorBoundary>
             }
           />

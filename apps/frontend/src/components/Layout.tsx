@@ -9,6 +9,9 @@ import {
   X,
   Shield,
   FileText,
+  Globe,
+  Network,
+  GitBranch,
 } from 'lucide-react';
 import { useAuthStore } from '../stores/auth.store';
 
@@ -92,6 +95,51 @@ export function Layout() {
       >
         <FileText size={18} />
         시스템 로그
+      </NavLink>
+
+      <NavLink
+        to="/nginx"
+        onClick={() => setIsMobileMenuOpen(false)}
+        className={({ isActive }) =>
+          `flex items-center gap-3 px-3 py-2 rounded-lg text-sm ${
+            isActive
+              ? 'bg-blue-600 text-white'
+              : 'text-gray-400 hover:bg-gray-800 hover:text-white'
+          }`
+        }
+      >
+        <Globe size={18} />
+        Nginx 설정
+      </NavLink>
+
+      <NavLink
+        to="/network"
+        onClick={() => setIsMobileMenuOpen(false)}
+        className={({ isActive }) =>
+          `flex items-center gap-3 px-3 py-2 rounded-lg text-sm ${
+            isActive
+              ? 'bg-blue-600 text-white'
+              : 'text-gray-400 hover:bg-gray-800 hover:text-white'
+          }`
+        }
+      >
+        <Network size={18} />
+        네트워크
+      </NavLink>
+
+      <NavLink
+        to="/topology"
+        onClick={() => setIsMobileMenuOpen(false)}
+        className={({ isActive }) =>
+          `flex items-center gap-3 px-3 py-2 rounded-lg text-sm ${
+            isActive
+              ? 'bg-blue-600 text-white'
+              : 'text-gray-400 hover:bg-gray-800 hover:text-white'
+          }`
+        }
+      >
+        <GitBranch size={18} />
+        토폴로지
       </NavLink>
     </>
   );
