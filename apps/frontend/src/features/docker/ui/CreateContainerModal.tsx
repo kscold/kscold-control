@@ -18,7 +18,7 @@ interface CreateContainerModalProps {
 
 /**
  * CreateContainerModal Component
- * Modal for creating new Docker containers
+ * Modal for creating new Docker instances via compose
  */
 export function CreateContainerModal({
   show,
@@ -34,20 +34,23 @@ export function CreateContainerModal({
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-3 sm:p-4 z-50 overflow-y-auto">
       <div className="bg-gray-800 rounded-lg p-4 sm:p-6 max-w-md w-full border border-gray-700 my-4">
         <h2 className="text-lg sm:text-xl font-bold text-white mb-4">
-          Ubuntu 컨테이너 생성
+          인스턴스 생성
         </h2>
+        <p className="text-xs text-gray-400 mb-4">
+          docker-compose.yml에 서비스가 추가되고 자동으로 시작됩니다.
+        </p>
 
         <div className="space-y-3 sm:space-y-4">
           <div>
             <label className="block text-xs sm:text-sm font-medium text-gray-300 mb-1">
-              컨테이너 이름
+              인스턴스 이름
             </label>
             <input
               type="text"
               value={config.name}
               onChange={(e) => onConfigChange({ name: e.target.value })}
               className="w-full px-3 py-2 text-sm bg-gray-700 border border-gray-600 rounded text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="ubuntu-1"
+              placeholder="ubuntu-myproject"
             />
           </div>
 

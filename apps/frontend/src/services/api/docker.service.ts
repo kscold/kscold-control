@@ -125,6 +125,59 @@ export class DockerService extends BaseApiService {
       this.handleError(error, `Failed to get logs for container ${id}`);
     }
   }
+
+  /**
+   * Import an external container into management
+   * @param dockerId Docker container ID
+   * @returns Imported container
+   */
+  async importContainer(dockerId: string): Promise<Container> {
+    try {
+      const { data } = await api.post<Container>(
+        `${this.basePath}/containers/import`,
+        { dockerId },
+      );
+      return data;
+    } catch (error) {
+      this.logError('DockerService', 'importContainer', error);
+      this.handleError(error, 'Failed to import container');
+    }
+  }
+
+  /**
+   * Create a new compose service (instance)
+   */
+  async createComposeService(config: {
+    name: string;
+    image: string;
+    ports: Record<string, number>;
+    cpus: string;
+    memLimit: string;
+    command?: string;
+  }): Promise<any> {
+    try {
+      const { data } = await api.post(
+        `${this.basePath}/compose/services`,
+        config,
+      );
+      return data;
+    } catch (error) {
+      this.logError('DockerService', 'createComposeService', error);
+      this.handleError(error, 'Failed to create compose service');
+    }
+  }
+
+  /**
+   * Remove a compose service
+   */
+  async removeComposeService(name: string): Promise<void> {
+    try {
+      await api.delete(`${this.basePath}/compose/services/${name}`);
+    } catch (error) {
+      this.logError('DockerService', 'removeComposeService', error);
+      this.handleError(error, `Failed to remove compose service ${name}`);
+    }
+  }
 }
 
 // Export singleton instance

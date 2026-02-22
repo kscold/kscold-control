@@ -7,6 +7,7 @@ interface ContainerListProps {
   onStart: (id: string) => void;
   onStop: (id: string) => void;
   onDelete: (id: string) => void;
+  onImport?: (dockerId: string) => void;
 }
 
 /**
@@ -18,6 +19,7 @@ export function ContainerList({
   onStart,
   onStop,
   onDelete,
+  onImport,
 }: ContainerListProps) {
   if (containers.length === 0) {
     return (
@@ -39,6 +41,7 @@ export function ContainerList({
           onStart={onStart}
           onStop={onStop}
           onDelete={onDelete}
+          onImport={onImport}
         />
       ))}
     </div>

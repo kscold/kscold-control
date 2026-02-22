@@ -13,8 +13,10 @@ import {
   StartContainerUseCase,
   StopContainerUseCase,
   RemoveContainerUseCase,
+  ImportContainerUseCase,
 } from './application/use-cases';
 import { PortForwardingService } from './application/services/port-forwarding.service';
+import { ComposeService } from './application/services/compose.service';
 
 // Infrastructure
 import { TypeOrmContainerRepository } from './infrastructure/repositories/typeorm-container.repository';
@@ -45,9 +47,11 @@ import { AuthModule } from '../auth/auth.module';
     StartContainerUseCase,
     StopContainerUseCase,
     RemoveContainerUseCase,
+    ImportContainerUseCase,
 
     // Services
     PortForwardingService,
+    ComposeService,
 
     // Repository Implementations (DI)
     {
@@ -69,6 +73,7 @@ import { AuthModule } from '../auth/auth.module';
     StartContainerUseCase,
     StopContainerUseCase,
     RemoveContainerUseCase,
+    ImportContainerUseCase,
   ],
 })
 export class DockerModule {}

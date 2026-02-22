@@ -1,4 +1,5 @@
-import { Play, Square, Trash2 } from 'lucide-react';
+import { Play, Square, Trash2, Download, Globe } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { usePermissions } from '../../../hooks/usePermissions';
 import type { Container } from '../../../types/domain.types';
 
@@ -7,6 +8,7 @@ interface ContainerCardProps {
   onStart: (id: string) => void;
   onStop: (id: string) => void;
   onDelete: (id: string) => void;
+  onImport?: (dockerId: string) => void;
 }
 
 /**
@@ -18,8 +20,18 @@ export function ContainerCard({
   onStart,
   onStop,
   onDelete,
+  onImport,
 }: ContainerCardProps) {
   const { checkPermission } = usePermissions();
+  const navigate = useNavigate();
+
+  const handleConnectProxy = () => {
+    // Find the first internal port to use as upstream
+    const ports = Object.keys(container.ports);
+    const mainPort = ports.find((p) => p !== '22') || ports[0] || '8080';
+    const upstream = `http://${container.name}:${mainPort}`;
+    navigate(`/nginx?upstream=${encodeURIComponent(upstream)}&name=${encodeURIComponent(container.name)}`);
+  };
 
   const getStatusColor = (status: string): string => {
     switch (status.toLowerCase()) {
@@ -122,8 +134,21 @@ export function ContainerCard({
       </div>
 
       {!container.isManaged && (
-        <div className="mb-3 p-2 bg-amber-900/30 border border-amber-600/50 rounded text-xs text-amber-200">
-          ⚠️ External container - Management limited
+        <div className="mb-3 p-2 bg-amber-900/30 border border-amber-600/50 rounded text-xs text-amber-200 flex items-center justify-between">
+          <span>외부 컨테이너 - Import하여 관리 가능</span>
+          {onImport && (
+            <button
+              onClick={() =>
+                checkPermission('docker:create', () =>
+                  onImport(container.dockerId),
+                )
+              }
+              className="flex items-center gap-1 px-2 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700 transition-colors"
+            >
+              <Download size={12} />
+              Import
+            </button>
+          )}
         </div>
       )}
 
@@ -133,13 +158,8 @@ export function ContainerCard({
             onClick={() =>
               checkPermission('docker:update', () => onStop(container.id))
             }
-            disabled={!container.isManaged}
-            className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-yellow-600 text-white rounded hover:bg-yellow-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-            title={
-              !container.isManaged
-                ? 'External containers cannot be managed'
-                : '중지'
-            }
+            className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-yellow-600 text-white rounded hover:bg-yellow-700 transition-colors"
+            title="중지"
           >
             <Square size={16} />
             <span className="hidden sm:inline">중지</span>
@@ -149,29 +169,26 @@ export function ContainerCard({
             onClick={() =>
               checkPermission('docker:update', () => onStart(container.id))
             }
-            disabled={!container.isManaged}
-            className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-green-600 text-white rounded hover:bg-green-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-            title={
-              !container.isManaged
-                ? 'External containers cannot be managed'
-                : '시작'
-            }
+            className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-green-600 text-white rounded hover:bg-green-700 transition-colors"
+            title="시작"
           >
             <Play size={16} />
             <span className="hidden sm:inline">시작</span>
           </button>
         )}
         <button
+          onClick={handleConnectProxy}
+          className="px-3 py-2 bg-purple-600 text-white rounded hover:bg-purple-700 transition-colors"
+          title="프록시 연결"
+        >
+          <Globe size={16} />
+        </button>
+        <button
           onClick={() =>
             checkPermission('docker:delete', () => onDelete(container.id))
           }
-          disabled={!container.isManaged}
-          className="px-3 py-2 bg-red-600 text-white rounded hover:bg-red-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-          title={
-            !container.isManaged
-              ? 'External containers cannot be deleted'
-              : '삭제'
-          }
+          className="px-3 py-2 bg-red-600 text-white rounded hover:bg-red-700 transition-colors"
+          title="삭제"
         >
           <Trash2 size={16} />
         </button>

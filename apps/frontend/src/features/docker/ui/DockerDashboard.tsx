@@ -17,7 +17,7 @@ type FilterType = 'all' | 'managed' | 'external';
  */
 export function DockerDashboard() {
   const { containers, loading, reload } = useContainers();
-  const { startContainer, stopContainer, deleteContainer } =
+  const { startContainer, stopContainer, deleteContainer, importContainer } =
     useContainerActions(reload);
   const {
     showModal,
@@ -64,7 +64,7 @@ export function DockerDashboard() {
           className="flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 w-full sm:w-auto"
         >
           <Plus size={20} />
-          컨테이너 생성
+          인스턴스 생성
         </button>
       </div>
 
@@ -108,6 +108,7 @@ export function DockerDashboard() {
         onStart={startContainer}
         onStop={stopContainer}
         onDelete={deleteContainer}
+        onImport={importContainer}
       />
 
       <CreateContainerModal

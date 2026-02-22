@@ -4,7 +4,7 @@ import { useModalStore } from '../../../stores/modal.store';
 
 /**
  * useContainerActions Hook
- * Handles container actions (start, stop, delete)
+ * Handles container actions (start, stop, delete, import)
  */
 export function useContainerActions(onSuccess?: () => void) {
   const [loading, setLoading] = useState(false);
@@ -55,10 +55,25 @@ export function useContainerActions(onSuccess?: () => void) {
     );
   };
 
+  const importContainer = async (dockerId: string) => {
+    try {
+      setLoading(true);
+      await dockerService.importContainer(dockerId);
+      showAlert('컨테이너를 성공적으로 Import했습니다.');
+      onSuccess?.();
+    } catch (error) {
+      console.error('Failed to import container:', error);
+      showAlert('컨테이너 Import에 실패했습니다.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return {
     startContainer,
     stopContainer,
     deleteContainer,
+    importContainer,
     loading,
   };
 }
