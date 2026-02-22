@@ -25,37 +25,40 @@ export class RemoveContainerUseCase {
   ) {}
 
   async execute(id: string): Promise<void> {
-    // 1. Find container
+    // 1. Try to find in DB by UUID
     const container = await this.containerRepo.findById(id);
-    if (!container) {
+
+    if (container) {
+      // Managed container: remove from Docker + DB
+      try {
+        await this.dockerClient.removeContainer(container.dockerId);
+      } catch (error) {
+        console.error(
+          `Failed to remove Docker container ${container.dockerId}:`,
+          error,
+        );
+      }
+
+      try {
+        await this.portForwardingService.removePortForwardingRules(
+          container.name,
+        );
+      } catch (error) {
+        console.error(
+          `Failed to remove port forwarding for ${container.name}:`,
+          error,
+        );
+      }
+
+      await this.containerRepo.delete(id);
+      return;
+    }
+
+    // 2. Fallback: treat id as dockerId for external containers
+    try {
+      await this.dockerClient.removeContainer(id);
+    } catch {
       throw new ContainerNotFoundException(id);
     }
-
-    // 2. Remove from Docker
-    try {
-      await this.dockerClient.removeContainer(container.dockerId);
-    } catch (error) {
-      console.error(
-        `Failed to remove Docker container ${container.dockerId}:`,
-        error,
-      );
-      // Continue with DB deletion even if Docker removal fails
-    }
-
-    // 3. Remove port forwarding rules
-    try {
-      await this.portForwardingService.removePortForwardingRules(
-        container.name,
-      );
-    } catch (error) {
-      console.error(
-        `Failed to remove port forwarding for ${container.name}:`,
-        error,
-      );
-      // Continue with DB deletion
-    }
-
-    // 4. Delete from database
-    await this.containerRepo.delete(id);
   }
 }

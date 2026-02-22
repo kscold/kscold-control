@@ -47,6 +47,7 @@ export interface ExternalAccess {
 
 export interface Container {
   id: string;
+  dockerId: string; // Docker daemon container ID
   name: string;
   image: string;
   status: string; // "created", "running", "exited", "stopped"

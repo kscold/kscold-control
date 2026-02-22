@@ -1,13 +1,39 @@
-version: '3.8'
-
-# DB만 Docker로 실행
-# Backend(NestJS), Frontend(Vite)는 호스트에서 직접 실행
-# 이유: Claude Code CLI + Docker 소켓 접근이 호스트에서만 가능
+########################################################
+# kscold-control 인프라 — Docker Desktop에서 통합 관리
+#
+# 구조:
+#   nginx           → ALB (SSL 종료 + 리버스 프록시)
+#   kscold-infra-db → RDS (공유 PostgreSQL)
+#   ubuntu-galjido  → EC2 인스턴스 (갈지도 프로젝트)
+#
+# 새 프로젝트 추가 시:
+#   1. 이 파일에 ubuntu-xxx 서비스 추가
+#   2. nginx/conf.d/xxx.conf 프록시 설정 추가
+#   3. docker compose up -d
+########################################################
 
 services:
-  postgres:
+
+  # ===== 게이트웨이 (ALB) =====
+  nginx:
+    image: nginx:alpine
+    container_name: kscold-nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+      - ./ssl:/etc/nginx/ssl:ro
+      - certbot-webroot:/var/www/certbot
+    depends_on:
+      - ubuntu-galjido
+    restart: unless-stopped
+
+  # ===== 공유 DB (RDS) =====
+  kscold-infra-db:
     image: postgres:15-alpine
-    container_name: claude-infra-db
+    container_name: kscold-infra-db
     environment:
       POSTGRES_DB: claude_infra
       POSTGRES_USER: admin
@@ -15,8 +41,34 @@ services:
     ports:
       - "5432:5432"
     volumes:
-      - postgres-data:/var/lib/postgresql/data
+      - infra-db-data:/var/lib/postgresql/data
     restart: unless-stopped
 
+  # ===== 갈지도 인스턴스 (EC2) =====
+  ubuntu-galjido:
+    image: kscold/ubuntu-galjido:latest
+    container_name: ubuntu-galjido
+    command: bash -c "/root/startup.sh && sleep infinity"
+    ports:
+      - "2223:22"
+      - "5433:5432"
+      - "8081:8080"
+    cpus: '2'
+    mem_limit: 4g
+    restart: unless-stopped
+
+  # ===== 새 프로젝트 추가 예시 =====
+  # ubuntu-newproject:
+  #   image: ubuntu:22.04
+  #   container_name: ubuntu-newproject
+  #   command: sleep infinity
+  #   ports:
+  #     - "2224:22"
+  #     - "8083:8080"
+  #   cpus: '2'
+  #   mem_limit: 4g
+  #   restart: unless-stopped
+
 volumes:
-  postgres-data:
+  infra-db-data:
+  certbot-webroot:

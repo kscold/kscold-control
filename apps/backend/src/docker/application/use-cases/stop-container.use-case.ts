@@ -11,7 +11,7 @@ import { ContainerNotFoundException } from '../../../common/exceptions';
 
 /**
  * Stop Container Use Case
- * Stops a running container
+ * Stops a running container (supports both managed and external)
  */
 @Injectable()
 export class StopContainerUseCase {
@@ -23,16 +23,21 @@ export class StopContainerUseCase {
   ) {}
 
   async execute(id: string): Promise<void> {
-    // 1. Find container
+    // 1. Try to find in DB by UUID
     const container = await this.containerRepo.findById(id);
-    if (!container) {
-      throw new ContainerNotFoundException(id);
+
+    if (container) {
+      // Managed container: stop via dockerId and update DB
+      await this.dockerClient.stopContainer(container.dockerId);
+      await this.containerRepo.updateStatus(id, 'stopped');
+      return;
     }
 
-    // 2. Stop in Docker
-    await this.dockerClient.stopContainer(container.dockerId);
-
-    // 3. Update status in DB
-    await this.containerRepo.updateStatus(id, 'stopped');
+    // 2. Fallback: treat id as dockerId for external containers
+    try {
+      await this.dockerClient.stopContainer(id);
+    } catch {
+      throw new ContainerNotFoundException(id);
+    }
   }
 }

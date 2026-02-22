@@ -22,7 +22,7 @@ const DEFAULT_CONFIG: ContainerConfig = {
 
 /**
  * useCreateContainer Hook
- * Manages container creation logic
+ * Manages container creation via docker-compose integration
  */
 export function useCreateContainer(
   containerCount: number,
@@ -55,31 +55,32 @@ export function useCreateContainer(
 
   const createContainer = async () => {
     if (!config.name) {
-      showAlert('컨테이너 이름을 입력하세요');
+      showAlert('인스턴스 이름을 입력하세요');
       return;
     }
 
     try {
       setIsCreating(true);
-      await dockerService.createContainer({
+
+      // Use compose service for creation (adds to docker-compose.yml + starts)
+      await dockerService.createComposeService({
         name: config.name,
         image: config.image,
         ports: {
-          '22/tcp': config.sshPort,
-          '80/tcp': config.httpPort,
+          '22': config.sshPort,
+          '8080': config.httpPort,
         },
-        resources: {
-          cpus: config.cpus,
-          memory: config.memory,
-        },
+        cpus: String(config.cpus),
+        memLimit: config.memory,
+        command: 'sleep infinity',
       });
 
       closeModal();
       onSuccess?.();
     } catch (error: any) {
-      console.error('Failed to create container:', error);
+      console.error('Failed to create instance:', error);
       showAlert(
-        error.response?.data?.message || '컨테이너 생성에 실패했습니다.',
+        error.response?.data?.message || '인스턴스 생성에 실패했습니다.',
       );
     } finally {
       setIsCreating(false);
