@@ -97,18 +97,14 @@ describe('ListContainersUseCase', () => {
         name: 'test-container-1',
         state: 'running',
         image: 'ubuntu:22.04',
-        ports: [
-          { privatePort: 8080, publicPort: 3000, type: 'tcp' },
-        ],
+        ports: [{ privatePort: 8080, publicPort: 3000, type: 'tcp' }],
       },
       {
         id: 'docker-xyz789012',
         name: 'test-container-2',
         state: 'stopped',
         image: 'nginx:latest',
-        ports: [
-          { privatePort: 80, publicPort: 8080, type: 'tcp' },
-        ],
+        ports: [{ privatePort: 80, publicPort: 8080, type: 'tcp' }],
       },
     ];
 
@@ -120,7 +116,9 @@ describe('ListContainersUseCase', () => {
     };
 
     beforeEach(() => {
-      dockerClient.listContainers.mockResolvedValue(mockDockerContainers as any);
+      dockerClient.listContainers.mockResolvedValue(
+        mockDockerContainers as any,
+      );
       containerRepo.findAll.mockResolvedValue(mockDbContainers);
       containerRepo.findByUserId.mockResolvedValue([mockDbContainers[0]]);
       dockerClient.inspectContainer.mockResolvedValue(mockInspectData as any);
@@ -185,8 +183,12 @@ describe('ListContainersUseCase', () => {
     it('should inspect container for resource info', async () => {
       await useCase.execute();
 
-      expect(dockerClient.inspectContainer).toHaveBeenCalledWith('docker-abc123456');
-      expect(dockerClient.inspectContainer).toHaveBeenCalledWith('docker-xyz789012');
+      expect(dockerClient.inspectContainer).toHaveBeenCalledWith(
+        'docker-abc123456',
+      );
+      expect(dockerClient.inspectContainer).toHaveBeenCalledWith(
+        'docker-xyz789012',
+      );
     });
 
     it('should use DB resources if inspection fails', async () => {
@@ -239,7 +241,9 @@ describe('ListContainersUseCase', () => {
         new Error('Docker daemon not running'),
       );
 
-      await expect(useCase.execute()).rejects.toThrow('Docker daemon not running');
+      await expect(useCase.execute()).rejects.toThrow(
+        'Docker daemon not running',
+      );
     });
 
     it('should return empty array if no containers found', async () => {

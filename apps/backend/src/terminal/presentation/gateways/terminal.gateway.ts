@@ -234,7 +234,9 @@ export class TerminalGateway
             this.sessionMapper.clearSession(session!.id);
           });
 
-          console.log(`[Terminal] PTY setup complete for session: ${session.id}`);
+          console.log(
+            `[Terminal] PTY setup complete for session: ${session.id}`,
+          );
         } catch (ptyError) {
           console.error(
             `[Terminal] Failed to create PTY for session ${session.id}:`,

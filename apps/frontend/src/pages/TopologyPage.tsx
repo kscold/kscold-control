@@ -57,11 +57,21 @@ interface UpnpMappingData {
 function HostNode({ data }: NodeProps) {
   return (
     <div className="bg-gray-800 border-2 border-blue-500 rounded-2xl px-5 py-4 min-w-[180px] shadow-lg shadow-blue-500/10">
-      <Handle type="source" position={Position.Bottom} className="!bg-blue-500 !w-3 !h-3" />
-      <Handle type="target" position={Position.Top} className="!bg-blue-500 !w-3 !h-3" />
+      <Handle
+        type="source"
+        position={Position.Bottom}
+        className="!bg-blue-500 !w-3 !h-3"
+      />
+      <Handle
+        type="target"
+        position={Position.Top}
+        className="!bg-blue-500 !w-3 !h-3"
+      />
       <div className="flex items-center gap-2 mb-1">
         <Server size={16} className="text-blue-400" />
-        <span className="text-white font-bold text-sm">{(data as any).label}</span>
+        <span className="text-white font-bold text-sm">
+          {(data as any).label}
+        </span>
       </div>
       <p className="text-xs text-gray-400">{(data as any).subtitle}</p>
     </div>
@@ -72,26 +82,50 @@ function ContainerNode({ data }: NodeProps) {
   const d = data as any;
   const isRunning = d.status === 'running';
   return (
-    <div className={`bg-gray-900 border-2 rounded-xl px-4 py-3 min-w-[160px] shadow-lg ${
-      isRunning ? 'border-green-600 shadow-green-500/10' : 'border-gray-600 shadow-gray-500/5'
-    }`}>
-      <Handle type="target" position={Position.Top} className="!bg-green-500 !w-2.5 !h-2.5" />
-      <Handle type="source" position={Position.Bottom} className="!bg-green-500 !w-2.5 !h-2.5" />
+    <div
+      className={`bg-gray-900 border-2 rounded-xl px-4 py-3 min-w-[160px] shadow-lg ${
+        isRunning
+          ? 'border-green-600 shadow-green-500/10'
+          : 'border-gray-600 shadow-gray-500/5'
+      }`}
+    >
+      <Handle
+        type="target"
+        position={Position.Top}
+        className="!bg-green-500 !w-2.5 !h-2.5"
+      />
+      <Handle
+        type="source"
+        position={Position.Bottom}
+        className="!bg-green-500 !w-2.5 !h-2.5"
+      />
       <div className="flex items-center gap-2 mb-1">
-        <Container size={14} className={isRunning ? 'text-green-400' : 'text-gray-500'} />
+        <Container
+          size={14}
+          className={isRunning ? 'text-green-400' : 'text-gray-500'}
+        />
         <span className="text-white font-semibold text-xs">{d.label}</span>
       </div>
-      <p className="text-[10px] text-gray-500 truncate max-w-[140px]">{d.image}</p>
+      <p className="text-[10px] text-gray-500 truncate max-w-[140px]">
+        {d.image}
+      </p>
       <div className="flex items-center gap-1.5 mt-1.5">
-        <div className={`w-1.5 h-1.5 rounded-full ${isRunning ? 'bg-green-400' : 'bg-gray-600'}`} />
-        <span className={`text-[10px] ${isRunning ? 'text-green-400' : 'text-gray-500'}`}>
+        <div
+          className={`w-1.5 h-1.5 rounded-full ${isRunning ? 'bg-green-400' : 'bg-gray-600'}`}
+        />
+        <span
+          className={`text-[10px] ${isRunning ? 'text-green-400' : 'text-gray-500'}`}
+        >
           {isRunning ? 'Running' : 'Stopped'}
         </span>
       </div>
       {d.ports && Object.keys(d.ports).length > 0 && (
         <div className="mt-1.5 flex flex-wrap gap-1">
           {Object.entries(d.ports).map(([internal, external]) => (
-            <span key={internal} className="text-[9px] bg-gray-800 text-gray-400 px-1.5 py-0.5 rounded font-mono">
+            <span
+              key={internal}
+              className="text-[9px] bg-gray-800 text-gray-400 px-1.5 py-0.5 rounded font-mono"
+            >
               {String(external)}:{internal}
             </span>
           ))}
@@ -104,24 +138,45 @@ function ContainerNode({ data }: NodeProps) {
 function NginxNode({ data }: NodeProps) {
   const d = data as any;
   return (
-    <div className={`bg-gray-900 border-2 rounded-xl px-4 py-3 min-w-[160px] shadow-lg ${
-      d.enabled ? 'border-amber-600 shadow-amber-500/10' : 'border-gray-600 shadow-gray-500/5'
-    }`}>
-      <Handle type="target" position={Position.Top} className="!bg-amber-500 !w-2.5 !h-2.5" />
-      <Handle type="source" position={Position.Bottom} className="!bg-amber-500 !w-2.5 !h-2.5" />
+    <div
+      className={`bg-gray-900 border-2 rounded-xl px-4 py-3 min-w-[160px] shadow-lg ${
+        d.enabled
+          ? 'border-amber-600 shadow-amber-500/10'
+          : 'border-gray-600 shadow-gray-500/5'
+      }`}
+    >
+      <Handle
+        type="target"
+        position={Position.Top}
+        className="!bg-amber-500 !w-2.5 !h-2.5"
+      />
+      <Handle
+        type="source"
+        position={Position.Bottom}
+        className="!bg-amber-500 !w-2.5 !h-2.5"
+      />
       <div className="flex items-center gap-2 mb-1">
-        <Globe size={14} className={d.enabled ? 'text-amber-400' : 'text-gray-500'} />
+        <Globe
+          size={14}
+          className={d.enabled ? 'text-amber-400' : 'text-gray-500'}
+        />
         <span className="text-white font-semibold text-xs">{d.domain}</span>
       </div>
       <div className="flex items-center gap-1 flex-wrap mt-1">
         {d.ssl && (
-          <span className="text-[9px] bg-green-950 text-green-400 px-1.5 py-0.5 rounded">SSL</span>
+          <span className="text-[9px] bg-green-950 text-green-400 px-1.5 py-0.5 rounded">
+            SSL
+          </span>
         )}
         {d.websocket && (
-          <span className="text-[9px] bg-blue-950 text-blue-400 px-1.5 py-0.5 rounded">WS</span>
+          <span className="text-[9px] bg-blue-950 text-blue-400 px-1.5 py-0.5 rounded">
+            WS
+          </span>
         )}
         {!d.enabled && (
-          <span className="text-[9px] bg-gray-800 text-gray-500 px-1.5 py-0.5 rounded">OFF</span>
+          <span className="text-[9px] bg-gray-800 text-gray-500 px-1.5 py-0.5 rounded">
+            OFF
+          </span>
         )}
       </div>
       <p className="text-[10px] text-gray-500 mt-1 truncate max-w-[140px]">
@@ -136,16 +191,30 @@ function UpnpNode({ data }: NodeProps) {
   const d = data as any;
   return (
     <div className="bg-gray-900 border-2 border-purple-600 rounded-xl px-4 py-3 min-w-[140px] shadow-lg shadow-purple-500/10">
-      <Handle type="target" position={Position.Top} className="!bg-purple-500 !w-2.5 !h-2.5" />
-      <Handle type="source" position={Position.Bottom} className="!bg-purple-500 !w-2.5 !h-2.5" />
+      <Handle
+        type="target"
+        position={Position.Top}
+        className="!bg-purple-500 !w-2.5 !h-2.5"
+      />
+      <Handle
+        type="source"
+        position={Position.Bottom}
+        className="!bg-purple-500 !w-2.5 !h-2.5"
+      />
       <div className="flex items-center gap-2 mb-1">
         <Network size={14} className="text-purple-400" />
-        <span className="text-white font-semibold text-xs">:{d.publicPort}</span>
+        <span className="text-white font-semibold text-xs">
+          :{d.publicPort}
+        </span>
       </div>
       <div className="flex items-center gap-1.5">
-        <span className={`text-[9px] px-1.5 py-0.5 rounded font-mono ${
-          d.protocol === 'TCP' ? 'bg-blue-950 text-blue-400' : 'bg-orange-950 text-orange-400'
-        }`}>
+        <span
+          className={`text-[9px] px-1.5 py-0.5 rounded font-mono ${
+            d.protocol === 'TCP'
+              ? 'bg-blue-950 text-blue-400'
+              : 'bg-orange-950 text-orange-400'
+          }`}
+        >
           {d.protocol}
         </span>
         <span className="text-[10px] text-gray-400">
@@ -153,7 +222,9 @@ function UpnpNode({ data }: NodeProps) {
         </span>
       </div>
       {d.description && (
-        <p className="text-[9px] text-gray-500 mt-1 truncate max-w-[120px]">{d.description}</p>
+        <p className="text-[9px] text-gray-500 mt-1 truncate max-w-[120px]">
+          {d.description}
+        </p>
       )}
     </div>
   );
@@ -162,10 +233,16 @@ function UpnpNode({ data }: NodeProps) {
 function InternetNode({ data }: NodeProps) {
   return (
     <div className="bg-gradient-to-br from-indigo-900 to-purple-900 border-2 border-indigo-500 rounded-2xl px-5 py-4 min-w-[140px] shadow-lg shadow-indigo-500/20">
-      <Handle type="source" position={Position.Bottom} className="!bg-indigo-400 !w-3 !h-3" />
+      <Handle
+        type="source"
+        position={Position.Bottom}
+        className="!bg-indigo-400 !w-3 !h-3"
+      />
       <div className="flex items-center gap-2">
         <Wifi size={16} className="text-indigo-300" />
-        <span className="text-white font-bold text-sm">{(data as any).label}</span>
+        <span className="text-white font-bold text-sm">
+          {(data as any).label}
+        </span>
       </div>
     </div>
   );
@@ -254,7 +331,8 @@ export function TopologyPage() {
       // 3. UPnP port mappings (row 2, between internet and nginx)
       const localUpnp = upnpMappings.filter((m) => m.local);
       if (localUpnp.length > 0) {
-        const upnpStartX = centerX - ((localUpnp.length - 1) * COL_GAP) / 2 - 70;
+        const upnpStartX =
+          centerX - ((localUpnp.length - 1) * COL_GAP) / 2 - 70;
         localUpnp.forEach((m, i) => {
           const id = `upnp-${m.publicPort}-${m.protocol}`;
           newNodes.push({
@@ -314,7 +392,11 @@ export function TopologyPage() {
               id: `upnp-${m.publicPort}-${m.protocol}-${id}`,
               source: `upnp-${m.publicPort}-${m.protocol}`,
               target: id,
-              style: { stroke: '#a855f7', strokeWidth: 1, strokeDasharray: '4 4' },
+              style: {
+                stroke: '#a855f7',
+                strokeWidth: 1,
+                strokeDasharray: '4 4',
+              },
             });
           }
         });
@@ -322,7 +404,8 @@ export function TopologyPage() {
 
       // 5. Docker containers (row 4)
       const containerY = nginxY + ROW_GAP;
-      const containerStartX = centerX - ((containers.length - 1) * COL_GAP) / 2 - 80;
+      const containerStartX =
+        centerX - ((containers.length - 1) * COL_GAP) / 2 - 80;
 
       containers.forEach((container, i) => {
         const id = `container-${container.id}`;
@@ -371,7 +454,11 @@ export function TopologyPage() {
                   id: edgeId,
                   source: `upnp-${m.publicPort}-${m.protocol}`,
                   target: id,
-                  style: { stroke: '#a855f7', strokeWidth: 1, strokeDasharray: '4 4' },
+                  style: {
+                    stroke: '#a855f7',
+                    strokeWidth: 1,
+                    strokeDasharray: '4 4',
+                  },
                 });
               }
             }
@@ -391,12 +478,18 @@ export function TopologyPage() {
 
   const miniMapNodeColor = useCallback((node: Node) => {
     switch (node.type) {
-      case 'internet': return '#6366f1';
-      case 'host': return '#3b82f6';
-      case 'container': return '#22c55e';
-      case 'nginx': return '#d97706';
-      case 'upnp': return '#a855f7';
-      default: return '#6b7280';
+      case 'internet':
+        return '#6366f1';
+      case 'host':
+        return '#3b82f6';
+      case 'container':
+        return '#22c55e';
+      case 'nginx':
+        return '#d97706';
+      case 'upnp':
+        return '#a855f7';
+      default:
+        return '#6b7280';
     }
   }, []);
 
@@ -406,7 +499,9 @@ export function TopologyPage() {
       <div className="absolute top-3 left-3 z-10 flex items-center gap-3">
         <div className="bg-gray-900/90 backdrop-blur border border-gray-700 rounded-xl px-4 py-2 flex items-center gap-2">
           <Network size={16} className="text-purple-400" />
-          <span className="text-white font-bold text-sm">Infrastructure Topology</span>
+          <span className="text-white font-bold text-sm">
+            Infrastructure Topology
+          </span>
         </div>
         <button
           onClick={loadTopology}
@@ -457,10 +552,13 @@ export function TopologyPage() {
         proOptions={{ hideAttribution: true }}
         style={{ background: '#030712' }}
       >
-        <Background variant={BackgroundVariant.Dots} gap={20} size={1} color="#1f2937" />
-        <Controls
-          className="!bg-gray-900 !border-gray-700 !rounded-xl !shadow-lg [&>button]:!bg-gray-800 [&>button]:!border-gray-700 [&>button]:!text-gray-300 [&>button:hover]:!bg-gray-700"
+        <Background
+          variant={BackgroundVariant.Dots}
+          gap={20}
+          size={1}
+          color="#1f2937"
         />
+        <Controls className="!bg-gray-900 !border-gray-700 !rounded-xl !shadow-lg [&>button]:!bg-gray-800 [&>button]:!border-gray-700 [&>button]:!text-gray-300 [&>button:hover]:!bg-gray-700" />
         <MiniMap
           nodeColor={miniMapNodeColor}
           maskColor="rgba(0,0,0,0.7)"

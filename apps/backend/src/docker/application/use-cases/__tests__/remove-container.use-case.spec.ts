@@ -77,7 +77,9 @@ describe('RemoveContainerUseCase', () => {
     beforeEach(() => {
       containerRepo.findById.mockResolvedValue(mockContainer);
       dockerClient.removeContainer.mockResolvedValue(undefined);
-      portForwardingService.removePortForwardingRules.mockResolvedValue(undefined);
+      portForwardingService.removePortForwardingRules.mockResolvedValue(
+        undefined,
+      );
       containerRepo.delete.mockResolvedValue(undefined);
     });
 
@@ -85,10 +87,12 @@ describe('RemoveContainerUseCase', () => {
       await useCase.execute('container-123');
 
       expect(containerRepo.findById).toHaveBeenCalledWith('container-123');
-      expect(dockerClient.removeContainer).toHaveBeenCalledWith('docker-abc123');
-      expect(portForwardingService.removePortForwardingRules).toHaveBeenCalledWith(
-        'test-container',
+      expect(dockerClient.removeContainer).toHaveBeenCalledWith(
+        'docker-abc123',
       );
+      expect(
+        portForwardingService.removePortForwardingRules,
+      ).toHaveBeenCalledWith('test-container');
       expect(containerRepo.delete).toHaveBeenCalledWith('container-123');
     });
 
@@ -101,9 +105,7 @@ describe('RemoveContainerUseCase', () => {
     });
 
     it('should continue with DB deletion if Docker removal fails', async () => {
-      dockerClient.removeContainer.mockRejectedValue(
-        new Error('Docker error'),
-      );
+      dockerClient.removeContainer.mockRejectedValue(new Error('Docker error'));
 
       await useCase.execute('container-123');
 
@@ -126,7 +128,9 @@ describe('RemoveContainerUseCase', () => {
       await useCase.execute('container-123');
 
       expect(dockerClient.removeContainer).toHaveBeenCalled();
-      expect(portForwardingService.removePortForwardingRules).toHaveBeenCalled();
+      expect(
+        portForwardingService.removePortForwardingRules,
+      ).toHaveBeenCalled();
       expect(containerRepo.delete).toHaveBeenCalled();
     });
 

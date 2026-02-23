@@ -100,7 +100,9 @@ export function NetworkPage() {
         protocol: form.protocol,
         description: form.description || 'kscold-control',
       });
-      showAlert(`포트 매핑 추가 완료: ${pubPort} -> ${privPort} (${form.protocol})`);
+      showAlert(
+        `포트 매핑 추가 완료: ${pubPort} -> ${privPort} (${form.protocol})`,
+      );
       setShowModal(false);
       setForm(emptyForm);
       await loadMappings();
@@ -116,7 +118,9 @@ export function NetworkPage() {
       `포트 매핑 ${mapping.publicPort} -> ${mapping.privatePort} (${mapping.protocol})을 삭제하시겠습니까?`,
       async () => {
         try {
-          await api.delete(`/upnp/mappings/${mapping.publicPort}?protocol=${mapping.protocol}`);
+          await api.delete(
+            `/upnp/mappings/${mapping.publicPort}?protocol=${mapping.protocol}`,
+          );
           await loadMappings();
         } catch (e: any) {
           showAlert(e.response?.data?.message || '포트 매핑 삭제 실패');
@@ -168,9 +172,15 @@ export function NetworkPage() {
           <div>
             <p className="text-xs text-gray-500">공유기 외부 IP (UPnP)</p>
             <div className="flex items-center gap-2">
-              <span className="text-white font-mono font-semibold">{externalIp || '...'}</span>
+              <span className="text-white font-mono font-semibold">
+                {externalIp || '...'}
+              </span>
               {externalIp && (
-                <button onClick={() => copyToClipboard(externalIp)} className="text-gray-500 hover:text-white transition" title="복사">
+                <button
+                  onClick={() => copyToClipboard(externalIp)}
+                  className="text-gray-500 hover:text-white transition"
+                  title="복사"
+                >
                   <Copy size={13} />
                 </button>
               )}
@@ -181,28 +191,38 @@ export function NetworkPage() {
           <Network size={16} className="text-blue-400" />
           <div>
             <p className="text-xs text-gray-500">활성 매핑 수</p>
-            <span className="text-white font-semibold">{mappings.length}개</span>
+            <span className="text-white font-semibold">
+              {mappings.length}개
+            </span>
           </div>
         </div>
       </div>
 
       {/* Error */}
       {error && (
-        <div className="mb-4 p-3 rounded-lg border bg-red-950 border-red-700 text-red-300 text-sm flex items-center gap-2">
+        <div className="mb-4 p-3 rounded-lg border bg-yellow-950 border-yellow-700 text-yellow-300 text-sm flex items-center gap-2">
           <AlertTriangle size={16} />
           <div>
-            <p className="font-semibold">UPnP 연결 실패</p>
-            <p className="text-xs text-red-400 mt-0.5">{error}</p>
-            <p className="text-xs text-red-400/70 mt-1">공유기에서 UPnP가 활성화되어 있는지 확인하세요.</p>
+            <p className="font-semibold">포트 목록 조회 미지원</p>
+            <p className="text-xs text-yellow-400 mt-0.5">
+              이 공유기는 UPnP 포트 목록 조회를 지원하지 않습니다.
+            </p>
+            <p className="text-xs text-yellow-400/70 mt-1">
+              포트 추가/삭제 기능은 정상 작동합니다.
+            </p>
           </div>
         </div>
       )}
 
       {/* Mappings List */}
       {loading ? (
-        <div className="text-gray-500 text-center py-12">UPnP 매핑 조회 중...</div>
+        <div className="text-gray-500 text-center py-12">
+          UPnP 매핑 조회 중...
+        </div>
       ) : mappings.length === 0 && !error ? (
-        <div className="text-gray-500 text-center py-12">등록된 포트 매핑이 없습니다.</div>
+        <div className="text-gray-500 text-center py-12">
+          등록된 포트 매핑이 없습니다.
+        </div>
       ) : (
         <div className="grid gap-2">
           {/* Header */}
@@ -240,16 +260,22 @@ export function NetworkPage() {
                 {m.protocol}
               </span>
               <div className="flex items-center gap-1.5">
-                <span className="text-white font-mono font-semibold">{m.publicPort}</span>
+                <span className="text-white font-mono font-semibold">
+                  {m.publicPort}
+                </span>
               </div>
               <div className="flex justify-center">
                 <ArrowRight size={14} className="text-gray-600" />
               </div>
               <div className="flex items-center gap-1.5">
-                <span className="text-white font-mono">{m.privateHost}:{m.privatePort}</span>
+                <span className="text-white font-mono">
+                  {m.privateHost}:{m.privatePort}
+                </span>
               </div>
               <div className="flex items-center gap-2 min-w-0">
-                <span className="text-gray-400 text-sm truncate">{m.description}</span>
+                <span className="text-gray-400 text-sm truncate">
+                  {m.description}
+                </span>
                 {m.local && (
                   <span className="text-xs bg-purple-950 text-purple-400 px-1.5 py-0.5 rounded flex-shrink-0">
                     로컬
@@ -279,32 +305,42 @@ export function NetworkPage() {
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-sm text-gray-400 mb-1">외부 포트</label>
+                  <label className="block text-sm text-gray-400 mb-1">
+                    외부 포트
+                  </label>
                   <input
                     type="number"
                     className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-purple-500"
                     placeholder="예: 8080"
                     value={form.publicPort}
-                    onChange={(e) => setForm({ ...form, publicPort: e.target.value })}
+                    onChange={(e) =>
+                      setForm({ ...form, publicPort: e.target.value })
+                    }
                     min="1"
                     max="65535"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm text-gray-400 mb-1">내부 포트</label>
+                  <label className="block text-sm text-gray-400 mb-1">
+                    내부 포트
+                  </label>
                   <input
                     type="number"
                     className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-purple-500"
                     placeholder="예: 8080"
                     value={form.privatePort}
-                    onChange={(e) => setForm({ ...form, privatePort: e.target.value })}
+                    onChange={(e) =>
+                      setForm({ ...form, privatePort: e.target.value })
+                    }
                     min="1"
                     max="65535"
                   />
                 </div>
               </div>
               <div>
-                <label className="block text-sm text-gray-400 mb-1">프로토콜</label>
+                <label className="block text-sm text-gray-400 mb-1">
+                  프로토콜
+                </label>
                 <div className="flex gap-3">
                   <label className="flex items-center gap-2 cursor-pointer">
                     <input
@@ -332,12 +368,26 @@ export function NetworkPage() {
                   className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-purple-500"
                   placeholder="예: Web Server"
                   value={form.description}
-                  onChange={(e) => setForm({ ...form, description: e.target.value })}
+                  onChange={(e) =>
+                    setForm({ ...form, description: e.target.value })
+                  }
                 />
               </div>
               <div className="bg-gray-800/50 rounded-lg p-3 text-xs text-gray-400">
-                <p>외부에서 <span className="text-white font-mono">{externalIp || '공인IP'}:{form.publicPort || '?'}</span> 접속 시</p>
-                <p>로컬 <span className="text-white font-mono">이 서버:{form.privatePort || '?'}</span> 로 포워딩됩니다.</p>
+                <p>
+                  외부에서{' '}
+                  <span className="text-white font-mono">
+                    {externalIp || '공인IP'}:{form.publicPort || '?'}
+                  </span>{' '}
+                  접속 시
+                </p>
+                <p>
+                  로컬{' '}
+                  <span className="text-white font-mono">
+                    이 서버:{form.privatePort || '?'}
+                  </span>{' '}
+                  로 포워딩됩니다.
+                </p>
               </div>
             </div>
             <div className="flex gap-3 mt-6">

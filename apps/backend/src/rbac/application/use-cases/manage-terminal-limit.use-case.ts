@@ -65,9 +65,7 @@ export class ManageTerminalLimitUseCase {
   /**
    * Reset terminal command count to 0
    */
-  async resetCommandCount(
-    userId: string,
-  ): Promise<{
+  async resetCommandCount(userId: string): Promise<{
     success: boolean;
     terminalCommandCount: number;
     terminalCommandLimit: number;

@@ -190,9 +190,7 @@ export class DockerController {
     // 3. Clean up DB entry if exists
     try {
       const containers = await this.listContainersUseCase.execute(undefined);
-      const container = containers.find(
-        (c) => c.name === name && c.isManaged,
-      );
+      const container = containers.find((c) => c.name === name && c.isManaged);
       if (container) {
         await this.removeContainerUseCase.execute(container.id);
       }

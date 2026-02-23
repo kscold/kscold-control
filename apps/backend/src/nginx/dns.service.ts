@@ -38,19 +38,17 @@ export class DnsService {
     }
 
     try {
-      const { stdout } = await execAsync(
-        'curl -s https://api.ipify.org',
-        { timeout: 10000 },
-      );
+      const { stdout } = await execAsync('curl -s https://api.ipify.org', {
+        timeout: 10000,
+      });
       this.cachedPublicIp = stdout.trim();
       this.ipCacheTime = Date.now();
       return this.cachedPublicIp;
     } catch {
       try {
-        const { stdout } = await execAsync(
-          'curl -s https://ifconfig.me',
-          { timeout: 10000 },
-        );
+        const { stdout } = await execAsync('curl -s https://ifconfig.me', {
+          timeout: 10000,
+        });
         this.cachedPublicIp = stdout.trim();
         this.ipCacheTime = Date.now();
         return this.cachedPublicIp;

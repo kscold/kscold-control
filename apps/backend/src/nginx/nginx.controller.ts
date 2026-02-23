@@ -46,7 +46,10 @@ export class NginxController {
 
   @Put('sites/:name')
   @RequirePermissions('system:write')
-  async updateSite(@Param('name') name: string, @Body() dto: CreateNginxSiteDto) {
+  async updateSite(
+    @Param('name') name: string,
+    @Body() dto: CreateNginxSiteDto,
+  ) {
     const site = await this.nginxService.updateSite(name, dto);
     // Auto test + reload
     const testResult = await this.nginxService.testConfig();

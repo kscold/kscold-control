@@ -64,7 +64,6 @@ import { AuthModule } from '../auth/auth.module';
       provide: DOCKER_CLIENT,
       useClass: DockerodeClientAdapter,
     },
-
   ],
   exports: [
     // Export use cases for potential reuse

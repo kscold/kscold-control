@@ -80,8 +80,7 @@ export class ImportContainerUseCase {
     const savedContainer = await this.containerRepo.save(container);
 
     // 7. Get external access info
-    const externalAccess =
-      this.portForwardingService.getExternalAccess(ports);
+    const externalAccess = this.portForwardingService.getExternalAccess(ports);
 
     return ContainerResponseDto.fromEntity(
       savedContainer,

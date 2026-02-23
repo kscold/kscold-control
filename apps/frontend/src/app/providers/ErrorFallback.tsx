@@ -9,7 +9,10 @@ interface ErrorFallbackProps {
  * ErrorFallback Component
  * Displays error UI when a component crashes
  */
-export function ErrorFallback({ error, resetErrorBoundary }: ErrorFallbackProps) {
+export function ErrorFallback({
+  error,
+  resetErrorBoundary,
+}: ErrorFallbackProps) {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-950 p-4">
       <div className="w-full max-w-md">
