@@ -9,6 +9,11 @@ dist
 docs/
 CLAUDE.md
 
+# SSL certificates & private keys
+ssl/
+*.pem
+*.key
+
 # Logs
 logs/
 *.log
