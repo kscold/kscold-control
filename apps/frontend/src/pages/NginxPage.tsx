@@ -83,7 +83,10 @@ export function NginxPage() {
   const [showModal, setShowModal] = useState(false);
   const [editingName, setEditingName] = useState<string | null>(null);
   const [form, setForm] = useState(emptyForm);
-  const [testOutput, setTestOutput] = useState<{ success: boolean; output: string } | null>(null);
+  const [testOutput, setTestOutput] = useState<{
+    success: boolean;
+    output: string;
+  } | null>(null);
   const [reloading, setReloading] = useState(false);
   const [upstreamOptions, setUpstreamOptions] = useState<UpstreamOption[]>([]);
 
@@ -91,7 +94,11 @@ export function NginxPage() {
   const [certs, setCerts] = useState<CertInfo[]>([]);
   const [certsLoading, setCertsLoading] = useState(false);
   const [showCertModal, setShowCertModal] = useState(false);
-  const [certForm, setCertForm] = useState({ domain: '', email: 'admin@kscold.com', mode: 'webroot' });
+  const [certForm, setCertForm] = useState({
+    domain: '',
+    email: 'admin@kscold.com',
+    mode: 'webroot',
+  });
   const [issuing, setIssuing] = useState(false);
 
   // DNS tab state
@@ -99,7 +106,9 @@ export function NginxPage() {
   const [dnsLoading, setDnsLoading] = useState(false);
   const [publicIp, setPublicIp] = useState<string>('');
   const [singleDnsCheck, setSingleDnsCheck] = useState('');
-  const [singleDnsResult, setSingleDnsResult] = useState<DnsCheckResult | null>(null);
+  const [singleDnsResult, setSingleDnsResult] = useState<DnsCheckResult | null>(
+    null,
+  );
   const [singleDnsLoading, setSingleDnsLoading] = useState(false);
 
   const { showAlert, showConfirm } = useModalStore();
@@ -269,7 +278,9 @@ export function NginxPage() {
         showAlert(`인증서 발급 실패:\n${data.output}`);
       }
     } catch (e: any) {
-      showAlert(e.response?.data?.message || '인증서 발급 중 오류가 발생했습니다.');
+      showAlert(
+        e.response?.data?.message || '인증서 발급 중 오류가 발생했습니다.',
+      );
     } finally {
       setIssuing(false);
     }
@@ -313,7 +324,9 @@ export function NginxPage() {
     if (!singleDnsCheck.trim()) return;
     setSingleDnsLoading(true);
     try {
-      const { data } = await api.post('/nginx/dns/verify', { domain: singleDnsCheck.trim() });
+      const { data } = await api.post('/nginx/dns/verify', {
+        domain: singleDnsCheck.trim(),
+      });
       setSingleDnsResult(data);
     } catch (e: any) {
       showAlert('DNS 확인 실패: ' + (e.response?.data?.message || e.message));
@@ -329,28 +342,40 @@ export function NginxPage() {
 
   const getDnsStatusIcon = (status: string) => {
     switch (status) {
-      case 'ok': return <CheckCircle size={14} className="text-green-400" />;
-      case 'mismatch': return <AlertTriangle size={14} className="text-yellow-400" />;
-      case 'missing': return <XCircle size={14} className="text-red-400" />;
-      default: return null;
+      case 'ok':
+        return <CheckCircle size={14} className="text-green-400" />;
+      case 'mismatch':
+        return <AlertTriangle size={14} className="text-yellow-400" />;
+      case 'missing':
+        return <XCircle size={14} className="text-red-400" />;
+      default:
+        return null;
     }
   };
 
   const getDnsStatusText = (status: string) => {
     switch (status) {
-      case 'ok': return '정상';
-      case 'mismatch': return '불일치';
-      case 'missing': return '미등록';
-      default: return status;
+      case 'ok':
+        return '정상';
+      case 'mismatch':
+        return '불일치';
+      case 'missing':
+        return '미등록';
+      default:
+        return status;
     }
   };
 
   const getDnsStatusColor = (status: string) => {
     switch (status) {
-      case 'ok': return 'text-green-400 bg-green-950';
-      case 'mismatch': return 'text-yellow-400 bg-yellow-950';
-      case 'missing': return 'text-red-400 bg-red-950';
-      default: return 'text-gray-400 bg-gray-800';
+      case 'ok':
+        return 'text-green-400 bg-green-950';
+      case 'mismatch':
+        return 'text-yellow-400 bg-yellow-950';
+      case 'missing':
+        return 'text-red-400 bg-red-950';
+      default:
+        return 'text-gray-400 bg-gray-800';
     }
   };
 
@@ -397,7 +422,9 @@ export function NginxPage() {
         <button
           onClick={() => setTab('proxy')}
           className={`px-4 py-2 rounded-md text-sm font-medium transition ${
-            tab === 'proxy' ? 'bg-gray-700 text-white' : 'text-gray-400 hover:text-white'
+            tab === 'proxy'
+              ? 'bg-gray-700 text-white'
+              : 'text-gray-400 hover:text-white'
           }`}
         >
           <Globe size={14} className="inline mr-1.5" />
@@ -406,7 +433,9 @@ export function NginxPage() {
         <button
           onClick={() => setTab('ssl')}
           className={`px-4 py-2 rounded-md text-sm font-medium transition ${
-            tab === 'ssl' ? 'bg-gray-700 text-white' : 'text-gray-400 hover:text-white'
+            tab === 'ssl'
+              ? 'bg-gray-700 text-white'
+              : 'text-gray-400 hover:text-white'
           }`}
         >
           <Lock size={14} className="inline mr-1.5" />
@@ -415,7 +444,9 @@ export function NginxPage() {
         <button
           onClick={() => setTab('dns')}
           className={`px-4 py-2 rounded-md text-sm font-medium transition ${
-            tab === 'dns' ? 'bg-gray-700 text-white' : 'text-gray-400 hover:text-white'
+            tab === 'dns'
+              ? 'bg-gray-700 text-white'
+              : 'text-gray-400 hover:text-white'
           }`}
         >
           <Wifi size={14} className="inline mr-1.5" />
@@ -433,9 +464,20 @@ export function NginxPage() {
           }`}
         >
           <div className="flex items-center gap-2 mb-1">
-            {testOutput.success ? <CheckCircle size={14} className="text-green-400" /> : <XCircle size={14} className="text-red-400" />}
-            <span className="font-bold">{testOutput.success ? 'nginx -t 성공' : 'nginx -t 실패'}</span>
-            <button onClick={() => setTestOutput(null)} className="ml-auto text-gray-500 hover:text-gray-300">✕</button>
+            {testOutput.success ? (
+              <CheckCircle size={14} className="text-green-400" />
+            ) : (
+              <XCircle size={14} className="text-red-400" />
+            )}
+            <span className="font-bold">
+              {testOutput.success ? 'nginx -t 성공' : 'nginx -t 실패'}
+            </span>
+            <button
+              onClick={() => setTestOutput(null)}
+              className="ml-auto text-gray-500 hover:text-gray-300"
+            >
+              ✕
+            </button>
           </div>
           {testOutput.output}
         </div>
@@ -457,20 +499,28 @@ export function NginxPage() {
           {loading ? (
             <div className="text-gray-500 text-center py-12">로딩 중...</div>
           ) : sites.length === 0 ? (
-            <div className="text-gray-500 text-center py-12">등록된 사이트가 없습니다.</div>
+            <div className="text-gray-500 text-center py-12">
+              등록된 사이트가 없습니다.
+            </div>
           ) : (
             <div className="grid gap-3">
               {sites.map((site) => (
                 <div
                   key={site.name}
                   className={`bg-gray-900 border rounded-xl p-4 flex items-center gap-4 ${
-                    site.enabled ? 'border-gray-700' : 'border-gray-800 opacity-60'
+                    site.enabled
+                      ? 'border-gray-700'
+                      : 'border-gray-800 opacity-60'
                   }`}
                 >
-                  <div className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${site.enabled ? 'bg-green-400' : 'bg-gray-600'}`} />
+                  <div
+                    className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${site.enabled ? 'bg-green-400' : 'bg-gray-600'}`}
+                  />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-white font-semibold">{site.domain}</span>
+                      <span className="text-white font-semibold">
+                        {site.domain}
+                      </span>
                       {site.ssl && (
                         <span className="flex items-center gap-1 text-xs text-green-400 bg-green-950 px-1.5 py-0.5 rounded">
                           <Shield size={10} /> SSL
@@ -481,21 +531,39 @@ export function NginxPage() {
                           <Zap size={10} /> WS
                         </span>
                       )}
-                      {!site.enabled && <span className="text-xs text-gray-500 bg-gray-800 px-1.5 py-0.5 rounded">비활성</span>}
+                      {!site.enabled && (
+                        <span className="text-xs text-gray-500 bg-gray-800 px-1.5 py-0.5 rounded">
+                          비활성
+                        </span>
+                      )}
                     </div>
                     <div className="flex items-center gap-1 mt-0.5">
                       <Terminal size={11} className="text-gray-500" />
-                      <span className="text-sm text-gray-400 truncate">{site.upstream}</span>
+                      <span className="text-sm text-gray-400 truncate">
+                        {site.upstream}
+                      </span>
                     </div>
                   </div>
                   <div className="flex items-center gap-1.5 flex-shrink-0">
-                    <button onClick={() => handleToggle(site)} className={`p-1.5 rounded-lg transition ${site.enabled ? 'text-green-400 hover:bg-green-950' : 'text-gray-500 hover:bg-gray-800'}`} title={site.enabled ? '비활성화' : '활성화'}>
+                    <button
+                      onClick={() => handleToggle(site)}
+                      className={`p-1.5 rounded-lg transition ${site.enabled ? 'text-green-400 hover:bg-green-950' : 'text-gray-500 hover:bg-gray-800'}`}
+                      title={site.enabled ? '비활성화' : '활성화'}
+                    >
                       <Power size={15} />
                     </button>
-                    <button onClick={() => openEdit(site)} className="p-1.5 rounded-lg text-blue-400 hover:bg-blue-950 transition" title="수정">
+                    <button
+                      onClick={() => openEdit(site)}
+                      className="p-1.5 rounded-lg text-blue-400 hover:bg-blue-950 transition"
+                      title="수정"
+                    >
                       <Edit2 size={15} />
                     </button>
-                    <button onClick={() => handleDelete(site)} className="p-1.5 rounded-lg text-red-400 hover:bg-red-950 transition" title="삭제">
+                    <button
+                      onClick={() => handleDelete(site)}
+                      className="p-1.5 rounded-lg text-red-400 hover:bg-red-950 transition"
+                      title="삭제"
+                    >
                       <Trash2 size={15} />
                     </button>
                   </div>
@@ -520,7 +588,11 @@ export function NginxPage() {
             </button>
             <button
               onClick={() => {
-                setCertForm({ domain: '', email: 'admin@kscold.com', mode: 'webroot' });
+                setCertForm({
+                  domain: '',
+                  email: 'admin@kscold.com',
+                  mode: 'webroot',
+                });
                 setShowCertModal(true);
               }}
               className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-green-600 hover:bg-green-500 text-white rounded-lg transition"
@@ -533,15 +605,25 @@ export function NginxPage() {
           {certsLoading ? (
             <div className="text-gray-500 text-center py-12">로딩 중...</div>
           ) : certs.length === 0 ? (
-            <div className="text-gray-500 text-center py-12">등록된 인증서가 없습니다.</div>
+            <div className="text-gray-500 text-center py-12">
+              등록된 인증서가 없습니다.
+            </div>
           ) : (
             <div className="grid gap-3">
               {certs.map((cert) => (
-                <div key={cert.domain} className="bg-gray-900 border border-gray-700 rounded-xl p-4 flex items-center gap-4">
-                  <Lock size={18} className={cert.exists ? 'text-green-400' : 'text-gray-600'} />
+                <div
+                  key={cert.domain}
+                  className="bg-gray-900 border border-gray-700 rounded-xl p-4 flex items-center gap-4"
+                >
+                  <Lock
+                    size={18}
+                    className={cert.exists ? 'text-green-400' : 'text-gray-600'}
+                  />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-white font-semibold">{cert.domain}</span>
+                      <span className="text-white font-semibold">
+                        {cert.domain}
+                      </span>
                       {cert.daysLeft !== undefined && cert.daysLeft <= 30 && (
                         <span className="flex items-center gap-1 text-xs text-yellow-400 bg-yellow-950 px-1.5 py-0.5 rounded">
                           <AlertTriangle size={10} /> 만료 임박
@@ -556,7 +638,9 @@ export function NginxPage() {
                             (D-{cert.daysLeft})
                           </span>
                         )}
-                        {cert.issuer && <span className="truncate">발급: {cert.issuer}</span>}
+                        {cert.issuer && (
+                          <span className="truncate">발급: {cert.issuer}</span>
+                        )}
                       </div>
                     ) : (
                       <p className="text-xs text-gray-500 mt-1">인증서 없음</p>
@@ -564,7 +648,11 @@ export function NginxPage() {
                   </div>
                   <button
                     onClick={() => {
-                      setCertForm({ domain: cert.domain, email: 'admin@kscold.com', mode: 'webroot' });
+                      setCertForm({
+                        domain: cert.domain,
+                        email: 'admin@kscold.com',
+                        mode: 'webroot',
+                      });
                       setShowCertModal(true);
                     }}
                     className="px-3 py-1.5 text-xs bg-blue-600 hover:bg-blue-500 text-white rounded-lg transition"
@@ -588,9 +676,15 @@ export function NginxPage() {
               <div>
                 <p className="text-xs text-gray-500">서버 공인 IP</p>
                 <div className="flex items-center gap-2">
-                  <span className="text-white font-mono font-semibold">{publicIp || '...'}</span>
+                  <span className="text-white font-mono font-semibold">
+                    {publicIp || '...'}
+                  </span>
                   {publicIp && (
-                    <button onClick={() => copyToClipboard(publicIp)} className="text-gray-500 hover:text-white transition" title="복사">
+                    <button
+                      onClick={() => copyToClipboard(publicIp)}
+                      className="text-gray-500 hover:text-white transition"
+                      title="복사"
+                    >
                       <Copy size={13} />
                     </button>
                   )}
@@ -602,7 +696,10 @@ export function NginxPage() {
               disabled={dnsLoading}
               className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-blue-600 hover:bg-blue-500 text-white rounded-lg transition disabled:opacity-50"
             >
-              <RefreshCw size={15} className={dnsLoading ? 'animate-spin' : ''} />
+              <RefreshCw
+                size={15}
+                className={dnsLoading ? 'animate-spin' : ''}
+              />
               전체 검증
             </button>
           </div>
@@ -635,21 +732,38 @@ export function NginxPage() {
                   ) : (
                     <XCircle size={16} className="text-red-400" />
                   )}
-                  <span className="text-white font-semibold">{singleDnsResult.domain}</span>
-                  <span className={`text-xs px-2 py-0.5 rounded ${singleDnsResult.allOk ? 'bg-green-950 text-green-400' : 'bg-red-950 text-red-400'}`}>
+                  <span className="text-white font-semibold">
+                    {singleDnsResult.domain}
+                  </span>
+                  <span
+                    className={`text-xs px-2 py-0.5 rounded ${singleDnsResult.allOk ? 'bg-green-950 text-green-400' : 'bg-red-950 text-red-400'}`}
+                  >
                     {singleDnsResult.allOk ? '정상' : '설정 필요'}
                   </span>
                 </div>
                 {singleDnsResult.records.map((rec, i) => (
-                  <div key={i} className="flex items-center gap-3 text-sm py-1.5 border-t border-gray-800">
+                  <div
+                    key={i}
+                    className="flex items-center gap-3 text-sm py-1.5 border-t border-gray-800"
+                  >
                     {getDnsStatusIcon(rec.status)}
-                    <span className="text-blue-400 font-mono w-14">{rec.type}</span>
-                    <span className="text-gray-400 font-mono w-24">{rec.host}</span>
-                    <span className="text-gray-300 font-mono flex-1">{rec.value}</span>
+                    <span className="text-blue-400 font-mono w-14">
+                      {rec.type}
+                    </span>
+                    <span className="text-gray-400 font-mono w-24">
+                      {rec.host}
+                    </span>
+                    <span className="text-gray-300 font-mono flex-1">
+                      {rec.value}
+                    </span>
                     {rec.actual && rec.status !== 'ok' && (
-                      <span className="text-xs text-yellow-400">현재: {rec.actual}</span>
+                      <span className="text-xs text-yellow-400">
+                        현재: {rec.actual}
+                      </span>
                     )}
-                    <span className={`text-xs px-1.5 py-0.5 rounded ${getDnsStatusColor(rec.status)}`}>
+                    <span
+                      className={`text-xs px-1.5 py-0.5 rounded ${getDnsStatusColor(rec.status)}`}
+                    >
                       {getDnsStatusText(rec.status)}
                     </span>
                   </div>
@@ -660,26 +774,40 @@ export function NginxPage() {
 
           {/* All sites DNS status */}
           <div className="mb-3 flex items-center gap-2">
-            <h3 className="text-sm font-semibold text-gray-300">프록시 사이트 DNS 상태</h3>
-            <span className="text-xs text-gray-500">가비아 DNS에 아래 레코드를 등록하세요</span>
+            <h3 className="text-sm font-semibold text-gray-300">
+              프록시 사이트 DNS 상태
+            </h3>
+            <span className="text-xs text-gray-500">
+              가비아 DNS에 아래 레코드를 등록하세요
+            </span>
           </div>
 
           {dnsLoading ? (
             <div className="text-gray-500 text-center py-12">검증 중...</div>
           ) : dnsResults.length === 0 ? (
-            <div className="text-gray-500 text-center py-12">등록된 프록시 사이트가 없습니다. 프록시 탭에서 사이트를 추가하세요.</div>
+            <div className="text-gray-500 text-center py-12">
+              등록된 프록시 사이트가 없습니다. 프록시 탭에서 사이트를
+              추가하세요.
+            </div>
           ) : (
             <div className="grid gap-3">
               {dnsResults.map((result) => (
-                <div key={result.domain} className="bg-gray-900 border border-gray-700 rounded-xl p-4">
+                <div
+                  key={result.domain}
+                  className="bg-gray-900 border border-gray-700 rounded-xl p-4"
+                >
                   <div className="flex items-center gap-2 mb-3">
                     {result.allOk ? (
                       <CheckCircle size={16} className="text-green-400" />
                     ) : (
                       <AlertTriangle size={16} className="text-yellow-400" />
                     )}
-                    <span className="text-white font-semibold">{result.domain}</span>
-                    <span className={`text-xs px-2 py-0.5 rounded ${result.allOk ? 'bg-green-950 text-green-400' : 'bg-yellow-950 text-yellow-400'}`}>
+                    <span className="text-white font-semibold">
+                      {result.domain}
+                    </span>
+                    <span
+                      className={`text-xs px-2 py-0.5 rounded ${result.allOk ? 'bg-green-950 text-green-400' : 'bg-yellow-950 text-yellow-400'}`}
+                    >
                       {result.allOk ? 'DNS 정상' : 'DNS 설정 필요'}
                     </span>
                   </div>
@@ -695,18 +823,35 @@ export function NginxPage() {
                       <span>상태</span>
                     </div>
                     {result.records.map((rec, i) => (
-                      <div key={i} className="grid grid-cols-[auto_60px_100px_1fr_auto_auto] gap-2 items-center px-3 py-2 text-sm border-b border-gray-800/50 last:border-0">
+                      <div
+                        key={i}
+                        className="grid grid-cols-[auto_60px_100px_1fr_auto_auto] gap-2 items-center px-3 py-2 text-sm border-b border-gray-800/50 last:border-0"
+                      >
                         {getDnsStatusIcon(rec.status)}
-                        <span className="text-blue-400 font-mono text-xs">{rec.type}</span>
-                        <span className="text-gray-400 font-mono text-xs">{rec.host}</span>
+                        <span className="text-blue-400 font-mono text-xs">
+                          {rec.type}
+                        </span>
+                        <span className="text-gray-400 font-mono text-xs">
+                          {rec.host}
+                        </span>
                         <div className="flex items-center gap-1.5">
-                          <span className="text-white font-mono text-xs">{rec.value}</span>
-                          <button onClick={() => copyToClipboard(rec.value)} className="text-gray-600 hover:text-white transition" title="복사">
+                          <span className="text-white font-mono text-xs">
+                            {rec.value}
+                          </span>
+                          <button
+                            onClick={() => copyToClipboard(rec.value)}
+                            className="text-gray-600 hover:text-white transition"
+                            title="복사"
+                          >
                             <Copy size={11} />
                           </button>
                         </div>
-                        <span className="text-xs text-gray-500 font-mono">{rec.actual || '-'}</span>
-                        <span className={`text-xs px-1.5 py-0.5 rounded ${getDnsStatusColor(rec.status)}`}>
+                        <span className="text-xs text-gray-500 font-mono">
+                          {rec.actual || '-'}
+                        </span>
+                        <span
+                          className={`text-xs px-1.5 py-0.5 rounded ${getDnsStatusColor(rec.status)}`}
+                        >
                           {getDnsStatusText(rec.status)}
                         </span>
                       </div>
@@ -716,15 +861,29 @@ export function NginxPage() {
                   {/* Gabia guide for missing/mismatch records */}
                   {!result.allOk && (
                     <div className="mt-3 bg-blue-950/30 border border-blue-900/50 rounded-lg p-3 text-xs text-blue-300">
-                      <p className="font-semibold mb-1">가비아 DNS 설정 안내:</p>
+                      <p className="font-semibold mb-1">
+                        가비아 DNS 설정 안내:
+                      </p>
                       <ol className="list-decimal list-inside space-y-0.5 text-blue-400">
                         <li>dns.gabia.com 접속 후 로그인</li>
-                        <li>도메인 "{result.domain.split('.').slice(-2).join('.')}" 선택</li>
-                        {result.records.filter(r => r.status !== 'ok').map((rec, i) => (
-                          <li key={i}>
-                            {rec.type} 레코드 추가: 호스트 <span className="font-mono bg-blue-900/50 px-1 rounded">{rec.host}</span> → 값 <span className="font-mono bg-blue-900/50 px-1 rounded">{rec.value}</span>
-                          </li>
-                        ))}
+                        <li>
+                          도메인 "{result.domain.split('.').slice(-2).join('.')}
+                          " 선택
+                        </li>
+                        {result.records
+                          .filter((r) => r.status !== 'ok')
+                          .map((rec, i) => (
+                            <li key={i}>
+                              {rec.type} 레코드 추가: 호스트{' '}
+                              <span className="font-mono bg-blue-900/50 px-1 rounded">
+                                {rec.host}
+                              </span>{' '}
+                              → 값{' '}
+                              <span className="font-mono bg-blue-900/50 px-1 rounded">
+                                {rec.value}
+                              </span>
+                            </li>
+                          ))}
                         <li>저장 후 전파까지 최대 48시간 (보통 몇 분)</li>
                       </ol>
                     </div>
@@ -745,7 +904,9 @@ export function NginxPage() {
             </h3>
             <div className="space-y-4">
               <div>
-                <label className="block text-sm text-gray-400 mb-1">설정 파일 이름</label>
+                <label className="block text-sm text-gray-400 mb-1">
+                  설정 파일 이름
+                </label>
                 <input
                   className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-blue-500 disabled:opacity-50"
                   placeholder="예: my-app"
@@ -755,7 +916,9 @@ export function NginxPage() {
                 />
               </div>
               <div>
-                <label className="block text-sm text-gray-400 mb-1">도메인</label>
+                <label className="block text-sm text-gray-400 mb-1">
+                  도메인
+                </label>
                 <input
                   className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-blue-500"
                   placeholder="예: app.kscold.com"
@@ -764,7 +927,9 @@ export function NginxPage() {
                 />
               </div>
               <div>
-                <label className="block text-sm text-gray-400 mb-1">Upstream (프록시 대상)</label>
+                <label className="block text-sm text-gray-400 mb-1">
+                  Upstream (프록시 대상)
+                </label>
                 {allUpstreams.length > 0 && (
                   <div className="mb-2">
                     <p className="text-xs text-gray-500 mb-1.5">
@@ -776,7 +941,9 @@ export function NginxPage() {
                         <button
                           key={u.value}
                           type="button"
-                          onClick={() => setForm({ ...form, upstream: u.value })}
+                          onClick={() =>
+                            setForm({ ...form, upstream: u.value })
+                          }
                           className={`px-2.5 py-1 text-xs rounded-lg border transition ${
                             form.upstream === u.value
                               ? 'bg-blue-600 border-blue-500 text-white'
@@ -788,9 +955,16 @@ export function NginxPage() {
                       ))}
                       <button
                         type="button"
-                        onClick={() => setForm({ ...form, upstream: 'http://host.docker.internal:' })}
+                        onClick={() =>
+                          setForm({
+                            ...form,
+                            upstream: 'http://host.docker.internal:',
+                          })
+                        }
                         className={`px-2.5 py-1 text-xs rounded-lg border transition ${
-                          form.upstream.startsWith('http://host.docker.internal')
+                          form.upstream.startsWith(
+                            'http://host.docker.internal',
+                          )
                             ? 'bg-purple-600 border-purple-500 text-white'
                             : 'bg-gray-800 border-gray-700 text-purple-300 hover:border-purple-500'
                         }`}
@@ -804,40 +978,70 @@ export function NginxPage() {
                   className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-blue-500"
                   placeholder="예: http://ubuntu-galjido:8080"
                   value={form.upstream}
-                  onChange={(e) => setForm({ ...form, upstream: e.target.value })}
+                  onChange={(e) =>
+                    setForm({ ...form, upstream: e.target.value })
+                  }
                 />
               </div>
               <div className="flex gap-4">
                 <label className="flex items-center gap-2 cursor-pointer">
-                  <input type="checkbox" checked={form.ssl} onChange={(e) => setForm({ ...form, ssl: e.target.checked })} className="w-4 h-4 rounded" />
+                  <input
+                    type="checkbox"
+                    checked={form.ssl}
+                    onChange={(e) =>
+                      setForm({ ...form, ssl: e.target.checked })
+                    }
+                    className="w-4 h-4 rounded"
+                  />
                   <span className="text-sm text-gray-300">SSL (HTTPS)</span>
                 </label>
                 <label className="flex items-center gap-2 cursor-pointer">
-                  <input type="checkbox" checked={form.websocket} onChange={(e) => setForm({ ...form, websocket: e.target.checked })} className="w-4 h-4 rounded" />
+                  <input
+                    type="checkbox"
+                    checked={form.websocket}
+                    onChange={(e) =>
+                      setForm({ ...form, websocket: e.target.checked })
+                    }
+                    className="w-4 h-4 rounded"
+                  />
                   <span className="text-sm text-gray-300">WebSocket</span>
                 </label>
               </div>
               {form.ssl && (
                 <div className="space-y-3 border border-gray-800 rounded-lg p-3">
-                  <p className="text-xs text-gray-500">SSL 인증서 경로 (비워두면 기본 경로 사용)</p>
+                  <p className="text-xs text-gray-500">
+                    SSL 인증서 경로 (비워두면 기본 경로 사용)
+                  </p>
                   <input
                     className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-blue-500"
                     placeholder={`/etc/nginx/ssl/${form.domain || 'domain'}/fullchain.pem`}
                     value={form.sslCert}
-                    onChange={(e) => setForm({ ...form, sslCert: e.target.value })}
+                    onChange={(e) =>
+                      setForm({ ...form, sslCert: e.target.value })
+                    }
                   />
                   <input
                     className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-blue-500"
                     placeholder={`/etc/nginx/ssl/${form.domain || 'domain'}/privkey.pem`}
                     value={form.sslKey}
-                    onChange={(e) => setForm({ ...form, sslKey: e.target.value })}
+                    onChange={(e) =>
+                      setForm({ ...form, sslKey: e.target.value })
+                    }
                   />
                 </div>
               )}
             </div>
             <div className="flex gap-3 mt-6">
-              <button onClick={() => setShowModal(false)} className="flex-1 py-2 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-lg transition text-sm">취소</button>
-              <button onClick={handleSubmit} className="flex-1 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg transition text-sm font-semibold">
+              <button
+                onClick={() => setShowModal(false)}
+                className="flex-1 py-2 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-lg transition text-sm"
+              >
+                취소
+              </button>
+              <button
+                onClick={handleSubmit}
+                className="flex-1 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg transition text-sm font-semibold"
+              >
                 {editingName ? '저장' : '추가'}
               </button>
             </div>
@@ -855,31 +1059,43 @@ export function NginxPage() {
             </h3>
             <div className="space-y-4">
               <div>
-                <label className="block text-sm text-gray-400 mb-1">도메인</label>
+                <label className="block text-sm text-gray-400 mb-1">
+                  도메인
+                </label>
                 <input
                   className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-blue-500"
                   placeholder="예: app.kscold.com"
                   value={certForm.domain}
-                  onChange={(e) => setCertForm({ ...certForm, domain: e.target.value })}
+                  onChange={(e) =>
+                    setCertForm({ ...certForm, domain: e.target.value })
+                  }
                 />
               </div>
               <div>
-                <label className="block text-sm text-gray-400 mb-1">이메일 (Let's Encrypt 알림)</label>
+                <label className="block text-sm text-gray-400 mb-1">
+                  이메일 (Let's Encrypt 알림)
+                </label>
                 <input
                   className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-blue-500"
                   placeholder="admin@kscold.com"
                   value={certForm.email}
-                  onChange={(e) => setCertForm({ ...certForm, email: e.target.value })}
+                  onChange={(e) =>
+                    setCertForm({ ...certForm, email: e.target.value })
+                  }
                 />
               </div>
               <div>
-                <label className="block text-sm text-gray-400 mb-1">발급 방식</label>
+                <label className="block text-sm text-gray-400 mb-1">
+                  발급 방식
+                </label>
                 <div className="flex gap-3">
                   <label className="flex items-center gap-2 cursor-pointer">
                     <input
                       type="radio"
                       checked={certForm.mode === 'webroot'}
-                      onChange={() => setCertForm({ ...certForm, mode: 'webroot' })}
+                      onChange={() =>
+                        setCertForm({ ...certForm, mode: 'webroot' })
+                      }
                       className="w-4 h-4"
                     />
                     <span className="text-sm text-gray-300">Webroot</span>
@@ -888,7 +1104,9 @@ export function NginxPage() {
                     <input
                       type="radio"
                       checked={certForm.mode === 'standalone'}
-                      onChange={() => setCertForm({ ...certForm, mode: 'standalone' })}
+                      onChange={() =>
+                        setCertForm({ ...certForm, mode: 'standalone' })
+                      }
                       className="w-4 h-4"
                     />
                     <span className="text-sm text-gray-300">Standalone</span>

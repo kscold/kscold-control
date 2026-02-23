@@ -50,7 +50,9 @@ export class SystemController {
         // df 와 카테고리별 du를 병렬로 실행
         const [dfResult, dockerResult, appsResult] = await Promise.all([
           execAsync('df -k /'),
-          execAsync(`du -sk "${home}/Library/Containers/com.docker.docker" 2>/dev/null || echo "0\t-"`),
+          execAsync(
+            `du -sk "${home}/Library/Containers/com.docker.docker" 2>/dev/null || echo "0\t-"`,
+          ),
           execAsync(`du -sk /Applications 2>/dev/null || echo "0\t-"`),
         ]);
 
@@ -68,8 +70,10 @@ export class SystemController {
             usedPercent: totalKB > 0 ? (realUsedKB / totalKB) * 100 : 0,
           };
 
-          const dockerKB = parseInt(dockerResult.stdout.trim().split(/\s+/)[0]) || 0;
-          const appsKB = parseInt(appsResult.stdout.trim().split(/\s+/)[0]) || 0;
+          const dockerKB =
+            parseInt(dockerResult.stdout.trim().split(/\s+/)[0]) || 0;
+          const appsKB =
+            parseInt(appsResult.stdout.trim().split(/\s+/)[0]) || 0;
           const dockerBytes = dockerKB * 1024;
           const appsBytes = appsKB * 1024;
 

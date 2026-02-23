@@ -13,7 +13,8 @@ module.exports = {
         // 1. PM2 ecosystem file with env_file option, or
         // 2. PM2 startup command: pm2 start ecosystem.config.js --update-env
         // 3. System environment variables
-        DATABASE_URL: process.env.DATABASE_URL || 'postgresql://admin:admin123@localhost:5432/claude_infra',
+        DATABASE_URL: process.env.DATABASE_URL || 'postgresql://admin:admin123@localhost:5432/kscold-infra-db',
+        DOCKER_HOST: process.env.DOCKER_HOST || 'unix:///Users/kscold/.colima/default/docker.sock',
         JWT_SECRET: process.env.JWT_SECRET || 'kscold-infra-secret-change-in-production',
         CLAUDE_WORKING_DIR: process.env.CLAUDE_WORKING_DIR || '/Users/kscold/Desktop',
       },

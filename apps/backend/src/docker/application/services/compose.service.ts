@@ -28,7 +28,10 @@ export interface ComposeServiceConfig {
 @Injectable()
 export class ComposeService {
   private readonly logger = new Logger(ComposeService.name);
-  private readonly composeFilePath = path.join(COMPOSE_DIR, 'docker-compose.yml');
+  private readonly composeFilePath = path.join(
+    COMPOSE_DIR,
+    'docker-compose.yml',
+  );
 
   /**
    * Read and parse docker-compose.yml
@@ -66,7 +69,9 @@ export class ComposeService {
     const compose = this.readCompose();
 
     if (compose.services?.[config.name]) {
-      throw new Error(`Service "${config.name}" already exists in docker-compose.yml`);
+      throw new Error(
+        `Service "${config.name}" already exists in docker-compose.yml`,
+      );
     }
 
     // Build port mappings array for compose format

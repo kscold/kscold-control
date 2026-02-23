@@ -53,9 +53,7 @@ export function CreateUserModal({
             />
           </div>
           <div>
-            <label className="block text-sm text-gray-400 mb-2">
-              비밀번호
-            </label>
+            <label className="block text-sm text-gray-400 mb-2">비밀번호</label>
             <input
               type="password"
               value={password}

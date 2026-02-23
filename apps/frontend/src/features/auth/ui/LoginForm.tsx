@@ -7,8 +7,15 @@ import { useAuth } from '../hooks/useAuth';
  * Extracted from LoginPage.tsx lines 28-86
  */
 export function LoginForm() {
-  const { email, password, error, isLoading, setEmail, setPassword, handleLogin } =
-    useAuth();
+  const {
+    email,
+    password,
+    error,
+    isLoading,
+    setEmail,
+    setPassword,
+    handleLogin,
+  } = useAuth();
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-950 p-4">

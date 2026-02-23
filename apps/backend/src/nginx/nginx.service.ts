@@ -80,7 +80,12 @@ export class NginxService {
     const config = this.generateConfig(dto);
     fs.writeFileSync(filePath, config, 'utf-8');
 
-    return { ...dto, sslCert: dto.sslCert || '', sslKey: dto.sslKey || '', enabled: true };
+    return {
+      ...dto,
+      sslCert: dto.sslCert || '',
+      sslKey: dto.sslKey || '',
+      enabled: true,
+    };
   }
 
   /**
@@ -91,7 +96,12 @@ export class NginxService {
     const config = this.generateConfig(dto);
     fs.writeFileSync(filePath, config, 'utf-8');
 
-    return { ...dto, sslCert: dto.sslCert || '', sslKey: dto.sslKey || '', enabled: true };
+    return {
+      ...dto,
+      sslCert: dto.sslCert || '',
+      sslKey: dto.sslKey || '',
+      enabled: true,
+    };
   }
 
   /**
@@ -152,14 +162,18 @@ export class NginxService {
   /**
    * 설정 파일 파싱
    */
-  private parseConfig(raw: string, name: string): Omit<NginxSite, 'enabled' | 'raw'> {
+  private parseConfig(
+    raw: string,
+    name: string,
+  ): Omit<NginxSite, 'enabled' | 'raw'> {
     const domainMatch = raw.match(/server_name\s+([^\s;]+)/);
     const upstreamMatch = raw.match(/proxy_pass\s+(https?:\/\/[^\s;]+)/);
     const sslMatch = raw.includes('listen 443 ssl');
     const certMatch = raw.match(/ssl_certificate\s+([^\s;]+)/);
     const keyMatch = raw.match(/ssl_certificate_key\s+([^\s;]+)/);
     const wsMatch =
-      raw.includes('Connection "upgrade"') || raw.includes("Connection 'upgrade'");
+      raw.includes('Connection "upgrade"') ||
+      raw.includes("Connection 'upgrade'");
 
     return {
       name,

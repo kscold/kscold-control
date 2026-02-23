@@ -30,7 +30,9 @@ export function ContainerCard({
     const ports = Object.keys(container.ports);
     const mainPort = ports.find((p) => p !== '22') || ports[0] || '8080';
     const upstream = `http://${container.name}:${mainPort}`;
-    navigate(`/nginx?upstream=${encodeURIComponent(upstream)}&name=${encodeURIComponent(container.name)}`);
+    navigate(
+      `/nginx?upstream=${encodeURIComponent(upstream)}&name=${encodeURIComponent(container.name)}`,
+    );
   };
 
   const getStatusColor = (status: string): string => {

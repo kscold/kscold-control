@@ -35,7 +35,7 @@ services:
     image: postgres:15-alpine
     container_name: kscold-infra-db
     environment:
-      POSTGRES_DB: claude_infra
+      POSTGRES_DB: kscold-infra-db
       POSTGRES_USER: admin
       POSTGRES_PASSWORD: admin123
     ports:
@@ -48,7 +48,7 @@ services:
   ubuntu-galjido:
     image: kscold/ubuntu-galjido:latest
     container_name: ubuntu-galjido
-    command: bash -c "/root/startup.sh && sleep infinity"
+    command: bash -c "/entrypoint.sh"
     ports:
       - "2223:22"
       - "5433:5432"

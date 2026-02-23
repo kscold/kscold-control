@@ -20,3 +20,4 @@ logs/
 # 소스 코드 내 logs 폴더는 추적
 !**/src/logs/
 !**/src/logs/**
+apps/backend/src/seed.ts

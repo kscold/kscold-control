@@ -112,7 +112,10 @@ export class CertbotService {
       try {
         await this.copyCertFromCertbot(domain);
         await this.reloadNginx();
-        return { success: true, output: output + '\n(Certificates were issued despite warnings)' };
+        return {
+          success: true,
+          output: output + '\n(Certificates were issued despite warnings)',
+        };
       } catch {
         return { success: false, output };
       }
@@ -214,7 +217,10 @@ export class CertbotService {
         this.logger.error('Failed to restart nginx after certbot');
       }
 
-      return { success: false, output: error.stdout + error.stderr || error.message };
+      return {
+        success: false,
+        output: error.stdout + error.stderr || error.message,
+      };
     }
   }
 

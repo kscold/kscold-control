@@ -17,7 +17,8 @@ export const TERMINAL_THEME = {
 export const TERMINAL_FONT = {
   desktop: 14,
   mobile: 12,
-  family: '"D2Coding", "Noto Sans Mono", "Apple SD Gothic Neo", Menlo, Monaco, "Courier New", monospace',
+  family:
+    '"D2Coding", "Noto Sans Mono", "Apple SD Gothic Neo", Menlo, Monaco, "Courier New", monospace',
 };
 
 /**
