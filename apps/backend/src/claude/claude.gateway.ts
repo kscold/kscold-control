@@ -165,7 +165,9 @@ export class ClaudeGateway implements OnGatewayConnection, OnGatewayDisconnect {
           rows: 30,
           cwd: homeDir,
           env: {
-            ...process.env,
+            ...Object.fromEntries(
+              Object.entries(process.env).filter(([key]) => !key.startsWith('CLAUDE')),
+            ),
             HOME: homeDir,
             USER: process.env.USER || 'kscold',
             SHELL: '/bin/bash',
