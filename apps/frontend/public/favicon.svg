@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none">
+  <!-- Background -->
+  <rect width="32" height="32" rx="6" fill="#030712"/>
+
+  <!-- Server unit 1 (top) -->
+  <rect x="3" y="5" width="26" height="9" rx="2" fill="#0f172a"/>
+  <rect x="3.5" y="5.5" width="25" height="8" rx="1.5" stroke="#1e293b" stroke-width="0.5"/>
+
+  <!-- Status LEDs — green (active) -->
+  <circle cx="8" cy="9.5" r="2.2" fill="#22c55e"/>
+  <circle cx="8" cy="9.5" r="1.1" fill="#86efac"/>
+
+  <circle cx="13.5" cy="9.5" r="1.4" fill="#22c55e" opacity="0.7"/>
+
+  <!-- Drive bay slots top -->
+  <rect x="18.5" y="7" width="8" height="2" rx="1" fill="#1e293b"/>
+  <rect x="18.5" y="10" width="8" height="1.5" rx="0.75" fill="#1e293b"/>
+
+  <!-- Server unit 2 (bottom) -->
+  <rect x="3" y="17" width="26" height="9" rx="2" fill="#0f172a"/>
+  <rect x="3.5" y="17.5" width="25" height="8" rx="1.5" stroke="#1e293b" stroke-width="0.5"/>
+
+  <!-- Status LEDs — blue -->
+  <circle cx="8" cy="21.5" r="2.2" fill="#3b82f6"/>
+  <circle cx="8" cy="21.5" r="1.1" fill="#93c5fd"/>
+
+  <circle cx="13.5" cy="21.5" r="1.4" fill="#3b82f6" opacity="0.7"/>
+
+  <!-- Drive bay slots bottom -->
+  <rect x="18.5" y="19" width="8" height="2" rx="1" fill="#1e293b"/>
+  <rect x="18.5" y="22" width="8" height="1.5" rx="0.75" fill="#1e293b"/>
+
+  <!-- Rack mount screw dots -->
+  <circle cx="5" cy="7" r="0.8" fill="#334155"/>
+  <circle cx="5" cy="12" r="0.8" fill="#334155"/>
+  <circle cx="5" cy="19" r="0.8" fill="#334155"/>
+  <circle cx="5" cy="24" r="0.8" fill="#334155"/>
+</svg>
