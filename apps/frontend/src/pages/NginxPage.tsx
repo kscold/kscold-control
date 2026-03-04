@@ -111,6 +111,10 @@ export function NginxPage() {
   );
   const [singleDnsLoading, setSingleDnsLoading] = useState(false);
 
+  // Proxy tab DNS status
+  const [proxyDnsStatus, setProxyDnsStatus] = useState<Record<string, DnsCheckResult>>({});
+  const [proxyDnsLoading, setProxyDnsLoading] = useState(false);
+
   const { showAlert, showConfirm } = useModalStore();
   const [searchParams, setSearchParams] = useSearchParams();
 
@@ -303,6 +307,23 @@ export function NginxPage() {
     }
   };
 
+  // ===== Proxy DNS status =====
+  const loadProxyDnsStatus = async () => {
+    setProxyDnsLoading(true);
+    try {
+      const { data } = await api.get('/nginx/dns/verify-all');
+      const map: Record<string, DnsCheckResult> = {};
+      (data as DnsCheckResult[]).forEach((r) => {
+        map[r.domain] = r;
+      });
+      setProxyDnsStatus(map);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setProxyDnsLoading(false);
+    }
+  };
+
   // ===== DNS functions =====
   const loadDnsAll = async () => {
     try {
@@ -486,7 +507,15 @@ export function NginxPage() {
       {/* ===== PROXY TAB ===== */}
       {tab === 'proxy' && (
         <>
-          <div className="flex justify-end mb-4">
+          <div className="flex justify-end gap-2 mb-4">
+            <button
+              onClick={loadProxyDnsStatus}
+              disabled={proxyDnsLoading}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-gray-700 hover:bg-gray-600 text-gray-300 rounded-lg transition disabled:opacity-50"
+            >
+              <Wifi size={15} className={proxyDnsLoading ? 'animate-pulse' : ''} />
+              {proxyDnsLoading ? 'DNS 확인 중...' : 'DNS 상태 확인'}
+            </button>
             <button
               onClick={openCreate}
               className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-green-600 hover:bg-green-500 text-white rounded-lg transition"
@@ -536,6 +565,28 @@ export function NginxPage() {
                           비활성
                         </span>
                       )}
+                      {proxyDnsStatus[site.domain] && (
+                        proxyDnsStatus[site.domain].allOk ? (
+                          <span
+                            className="flex items-center gap-1 text-xs text-green-400 bg-green-950 px-1.5 py-0.5 rounded"
+                            title="DNS 전파 완료"
+                          >
+                            <Wifi size={10} /> DNS
+                          </span>
+                        ) : (
+                          <span
+                            className="flex items-center gap-1 text-xs text-yellow-400 bg-yellow-950 px-1.5 py-0.5 rounded cursor-pointer hover:bg-yellow-900"
+                            title="DNS 미전파 — 클릭하여 DNS 탭에서 상세 확인"
+                            onClick={() => {
+                              setTab('dns');
+                              setSingleDnsCheck(site.domain);
+                              loadDnsAll();
+                            }}
+                          >
+                            <AlertTriangle size={10} /> DNS 미전파
+                          </span>
+                        )
+                      )}
                     </div>
                     <div className="flex items-center gap-1 mt-0.5">
                       <Terminal size={11} className="text-gray-500" />
@@ -545,6 +596,22 @@ export function NginxPage() {
                     </div>
                   </div>
                   <div className="flex items-center gap-1.5 flex-shrink-0">
+                    {proxyDnsStatus[site.domain]?.allOk && site.ssl && (
+                      <button
+                        onClick={() => {
+                          setCertForm({
+                            domain: site.domain,
+                            email: 'admin@kscold.com',
+                            mode: 'webroot',
+                          });
+                          setShowCertModal(true);
+                        }}
+                        className="p-1.5 rounded-lg text-green-400 hover:bg-green-950 transition"
+                        title="SSL 인증서 발급"
+                      >
+                        <Lock size={15} />
+                      </button>
+                    )}
                     <button
                       onClick={() => handleToggle(site)}
                       className={`p-1.5 rounded-lg transition ${site.enabled ? 'text-green-400 hover:bg-green-950' : 'text-gray-500 hover:bg-gray-800'}`}

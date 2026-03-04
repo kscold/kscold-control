@@ -5,6 +5,15 @@
 		},
 		{
 			"path": "../../.."
+		},
+		{
+			"path": "../../../../kscold-blog-version-2"
+		},
+		{
+			"path": "../../../../FrontEnd"
+		},
+		{
+			"path": "../../../../BackEnd"
 		}
 	],
 	"settings": {}
