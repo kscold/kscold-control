@@ -9,9 +9,86 @@ const execAsync = promisify(exec);
 const DISK_CACHE_TTL = 60 * 1000; // 1분
 let diskCache: { data: any; timestamp: number } | null = null;
 
+const STATS_CACHE_TTL = 3 * 1000; // 3초
+let statsCache: { data: any; timestamp: number } | null = null;
+let prevCpuTimes: { idle: number; total: number } | null = null;
+
 @Controller('system')
 @UseGuards(AuthGuard('jwt'))
 export class SystemController {
+  @Get('stats')
+  async getStats() {
+    const now = Date.now();
+    if (statsCache && now - statsCache.timestamp < STATS_CACHE_TTL) {
+      return statsCache.data;
+    }
+
+    // CPU 사용률 계산 (이전 샘플과 비교)
+    const cpus = os.cpus();
+    let idle = 0;
+    let total = 0;
+    for (const cpu of cpus) {
+      idle += cpu.times.idle;
+      total +=
+        cpu.times.user +
+        cpu.times.nice +
+        cpu.times.sys +
+        cpu.times.irq +
+        cpu.times.idle;
+    }
+
+    let cpuUsage = 0;
+    if (prevCpuTimes) {
+      const idleDelta = idle - prevCpuTimes.idle;
+      const totalDelta = total - prevCpuTimes.total;
+      cpuUsage =
+        totalDelta > 0 ? ((totalDelta - idleDelta) / totalDelta) * 100 : 0;
+    }
+    prevCpuTimes = { idle, total };
+
+    const totalMem = os.totalmem();
+
+    // macOS: vm_stat으로 정확한 메모리 계산 (inactive/purgeable 제외)
+    let appMem = 0;
+    let availableMem = 0;
+    try {
+      const { stdout } = await execAsync('vm_stat');
+      const pageSize = 16384;
+      const parse = (key: string) => {
+        const m = stdout.match(new RegExp(`${key}:\\s+(\\d+)`));
+        return m ? parseInt(m[1]) * pageSize : 0;
+      };
+      const active = parse('Pages active');
+      const wired = parse('Pages wired down');
+      const speculative = parse('Pages speculative');
+      const free = parse('Pages free');
+      const inactive = parse('Pages inactive');
+      appMem = active + wired;
+      availableMem = free + inactive + speculative;
+    } catch {
+      appMem = totalMem - os.freemem();
+      availableMem = os.freemem();
+    }
+
+    const data = {
+      cpu: {
+        usage: Math.round(cpuUsage * 10) / 10,
+        count: cpus.length,
+        model: cpus[0]?.model || 'Unknown',
+      },
+      memory: {
+        total: totalMem,
+        used: appMem,
+        free: availableMem,
+        usedPercent: Math.round((appMem / totalMem) * 1000) / 10,
+      },
+      uptime: os.uptime(),
+    };
+
+    statsCache = { data, timestamp: now };
+    return data;
+  }
+
   @Get('info')
   async getSystemInfo() {
     // CPU 정보
