@@ -10,6 +10,8 @@ import {
   Server,
   Copy,
   AlertTriangle,
+  ExternalLink,
+  Info,
 } from 'lucide-react';
 import { api } from '../lib/api';
 import { useModalStore } from '../stores/modal.store';
@@ -163,6 +165,29 @@ export function NetworkPage() {
             포트 매핑 추가
           </button>
         </div>
+      </div>
+
+      {/* Static forwarding notice */}
+      <div className="mb-4 p-3 rounded-xl border border-blue-900/40 bg-blue-950/20 flex flex-col sm:flex-row sm:items-center gap-3">
+        <div className="flex items-start gap-2 flex-1 min-w-0">
+          <Info size={15} className="text-blue-400 flex-shrink-0 mt-0.5" />
+          <div className="text-xs text-blue-300">
+            <span className="font-semibold">UPnP 동적 매핑만 표시됩니다.</span>
+            <span className="text-blue-400/80 ml-1">
+              iptime 관리자 페이지에서 수동 설정한 정적 포트포워딩은 UPnP 프로토콜로 조회되지 않습니다.
+              정적 규칙은 공유기 관리 페이지에서 확인하세요.
+            </span>
+          </div>
+        </div>
+        <a
+          href="http://192.168.0.1"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 text-xs bg-blue-900/40 hover:bg-blue-900/60 text-blue-300 rounded-lg transition"
+        >
+          <ExternalLink size={12} />
+          공유기 관리 (192.168.0.1)
+        </a>
       </div>
 
       {/* External IP + Info */}

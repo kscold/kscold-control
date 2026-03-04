@@ -23,9 +23,18 @@ export interface CreateMappingDto {
   description?: string;
 }
 
+interface GatewayInfo {
+  host: string;
+  port: number;
+  controlUrl: string;
+  serviceType: string;
+}
+
 @Injectable()
 export class UpnpService {
   private readonly logger = new Logger(UpnpService.name);
+  private gatewayCache: GatewayInfo | null = null;
+  private gatewayCacheTime = 0;
 
   private createClient(): any {
     return new NatAPI({
@@ -36,6 +45,25 @@ export class UpnpService {
   }
 
   private async discoverGatewayUrl(): Promise<string> {
+    // Try both WANIPConnection:1 and InternetGatewayDevice:1
+    const searchTargets = [
+      'urn:schemas-upnp-org:service:WANIPConnection:1',
+      'urn:schemas-upnp-org:device:InternetGatewayDevice:1',
+      'upnp:rootdevice',
+    ];
+
+    for (const st of searchTargets) {
+      try {
+        const loc = await this.ssdpSearch(st);
+        if (loc) return loc;
+      } catch {
+        // try next
+      }
+    }
+    throw new Error('Gateway not found via SSDP');
+  }
+
+  private ssdpSearch(st: string): Promise<string> {
     return new Promise((resolve, reject) => {
       const socket = dgram.createSocket('udp4');
       const msg = Buffer.from(
@@ -43,12 +71,12 @@ export class UpnpService {
           'HOST: 239.255.255.250:1900\r\n' +
           'MAN: "ssdp:discover"\r\n' +
           'MX: 3\r\n' +
-          'ST: urn:schemas-upnp-org:service:WANIPConnection:1\r\n\r\n',
+          `ST: ${st}\r\n\r\n`,
       );
       let found = false;
       socket.on('message', (buf) => {
         const str = buf.toString();
-        const loc = str.match(/LOCATION: (.+)/i);
+        const loc = str.match(/LOCATION:\s*(.+)/i);
         if (loc && !found) {
           found = true;
           socket.close();
@@ -61,11 +89,114 @@ export class UpnpService {
       );
       setTimeout(() => {
         if (!found) {
-          socket.close();
-          reject(new Error('Gateway not found'));
+          try { socket.close(); } catch { /* ignore */ }
+          reject(new Error(`SSDP timeout for ${st}`));
         }
-      }, 5000);
+      }, 4000);
     });
+  }
+
+  private httpGet(host: string, port: number, path: string): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const req = http.get({ host, port, path, timeout: 5000 }, (res) => {
+        let data = '';
+        res.on('data', (c) => (data += c));
+        res.on('end', () => resolve(data));
+      });
+      req.on('error', reject);
+      req.on('timeout', () => {
+        req.destroy();
+        reject(new Error('HTTP timeout'));
+      });
+    });
+  }
+
+  /**
+   * Discover UPnP gateway and parse actual controlURL from description XML.
+   * Cached for 2 minutes to avoid repeated SSDP floods.
+   */
+  private async discoverGateway(): Promise<GatewayInfo> {
+    if (this.gatewayCache && Date.now() - this.gatewayCacheTime < 120000) {
+      return this.gatewayCache;
+    }
+
+    const locationUrl = await this.discoverGatewayUrl();
+    const url = new URL(locationUrl);
+    const host = url.hostname;
+    const port = parseInt(url.port || '80', 10);
+
+    try {
+      const descXml = await this.httpGet(host, port, url.pathname);
+      this.logger.debug(`Description XML from ${locationUrl}:\n${descXml.slice(0, 500)}`);
+
+      // Find WANIPConnection or WANPPPConnection service block
+      const serviceBlockRegex = /<service>([\s\S]*?)<\/service>/gi;
+      let match: RegExpExecArray | null;
+      while ((match = serviceBlockRegex.exec(descXml)) !== null) {
+        const block = match[1];
+        const stMatch = block.match(/<serviceType>([^<]+)<\/serviceType>/i);
+        const serviceType = stMatch?.[1]?.trim() || '';
+
+        if (
+          serviceType.toLowerCase().includes('wanipconnection') ||
+          serviceType.toLowerCase().includes('wanpppconnection')
+        ) {
+          const ctrlMatch = block.match(/<controlURL>([^<]+)<\/controlURL>/i);
+          if (ctrlMatch) {
+            let controlUrl = ctrlMatch[1].trim();
+            if (!controlUrl.startsWith('/')) controlUrl = '/' + controlUrl;
+
+            this.gatewayCache = { host, port, controlUrl, serviceType };
+            this.gatewayCacheTime = Date.now();
+            this.logger.log(
+              `UPnP gateway discovered: ${host}:${port}${controlUrl} [${serviceType}]`,
+            );
+            return this.gatewayCache;
+          }
+        }
+      }
+
+      this.logger.warn('No WANIPConnection service found in description XML, trying fallback paths');
+    } catch (err) {
+      this.logger.warn('Failed to fetch/parse gateway description XML', err instanceof Error ? err.message : err);
+    }
+
+    // Fallback: try common iptime / general router paths
+    const fallbackPaths = [
+      '/UpnP/Control/WANIPConn1',
+      '/ctl/IPConn',
+      '/upnp/control/WANIPConnection',
+      '/WANIPConn',
+    ];
+    for (const controlUrl of fallbackPaths) {
+      try {
+        const testXml = await this.soapCall(
+          host, port, controlUrl,
+          'urn:schemas-upnp-org:service:WANIPConnection:1#GetExternalIPAddress',
+          '<u:GetExternalIPAddress xmlns:u="urn:schemas-upnp-org:service:WANIPConnection:1"></u:GetExternalIPAddress>',
+        );
+        if (!testXml.includes('Fault') && !testXml.includes('404')) {
+          const info: GatewayInfo = {
+            host, port, controlUrl,
+            serviceType: 'urn:schemas-upnp-org:service:WANIPConnection:1',
+          };
+          this.gatewayCache = info;
+          this.gatewayCacheTime = Date.now();
+          this.logger.log(`UPnP gateway fallback: ${host}:${port}${controlUrl}`);
+          return info;
+        }
+      } catch { /* try next */ }
+    }
+
+    // Last resort fallback
+    const info: GatewayInfo = {
+      host, port,
+      controlUrl: '/UpnP/Control/WANIPConn1',
+      serviceType: 'urn:schemas-upnp-org:service:WANIPConnection:1',
+    };
+    this.gatewayCache = info;
+    this.gatewayCacheTime = Date.now();
+    return info;
   }
 
   private soapCall(
@@ -107,32 +238,29 @@ export class UpnpService {
 
   async getMappings(): Promise<PortMapping[]> {
     try {
-      const locationUrl = await this.discoverGatewayUrl();
-      const url = new URL(locationUrl);
-      const host = url.hostname;
-      const port = parseInt(url.port || '80', 10);
-
+      const gw = await this.discoverGateway();
       const results: PortMapping[] = [];
+
       for (let i = 0; i < 100; i++) {
         try {
           const xml = await this.soapCall(
-            host,
-            port,
-            '/ctl/IPConn',
-            'urn:schemas-upnp-org:service:WANIPConnection:1#GetGenericPortMappingEntry',
-            `<u:GetGenericPortMappingEntry xmlns:u="urn:schemas-upnp-org:service:WANIPConnection:1"><NewPortMappingIndex>${i}</NewPortMappingIndex></u:GetGenericPortMappingEntry>`,
+            gw.host,
+            gw.port,
+            gw.controlUrl,
+            `${gw.serviceType}#GetGenericPortMappingEntry`,
+            `<u:GetGenericPortMappingEntry xmlns:u="${gw.serviceType}"><NewPortMappingIndex>${i}</NewPortMappingIndex></u:GetGenericPortMappingEntry>`,
           );
           if (xml.includes('UPnPError') || xml.includes('Fault')) break;
           const get = (tag: string) => {
             const m = xml.match(new RegExp(`<${tag}>([^<]*)</${tag}>`));
             return m ? m[1] : '';
           };
+          const pubPort = parseInt(get('NewExternalPort'), 10);
+          if (!pubPort) break;
           results.push({
-            publicPort: parseInt(get('NewExternalPort'), 10),
+            publicPort: pubPort,
             privatePort: parseInt(get('NewInternalPort'), 10),
-            protocol: (get('NewProtocol') || 'TCP').toUpperCase() as
-              | 'TCP'
-              | 'UDP',
+            protocol: (get('NewProtocol') || 'TCP').toUpperCase() as 'TCP' | 'UDP',
             description: get('NewPortMappingDescription'),
             enabled: get('NewEnabled') !== '0',
             ttl: parseInt(get('NewLeaseDuration') || '0', 10),
@@ -166,19 +294,16 @@ export class UpnpService {
 
   async addMapping(dto: CreateMappingDto): Promise<{ success: boolean }> {
     try {
-      const locationUrl = await this.discoverGatewayUrl();
-      const url = new URL(locationUrl);
-      const host = url.hostname;
-      const port = parseInt(url.port || '80', 10);
+      const gw = await this.discoverGateway();
       const protocol = (dto.protocol || 'TCP').toUpperCase();
       const internalClient = this.getLocalIp();
 
       const xml = await this.soapCall(
-        host,
-        port,
-        '/ctl/IPConn',
-        'urn:schemas-upnp-org:service:WANIPConnection:1#AddPortMapping',
-        `<u:AddPortMapping xmlns:u="urn:schemas-upnp-org:service:WANIPConnection:1">` +
+        gw.host,
+        gw.port,
+        gw.controlUrl,
+        `${gw.serviceType}#AddPortMapping`,
+        `<u:AddPortMapping xmlns:u="${gw.serviceType}">` +
           `<NewRemoteHost></NewRemoteHost>` +
           `<NewExternalPort>${dto.publicPort}</NewExternalPort>` +
           `<NewProtocol>${protocol}</NewProtocol>` +
@@ -186,7 +311,7 @@ export class UpnpService {
           `<NewInternalClient>${internalClient}</NewInternalClient>` +
           `<NewEnabled>1</NewEnabled>` +
           `<NewPortMappingDescription>${dto.description || 'kscold-control'}</NewPortMappingDescription>` +
-          `<NewLeaseDuration>7200</NewLeaseDuration>` +
+          `<NewLeaseDuration>0</NewLeaseDuration>` +
           `</u:AddPortMapping>`,
       );
 
@@ -212,18 +337,15 @@ export class UpnpService {
     protocol?: string,
   ): Promise<{ success: boolean }> {
     try {
-      const locationUrl = await this.discoverGatewayUrl();
-      const url = new URL(locationUrl);
-      const host = url.hostname;
-      const port = parseInt(url.port || '80', 10);
+      const gw = await this.discoverGateway();
       const proto = (protocol || 'TCP').toUpperCase();
 
       const xml = await this.soapCall(
-        host,
-        port,
-        '/ctl/IPConn',
-        'urn:schemas-upnp-org:service:WANIPConnection:1#DeletePortMapping',
-        `<u:DeletePortMapping xmlns:u="urn:schemas-upnp-org:service:WANIPConnection:1">` +
+        gw.host,
+        gw.port,
+        gw.controlUrl,
+        `${gw.serviceType}#DeletePortMapping`,
+        `<u:DeletePortMapping xmlns:u="${gw.serviceType}">` +
           `<NewRemoteHost></NewRemoteHost>` +
           `<NewExternalPort>${publicPort}</NewExternalPort>` +
           `<NewProtocol>${proto}</NewProtocol>` +
