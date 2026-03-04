@@ -37,10 +37,16 @@ async function seed() {
     { name: 'docker:start', description: '컨테이너 시작' },
     { name: 'docker:stop', description: '컨테이너 중지' },
     { name: 'docker:delete', description: '컨테이너 삭제' },
+    { name: 'docker:read', description: '컨테이너 조회' },
     { name: 'docker:read-all', description: '모든 컨테이너 조회' },
     { name: 'session:read', description: '세션 조회' },
     { name: 'session:write', description: '세션 생성/수정' },
     { name: 'user:manage', description: '사용자 관리' },
+    { name: 'system:read', description: '시스템 읽기 (네트워크/UPnP/Nginx)' },
+    { name: 'system:write', description: '시스템 쓰기 (네트워크/UPnP/Nginx)' },
+    { name: 'terminal:access', description: '터미널 접근' },
+    { name: 'docker:update', description: '컨테이너 수정 (시작/중지)' },
+    { name: 'rbac:manage', description: 'RBAC 관리' },
   ];
 
   const permissions: Permission[] = [];
