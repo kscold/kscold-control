@@ -26,7 +26,9 @@ export class PtyManagerService implements IPtyManager {
       cols: 100,
       rows: 30,
       cwd: homeDir,
-      env: process.env,
+      env: Object.fromEntries(
+        Object.entries(process.env).filter(([key]) => !key.startsWith('CLAUDE')),
+      ),
     });
 
     this.processes.set(sessionId, shell);
