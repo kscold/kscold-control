@@ -5,6 +5,15 @@
 		},
 		{
 			"path": "../../.."
+		},
+		{
+			"path": "../../../../sample-blog-version-2"
+		},
+		{
+			"path": "../../../../FrontEnd"
+		},
+		{
+			"path": "../../../../BackEnd"
 		}
 	],
 	"settings": {}
