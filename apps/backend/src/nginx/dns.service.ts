@@ -101,14 +101,36 @@ export class DnsService {
     for (const record of records) {
       try {
         if (record.type === 'A') {
-          const addresses = await dnsResolve4(domain);
-          record.actual = addresses.join(', ');
-          if (addresses.includes(publicIp)) {
-            record.status = 'ok';
-          } else if (addresses.length > 0) {
-            record.status = 'mismatch';
+          // CNAME 우선 감지 (예: congbang.kscold.com → kscold.iptime.org)
+          let cnameTarget: string | null = null;
+          try {
+            const cnames = await dnsResolveCname(domain);
+            if (cnames.length > 0) cnameTarget = cnames[0];
+          } catch { /* CNAME 없음 */ }
+
+          if (cnameTarget !== null) {
+            // CNAME 레코드 감지됨 — record 타입을 CNAME으로 업데이트
+            record.type = 'CNAME';
+            record.value = cnameTarget;
+            try {
+              const addresses = await dnsResolve4(domain);
+              record.actual = addresses[0] || '';
+              record.status = addresses.includes(publicIp) ? 'ok' : 'mismatch';
+            } catch {
+              record.actual = 'IP 미해석';
+              record.status = 'mismatch';
+            }
           } else {
-            record.status = 'missing';
+            // 일반 A 레코드 확인
+            const addresses = await dnsResolve4(domain);
+            record.actual = addresses.join(', ');
+            if (addresses.includes(publicIp)) {
+              record.status = 'ok';
+            } else if (addresses.length > 0) {
+              record.status = 'mismatch';
+            } else {
+              record.status = 'missing';
+            }
           }
         } else if (record.type === 'CNAME') {
           const cnames = await dnsResolveCname(domain);
