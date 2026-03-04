@@ -28,8 +28,10 @@ export class DockerService implements OnModuleInit, OnModuleDestroy {
   ) {}
 
   onModuleInit() {
-    // Docker 소켓 연결
-    this.docker = new Docker({ socketPath: '/var/run/docker.sock' });
+    const socketPath =
+      process.env.DOCKER_HOST?.replace('unix://', '') ||
+      '/var/run/docker.sock';
+    this.docker = new Docker({ socketPath });
   }
 
   async onModuleDestroy() {

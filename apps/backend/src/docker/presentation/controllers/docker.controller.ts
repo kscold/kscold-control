@@ -51,7 +51,7 @@ export class DockerController {
   async listContainers(@Request() req: any) {
     const userId = req.user.roles?.includes('super_admin')
       ? undefined
-      : req.user.sub;
+      : req.user.id;
     return this.listContainersUseCase.execute(userId);
   }
 
@@ -62,7 +62,7 @@ export class DockerController {
   @Post('containers')
   @RequirePermissions('docker:create')
   async createContainer(@Body() dto: CreateContainerDto, @Request() req: any) {
-    dto.userId = req.user.sub;
+    dto.userId = req.user.id;
     return this.createContainerUseCase.execute(dto);
   }
 
@@ -76,7 +76,7 @@ export class DockerController {
     @Body() body: { dockerId: string },
     @Request() req: any,
   ) {
-    return this.importContainerUseCase.execute(body.dockerId, req.user.sub);
+    return this.importContainerUseCase.execute(body.dockerId, req.user.id);
   }
 
   /**
@@ -164,7 +164,7 @@ export class DockerController {
       if (newContainer && !newContainer.isManaged) {
         await this.importContainerUseCase.execute(
           newContainer.dockerId,
-          req.user.sub,
+          req.user.id,
         );
       }
     } catch (err) {

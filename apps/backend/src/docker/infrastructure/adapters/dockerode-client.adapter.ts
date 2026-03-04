@@ -22,7 +22,10 @@ export class DockerodeClientAdapter implements IDockerClient, OnModuleInit {
 
   onModuleInit() {
     try {
-      this.docker = new Docker({ socketPath: '/var/run/docker.sock' });
+      const socketPath =
+        process.env.DOCKER_HOST?.replace('unix://', '') ||
+        '/var/run/docker.sock';
+      this.docker = new Docker({ socketPath });
     } catch (error) {
       throw new DockerConnectionException(error.message);
     }

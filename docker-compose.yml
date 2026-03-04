@@ -57,17 +57,18 @@ services:
     mem_limit: 4g
     restart: unless-stopped
 
-  # ===== 새 프로젝트 추가 예시 =====
-  # ubuntu-newproject:
-  #   image: ubuntu:22.04
-  #   container_name: ubuntu-newproject
-  #   command: sleep infinity
-  #   ports:
-  #     - "2224:22"
-  #     - "8083:8080"
-  #   cpus: '2'
-  #   mem_limit: 4g
-  #   restart: unless-stopped
+  # ===== 콩방 인스턴스 (EC2) =====
+  ubuntu-congbang:
+    image: kscold/ubuntu-congbang:latest
+    container_name: ubuntu-congbang
+    command: /entrypoint.sh
+    ports:
+      - "2224:22"
+      - "8082:8080"
+      - "3001:3000"
+    cpus: '2'
+    mem_limit: 3g
+    restart: unless-stopped
 
 volumes:
   infra-db-data:
