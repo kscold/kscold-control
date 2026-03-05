@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { useCallback, useState } from 'react';
 import { useAuthStore } from '../../../stores/auth.store';
 import { useClaudeChatSession } from '../hooks/useClaudeChatSession';
 import { useClaudeChatMessages } from '../hooks/useClaudeChatMessages';
@@ -18,6 +18,10 @@ export function ClaudeChat() {
     clearSession,
   } = useClaudeChatSession();
 
+  // 마운트 시점 sessionId를 한 번만 캡처 — handleSessionReady가 localStorage를
+  // 업데이트해도 소켓 effect가 재실행되지 않도록 방지
+  const [initialSessionId] = useState(() => getSavedSessionId());
+
   const {
     messages,
     isStreaming,
@@ -32,7 +36,7 @@ export function ClaudeChat() {
 
   const { sendMessage, abort, closeSession } = useClaudeChatSocket({
     token,
-    savedSessionId: getSavedSessionId(),
+    savedSessionId: initialSessionId,
     onSessionReady: handleSessionReady,
     onHistory: useCallback(
       (data: { messages: any[] }) => {
