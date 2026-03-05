@@ -101,4 +101,10 @@ export class DockerController {
   async getStats(@Param('id') id: string) {
     return this.dockerService.getStats(id);
   }
+
+  @Get('containers/:dockerId/processes')
+  @RequirePermissions('docker:read')
+  async getContainerProcesses(@Param('dockerId') dockerId: string) {
+    return this.dockerService.getContainerProcesses(dockerId);
+  }
 }
