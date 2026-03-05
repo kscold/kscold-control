@@ -186,6 +186,90 @@ export class DockerodeClientAdapter implements IDockerClient, OnModuleInit {
     }
   }
 
+  async getContainerProcesses(
+    dockerId: string,
+  ): Promise<{ pm2: any[]; services: any[] }> {
+    const container = this.docker.getContainer(dockerId);
+    const pm2List: any[] = [];
+    const services: any[] = [];
+
+    try {
+      const pm2Json = await this.execCommand(container, [
+        'sh',
+        '-c',
+        'pm2 jlist 2>/dev/null || echo "[]"',
+      ]);
+      const parsed = JSON.parse(pm2Json.trim() || '[]');
+      for (const p of parsed) {
+        pm2List.push({
+          name: p.name,
+          status: p.pm2_env?.status || 'unknown',
+          pid: p.pid,
+          cpu: p.monit?.cpu ?? 0,
+          memory: p.monit?.memory ?? 0,
+          restarts: p.pm2_env?.restart_time ?? 0,
+        });
+      }
+    } catch {
+      // PM2 없는 컨테이너
+    }
+
+    try {
+      const ps = await this.execCommand(container, [
+        'sh',
+        '-c',
+        'ps aux 2>/dev/null || ps 2>/dev/null || echo ""',
+      ]);
+      if (/postgres/.test(ps))
+        services.push({ name: 'PostgreSQL', port: 5432, icon: 'pg' });
+      if (/redis-server/.test(ps))
+        services.push({ name: 'Redis', port: 6379, icon: 'redis' });
+      if (/mongod/.test(ps))
+        services.push({ name: 'MongoDB', port: 27017, icon: 'mongo' });
+      if (/mysqld/.test(ps))
+        services.push({ name: 'MySQL', port: 3306, icon: 'mysql' });
+      if (/nginx/.test(ps))
+        services.push({ name: 'Nginx', port: 80, icon: 'nginx' });
+      if (/sshd/.test(ps))
+        services.push({ name: 'SSH', port: 22, icon: 'ssh' });
+    } catch {
+      // ps 실패 무시
+    }
+
+    return { pm2: pm2List, services };
+  }
+
+  private async execCommand(
+    container: Docker.Container,
+    cmd: string[],
+  ): Promise<string> {
+    const exec = await container.exec({
+      Cmd: cmd,
+      AttachStdout: true,
+      AttachStderr: false,
+    });
+
+    const stream = await exec.start({ hijack: true, stdin: false });
+
+    return new Promise((resolve) => {
+      const chunks: Buffer[] = [];
+      stream.on('data', (chunk: Buffer) => {
+        const data = chunk.length > 8 ? chunk.slice(8) : chunk;
+        chunks.push(data);
+      });
+      stream.on('end', () =>
+        resolve(Buffer.concat(chunks).toString('utf8')),
+      );
+      stream.on('error', () =>
+        resolve(Buffer.concat(chunks).toString('utf8')),
+      );
+      setTimeout(
+        () => resolve(Buffer.concat(chunks).toString('utf8')),
+        5000,
+      );
+    });
+  }
+
   // Helper methods
 
   private calculateCpuUsage(stats: any): number {
