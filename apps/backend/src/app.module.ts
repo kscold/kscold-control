@@ -11,6 +11,7 @@ import { RbacModule } from './rbac/rbac.module';
 import { LogsModule } from './logs/logs.module';
 import { NginxModule } from './nginx/nginx.module';
 import { UpnpModule } from './upnp/upnp.module';
+import { ClaudeChatModule } from './claude-chat/claude-chat.module';
 
 // Domain Entities (Clean Architecture)
 import { User } from './rbac/domain/entities/user.entity';
@@ -52,6 +53,7 @@ import { HttpLoggerMiddleware } from './common/middleware/http-logger.middleware
     LogsModule,
     NginxModule,
     UpnpModule,
+    ClaudeChatModule,
   ],
 })
 export class AppModule implements NestModule {
