@@ -1,70 +1,73 @@
 import { useState } from 'react';
 import { Terminal } from '../features/terminal/ui';
-import { Plus, X } from 'lucide-react';
+import { ClaudeChat } from '../features/claude-chat/ui/ClaudeChat';
+import { Plus, X, TerminalSquare, MessageCircle } from 'lucide-react';
 import { useModalStore } from '../stores/modal.store';
 
-interface Terminal {
+type TabType = 'terminal' | 'claude-chat';
+
+interface Tab {
   id: string;
   title: string;
+  type: TabType;
 }
 
 export function ClaudePage() {
-  const [terminals, setTerminals] = useState<Terminal[]>([
-    { id: '1', title: 'Terminal 1' },
+  const [tabs, setTabs] = useState<Tab[]>([
+    { id: 'chat-1', title: 'Claude Chat', type: 'claude-chat' },
   ]);
-  const [activeTerminalId, setActiveTerminalId] = useState('1');
+  const [activeTabId, setActiveTabId] = useState('chat-1');
   const { showAlert } = useModalStore();
 
-  const createTerminal = () => {
-    const newId = Date.now().toString();
-    const newTerminal = {
-      id: newId,
-      title: `Terminal ${terminals.length + 1}`,
-    };
-    setTerminals([...terminals, newTerminal]);
-    setActiveTerminalId(newId);
+  const createTab = (type: TabType) => {
+    const newId = `${type}-${Date.now()}`;
+    const count = tabs.filter((t) => t.type === type).length + 1;
+    const title =
+      type === 'claude-chat' ? `Claude Chat ${count}` : `Terminal ${count}`;
+    setTabs([...tabs, { id: newId, title, type }]);
+    setActiveTabId(newId);
   };
 
-  const closeTerminal = (id: string) => {
-    if (terminals.length === 1) {
-      showAlert('최소 1개의 터미널이 필요합니다');
+  const closeTab = (id: string) => {
+    if (tabs.length === 1) {
+      showAlert('최소 1개의 탭이 필요합니다');
       return;
     }
 
-    const newTerminals = terminals.filter((t) => t.id !== id);
-    setTerminals(newTerminals);
+    const newTabs = tabs.filter((t) => t.id !== id);
+    setTabs(newTabs);
 
-    // 닫은 터미널이 활성 터미널이었으면 다른 터미널로 전환
-    if (activeTerminalId === id) {
-      setActiveTerminalId(newTerminals[0].id);
+    if (activeTabId === id) {
+      setActiveTabId(newTabs[0].id);
     }
   };
 
   return (
     <div className="h-full flex flex-col">
-      {/* Header */}
-      <div className="px-6 py-4 border-b border-gray-800">
-        <h2 className="text-xl font-bold text-white">Terminal</h2>
-        <p className="text-sm text-gray-500">Mac Mini 터미널 (zsh 셸)</p>
-      </div>
-
-      {/* Terminal Tabs */}
-      <div className="flex items-center gap-1 px-4 bg-gray-900 border-b border-gray-800 overflow-x-auto">
-        {terminals.map((terminal) => (
+      {/* Tab Bar */}
+      <div className="flex items-center gap-1 px-2 bg-gray-900 border-b border-gray-800 overflow-x-auto">
+        {tabs.map((tab) => (
           <div
-            key={terminal.id}
-            className={`group flex items-center gap-2 px-3 py-2 text-sm cursor-pointer border-b-2 transition-colors ${
-              activeTerminalId === terminal.id
-                ? 'border-blue-500 text-white bg-gray-800'
+            key={tab.id}
+            className={`group flex items-center gap-1.5 px-3 py-2 text-sm cursor-pointer border-b-2 transition-colors whitespace-nowrap ${
+              activeTabId === tab.id
+                ? tab.type === 'claude-chat'
+                  ? 'border-orange-500 text-white bg-gray-800'
+                  : 'border-blue-500 text-white bg-gray-800'
                 : 'border-transparent text-gray-400 hover:text-gray-300 hover:bg-gray-800'
             }`}
-            onClick={() => setActiveTerminalId(terminal.id)}
+            onClick={() => setActiveTabId(tab.id)}
           >
-            <span>{terminal.title}</span>
+            {tab.type === 'claude-chat' ? (
+              <MessageCircle size={14} />
+            ) : (
+              <TerminalSquare size={14} />
+            )}
+            <span>{tab.title}</span>
             <button
               onClick={(e) => {
                 e.stopPropagation();
-                closeTerminal(terminal.id);
+                closeTab(tab.id);
               }}
               className="opacity-0 group-hover:opacity-100 hover:bg-gray-700 rounded p-0.5 transition-opacity"
             >
@@ -72,25 +75,42 @@ export function ClaudePage() {
             </button>
           </div>
         ))}
-        <button
-          onClick={createTerminal}
-          className="flex items-center gap-1 px-3 py-2 text-sm text-gray-400 hover:text-white hover:bg-gray-800 rounded transition-colors"
-          title="새 터미널 생성"
-        >
-          <Plus size={16} />
-        </button>
+
+        {/* New Tab Buttons */}
+        <div className="flex items-center ml-1 gap-0.5">
+          <button
+            onClick={() => createTab('claude-chat')}
+            className="flex items-center gap-1 px-2 py-2 text-xs text-gray-400 hover:text-white hover:bg-gray-800 rounded transition-colors"
+            title="새 Claude Chat"
+          >
+            <MessageCircle size={14} />
+            <Plus size={12} />
+          </button>
+          <button
+            onClick={() => createTab('terminal')}
+            className="flex items-center gap-1 px-2 py-2 text-xs text-gray-400 hover:text-white hover:bg-gray-800 rounded transition-colors"
+            title="새 터미널"
+          >
+            <TerminalSquare size={14} />
+            <Plus size={12} />
+          </button>
+        </div>
       </div>
 
-      {/* Terminal Content */}
+      {/* Tab Content */}
       <div className="flex-1 relative">
-        {terminals.map((terminal) => (
+        {tabs.map((tab) => (
           <div
-            key={terminal.id}
+            key={tab.id}
             className={`absolute inset-0 ${
-              activeTerminalId === terminal.id ? 'block' : 'hidden'
+              activeTabId === tab.id ? 'block' : 'hidden'
             }`}
           >
-            <Terminal terminalId={terminal.id} />
+            {tab.type === 'terminal' ? (
+              <Terminal terminalId={tab.id} />
+            ) : (
+              <ClaudeChat />
+            )}
           </div>
         ))}
       </div>
