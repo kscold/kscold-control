@@ -93,6 +93,13 @@ export interface IDockerClient {
    * Inspect container
    */
   inspectContainer(dockerId: string): Promise<any>;
+
+  /**
+   * Get container internal processes (PM2 + system services)
+   */
+  getContainerProcesses(
+    dockerId: string,
+  ): Promise<{ pm2: any[]; services: any[] }>;
 }
 
 /**

@@ -7,6 +7,7 @@ import {
   Param,
   UseGuards,
   Request,
+  Inject,
 } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { PermissionsGuard } from '../../../common/guards';
@@ -21,6 +22,10 @@ import {
 } from '../../application/use-cases';
 import { CreateContainerDto } from '../../application/dto';
 import { ComposeService } from '../../application/services/compose.service';
+import {
+  IDockerClient,
+  DOCKER_CLIENT,
+} from '../../domain/repositories/docker-client.interface';
 
 /**
  * Docker Controller
@@ -40,10 +45,21 @@ export class DockerController {
     private readonly removeContainerUseCase: RemoveContainerUseCase,
     private readonly importContainerUseCase: ImportContainerUseCase,
     private readonly composeService: ComposeService,
+    @Inject(DOCKER_CLIENT) private readonly dockerClient: IDockerClient,
   ) {}
 
   /**
-   * List all containers
+   * List all containers (no user filter - for topology)
+   * GET /docker/containers/all
+   */
+  @Get('containers/all')
+  @RequirePermissions('docker:read')
+  async listAllContainers() {
+    return this.listContainersUseCase.execute(undefined);
+  }
+
+  /**
+   * List containers (user-scoped)
    * GET /docker/containers
    */
   @Get('containers')
@@ -53,6 +69,16 @@ export class DockerController {
       ? undefined
       : req.user.id;
     return this.listContainersUseCase.execute(userId);
+  }
+
+  /**
+   * Get container internal processes (PM2 + services)
+   * GET /docker/containers/:dockerId/processes
+   */
+  @Get('containers/:dockerId/processes')
+  @RequirePermissions('docker:read')
+  async getContainerProcesses(@Param('dockerId') dockerId: string) {
+    return this.dockerClient.getContainerProcesses(dockerId);
   }
 
   /**
