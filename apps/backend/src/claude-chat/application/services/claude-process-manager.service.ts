@@ -44,9 +44,13 @@ export class ClaudeProcessManagerService {
       existing.process.kill('SIGINT');
     }
 
-    const args = ['-p', '--output-format', 'stream-json'];
+    const args = [
+      '-p',
+      '--output-format', 'stream-json',
+      '--include-partial-messages', // 실시간 스트리밍 토큰 전송
+    ];
 
-    // Resume if we have Claude's session ID
+    // Resume previous conversation if we have Claude's session ID
     if (existing?.claudeSessionId) {
       args.push('--resume', existing.claudeSessionId);
     }
@@ -54,17 +58,23 @@ export class ClaudeProcessManagerService {
     args.push(prompt);
 
     const homeDir = process.env.HOME || '/Users/kscold';
+
+    // CLAUDE* 환경변수 제거 (중첩 실행 방지)
+    // ANTHROPIC_API_KEY를 명시적으로 넣지 않음 →
+    //   PM2 env에 있으면 filteredEnv에 포함됨
+    //   없으면 claude가 ~/.claude.json / keychain에서 직접 읽음
+    const filteredEnv = Object.fromEntries(
+      Object.entries(process.env).filter(
+        ([key]) => !key.startsWith('CLAUDE'),
+      ),
+    );
+
     const child = spawn('claude', args, {
       cwd: homeDir,
       env: {
-        ...Object.fromEntries(
-          Object.entries(process.env).filter(
-            ([key]) => !key.startsWith('CLAUDE'),
-          ),
-        ),
+        ...filteredEnv,
         HOME: homeDir,
         PATH: process.env.PATH,
-        ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY || '',
       },
       stdio: ['pipe', 'pipe', 'pipe'],
     });
@@ -81,10 +91,11 @@ export class ClaudeProcessManagerService {
 
     const rl = createInterface({ input: child.stdout });
     rl.on('line', (line) => {
+      if (!line.trim()) return;
       try {
         const event = JSON.parse(line);
 
-        // Capture session ID
+        // session_id 캡처 (init 이벤트 or result 이벤트)
         if (event.session_id && !proc.claudeSessionId) {
           proc.claudeSessionId = event.session_id;
         }
@@ -92,6 +103,7 @@ export class ClaudeProcessManagerService {
         if (event.type === 'assistant' && event.message?.content) {
           for (const block of event.message.content) {
             if (block.type === 'text') {
+              // --include-partial-messages: 누적 텍스트에서 새 부분만 추출
               const newText = block.text.substring(lastTextLength);
               lastTextLength = block.text.length;
               if (newText) {
@@ -107,17 +119,14 @@ export class ClaudeProcessManagerService {
                     : JSON.stringify(block.input).substring(0, 200),
                 status: 'start',
               });
-            } else if (block.type === 'tool_result') {
-              onEvent({
-                type: 'tool-result',
-                content:
-                  typeof block.content === 'string'
-                    ? block.content.substring(0, 500)
-                    : JSON.stringify(block.content).substring(0, 500),
-              });
             }
           }
         } else if (event.type === 'result') {
+          // session_id가 result에도 있으면 업데이트
+          if (event.session_id) {
+            proc.claudeSessionId = event.session_id;
+          }
+
           const cost = event.cost_usd || 0;
           proc.totalCostUsd += cost;
           proc.isProcessing = false;
@@ -132,7 +141,7 @@ export class ClaudeProcessManagerService {
           });
         }
       } catch {
-        // Non-JSON line, skip
+        // Non-JSON line (e.g. stderr mixed in), skip
       }
     });
 
@@ -144,6 +153,7 @@ export class ClaudeProcessManagerService {
     child.on('exit', (code) => {
       proc.isProcessing = false;
       if (code !== 0 && stderrBuffer.trim()) {
+        console.error(`[ClaudeProcess] Exit ${code}:`, stderrBuffer.trim());
         onEvent({ type: 'error', message: stderrBuffer.trim() });
       }
       onEvent({ type: 'process-exit', code: code ?? 0 });
