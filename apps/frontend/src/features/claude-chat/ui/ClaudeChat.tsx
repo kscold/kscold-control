@@ -7,7 +7,11 @@ import { ChatHeader } from './ChatHeader';
 import { ChatMessageList } from './ChatMessageList';
 import { ChatInput } from './ChatInput';
 
-export function ClaudeChat() {
+interface ClaudeChatProps {
+  onBackToTerminal?: () => void;
+}
+
+export function ClaudeChat({ onBackToTerminal }: ClaudeChatProps = {}) {
   const { token } = useAuthStore();
   const {
     session,
@@ -108,7 +112,7 @@ export function ClaudeChat() {
 
   return (
     <div className="h-full flex flex-col bg-gray-950">
-      <ChatHeader session={session} onNewSession={handleNewSession} />
+      <ChatHeader session={session} onNewSession={handleNewSession} onBackToTerminal={onBackToTerminal} />
       <ChatMessageList messages={messages} isStreaming={isStreaming} />
       <ChatInput
         onSend={handleSend}

@@ -4,3 +4,5 @@ export * from './docker.service';
 export * from './rbac.service';
 export * from './logs.service';
 export * from './system.service';
+export * from './nginx.service';
+export * from './network.service';

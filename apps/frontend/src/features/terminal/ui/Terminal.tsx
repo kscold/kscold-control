@@ -7,6 +7,7 @@ import { TerminalHeader } from './TerminalHeader';
 
 interface TerminalProps {
   terminalId: string;
+  onSwitchToClaude?: () => void;
 }
 
 /**
@@ -16,7 +17,7 @@ interface TerminalProps {
  * Refactored from ClaudeTerminal.tsx (284 LOC → ~80 LOC)
  * Uses FSD architecture with custom hooks
  */
-export function Terminal({ terminalId }: TerminalProps) {
+export function Terminal({ terminalId, onSwitchToClaude }: TerminalProps) {
   const { token } = useAuthStore();
   const { showConfirm } = useModalStore();
 
@@ -52,7 +53,9 @@ export function Terminal({ terminalId }: TerminalProps) {
    * Execute claude command
    */
   const handleClaudeCommand = () => {
-    if (socket.socket && session.isConnected) {
+    if (onSwitchToClaude) {
+      onSwitchToClaude();
+    } else if (socket.socket && session.isConnected) {
       socket.sendInput('claude\n');
     }
   };
