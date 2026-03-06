@@ -1,13 +1,13 @@
 import { Handle, Position, type NodeProps } from '@xyflow/react';
 import { Cpu, Database } from 'lucide-react';
-import type { StackMeta, ContainerProcesses, Pm2Process, SystemService } from '../../lib/topology.types';
+import type { ContainerNodeData, Pm2Process, SystemService } from '../../lib/topology.types';
 import { formatMemory, pm2Dot } from '../../lib/topology.utils';
 
 export function ContainerNode({ data }: NodeProps) {
-  const d = data as any;
+  const d = data as unknown as ContainerNodeData;
   const isRunning = d.status === 'running';
-  const meta: StackMeta = d.meta;
-  const processes: ContainerProcesses = d.processes || { pm2: [], services: [] };
+  const meta = d.meta;
+  const processes = d.processes || { pm2: [], services: [] };
 
   const pm2List: Pm2Process[] = processes.pm2;
   const runtimeServices: SystemService[] = processes.services.length > 0

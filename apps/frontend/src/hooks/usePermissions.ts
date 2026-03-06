@@ -8,14 +8,7 @@ export function usePermissions() {
   const hasPermission = (permission: string): boolean => {
     if (!user) return false;
 
-    // user.permissions가 있으면 직접 사용 (로그인 응답)
-    // 없으면 roles에서 추출 (기존 호환성)
-    const permissions =
-      user.permissions ||
-      (user.roles as any).flatMap?.(
-        (role: any) => role.permissions?.map((p: any) => p.name) || [],
-      ) ||
-      [];
+    const permissions = user.permissions ?? [];
 
     return permissions.includes(permission);
   };

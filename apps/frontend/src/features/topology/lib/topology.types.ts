@@ -44,6 +44,20 @@ export interface UpnpMappingData {
   local: boolean;
 }
 
+export interface ContainerNodeData {
+  label: string;
+  image: string;
+  status: string;
+  ports: Record<string, unknown>;
+  meta: StackMeta;
+  processes: ContainerProcesses;
+}
+
+export interface HostNodeData {
+  label: string;
+  subtitle: string;
+}
+
 export interface StackMeta {
   label: string;
   type: 'app' | 'db' | 'proxy' | 'cache' | 'storage';
