@@ -7,6 +7,7 @@ import { Role } from './domain/entities/role.entity';
 import { Permission } from './domain/entities/permission.entity';
 import { USER_REPOSITORY } from './domain/repositories/user.repository.interface';
 import { ROLE_REPOSITORY } from './domain/repositories/role.repository.interface';
+import { PERMISSION_REPOSITORY } from './domain/repositories/permission.repository.interface';
 
 // Application Layer
 import {
@@ -25,6 +26,7 @@ import {
   TypeOrmUserRepository,
   TypeOrmRoleRepository,
 } from './infrastructure/repositories';
+import { TypeOrmPermissionRepository } from './infrastructure/repositories/typeorm-permission.repository';
 
 // Presentation Layer
 import { RbacController } from './presentation/controllers/rbac.controller';
@@ -63,6 +65,10 @@ import { RbacController } from './presentation/controllers/rbac.controller';
     {
       provide: ROLE_REPOSITORY,
       useClass: TypeOrmRoleRepository,
+    },
+    {
+      provide: PERMISSION_REPOSITORY,
+      useClass: TypeOrmPermissionRepository,
     },
   ],
   exports: [
