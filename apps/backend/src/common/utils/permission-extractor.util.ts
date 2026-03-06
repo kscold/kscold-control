@@ -1,4 +1,4 @@
-import { Role } from '../../entities/role.entity';
+import { Role } from '../../rbac/domain/entities/role.entity';
 
 /**
  * Permission extraction utility
