@@ -1,46 +1,11 @@
-import { useState } from 'react';
+import { Plus, X, TerminalSquare, MessageCircle } from 'lucide-react';
 import { Terminal } from '../features/terminal/ui';
 import { ClaudeChat } from '../features/claude-chat/ui/ClaudeChat';
-import { Plus, X, TerminalSquare, MessageCircle } from 'lucide-react';
-import { useModalStore } from '../stores/modal.store';
-
-type TabType = 'terminal' | 'claude-chat';
-
-interface Tab {
-  id: string;
-  title: string;
-  type: TabType;
-}
+import { useClaudeTabs } from '../features/claude-chat/hooks/useClaudeTabs';
 
 export function ClaudePage() {
-  const [tabs, setTabs] = useState<Tab[]>([
-    { id: 'chat-1', title: 'Claude Chat', type: 'claude-chat' },
-  ]);
-  const [activeTabId, setActiveTabId] = useState('chat-1');
-  const { showAlert } = useModalStore();
-
-  const createTab = (type: TabType) => {
-    const newId = `${type}-${Date.now()}`;
-    const count = tabs.filter((t) => t.type === type).length + 1;
-    const title =
-      type === 'claude-chat' ? `Claude Chat ${count}` : `Terminal ${count}`;
-    setTabs([...tabs, { id: newId, title, type }]);
-    setActiveTabId(newId);
-  };
-
-  const closeTab = (id: string) => {
-    if (tabs.length === 1) {
-      showAlert('최소 1개의 탭이 필요합니다');
-      return;
-    }
-
-    const newTabs = tabs.filter((t) => t.id !== id);
-    setTabs(newTabs);
-
-    if (activeTabId === id) {
-      setActiveTabId(newTabs[0].id);
-    }
-  };
+  const { tabs, activeTabId, setActiveTabId, tabModes, setTabMode, createTab, closeTab } =
+    useClaudeTabs();
 
   return (
     <div className="h-full flex flex-col">
@@ -58,7 +23,7 @@ export function ClaudePage() {
             }`}
             onClick={() => setActiveTabId(tab.id)}
           >
-            {tab.type === 'claude-chat' ? (
+            {tab.type === 'claude-chat' || tabModes[tab.id] === 'claude' ? (
               <MessageCircle size={14} />
             ) : (
               <TerminalSquare size={14} />
@@ -102,12 +67,17 @@ export function ClaudePage() {
         {tabs.map((tab) => (
           <div
             key={tab.id}
-            className={`absolute inset-0 ${
-              activeTabId === tab.id ? 'block' : 'hidden'
-            }`}
+            className={`absolute inset-0 ${activeTabId === tab.id ? 'block' : 'hidden'}`}
           >
             {tab.type === 'terminal' ? (
-              <Terminal terminalId={tab.id} />
+              tabModes[tab.id] === 'claude' ? (
+                <ClaudeChat onBackToTerminal={() => setTabMode(tab.id, 'terminal')} />
+              ) : (
+                <Terminal
+                  terminalId={tab.id}
+                  onSwitchToClaude={() => setTabMode(tab.id, 'claude')}
+                />
+              )
             ) : (
               <ClaudeChat />
             )}
