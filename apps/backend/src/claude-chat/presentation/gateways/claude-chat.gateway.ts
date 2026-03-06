@@ -8,6 +8,7 @@ import {
   ConnectedSocket,
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
+import type { AuthenticatedSocket } from '../../../common/types/authenticated-socket.type';
 import {
   Injectable,
   Inject,
@@ -59,10 +60,10 @@ export class ClaudeChatGateway
   ) {}
 
   private async checkPermission(
-    client: Socket,
+    client: AuthenticatedSocket,
     requiredPermission: string,
   ): Promise<boolean> {
-    const user = (client as any).user;
+    const user = client.user;
     if (!user?.sub) return false;
 
     const userWithPermissions = await this.userRepository.findByIdWithRoles(
@@ -76,13 +77,13 @@ export class ClaudeChatGateway
     return permissions.includes(requiredPermission);
   }
 
-  async handleConnection(client: Socket) {
+  async handleConnection(client: AuthenticatedSocket) {
     try {
       const token = client.handshake.auth.token;
       if (!token) throw new UnauthorizedException('No token provided');
 
       const payload = this.jwtService.verify(token);
-      (client as any).user = payload;
+      client.user = payload;
 
       const hasPermission = await this.checkPermission(
         client,
