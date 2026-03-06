@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { spawn, ChildProcess } from 'child_process';
 import { createInterface } from 'readline';
 
@@ -31,6 +31,7 @@ export interface ClaudeStreamEvent {
 
 @Injectable()
 export class ClaudeProcessManagerService {
+  private readonly logger = new Logger(ClaudeProcessManagerService.name);
   private readonly processes = new Map<string, ClaudeProcess>();
 
   sendPrompt(
@@ -153,7 +154,7 @@ export class ClaudeProcessManagerService {
     child.on('exit', (code) => {
       proc.isProcessing = false;
       if (code !== 0 && stderrBuffer.trim()) {
-        console.error(`[ClaudeProcess] Exit ${code}:`, stderrBuffer.trim());
+        this.logger.error(`Exit ${code}: ${stderrBuffer.trim()}`);
         onEvent({ type: 'error', message: stderrBuffer.trim() });
       }
       onEvent({ type: 'process-exit', code: code ?? 0 });

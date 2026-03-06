@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 
 /**
  * Session Mapper Service
@@ -6,6 +6,8 @@ import { Injectable } from '@nestjs/common';
  */
 @Injectable()
 export class SessionMapperService {
+  private readonly logger = new Logger(SessionMapperService.name);
+
   // sessionId -> Set<socketId> mapping (multi-client support)
   private readonly sessionClients = new Map<string, Set<string>>();
 
@@ -25,7 +27,7 @@ export class SessionMapperService {
     }
     this.sessionClients.get(sessionId)!.add(clientId);
 
-    console.log(
+    this.logger.log(
       `[SessionMapper] Mapped client ${clientId} to session ${sessionId}`,
     );
   }
@@ -40,14 +42,14 @@ export class SessionMapperService {
       const clients = this.sessionClients.get(sessionId);
       if (clients) {
         clients.delete(clientId);
-        console.log(
+        this.logger.log(
           `[SessionMapper] Unmapped client ${clientId} from session ${sessionId}. Remaining: ${clients.size}`,
         );
 
         // Clean up empty session
         if (clients.size === 0) {
           this.sessionClients.delete(sessionId);
-          console.log(
+          this.logger.log(
             `[SessionMapper] No clients remaining for session ${sessionId}`,
           );
         }
@@ -90,7 +92,7 @@ export class SessionMapperService {
         this.clientSessions.delete(clientId);
       });
       this.sessionClients.delete(sessionId);
-      console.log(
+      this.logger.log(
         `[SessionMapper] Cleared all mappings for session ${sessionId}`,
       );
     }

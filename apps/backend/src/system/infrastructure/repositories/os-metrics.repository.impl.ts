@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import * as os from 'os';
 import { exec } from 'child_process';
 import { promisify } from 'util';
@@ -15,6 +15,7 @@ const execAsync = promisify(exec);
 
 @Injectable()
 export class OsMetricsRepositoryImpl implements IOsMetricsRepository {
+  private readonly logger = new Logger(OsMetricsRepositoryImpl.name);
   private readonly STATS_CACHE_TTL = 3 * 1000; // 3초
   private readonly DISK_CACHE_TTL = 60 * 1000; // 1분
 
@@ -86,7 +87,7 @@ export class OsMetricsRepositoryImpl implements IOsMetricsRepository {
 
       this.diskCache = { data: { diskInfo, diskBreakdown }, timestamp: now };
     } catch (error) {
-      console.error('Failed to get disk info:', error);
+      this.logger.error('Failed to get disk info:', error);
     }
 
     return { ...diskInfo, breakdown: diskBreakdown };

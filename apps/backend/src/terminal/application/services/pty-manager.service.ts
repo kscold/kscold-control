@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import * as pty from 'node-pty';
 import { IPtyManager } from '../../domain/interfaces/pty-manager.interface';
 
@@ -8,6 +8,8 @@ import { IPtyManager } from '../../domain/interfaces/pty-manager.interface';
  */
 @Injectable()
 export class PtyManagerService implements IPtyManager {
+  private readonly logger = new Logger(PtyManagerService.name);
+
   // sessionId -> PTY process mapping
   private readonly processes = new Map<string, pty.IPty>();
 
@@ -32,7 +34,7 @@ export class PtyManagerService implements IPtyManager {
     });
 
     this.processes.set(sessionId, shell);
-    console.log(`[PTY] Created new PTY for session: ${sessionId}`);
+    this.logger.log(`[PTY] Created new PTY for session: ${sessionId}`);
 
     return shell;
   }
@@ -59,7 +61,7 @@ export class PtyManagerService implements IPtyManager {
     if (shell) {
       shell.kill();
       this.processes.delete(sessionId);
-      console.log(`[PTY] Killed PTY for session: ${sessionId}`);
+      this.logger.log(`[PTY] Killed PTY for session: ${sessionId}`);
     }
   }
 

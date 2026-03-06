@@ -23,6 +23,7 @@ import {
   USER_REPOSITORY,
 } from '../../../rbac/domain/repositories/user.repository.interface';
 import { PermissionExtractor } from '../../../common/utils/permission-extractor.util';
+import { PERMISSIONS } from '../../../common/constants/permissions';
 
 // Application Services
 import {
@@ -88,7 +89,7 @@ export class TerminalGateway
 
       const hasPermission = await this.checkPermission(
         client,
-        'terminal:access',
+        PERMISSIONS.TERMINAL_ACCESS,
       );
       if (!hasPermission) {
         throw new ForbiddenException('터미널 접근 권한이 없습니다');
