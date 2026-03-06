@@ -9,6 +9,7 @@ import {
 } from '../../domain/repositories/role.repository.interface';
 import { AssignRolesDto } from '../dto/assign-roles.dto';
 import { UserResponseDto } from '../dto/user-response.dto';
+import { ROLES } from '../../../common/constants/roles';
 
 /**
  * Assign Roles Use Case
@@ -35,7 +36,7 @@ export class AssignRolesUseCase {
     user.roles = roles;
 
     // If guest role is assigned, set terminal limit to 10
-    const hasGuestRole = roles.some((role) => role.name === 'guest');
+    const hasGuestRole = roles.some((role) => role.name === ROLES.GUEST);
     if (hasGuestRole && user.terminalCommandLimit === -1) {
       user.terminalCommandLimit = 10;
       user.terminalCommandCount = 0;

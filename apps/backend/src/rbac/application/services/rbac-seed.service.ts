@@ -11,6 +11,8 @@ import {
   IRoleRepository,
   ROLE_REPOSITORY,
 } from '../../domain/repositories/role.repository.interface';
+import { ROLES } from '../../../common/constants/roles';
+import { PERMISSIONS } from '../../../common/constants/permissions';
 
 /**
  * RBAC Seed Service
@@ -35,16 +37,13 @@ export class RbacSeedService {
   async seedInitialData(): Promise<void> {
     // Create permissions
     const permissionData = [
-      { name: 'docker:read', description: 'Docker 컨테이너 조회' },
-      { name: 'docker:create', description: 'Docker 컨테이너 생성' },
-      {
-        name: 'docker:update',
-        description: 'Docker 컨테이너 수정 (시작/중지)',
-      },
-      { name: 'docker:delete', description: 'Docker 컨테이너 삭제' },
-      { name: 'terminal:access', description: '터미널 접근' },
-      { name: 'rbac:manage', description: 'RBAC 관리' },
-      { name: 'system:read', description: '시스템 정보 및 로그 조회' },
+      { name: PERMISSIONS.DOCKER_READ, description: 'Docker 컨테이너 조회' },
+      { name: PERMISSIONS.DOCKER_CREATE, description: 'Docker 컨테이너 생성' },
+      { name: PERMISSIONS.DOCKER_UPDATE, description: 'Docker 컨테이너 수정 (시작/중지)' },
+      { name: PERMISSIONS.DOCKER_DELETE, description: 'Docker 컨테이너 삭제' },
+      { name: PERMISSIONS.TERMINAL_ACCESS, description: '터미널 접근' },
+      { name: PERMISSIONS.RBAC_MANAGE, description: 'RBAC 관리' },
+      { name: PERMISSIONS.SYSTEM_READ, description: '시스템 정보 및 로그 조회' },
     ];
 
     for (const perm of permissionData) {
@@ -59,10 +58,10 @@ export class RbacSeedService {
 
     // Create Super Admin role - all permissions
     let superAdminRole =
-      await this.roleRepository.findByNameWithPermissions('super_admin');
+      await this.roleRepository.findByNameWithPermissions(ROLES.SUPER_ADMIN);
     if (!superAdminRole) {
       superAdminRole = this.roleRepository.create({
-        name: 'super_admin',
+        name: ROLES.SUPER_ADMIN,
         description: '모든 권한 (생성/수정/삭제/터미널)',
         permissions: allPermissions,
       });
@@ -75,12 +74,12 @@ export class RbacSeedService {
 
     // Create Read Only role
     const readOnlyPerms = allPermissions.filter(
-      (p) => p.name === 'docker:read',
+      (p) => p.name === PERMISSIONS.DOCKER_READ,
     );
-    const readOnlyRole = await this.roleRepository.findByName('read_only');
+    const readOnlyRole = await this.roleRepository.findByName(ROLES.READ_ONLY);
     if (!readOnlyRole) {
       const role = this.roleRepository.create({
-        name: 'read_only',
+        name: ROLES.READ_ONLY,
         description: '읽기 전용',
         permissions: readOnlyPerms,
       });
@@ -89,12 +88,12 @@ export class RbacSeedService {
 
     // Create Operator role
     const operatorPerms = allPermissions.filter(
-      (p) => p.name === 'docker:read' || p.name === 'docker:update',
+      (p) => p.name === PERMISSIONS.DOCKER_READ || p.name === PERMISSIONS.DOCKER_UPDATE,
     );
-    const operatorRole = await this.roleRepository.findByName('operator');
+    const operatorRole = await this.roleRepository.findByName(ROLES.OPERATOR);
     if (!operatorRole) {
       const role = this.roleRepository.create({
-        name: 'operator',
+        name: ROLES.OPERATOR,
         description: '컨테이너 시작/중지 가능',
         permissions: operatorPerms,
       });
@@ -103,12 +102,12 @@ export class RbacSeedService {
 
     // Create Terminal Only role
     const terminalPerms = allPermissions.filter(
-      (p) => p.name === 'terminal:access',
+      (p) => p.name === PERMISSIONS.TERMINAL_ACCESS,
     );
-    const terminalRole = await this.roleRepository.findByName('terminal_only');
+    const terminalRole = await this.roleRepository.findByName(ROLES.TERMINAL_ONLY);
     if (!terminalRole) {
       const role = this.roleRepository.create({
-        name: 'terminal_only',
+        name: ROLES.TERMINAL_ONLY,
         description: '터미널 접근만 가능',
         permissions: terminalPerms,
       });
@@ -118,14 +117,14 @@ export class RbacSeedService {
     // Create Guest role
     const guestPerms = allPermissions.filter(
       (p) =>
-        p.name === 'docker:read' ||
-        p.name === 'terminal:access' ||
-        p.name === 'system:read',
+        p.name === PERMISSIONS.DOCKER_READ ||
+        p.name === PERMISSIONS.TERMINAL_ACCESS ||
+        p.name === PERMISSIONS.SYSTEM_READ,
     );
-    const guestRole = await this.roleRepository.findByName('guest');
+    const guestRole = await this.roleRepository.findByName(ROLES.GUEST);
     if (!guestRole) {
       const role = this.roleRepository.create({
-        name: 'guest',
+        name: ROLES.GUEST,
         description: '구경 전용 (읽기만 가능, 터미널 10회 제한)',
         permissions: guestPerms,
       });
@@ -133,10 +132,11 @@ export class RbacSeedService {
     }
 
     // Assign admin@kscold.dev to super_admin role
+    const adminEmail = process.env.ADMIN_EMAIL ?? 'admin@kscold.dev';
     const adminUser =
-      await this.userRepository.findByEmailWithRoles('admin@kscold.dev');
+      await this.userRepository.findByEmailWithRoles(adminEmail);
     if (adminUser) {
-      const superAdmin = await this.roleRepository.findByName('super_admin');
+      const superAdmin = await this.roleRepository.findByName(ROLES.SUPER_ADMIN);
       if (superAdmin && !adminUser.roles.find((r) => r.id === superAdmin.id)) {
         adminUser.roles.push(superAdmin);
         await this.userRepository.save(adminUser);

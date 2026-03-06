@@ -13,6 +13,7 @@ import { AuthGuard } from '@nestjs/passport';
 import { PermissionsGuard } from '../../../common/guards';
 import { RequirePermissions } from '../../../common/decorators';
 import { PERMISSIONS } from '../../../common/constants/permissions';
+import { ROLES } from '../../../common/constants/roles';
 import type { JwtRequest } from '../../../common/types/jwt-request.type';
 import {
   CreateContainerUseCase,
@@ -67,7 +68,7 @@ export class DockerController {
   @Get('containers')
   @RequirePermissions(PERMISSIONS.DOCKER_READ)
   async listContainers(@Request() req: JwtRequest) {
-    const userId = req.user.roles?.includes('super_admin')
+    const userId = req.user.roles?.includes(ROLES.SUPER_ADMIN)
       ? undefined
       : req.user.id;
     return this.listContainersUseCase.execute(userId);
