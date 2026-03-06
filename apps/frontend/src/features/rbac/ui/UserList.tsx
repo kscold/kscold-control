@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Users, Edit2, Key, Trash2 } from 'lucide-react';
 import type { User } from '../../../types/domain.types';
+import { ROLES } from '../../../constants/roles';
 
 interface UserListProps {
   users: User[];
@@ -14,13 +15,13 @@ interface UserListProps {
 
 const getRoleBadgeColor = (roleName: string) => {
   switch (roleName) {
-    case 'super_admin':
+    case ROLES.SUPER_ADMIN:
       return 'bg-purple-600';
-    case 'operator':
+    case ROLES.OPERATOR:
       return 'bg-blue-600';
-    case 'read_only':
+    case ROLES.READ_ONLY:
       return 'bg-gray-600';
-    case 'terminal_only':
+    case ROLES.TERMINAL_ONLY:
       return 'bg-green-600';
     default:
       return 'bg-gray-500';

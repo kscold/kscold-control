@@ -1,6 +1,7 @@
 import { Play, Square, Trash2, Download, Globe } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { usePermissions } from '../../../hooks/usePermissions';
+import { PERMISSIONS } from '../../../constants/permissions';
 import type { Container } from '../../../types/domain.types';
 
 interface ContainerCardProps {
@@ -141,7 +142,7 @@ export function ContainerCard({
           {onImport && (
             <button
               onClick={() =>
-                checkPermission('docker:create', () =>
+                checkPermission(PERMISSIONS.DOCKER_CREATE, () =>
                   onImport(container.dockerId),
                 )
               }
@@ -158,7 +159,7 @@ export function ContainerCard({
         {container.liveStatus === 'running' ? (
           <button
             onClick={() =>
-              checkPermission('docker:update', () => onStop(container.id))
+              checkPermission(PERMISSIONS.DOCKER_UPDATE, () => onStop(container.id))
             }
             className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-yellow-600 text-white rounded hover:bg-yellow-700 transition-colors"
             title="중지"
@@ -169,7 +170,7 @@ export function ContainerCard({
         ) : (
           <button
             onClick={() =>
-              checkPermission('docker:update', () => onStart(container.id))
+              checkPermission(PERMISSIONS.DOCKER_UPDATE, () => onStart(container.id))
             }
             className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-green-600 text-white rounded hover:bg-green-700 transition-colors"
             title="시작"
@@ -187,7 +188,7 @@ export function ContainerCard({
         </button>
         <button
           onClick={() =>
-            checkPermission('docker:delete', () => onDelete(container.id))
+            checkPermission(PERMISSIONS.DOCKER_DELETE, () => onDelete(container.id))
           }
           className="px-3 py-2 bg-red-600 text-white rounded hover:bg-red-700 transition-colors"
           title="삭제"
