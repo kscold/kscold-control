@@ -1,18 +1,45 @@
-import { useEffect } from 'react';
+import { lazy, Suspense, useEffect } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuthStore } from './stores/auth.store';
-import { Layout } from './components/Layout';
-import { LoginPage } from './pages/LoginPage';
-import { DashboardPage } from './pages/DashboardPage';
-import { ClaudePage } from './pages/ClaudePage';
-import { DockerPage } from './pages/DockerPage';
-import { RbacPage } from './pages/RbacPage';
-import { LogsPage } from './pages/LogsPage';
-import { NginxPage } from './pages/NginxPage';
-import { NetworkPage } from './pages/NetworkPage';
-import { TopologyPage } from './pages/TopologyPage';
-import { Modal } from './components/Modal';
+import { Layout } from './app/Layout';
+import { Modal } from './shared/ui/Modal';
 import { ErrorBoundary } from './app/providers';
+
+const LoginPage = lazy(() =>
+  import('./pages/LoginPage').then((m) => ({ default: m.LoginPage })),
+);
+const DashboardPage = lazy(() =>
+  import('./pages/DashboardPage').then((m) => ({ default: m.DashboardPage })),
+);
+const ClaudePage = lazy(() =>
+  import('./pages/ClaudePage').then((m) => ({ default: m.ClaudePage })),
+);
+const DockerPage = lazy(() =>
+  import('./pages/DockerPage').then((m) => ({ default: m.DockerPage })),
+);
+const RbacPage = lazy(() =>
+  import('./pages/RbacPage').then((m) => ({ default: m.RbacPage })),
+);
+const LogsPage = lazy(() =>
+  import('./pages/LogsPage').then((m) => ({ default: m.LogsPage })),
+);
+const NginxPage = lazy(() =>
+  import('./pages/NginxPage').then((m) => ({ default: m.NginxPage })),
+);
+const NetworkPage = lazy(() =>
+  import('./pages/NetworkPage').then((m) => ({ default: m.NetworkPage })),
+);
+const TopologyPage = lazy(() =>
+  import('./pages/TopologyPage').then((m) => ({ default: m.TopologyPage })),
+);
+
+function PageLoader() {
+  return (
+    <div className="flex items-center justify-center h-full">
+      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500" />
+    </div>
+  );
+}
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { token, validateToken } = useAuthStore();
@@ -31,7 +58,14 @@ export default function App() {
   return (
     <ErrorBoundary>
       <Routes>
-        <Route path="/login" element={<LoginPage />} />
+        <Route
+          path="/login"
+          element={
+            <Suspense fallback={<PageLoader />}>
+              <LoginPage />
+            </Suspense>
+          }
+        />
         <Route
           path="/"
           element={
@@ -44,7 +78,9 @@ export default function App() {
             index
             element={
               <ErrorBoundary>
-                <DashboardPage />
+                <Suspense fallback={<PageLoader />}>
+                  <DashboardPage />
+                </Suspense>
               </ErrorBoundary>
             }
           />
@@ -52,7 +88,9 @@ export default function App() {
             path="terminal"
             element={
               <ErrorBoundary>
-                <ClaudePage />
+                <Suspense fallback={<PageLoader />}>
+                  <ClaudePage />
+                </Suspense>
               </ErrorBoundary>
             }
           />
@@ -60,7 +98,9 @@ export default function App() {
             path="docker"
             element={
               <ErrorBoundary>
-                <DockerPage />
+                <Suspense fallback={<PageLoader />}>
+                  <DockerPage />
+                </Suspense>
               </ErrorBoundary>
             }
           />
@@ -68,7 +108,9 @@ export default function App() {
             path="rbac"
             element={
               <ErrorBoundary>
-                <RbacPage />
+                <Suspense fallback={<PageLoader />}>
+                  <RbacPage />
+                </Suspense>
               </ErrorBoundary>
             }
           />
@@ -76,7 +118,9 @@ export default function App() {
             path="logs"
             element={
               <ErrorBoundary>
-                <LogsPage />
+                <Suspense fallback={<PageLoader />}>
+                  <LogsPage />
+                </Suspense>
               </ErrorBoundary>
             }
           />
@@ -84,7 +128,9 @@ export default function App() {
             path="nginx"
             element={
               <ErrorBoundary>
-                <NginxPage />
+                <Suspense fallback={<PageLoader />}>
+                  <NginxPage />
+                </Suspense>
               </ErrorBoundary>
             }
           />
@@ -92,7 +138,9 @@ export default function App() {
             path="network"
             element={
               <ErrorBoundary>
-                <NetworkPage />
+                <Suspense fallback={<PageLoader />}>
+                  <NetworkPage />
+                </Suspense>
               </ErrorBoundary>
             }
           />
@@ -100,7 +148,9 @@ export default function App() {
             path="topology"
             element={
               <ErrorBoundary>
-                <TopologyPage />
+                <Suspense fallback={<PageLoader />}>
+                  <TopologyPage />
+                </Suspense>
               </ErrorBoundary>
             }
           />
