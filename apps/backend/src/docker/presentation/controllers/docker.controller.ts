@@ -12,6 +12,8 @@ import {
 import { AuthGuard } from '@nestjs/passport';
 import { PermissionsGuard } from '../../../common/guards';
 import { RequirePermissions } from '../../../common/decorators';
+import { PERMISSIONS } from '../../../common/constants/permissions';
+import type { JwtRequest } from '../../../common/types/jwt-request.type';
 import {
   CreateContainerUseCase,
   ListContainersUseCase,
@@ -53,7 +55,7 @@ export class DockerController {
    * GET /docker/containers/all
    */
   @Get('containers/all')
-  @RequirePermissions('docker:read')
+  @RequirePermissions(PERMISSIONS.DOCKER_READ)
   async listAllContainers() {
     return this.listContainersUseCase.execute(undefined);
   }
@@ -63,8 +65,8 @@ export class DockerController {
    * GET /docker/containers
    */
   @Get('containers')
-  @RequirePermissions('docker:read')
-  async listContainers(@Request() req: any) {
+  @RequirePermissions(PERMISSIONS.DOCKER_READ)
+  async listContainers(@Request() req: JwtRequest) {
     const userId = req.user.roles?.includes('super_admin')
       ? undefined
       : req.user.id;
@@ -76,7 +78,7 @@ export class DockerController {
    * GET /docker/containers/:dockerId/processes
    */
   @Get('containers/:dockerId/processes')
-  @RequirePermissions('docker:read')
+  @RequirePermissions(PERMISSIONS.DOCKER_READ)
   async getContainerProcesses(@Param('dockerId') dockerId: string) {
     return this.dockerClient.getContainerProcesses(dockerId);
   }
@@ -86,8 +88,8 @@ export class DockerController {
    * POST /docker/containers
    */
   @Post('containers')
-  @RequirePermissions('docker:create')
-  async createContainer(@Body() dto: CreateContainerDto, @Request() req: any) {
+  @RequirePermissions(PERMISSIONS.DOCKER_CREATE)
+  async createContainer(@Body() dto: CreateContainerDto, @Request() req: JwtRequest) {
     dto.userId = req.user.id;
     return this.createContainerUseCase.execute(dto);
   }
@@ -97,10 +99,10 @@ export class DockerController {
    * POST /docker/containers/import
    */
   @Post('containers/import')
-  @RequirePermissions('docker:create')
+  @RequirePermissions(PERMISSIONS.DOCKER_CREATE)
   async importContainer(
     @Body() body: { dockerId: string },
-    @Request() req: any,
+    @Request() req: JwtRequest,
   ) {
     return this.importContainerUseCase.execute(body.dockerId, req.user.id);
   }
@@ -110,7 +112,7 @@ export class DockerController {
    * POST /docker/containers/:id/start
    */
   @Post('containers/:id/start')
-  @RequirePermissions('docker:update')
+  @RequirePermissions(PERMISSIONS.DOCKER_UPDATE)
   async startContainer(@Param('id') id: string) {
     await this.startContainerUseCase.execute(id);
     return { success: true, message: 'Container started successfully' };
@@ -121,7 +123,7 @@ export class DockerController {
    * POST /docker/containers/:id/stop
    */
   @Post('containers/:id/stop')
-  @RequirePermissions('docker:update')
+  @RequirePermissions(PERMISSIONS.DOCKER_UPDATE)
   async stopContainer(@Param('id') id: string) {
     await this.stopContainerUseCase.execute(id);
     return { success: true, message: 'Container stopped successfully' };
@@ -132,7 +134,7 @@ export class DockerController {
    * DELETE /docker/containers/:id
    */
   @Delete('containers/:id')
-  @RequirePermissions('docker:delete')
+  @RequirePermissions(PERMISSIONS.DOCKER_DELETE)
   async removeContainer(@Param('id') id: string) {
     await this.removeContainerUseCase.execute(id);
     return { success: true, message: 'Container removed successfully' };
@@ -145,7 +147,7 @@ export class DockerController {
    * GET /docker/compose/services
    */
   @Get('compose/services')
-  @RequirePermissions('docker:read')
+  @RequirePermissions(PERMISSIONS.DOCKER_READ)
   async listComposeServices() {
     return {
       services: this.composeService.listServices(),
@@ -158,7 +160,7 @@ export class DockerController {
    * POST /docker/compose/services
    */
   @Post('compose/services')
-  @RequirePermissions('docker:create')
+  @RequirePermissions(PERMISSIONS.DOCKER_CREATE)
   async addComposeService(
     @Body()
     body: {
@@ -169,7 +171,7 @@ export class DockerController {
       memLimit: string;
       command?: string;
     },
-    @Request() req: any,
+    @Request() req: JwtRequest,
   ) {
     // 1. Add to docker-compose.yml
     this.composeService.addService(body);
@@ -205,7 +207,7 @@ export class DockerController {
    * DELETE /docker/compose/services/:name
    */
   @Delete('compose/services/:name')
-  @RequirePermissions('docker:delete')
+  @RequirePermissions(PERMISSIONS.DOCKER_DELETE)
   async removeComposeService(@Param('name') name: string) {
     // 1. Stop and remove the container
     await this.composeService.downService(name);

@@ -11,6 +11,8 @@ import {
 import { AuthGuard } from '@nestjs/passport';
 import { AuthService } from '../../application/services/auth.service';
 import { LoginDto, RegisterDto } from '../../application/dto';
+import { PermissionExtractor } from '../../../common/utils/permission-extractor.util';
+import type { User } from '../../../rbac/domain/entities/user.entity';
 
 @Controller('auth')
 export class AuthController {
@@ -30,18 +32,13 @@ export class AuthController {
 
   @UseGuards(AuthGuard('jwt'))
   @Get('me')
-  async getMe(@Request() req: any) {
+  async getMe(@Request() req: { user: User }) {
     const user = req.user;
-    const permissions =
-      user.roles?.flatMap(
-        (r: any) => r.permissions?.map((p: any) => p.name) || [],
-      ) || [];
-
     return {
       id: user.id,
       email: user.email,
-      roles: user.roles?.map((r: any) => r.name) || [],
-      permissions,
+      roles: user.roles?.map((r) => r.name) ?? [],
+      permissions: PermissionExtractor.extractFromRoles(user.roles ?? []),
     };
   }
 }

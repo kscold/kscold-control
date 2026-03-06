@@ -2,6 +2,7 @@ import { Controller, Get, Query, UseGuards } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { PermissionsGuard } from '../../../common/guards/permissions.guard';
 import { RequirePermissions } from '../../../common/decorators/permissions.decorator';
+import { PERMISSIONS } from '../../../common/constants/permissions';
 import { LogsService } from '../../application/services/logs.service';
 import { LogType } from '../../domain/types/log.type';
 
@@ -14,7 +15,7 @@ export class LogsController {
    * 로그 조회
    */
   @Get()
-  @RequirePermissions('system:read')
+  @RequirePermissions(PERMISSIONS.SYSTEM_READ)
   async getLogs(
     @Query('type') type: LogType,
     @Query('lines') lines?: string,
@@ -29,7 +30,7 @@ export class LogsController {
    * PM2 로그 조회
    */
   @Get('pm2')
-  @RequirePermissions('system:read')
+  @RequirePermissions(PERMISSIONS.SYSTEM_READ)
   async getPm2Logs(@Query('lines') lines?: string) {
     const lineCount = lines ? parseInt(lines) : 100;
     return this.logsService.getPm2Logs(lineCount);
@@ -39,7 +40,7 @@ export class LogsController {
    * Docker 컨테이너 목록
    */
   @Get('docker/containers')
-  @RequirePermissions('docker:read')
+  @RequirePermissions(PERMISSIONS.DOCKER_READ)
   async getDockerContainers() {
     return this.logsService.getDockerContainers();
   }
@@ -48,7 +49,7 @@ export class LogsController {
    * Nginx 상태
    */
   @Get('nginx/status')
-  @RequirePermissions('system:read')
+  @RequirePermissions(PERMISSIONS.SYSTEM_READ)
   async getNginxStatus() {
     return this.logsService.getNginxStatus();
   }
@@ -57,7 +58,7 @@ export class LogsController {
    * 시스템 정보
    */
   @Get('system')
-  @RequirePermissions('system:read')
+  @RequirePermissions(PERMISSIONS.SYSTEM_READ)
   async getSystemInfo() {
     return this.logsService.getSystemInfo();
   }

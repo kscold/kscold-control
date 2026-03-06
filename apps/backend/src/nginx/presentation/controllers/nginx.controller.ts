@@ -11,6 +11,7 @@ import {
 import { AuthGuard } from '@nestjs/passport';
 import { PermissionsGuard } from '../../../common/guards/permissions.guard';
 import { RequirePermissions } from '../../../common/decorators/permissions.decorator';
+import { PERMISSIONS } from '../../../common/constants/permissions';
 import { NginxSiteService } from '../../application/services/nginx-site.service';
 import { CertService } from '../../application/services/cert.service';
 import { DnsService } from '../../application/services/dns.service';
@@ -28,43 +29,43 @@ export class NginxController {
   ) {}
 
   @Get('sites')
-  @RequirePermissions('system:read')
+  @RequirePermissions(PERMISSIONS.SYSTEM_READ)
   listSites() {
     return this.nginxSiteService.listSites();
   }
 
   @Post('sites')
-  @RequirePermissions('system:write')
+  @RequirePermissions(PERMISSIONS.SYSTEM_WRITE)
   createSite(@Body() dto: CreateNginxSiteDto) {
     return this.nginxSiteService.createSite(dto);
   }
 
   @Put('sites/:name')
-  @RequirePermissions('system:write')
+  @RequirePermissions(PERMISSIONS.SYSTEM_WRITE)
   updateSite(@Param('name') name: string, @Body() dto: CreateNginxSiteDto) {
     return this.nginxSiteService.updateSite(name, dto);
   }
 
   @Delete('sites/:name')
-  @RequirePermissions('system:write')
+  @RequirePermissions(PERMISSIONS.SYSTEM_WRITE)
   deleteSite(@Param('name') name: string) {
     return this.nginxSiteService.deleteSite(name);
   }
 
   @Post('sites/:name/toggle')
-  @RequirePermissions('system:write')
+  @RequirePermissions(PERMISSIONS.SYSTEM_WRITE)
   toggleSite(@Param('name') name: string) {
     return this.nginxSiteService.toggleSite(name);
   }
 
   @Post('test')
-  @RequirePermissions('system:read')
+  @RequirePermissions(PERMISSIONS.SYSTEM_READ)
   testConfig() {
     return this.nginxSiteService.testConfig();
   }
 
   @Post('reload')
-  @RequirePermissions('system:write')
+  @RequirePermissions(PERMISSIONS.SYSTEM_WRITE)
   reloadNginx() {
     return this.nginxSiteService.reloadNginx();
   }
@@ -74,7 +75,7 @@ export class NginxController {
    * Returns running containers with their internal ports
    */
   @Get('upstreams')
-  @RequirePermissions('system:read')
+  @RequirePermissions(PERMISSIONS.SYSTEM_READ)
   async getUpstreams() {
     const containers = await this.listContainersUseCase.execute();
     return containers
@@ -103,7 +104,7 @@ export class NginxController {
    * GET /nginx/certs
    */
   @Get('certs')
-  @RequirePermissions('system:read')
+  @RequirePermissions(PERMISSIONS.SYSTEM_READ)
   listCerts() {
     return this.certService.listCerts();
   }
@@ -113,7 +114,7 @@ export class NginxController {
    * POST /nginx/certs/issue
    */
   @Post('certs/issue')
-  @RequirePermissions('system:write')
+  @RequirePermissions(PERMISSIONS.SYSTEM_WRITE)
   issueCert(@Body() body: { domain: string; email: string; mode?: string }) {
     if (body.mode === 'standalone') {
       return this.certService.issueCertStandalone(body.domain, body.email);
@@ -126,7 +127,7 @@ export class NginxController {
    * POST /nginx/certs/renew
    */
   @Post('certs/renew')
-  @RequirePermissions('system:write')
+  @RequirePermissions(PERMISSIONS.SYSTEM_WRITE)
   renewCerts() {
     return this.certService.renewAll();
   }
@@ -138,7 +139,7 @@ export class NginxController {
    * GET /nginx/dns/ip
    */
   @Get('dns/ip')
-  @RequirePermissions('system:read')
+  @RequirePermissions(PERMISSIONS.SYSTEM_READ)
   getPublicIp() {
     return this.dnsService.getPublicIp().then((ip) => ({ ip }));
   }
@@ -148,7 +149,7 @@ export class NginxController {
    * POST /nginx/dns/verify
    */
   @Post('dns/verify')
-  @RequirePermissions('system:read')
+  @RequirePermissions(PERMISSIONS.SYSTEM_READ)
   verifyDns(@Body() body: { domain: string }) {
     return this.dnsService.verifyDns(body.domain);
   }
@@ -158,7 +159,7 @@ export class NginxController {
    * GET /nginx/dns/verify-all
    */
   @Get('dns/verify-all')
-  @RequirePermissions('system:read')
+  @RequirePermissions(PERMISSIONS.SYSTEM_READ)
   async verifyAllDns() {
     const sites = await this.nginxSiteService.listSites();
     const domains = sites.map((s: any) => s.domain);
