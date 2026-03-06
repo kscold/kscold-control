@@ -1,4 +1,4 @@
-import { Injectable, Inject } from '@nestjs/common';
+import { Injectable, Inject, Logger } from '@nestjs/common';
 import {
   IContainerRepository,
   CONTAINER_REPOSITORY,
@@ -16,6 +16,8 @@ import { PortForwardingService } from '../services/port-forwarding.service';
  */
 @Injectable()
 export class RemoveContainerUseCase {
+  private readonly logger = new Logger(RemoveContainerUseCase.name);
+
   constructor(
     @Inject(CONTAINER_REPOSITORY)
     private readonly containerRepo: IContainerRepository,
@@ -33,7 +35,7 @@ export class RemoveContainerUseCase {
       try {
         await this.dockerClient.removeContainer(container.dockerId);
       } catch (error) {
-        console.error(
+        this.logger.error(
           `Failed to remove Docker container ${container.dockerId}:`,
           error,
         );
@@ -44,7 +46,7 @@ export class RemoveContainerUseCase {
           container.name,
         );
       } catch (error) {
-        console.error(
+        this.logger.error(
           `Failed to remove port forwarding for ${container.name}:`,
           error,
         );
