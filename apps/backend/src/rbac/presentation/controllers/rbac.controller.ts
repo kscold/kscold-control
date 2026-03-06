@@ -11,6 +11,7 @@ import {
 import { AuthGuard } from '@nestjs/passport';
 import { PermissionsGuard } from '../../../common/guards';
 import { RequirePermissions } from '../../../common/decorators';
+import { PERMISSIONS } from '../../../common/constants/permissions';
 
 // Application Layer
 import {
@@ -59,7 +60,7 @@ export class RbacController {
    * Get all roles with permissions
    */
   @Get('roles')
-  @RequirePermissions('rbac:manage')
+  @RequirePermissions(PERMISSIONS.RBAC_MANAGE)
   async getRoles() {
     return this.listRolesUseCase.execute();
   }
@@ -70,7 +71,7 @@ export class RbacController {
    * Get all users with roles
    */
   @Get('users')
-  @RequirePermissions('rbac:manage')
+  @RequirePermissions(PERMISSIONS.RBAC_MANAGE)
   async getUsersWithRoles() {
     return this.listUsersUseCase.execute();
   }
@@ -79,7 +80,7 @@ export class RbacController {
    * Create a new user
    */
   @Post('users')
-  @RequirePermissions('rbac:manage')
+  @RequirePermissions(PERMISSIONS.RBAC_MANAGE)
   async createUser(@Body() dto: CreateUserDto) {
     return this.createUserUseCase.execute(dto);
   }
@@ -88,7 +89,7 @@ export class RbacController {
    * Update user information
    */
   @Put('users/:id')
-  @RequirePermissions('rbac:manage')
+  @RequirePermissions(PERMISSIONS.RBAC_MANAGE)
   async updateUser(@Param('id') id: string, @Body() dto: UpdateUserDto) {
     return this.updateUserUseCase.execute(id, dto);
   }
@@ -97,7 +98,7 @@ export class RbacController {
    * Delete a user
    */
   @Delete('users/:id')
-  @RequirePermissions('rbac:manage')
+  @RequirePermissions(PERMISSIONS.RBAC_MANAGE)
   async deleteUser(@Param('id') id: string) {
     return this.deleteUserUseCase.execute(id);
   }
@@ -106,7 +107,7 @@ export class RbacController {
    * Assign roles to a user
    */
   @Post('users/:userId/roles')
-  @RequirePermissions('rbac:manage')
+  @RequirePermissions(PERMISSIONS.RBAC_MANAGE)
   async assignRoles(
     @Param('userId') userId: string,
     @Body() requestDto: AssignRolesRequestDto,
@@ -124,7 +125,7 @@ export class RbacController {
    * Reset terminal command count to 0
    */
   @Post('users/:id/reset-terminal-limit')
-  @RequirePermissions('rbac:manage')
+  @RequirePermissions(PERMISSIONS.RBAC_MANAGE)
   async resetTerminalLimit(@Param('id') id: string) {
     return this.manageTerminalLimitUseCase.resetCommandCount(id);
   }
@@ -133,7 +134,7 @@ export class RbacController {
    * Set terminal command limit
    */
   @Put('users/:id/terminal-limit')
-  @RequirePermissions('rbac:manage')
+  @RequirePermissions(PERMISSIONS.RBAC_MANAGE)
   async setTerminalLimit(
     @Param('id') id: string,
     @Body() requestDto: SetTerminalLimitRequestDto,

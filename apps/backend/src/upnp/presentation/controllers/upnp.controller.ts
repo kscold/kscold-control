@@ -11,6 +11,7 @@ import {
 import { AuthGuard } from '@nestjs/passport';
 import { PermissionsGuard } from '../../../common/guards/permissions.guard';
 import { RequirePermissions } from '../../../common/decorators/permissions.decorator';
+import { PERMISSIONS } from '../../../common/constants/permissions';
 import { UpnpService } from '../../application/services/upnp.service';
 import type { CreateMappingDto } from '../../domain/types/port-mapping.type';
 
@@ -24,7 +25,7 @@ export class UpnpController {
    * GET /upnp/mappings
    */
   @Get('mappings')
-  @RequirePermissions('system:read')
+  @RequirePermissions(PERMISSIONS.SYSTEM_READ)
   getMappings() {
     return this.upnpService.getMappings();
   }
@@ -34,7 +35,7 @@ export class UpnpController {
    * POST /upnp/mappings
    */
   @Post('mappings')
-  @RequirePermissions('system:write')
+  @RequirePermissions(PERMISSIONS.SYSTEM_WRITE)
   addMapping(@Body() dto: CreateMappingDto) {
     return this.upnpService.addMapping(dto);
   }
@@ -44,7 +45,7 @@ export class UpnpController {
    * DELETE /upnp/mappings/:publicPort
    */
   @Delete('mappings/:publicPort')
-  @RequirePermissions('system:write')
+  @RequirePermissions(PERMISSIONS.SYSTEM_WRITE)
   removeMapping(
     @Param('publicPort') publicPort: string,
     @Query('protocol') protocol?: string,
@@ -57,7 +58,7 @@ export class UpnpController {
    * GET /upnp/external-ip
    */
   @Get('external-ip')
-  @RequirePermissions('system:read')
+  @RequirePermissions(PERMISSIONS.SYSTEM_READ)
   async getExternalIp() {
     const ip = await this.upnpService.getExternalIp();
     return { ip };
