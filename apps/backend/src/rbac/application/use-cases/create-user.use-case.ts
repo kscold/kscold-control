@@ -11,6 +11,7 @@ import { Role } from '../../domain/entities/role.entity';
 import { CreateUserDto } from '../dto/create-user.dto';
 import { UserResponseDto } from '../dto/user-response.dto';
 import { PasswordHasher } from '../../../common/utils/password-hasher.util';
+import { ROLES } from '../../../common/constants/roles';
 
 /**
  * Create User Use Case
@@ -42,7 +43,7 @@ export class CreateUserUseCase {
     }
 
     // Check if guest role is assigned
-    const guestRole = await this.roleRepository.findByName('guest');
+    const guestRole = await this.roleRepository.findByName(ROLES.GUEST);
     const isGuest = roles.some((role) => role.id === guestRole?.id);
 
     // Create user with appropriate terminal limit
