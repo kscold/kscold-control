@@ -6,12 +6,19 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 // Domain
 import { Session } from './domain/entities/session.entity';
 import { Message } from './domain/entities/message.entity';
+import { SESSION_REPOSITORY } from './domain/interfaces/session.repository.interface';
+import { MESSAGE_REPOSITORY } from './domain/interfaces/message.repository.interface';
+
+// Infrastructure
+import { TypeOrmSessionRepository } from './infrastructure/repositories/typeorm-session.repository';
+import { TypeOrmMessageRepository } from './infrastructure/repositories/typeorm-message.repository';
 
 // Application Services
 import {
   PtyManagerService,
   SessionMapperService,
   TerminalLimitService,
+  TerminalSessionService,
 } from './application/services';
 
 // Presentation
@@ -20,15 +27,6 @@ import { TerminalGateway } from './presentation/gateways/terminal.gateway';
 // RBAC (for user repository)
 import { RbacModule } from '../rbac/rbac.module';
 
-/**
- * Terminal Module
- * Clean Architecture implementation for terminal sessions
- *
- * Dependencies:
- * - Domain: Entities, Interfaces (no dependencies)
- * - Application: Services (depends on Domain)
- * - Presentation: Gateway (depends on Application)
- */
 @Module({
   imports: [
     TypeOrmModule.forFeature([Session, Message]),
@@ -46,13 +44,18 @@ import { RbacModule } from '../rbac/rbac.module';
         };
       },
     }),
-    RbacModule, // Import to access USER_REPOSITORY
+    RbacModule,
   ],
   providers: [
+    // Infrastructure
+    { provide: SESSION_REPOSITORY, useClass: TypeOrmSessionRepository },
+    { provide: MESSAGE_REPOSITORY, useClass: TypeOrmMessageRepository },
+
     // Application Services
     PtyManagerService,
     SessionMapperService,
     TerminalLimitService,
+    TerminalSessionService,
 
     // Presentation
     TerminalGateway,

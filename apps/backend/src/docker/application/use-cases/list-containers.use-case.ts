@@ -1,4 +1,4 @@
-import { Injectable, Inject } from '@nestjs/common';
+import { Injectable, Inject, Logger } from '@nestjs/common';
 import {
   IContainerRepository,
   CONTAINER_REPOSITORY,
@@ -17,6 +17,8 @@ import { ResourceConfig } from '../../domain/value-objects/resource-config.vo';
  */
 @Injectable()
 export class ListContainersUseCase {
+  private readonly logger = new Logger(ListContainersUseCase.name);
+
   constructor(
     @Inject(CONTAINER_REPOSITORY)
     private readonly containerRepo: IContainerRepository,
@@ -65,7 +67,7 @@ export class ListContainersUseCase {
 
           resources = { cpus, memory };
         } catch (error) {
-          console.error(`Failed to inspect container ${dc.id}:`, error);
+          this.logger.error(`Failed to inspect container ${dc.id}:`, error);
         }
 
         // Get external access info

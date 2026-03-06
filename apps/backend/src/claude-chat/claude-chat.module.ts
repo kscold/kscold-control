@@ -5,6 +5,10 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 
 import { Session } from '../terminal/domain/entities/session.entity';
 import { Message } from '../terminal/domain/entities/message.entity';
+import { SESSION_REPOSITORY } from '../terminal/domain/interfaces/session.repository.interface';
+import { MESSAGE_REPOSITORY } from '../terminal/domain/interfaces/message.repository.interface';
+import { TypeOrmSessionRepository } from '../terminal/infrastructure/repositories/typeorm-session.repository';
+import { TypeOrmMessageRepository } from '../terminal/infrastructure/repositories/typeorm-message.repository';
 import { RbacModule } from '../rbac/rbac.module';
 
 import { ClaudeProcessManagerService } from './application/services/claude-process-manager.service';
@@ -31,6 +35,8 @@ import { ClaudeChatGateway } from './presentation/gateways/claude-chat.gateway';
     RbacModule,
   ],
   providers: [
+    { provide: SESSION_REPOSITORY, useClass: TypeOrmSessionRepository },
+    { provide: MESSAGE_REPOSITORY, useClass: TypeOrmMessageRepository },
     ClaudeProcessManagerService,
     ClaudeSessionMapperService,
     ClaudeChatGateway,

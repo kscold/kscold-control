@@ -1,4 +1,4 @@
-import { Injectable, Inject } from '@nestjs/common';
+import { Injectable, Inject, Logger } from '@nestjs/common';
 import {
   IContainerRepository,
   CONTAINER_REPOSITORY,
@@ -18,6 +18,8 @@ import { PortForwardingService } from '../services/port-forwarding.service';
  */
 @Injectable()
 export class CreateContainerUseCase {
+  private readonly logger = new Logger(CreateContainerUseCase.name);
+
   constructor(
     @Inject(CONTAINER_REPOSITORY)
     private readonly containerRepo: IContainerRepository,
@@ -68,7 +70,7 @@ export class CreateContainerUseCase {
     // 5. Setup port forwarding (async, don't wait)
     this.portForwardingService
       .addPortForwardingRules(dto.name, dto.ports)
-      .catch((err) => console.error('Failed to setup port forwarding:', err));
+      .catch((err) => this.logger.error('Failed to setup port forwarding:', err));
 
     // 6. Get external access info
     const externalAccess = this.portForwardingService.getExternalAccess(
