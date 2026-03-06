@@ -22,6 +22,7 @@ import {
   USER_REPOSITORY,
 } from '../../../rbac/domain/repositories/user.repository.interface';
 import { PermissionExtractor } from '../../../common/utils/permission-extractor.util';
+import { PERMISSIONS } from '../../../common/constants/permissions';
 import type { ISessionRepository } from '../../../terminal/domain/interfaces/session.repository.interface';
 import { SESSION_REPOSITORY } from '../../../terminal/domain/interfaces/session.repository.interface';
 import type { IMessageRepository } from '../../../terminal/domain/interfaces/message.repository.interface';
@@ -85,7 +86,7 @@ export class ClaudeChatGateway
 
       const hasPermission = await this.checkPermission(
         client,
-        'terminal:access',
+        PERMISSIONS.TERMINAL_ACCESS,
       );
       if (!hasPermission) {
         throw new ForbiddenException('터미널 접근 권한이 없습니다');
