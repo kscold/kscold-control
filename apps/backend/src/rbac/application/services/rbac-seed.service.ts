@@ -1,7 +1,8 @@
-import { Injectable, Inject } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { Permission } from '../../domain/entities/permission.entity';
+import { Injectable, Inject, Logger } from '@nestjs/common';
+import {
+  IPermissionRepository,
+  PERMISSION_REPOSITORY,
+} from '../../domain/repositories/permission.repository.interface';
 import {
   IUserRepository,
   USER_REPOSITORY,
@@ -17,9 +18,11 @@ import {
  */
 @Injectable()
 export class RbacSeedService {
+  private readonly logger = new Logger(RbacSeedService.name);
+
   constructor(
-    @InjectRepository(Permission)
-    private readonly permissionRepo: Repository<Permission>,
+    @Inject(PERMISSION_REPOSITORY)
+    private readonly permissionRepo: IPermissionRepository,
     @Inject(ROLE_REPOSITORY)
     private readonly roleRepository: IRoleRepository,
     @Inject(USER_REPOSITORY)
@@ -45,16 +48,14 @@ export class RbacSeedService {
     ];
 
     for (const perm of permissionData) {
-      const exists = await this.permissionRepo.findOne({
-        where: { name: perm.name },
-      });
+      const exists = await this.permissionRepo.findByName(perm.name);
       if (!exists) {
         await this.permissionRepo.save(this.permissionRepo.create(perm));
       }
     }
 
     // Get all permissions
-    const allPermissions = await this.permissionRepo.find();
+    const allPermissions = await this.permissionRepo.findAll();
 
     // Create Super Admin role - all permissions
     let superAdminRole =
@@ -139,10 +140,10 @@ export class RbacSeedService {
       if (superAdmin && !adminUser.roles.find((r) => r.id === superAdmin.id)) {
         adminUser.roles.push(superAdmin);
         await this.userRepository.save(adminUser);
-        console.log('[RBAC] admin@kscold.dev assigned to super_admin role');
+        this.logger.log('admin@kscold.dev assigned to super_admin role');
       }
     }
 
-    console.log('[RBAC] Initial data seeded successfully');
+    this.logger.log('Initial data seeded successfully');
   }
 }
