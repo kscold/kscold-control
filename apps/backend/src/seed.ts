@@ -1,11 +1,11 @@
 import { DataSource } from 'typeorm';
 import * as bcrypt from 'bcrypt';
-import { User } from './entities/user.entity';
-import { Role } from './entities/role.entity';
-import { Permission } from './entities/permission.entity';
-import { Session } from './entities/session.entity';
-import { Message } from './entities/message.entity';
-import { Container } from './entities/container.entity';
+import { User } from './rbac/domain/entities/user.entity';
+import { Role } from './rbac/domain/entities/role.entity';
+import { Permission } from './rbac/domain/entities/permission.entity';
+import { Session } from './terminal/domain/entities/session.entity';
+import { Message } from './terminal/domain/entities/message.entity';
+import { Container } from './docker/domain/entities/container.entity';
 
 /**
  * 초기 데이터 시드
