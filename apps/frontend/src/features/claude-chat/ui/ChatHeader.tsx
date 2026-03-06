@@ -1,15 +1,26 @@
-import { Wifi, WifiOff, Trash2 } from 'lucide-react';
+import { Wifi, WifiOff, Trash2, ArrowLeft } from 'lucide-react';
 import { ClaudeChatSession } from '../lib/claude-chat.types';
 
 interface ChatHeaderProps {
   session: ClaudeChatSession;
   onNewSession: () => void;
+  onBackToTerminal?: () => void;
 }
 
-export function ChatHeader({ session, onNewSession }: ChatHeaderProps) {
+export function ChatHeader({ session, onNewSession, onBackToTerminal }: ChatHeaderProps) {
   return (
     <div className="flex items-center justify-between px-4 py-2.5 border-b border-gray-800 bg-gray-950">
       <div className="flex items-center gap-3">
+        {onBackToTerminal && (
+          <button
+            onClick={onBackToTerminal}
+            className="flex items-center gap-1 text-xs text-gray-400 hover:text-white transition-colors px-2 py-1 rounded hover:bg-gray-800"
+            title="터미널로 돌아가기"
+          >
+            <ArrowLeft size={14} />
+            <span>터미널</span>
+          </button>
+        )}
         <span className="font-semibold text-white text-sm">Claude Chat</span>
         <span className="flex items-center gap-1 text-xs">
           {session.isConnected ? (
