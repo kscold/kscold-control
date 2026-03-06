@@ -1,8 +1,9 @@
 import { Handle, Position, type NodeProps } from '@xyflow/react';
 import { Server } from 'lucide-react';
+import type { HostNodeData } from '../../lib/topology.types';
 
 export function HostNode({ data }: NodeProps) {
-  const d = data as any;
+  const d = data as unknown as HostNodeData;
   return (
     <div className="bg-gray-800 border-2 border-blue-500 rounded-2xl shadow-lg shadow-blue-500/15 min-w-[220px]">
       <Handle type="source" position={Position.Bottom} className="!bg-blue-500 !w-3 !h-3" />

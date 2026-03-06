@@ -1,8 +1,9 @@
 import { Handle, Position, type NodeProps } from '@xyflow/react';
 import { Network, ArrowRight } from 'lucide-react';
+import type { UpnpMappingData } from '../../lib/topology.types';
 
 export function UpnpNode({ data }: NodeProps) {
-  const d = data as any;
+  const d = data as unknown as UpnpMappingData;
   return (
     <div className="bg-gray-900 border-2 border-purple-600 rounded-xl px-3 py-2.5 min-w-[130px] shadow-lg shadow-purple-500/10">
       <Handle type="target" position={Position.Top} className="!bg-purple-500 !w-2.5 !h-2.5" />

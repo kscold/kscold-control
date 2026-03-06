@@ -1,8 +1,9 @@
 import { Handle, Position, type NodeProps } from '@xyflow/react';
 import { Globe, ArrowRight } from 'lucide-react';
+import type { NginxSiteData } from '../../lib/topology.types';
 
 export function NginxNode({ data }: NodeProps) {
-  const d = data as any;
+  const d = data as unknown as NginxSiteData;
   return (
     <div className={`bg-gray-900 border-2 rounded-xl shadow-lg min-w-[180px] ${d.enabled ? 'border-amber-500 shadow-amber-500/15' : 'border-gray-600'}`}>
       <Handle type="target" position={Position.Top} className="!bg-amber-500 !w-2.5 !h-2.5" />
