@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Plus, Filter } from 'lucide-react';
 import { usePermissions } from '../../../hooks/usePermissions';
+import { PERMISSIONS } from '../../../constants/permissions';
 import {
   useContainers,
   useContainerActions,
@@ -59,7 +60,7 @@ export function DockerDashboard() {
           Docker 컨테이너
         </h1>
         <button
-          onClick={() => checkPermission('docker:create', openModal)}
+          onClick={() => checkPermission(PERMISSIONS.DOCKER_CREATE, openModal)}
           disabled={isCreating}
           className="flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 w-full sm:w-auto"
         >
