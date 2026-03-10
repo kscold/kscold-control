@@ -35,17 +35,25 @@ export function useTopology() {
     (containers: ContainerData[], sites: NginxSiteData[], upnpMappings: UpnpMappingData[], processMap: Record<string, ContainerProcesses>) => {
       const newNodes: Node[] = [];
       const newEdges: Edge[] = [];
+      const edgeIdSet = new Set<string>();
       const COL_GAP = 280;
       const ROW_GAP = 180;
       const totalWidth = Math.max(containers.length, sites.length, 3) * COL_GAP;
       const centerX = totalWidth / 2;
+
+      const addEdge = (edge: Edge) => {
+        if (!edgeIdSet.has(edge.id)) {
+          edgeIdSet.add(edge.id);
+          newEdges.push(edge);
+        }
+      };
 
       // Internet
       newNodes.push({ id: 'internet', type: 'internet', position: { x: centerX - 80, y: 0 }, data: { label: 'Internet' }, draggable: true });
 
       // Host
       newNodes.push({ id: 'host', type: 'host', position: { x: centerX - 110, y: ROW_GAP }, data: { label: 'Mac Mini', subtitle: 'Apple Silicon · Colima' }, draggable: true });
-      newEdges.push({ id: 'internet-host', source: 'internet', target: 'host', animated: true, style: { stroke: '#6366f1', strokeWidth: 2 } });
+      addEdge({ id: 'internet-host', source: 'internet', target: 'host', animated: true, style: { stroke: '#6366f1', strokeWidth: 2 } });
 
       // UPnP
       const localUpnp = upnpMappings.filter((m) => m.local);
@@ -54,7 +62,7 @@ export function useTopology() {
         localUpnp.forEach((m, i) => {
           const id = `upnp-${m.publicPort}-${m.protocol}`;
           newNodes.push({ id, type: 'upnp', position: { x: startX + i * COL_GAP, y: ROW_GAP * 2 }, data: { publicPort: m.publicPort, privatePort: m.privatePort, protocol: m.protocol, description: m.description }, draggable: true });
-          newEdges.push({ id: `host-${id}`, source: 'host', target: id, style: { stroke: '#a855f7', strokeWidth: 1.5 } });
+          addEdge({ id: `host-${id}`, source: 'host', target: id, style: { stroke: '#a855f7', strokeWidth: 1.5 } });
         });
       }
 
@@ -64,10 +72,10 @@ export function useTopology() {
       sites.forEach((site, i) => {
         const id = `nginx-${site.name}`;
         newNodes.push({ id, type: 'nginx', position: { x: nginxStartX + i * COL_GAP, y: nginxY }, data: { ...site } as Record<string, unknown>, draggable: true });
-        newEdges.push({ id: `host-${id}`, source: 'host', target: id, style: { stroke: '#d97706', strokeWidth: 1.5 } });
+        addEdge({ id: `host-${id}`, source: 'host', target: id, style: { stroke: '#d97706', strokeWidth: 1.5 } });
         localUpnp.forEach((m) => {
           if (m.privatePort === 80 || m.privatePort === 443) {
-            newEdges.push({ id: `upnp-${m.publicPort}-${m.protocol}-${id}`, source: `upnp-${m.publicPort}-${m.protocol}`, target: id, style: { stroke: '#a855f7', strokeWidth: 1, strokeDasharray: '4 4' } });
+            addEdge({ id: `upnp-${m.publicPort}-${m.protocol}-${id}`, source: `upnp-${m.publicPort}-${m.protocol}`, target: id, style: { stroke: '#a855f7', strokeWidth: 1, strokeDasharray: '4 4' } });
           }
         });
       });
@@ -95,7 +103,7 @@ export function useTopology() {
 
         sites.forEach((site) => {
           if (site.upstream.includes(container.name) || site.upstream.includes(container.name.replace('ubuntu-', ''))) {
-            newEdges.push({ id: `nginx-${site.name}-${id}`, source: `nginx-${site.name}`, target: id, animated: site.enabled, style: { stroke: site.enabled ? '#22c55e' : '#4b5563', strokeWidth: 1.5 } });
+            addEdge({ id: `nginx-${site.name}-${id}`, source: `nginx-${site.name}`, target: id, animated: site.enabled, style: { stroke: site.enabled ? '#22c55e' : '#4b5563', strokeWidth: 1.5 } });
           }
         });
 
@@ -103,10 +111,7 @@ export function useTopology() {
           Object.entries(container.ports || {}).forEach(([internal, external]) => {
             const extPort = parseInt(String(external), 10);
             if (m.privatePort === extPort || m.publicPort === extPort) {
-              const edgeId = `upnp-${m.publicPort}-${m.protocol}-${id}-${internal}`;
-              if (!newEdges.find((e) => e.id === edgeId)) {
-                newEdges.push({ id: edgeId, source: `upnp-${m.publicPort}-${m.protocol}`, target: id, style: { stroke: '#a855f7', strokeWidth: 1, strokeDasharray: '4 4' } });
-              }
+              addEdge({ id: `upnp-${m.publicPort}-${m.protocol}-${id}-${internal}`, source: `upnp-${m.publicPort}-${m.protocol}`, target: id, style: { stroke: '#a855f7', strokeWidth: 1, strokeDasharray: '4 4' } });
             }
           });
         });
@@ -116,6 +121,23 @@ export function useTopology() {
       setEdges(newEdges);
     },
     [setNodes, setEdges],
+  );
+
+  // process 데이터만 targeted 업데이트 (전체 그래프 재빌드 방지)
+  const updateProcesses = useCallback(
+    (containers: ContainerData[], processMap: Record<string, ContainerProcesses>) => {
+      const containerById = new Map(containers.map((c) => [`container-${c.id}`, c]));
+      setNodes((prev) =>
+        prev.map((node) => {
+          if (node.type !== 'container') return node;
+          const container = containerById.get(node.id);
+          if (!container) return node;
+          const processes = processMap[container.id] || { pm2: [], services: [] };
+          return { ...node, data: { ...node.data, processes } };
+        }),
+      );
+    },
+    [setNodes],
   );
 
   const loadTopology = useCallback(async () => {
@@ -130,19 +152,21 @@ export function useTopology() {
       const sites: NginxSiteData[] = sitesRes.status === 'fulfilled' ? sitesRes.value.data : [];
       const upnpMappings: UpnpMappingData[] = upnpRes.status === 'fulfilled' ? upnpRes.value.data : [];
 
+      // 1차: 그래프 구조 렌더링 (process 없이 즉시 표시)
       buildGraph(containers, sites, upnpMappings, {});
       setLoading(false);
       setProcessesLoading(true);
 
+      // 2차: process 데이터만 targeted 업데이트 (전체 재빌드 없음)
       const processMap = await fetchProcesses(containers);
-      buildGraph(containers, sites, upnpMappings, processMap);
+      updateProcesses(containers, processMap);
     } catch (e) {
       console.error('Topology load failed', e);
     } finally {
       setLoading(false);
       setProcessesLoading(false);
     }
-  }, [buildGraph, fetchProcesses]);
+  }, [buildGraph, fetchProcesses, updateProcesses]);
 
   useEffect(() => { loadTopology(); }, [loadTopology]);
 
