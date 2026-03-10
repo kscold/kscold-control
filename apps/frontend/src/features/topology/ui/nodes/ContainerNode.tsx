@@ -1,9 +1,10 @@
+import { memo } from 'react';
 import { Handle, Position, type NodeProps } from '@xyflow/react';
 import { Cpu, Database } from 'lucide-react';
 import type { ContainerNodeData, Pm2Process, SystemService } from '../../lib/topology.types';
 import { formatMemory, pm2Dot } from '../../lib/topology.utils';
 
-export function ContainerNode({ data }: NodeProps) {
+export const ContainerNode = memo(function ContainerNode({ data }: NodeProps) {
   const d = data as unknown as ContainerNodeData;
   const isRunning = d.status === 'running';
   const meta = d.meta;
@@ -108,4 +109,4 @@ export function ContainerNode({ data }: NodeProps) {
       )}
     </div>
   );
-}
+});

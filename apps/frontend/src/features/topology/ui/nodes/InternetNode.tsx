@@ -1,7 +1,8 @@
+import { memo } from 'react';
 import { Handle, Position, type NodeProps } from '@xyflow/react';
 import { Wifi } from 'lucide-react';
 
-export function InternetNode({ data }: NodeProps) {
+export const InternetNode = memo(function InternetNode({ data }: NodeProps) {
   return (
     <div className="bg-gradient-to-br from-indigo-900 to-purple-900 border-2 border-indigo-500 rounded-2xl px-5 py-4 min-w-[160px] shadow-lg shadow-indigo-500/20">
       <Handle type="source" position={Position.Bottom} className="!bg-indigo-400 !w-3 !h-3" />
@@ -14,4 +15,4 @@ export function InternetNode({ data }: NodeProps) {
       </div>
     </div>
   );
-}
+});

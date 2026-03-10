@@ -1,8 +1,9 @@
+import { memo } from 'react';
 import { Handle, Position, type NodeProps } from '@xyflow/react';
 import { Network, ArrowRight } from 'lucide-react';
 import type { UpnpMappingData } from '../../lib/topology.types';
 
-export function UpnpNode({ data }: NodeProps) {
+export const UpnpNode = memo(function UpnpNode({ data }: NodeProps) {
   const d = data as unknown as UpnpMappingData;
   return (
     <div className="bg-gray-900 border-2 border-purple-600 rounded-xl px-3 py-2.5 min-w-[130px] shadow-lg shadow-purple-500/10">
@@ -21,4 +22,4 @@ export function UpnpNode({ data }: NodeProps) {
       </p>
     </div>
   );
-}
+});
