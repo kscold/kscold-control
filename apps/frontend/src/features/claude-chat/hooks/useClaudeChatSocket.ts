@@ -19,6 +19,7 @@ interface UseClaudeChatSocketOptions {
   onError: (data: { message: string }) => void;
   onConnect: () => void;
   onDisconnect: () => void;
+  onSessionClosed?: () => void;
 }
 
 export function useClaudeChatSocket(options: UseClaudeChatSocketOptions) {
@@ -73,6 +74,10 @@ export function useClaudeChatSocket(options: UseClaudeChatSocketOptions) {
 
     socket.on('claude:error', (data) => {
       optionsRef.current.onError(data);
+    });
+
+    socket.on('claude:session-closed', () => {
+      optionsRef.current.onSessionClosed?.();
     });
 
     return () => {
