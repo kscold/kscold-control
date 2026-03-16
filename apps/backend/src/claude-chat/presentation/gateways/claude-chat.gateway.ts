@@ -18,16 +18,12 @@ import {
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 
-import {
-  IUserRepository,
-  USER_REPOSITORY,
-} from '../../../rbac/domain/repositories/user.repository.interface';
-import { PermissionExtractor } from '../../../common/utils/permission-extractor.util';
 import { PERMISSIONS } from '../../../common/constants/permissions';
 import type { ISessionRepository } from '../../../terminal/domain/interfaces/session.repository.interface';
 import { SESSION_REPOSITORY } from '../../../terminal/domain/interfaces/session.repository.interface';
 import type { IMessageRepository } from '../../../terminal/domain/interfaces/message.repository.interface';
 import { MESSAGE_REPOSITORY } from '../../../terminal/domain/interfaces/message.repository.interface';
+import { WsPermissionService } from '../../../terminal/application/services/ws-permission.service';
 import {
   ClaudeProcessManagerService,
   ClaudeStreamEvent,
@@ -48,8 +44,6 @@ export class ClaudeChatGateway
   private readonly logger = new Logger(ClaudeChatGateway.name);
 
   constructor(
-    @Inject(USER_REPOSITORY)
-    private readonly userRepository: IUserRepository,
     @Inject(SESSION_REPOSITORY)
     private readonly sessionRepo: ISessionRepository,
     @Inject(MESSAGE_REPOSITORY)
@@ -57,6 +51,7 @@ export class ClaudeChatGateway
     private readonly jwtService: JwtService,
     private readonly processManager: ClaudeProcessManagerService,
     private readonly sessionMapper: ClaudeSessionMapperService,
+    private readonly wsPermission: WsPermissionService,
   ) {}
 
   private async checkPermission(
@@ -65,16 +60,7 @@ export class ClaudeChatGateway
   ): Promise<boolean> {
     const user = client.user;
     if (!user?.sub) return false;
-
-    const userWithPermissions = await this.userRepository.findByIdWithRoles(
-      user.sub,
-    );
-    if (!userWithPermissions) return false;
-
-    const permissions = PermissionExtractor.extractFromRoles(
-      userWithPermissions.roles,
-    );
-    return permissions.includes(requiredPermission);
+    return this.wsPermission.checkPermission(user.sub, requiredPermission);
   }
 
   async handleConnection(client: AuthenticatedSocket) {

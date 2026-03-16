@@ -19,6 +19,7 @@ import {
   SessionMapperService,
   TerminalLimitService,
   TerminalSessionService,
+  WsPermissionService,
 } from './application/services';
 
 // Presentation
@@ -56,10 +57,16 @@ import { RbacModule } from '../rbac/rbac.module';
     SessionMapperService,
     TerminalLimitService,
     TerminalSessionService,
+    WsPermissionService,
 
     // Presentation
     TerminalGateway,
   ],
-  exports: [TerminalGateway],
+  exports: [
+    TerminalGateway,
+    WsPermissionService,
+    SESSION_REPOSITORY,
+    MESSAGE_REPOSITORY,
+  ],
 })
 export class TerminalModule {}
