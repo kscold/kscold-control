@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { networkService } from '../../../services/api/network.service';
-import { useModalStore } from '../../../stores/modal.store';
+import { useModalStore } from '../../../shared/model/modal.store';
 import {
   emptyForm,
   type CreateMappingForm,

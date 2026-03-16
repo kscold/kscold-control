@@ -1,6 +1,6 @@
 import { lazy, Suspense, useEffect } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
-import { useAuthStore } from './stores/auth.store';
+import { useAuthStore } from './shared/model/auth.store';
 import { Layout } from './app/Layout';
 import { Modal } from './shared/ui/Modal';
 import { ErrorBoundary } from './app/providers';

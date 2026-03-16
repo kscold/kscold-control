@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useModalStore } from '../../../stores/modal.store';
+import { useModalStore } from '../../../shared/model/modal.store';
 
 export type TabType = 'terminal' | 'claude-chat';
 

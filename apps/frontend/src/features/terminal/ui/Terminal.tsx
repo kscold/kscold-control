@@ -1,5 +1,5 @@
-import { useAuthStore } from '../../../stores/auth.store';
-import { useModalStore } from '../../../stores/modal.store';
+import { useAuthStore } from '../../../shared/model/auth.store';
+import { useModalStore } from '../../../shared/model/modal.store';
 import { useTerminalSession } from '../hooks/useTerminalSession';
 import { useTerminalSetup } from '../hooks/useTerminalSetup';
 import { useTerminalSocket } from '../hooks/useTerminalSocket';

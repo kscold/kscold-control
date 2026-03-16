@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react';
-import { useAuthStore } from '../../../stores/auth.store';
+import { useAuthStore } from '../../../shared/model/auth.store';
 import { useClaudeChatSession } from '../hooks/useClaudeChatSession';
 import { useClaudeChatMessages } from '../hooks/useClaudeChatMessages';
 import { useClaudeChatSocket } from '../hooks/useClaudeChatSocket';

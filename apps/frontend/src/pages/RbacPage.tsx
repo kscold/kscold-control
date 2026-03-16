@@ -1,4 +1,4 @@
-import { RbacDashboard } from '../features/rbac/ui/RbacDashboard';
+import { RbacDashboard } from '../features/rbac/ui';
 
 export function RbacPage() {
   return <RbacDashboard />;

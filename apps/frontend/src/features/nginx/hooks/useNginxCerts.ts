@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useModalStore } from '../../../stores/modal.store';
+import { useModalStore } from '../../../shared/model/modal.store';
 import { nginxService } from '../../../services/api/nginx.service';
 import type { CertInfo } from '../lib/nginx.types';
 
