@@ -233,6 +233,16 @@ export class ClaudeChatGateway
             break;
 
           case 'process-exit':
+            // 처리 중 비정상 종료 → message-end 강제 emit (무한 로딩 방지)
+            if (fullContent) {
+              emit('claude:message-end', {
+                content: fullContent,
+                costUsd: 0,
+                durationMs: 0,
+                totalCostUsd: 0,
+              });
+              fullContent = '';
+            }
             break;
         }
       },
@@ -253,13 +263,32 @@ export class ClaudeChatGateway
     this.processManager.kill(sessionId);
     await this.sessionRepo.deactivate(sessionId);
 
+    // 공유 세션의 다른 클라이언트에만 알림 (요청 클라이언트 제외)
     const clients = this.sessionMapper.getClients(sessionId);
     if (clients) {
-      clients.forEach((cid) =>
-        this.server.to(cid).emit('claude:session-closed'),
-      );
+      clients.forEach((cid) => {
+        if (cid !== client.id) {
+          this.server.to(cid).emit('claude:session-closed');
+        }
+      });
     }
     this.sessionMapper.clearSession(sessionId);
+
+    // 요청 클라이언트에 새 세션 즉시 생성
+    const user = (client as AuthenticatedSocket).user;
+    const newSession = await this.sessionRepo.save(
+      this.sessionRepo.create({
+        userId: user.sub,
+        title: `Claude Chat ${new Date().toLocaleString()}`,
+        isActive: true,
+        lastActivityAt: new Date(),
+      }),
+    );
+    this.sessionMapper.mapClientToSession(client.id, newSession.id);
+    client.emit('claude:session-ready', {
+      sessionId: newSession.id,
+      isReconnect: false,
+    });
 
     return { success: true };
   }

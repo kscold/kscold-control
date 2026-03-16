@@ -94,6 +94,10 @@ export function ClaudeChat({ onBackToTerminal }: ClaudeChatProps = {}) {
     onDisconnect: useCallback(() => {
       setConnected(false);
     }, [setConnected]),
+    onSessionClosed: useCallback(() => {
+      clearMessages();
+      clearSession();
+    }, [clearMessages, clearSession]),
   });
 
   const handleSend = useCallback(
