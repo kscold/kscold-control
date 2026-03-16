@@ -11,19 +11,12 @@ import { Server, Socket } from 'socket.io';
 import type { AuthenticatedSocket } from '../../../common/types/authenticated-socket.type';
 import {
   Injectable,
-  Inject,
   Logger,
   UnauthorizedException,
   ForbiddenException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 
-// Domain
-import {
-  IUserRepository,
-  USER_REPOSITORY,
-} from '../../../rbac/domain/repositories/user.repository.interface';
-import { PermissionExtractor } from '../../../common/utils/permission-extractor.util';
 import { PERMISSIONS } from '../../../common/constants/permissions';
 
 // Application Services
@@ -31,6 +24,7 @@ import {
   PtyManagerService,
   SessionMapperService,
   TerminalLimitService,
+  WsPermissionService,
 } from '../../application/services';
 import { TerminalSessionService } from '../../application/services/terminal-session.service';
 
@@ -53,13 +47,12 @@ export class TerminalGateway
   private readonly logger = new Logger(TerminalGateway.name);
 
   constructor(
-    @Inject(USER_REPOSITORY)
-    private readonly userRepository: IUserRepository,
     private readonly jwtService: JwtService,
     private readonly ptyManager: PtyManagerService,
     private readonly sessionMapper: SessionMapperService,
     private readonly terminalLimit: TerminalLimitService,
     private readonly terminalSession: TerminalSessionService,
+    private readonly wsPermission: WsPermissionService,
   ) {}
 
   private async checkPermission(
@@ -68,16 +61,7 @@ export class TerminalGateway
   ): Promise<boolean> {
     const user = client.user;
     if (!user || !user.sub) return false;
-
-    const userWithPermissions = await this.userRepository.findByIdWithRoles(
-      user.sub,
-    );
-    if (!userWithPermissions) return false;
-
-    const permissions = PermissionExtractor.extractFromRoles(
-      userWithPermissions.roles,
-    );
-    return permissions.includes(requiredPermission);
+    return this.wsPermission.checkPermission(user.sub, requiredPermission);
   }
 
   async handleConnection(client: AuthenticatedSocket) {
