@@ -13,7 +13,7 @@ import {
   Network,
   GitBranch,
 } from 'lucide-react';
-import { useAuthStore } from '../stores/auth.store';
+import { useAuthStore } from '../shared/model/auth.store';
 
 export function Layout() {
   const { user, logout } = useAuthStore();

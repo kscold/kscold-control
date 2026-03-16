@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { rbacService } from '../../../services/api/rbac.service';
-import { useModalStore } from '../../../stores/modal.store';
+import { useModalStore } from '../../../shared/model/modal.store';
 
 /**
  * useUserActions Hook

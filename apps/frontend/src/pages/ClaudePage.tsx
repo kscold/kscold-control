@@ -1,7 +1,7 @@
 import { Plus, X, TerminalSquare, MessageCircle } from 'lucide-react';
 import { Terminal } from '../features/terminal/ui';
-import { ClaudeChat } from '../features/claude-chat/ui/ClaudeChat';
-import { useClaudeTabs } from '../features/claude-chat/hooks/useClaudeTabs';
+import { ClaudeChat } from '../features/claude-chat/ui';
+import { useClaudeTabs } from '../features/claude-chat/hooks';
 
 export function ClaudePage() {
   const { tabs, activeTabId, setActiveTabId, tabModes, setTabMode, createTab, closeTab } =
