@@ -2,9 +2,17 @@ node_modules
 dist
 .turbo
 .env
-env/
+env/*
 *.env.local
 .DS_Store
+docker-compose.override.yml
+docker-compose.local.yml
+
+# Local-only infra overrides
+nginx/conf.d/*.conf
+nginx/conf.d/local/
+nginx/conf.d/*.local.conf
+nginx/conf.d/*.private.conf
 
 # Documentation
 docs/
@@ -22,3 +30,7 @@ logs/
 !**/src/logs/
 !**/src/logs/**
 apps/backend/src/seed.ts
+
+# Keep tracked examples for local setup
+!env/*.example
+!nginx/conf.d/*.conf.example
