@@ -94,6 +94,7 @@ services:
     environment:
       - MONGODB_URI=mongodb://kscold:Tmdcks6502%40@127.0.0.1:27017/kscold-blog?authSource=admin
       - JWT_SECRET=${BLOG_JWT_SECRET}
+      - JWT_REFRESH_SECRET=${BLOG_JWT_REFRESH_SECRET}
       - JWT_ACCESS_EXPIRATION=3600000
       - JWT_REFRESH_EXPIRATION=604800000
       - CORS_ORIGINS=https://kscold.com
