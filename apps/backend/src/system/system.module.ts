@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 
 import { SystemService } from './application/services/system.service';
+import { BackupService } from './application/services/backup.service';
 import { OS_METRICS_REPOSITORY } from './domain/interfaces/os-metrics.repository';
 import { OsMetricsRepositoryImpl } from './infrastructure/repositories/os-metrics.repository.impl';
 import { SystemController } from './presentation/controllers/system.controller';
@@ -9,6 +10,7 @@ import { SystemController } from './presentation/controllers/system.controller';
   controllers: [SystemController],
   providers: [
     SystemService,
+    BackupService,
     { provide: OS_METRICS_REPOSITORY, useClass: OsMetricsRepositoryImpl },
   ],
 })
