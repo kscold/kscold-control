@@ -67,6 +67,16 @@ services:
       - "2224:22"
       - "8082:8080"
       - "3001:3000"
+    environment:
+      - FILE_UPLOAD_DIR=/opt/congbang/uploads
+      - MINIO_ENABLED=true
+      - MINIO_ENDPOINT=http://host.docker.internal:9000
+      - MINIO_ACCESS_KEY=minioadmin
+      - MINIO_SECRET_KEY=minioadmin
+      - MINIO_BUCKET=congbang
+      - MINIO_PUBLIC_URL=https://bucket.kscold.com
+    volumes:
+      - congbang-uploads:/opt/congbang/uploads
     cpus: '2'
     mem_limit: 3g
     restart: unless-stopped
@@ -82,7 +92,7 @@ services:
       - "3002:3000"
       - "27019:27017"
     environment:
-      - MONGODB_URI=mongodb://127.0.0.1:27017/kscold-blog
+      - MONGODB_URI=mongodb://kscold:Tmdcks6502%40@127.0.0.1:27017/kscold-blog?authSource=admin
       - JWT_SECRET=${BLOG_JWT_SECRET}
       - JWT_ACCESS_EXPIRATION=3600000
       - JWT_REFRESH_EXPIRATION=604800000
@@ -103,5 +113,6 @@ services:
 volumes:
   infra-db-data:
   certbot-webroot:
+  congbang-uploads:
   blog-uploads:
   blog-mongo-data:

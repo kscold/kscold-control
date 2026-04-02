@@ -36,8 +36,9 @@ export function useTopology() {
       const newNodes: Node[] = [];
       const newEdges: Edge[] = [];
       const edgeIdSet = new Set<string>();
-      const COL_GAP = 300;
-      const ROW_GAP = 200;
+      const COL_GAP = 380;
+      const ROW_GAP = 340;
+      const NODE_HALF_W = 110;
 
       // 인프라 vs 앱 컨테이너 분리
       const isInfra = (c: ContainerData) =>
@@ -45,9 +46,26 @@ export function useTopology() {
       const infraContainers = containers.filter(isInfra);
       const appContainers = containers.filter((c) => !isInfra(c));
 
-      const totalCols = Math.max(appContainers.length, sites.length, 3);
-      const totalWidth = totalCols * COL_GAP;
+      // site → app container 매핑 파악
+      const siteToApp = new Map<string, string>();
+      sites.forEach((site) => {
+        const matched = appContainers.find(
+          (c) => site.upstream.includes(c.name) || site.upstream.includes(c.name.replace('ubuntu-', '')),
+        );
+        if (matched) siteToApp.set(site.name, matched.id);
+      });
+
+      // ── 컬럼 계산: 앱 연결 sites → control → storage(bucket/minio, 빨간색 우측 묶음) ──
+      const appLinkedSites = appContainers
+        .map((c) => sites.find((s) => siteToApp.get(s.name) === c.id))
+        .filter(Boolean) as NginxSiteData[];
+      const controlSites = sites.filter((s) => !siteToApp.has(s.name) && !s.name.includes('minio') && !s.name.includes('bucket'));
+      const storageSites = sites.filter((s) => s.name.includes('minio') || s.name.includes('bucket'));
+      const sortedSites = [...appLinkedSites, ...controlSites, ...storageSites];
+      const colCount = Math.max(sortedSites.length, appContainers.length, 5);
+      const totalWidth = colCount * COL_GAP;
       const centerX = totalWidth / 2;
+      const rowStartX = centerX - ((colCount - 1) * COL_GAP) / 2 - NODE_HALF_W;
 
       const addEdge = (edge: Edge) => {
         if (!edgeIdSet.has(edge.id)) {
@@ -56,25 +74,39 @@ export function useTopology() {
         }
       };
 
-      // ── Row 0: Internet ──
+      // ══════ Row 0: Internet ══════
       newNodes.push({ id: 'internet', type: 'internet', position: { x: centerX - 80, y: 0 }, data: { label: 'Internet' }, draggable: true });
 
-      // ── Row 1: Mac Mini Host ──
-      newNodes.push({ id: 'host', type: 'host', position: { x: centerX - 110, y: ROW_GAP }, data: { label: 'Mac Mini (Host)', subtitle: 'Apple M4 · macOS · Colima Docker' }, draggable: true });
+      // ══════ Row 1: Mac Mini Host ══════
+      newNodes.push({ id: 'host', type: 'host', position: { x: centerX - 110, y: ROW_GAP * 0.9 }, data: { label: 'Mac Mini (Host)', subtitle: 'Apple M4 · macOS · Colima Docker' }, draggable: true });
       addEdge({ id: 'internet-host', source: 'internet', target: 'host', animated: true, style: { stroke: '#6366f1', strokeWidth: 2 } });
 
-      // ── Row 2: 호스트 레벨 인프라 (nginx, infra-db, kscold-control) ──
+      // UPnP — Host 우측에 인접 배치
+      const localUpnp = upnpMappings.filter((m) => m.local);
+      if (localUpnp.length > 0) {
+        const upnpX = centerX + 200;
+        const upnpY = ROW_GAP * 0.9;
+        localUpnp.forEach((m, i) => {
+          const id = `upnp-${m.publicPort}-${m.protocol}`;
+          newNodes.push({ id, type: 'upnp', position: { x: upnpX + i * 130, y: upnpY }, data: { publicPort: m.publicPort, privatePort: m.privatePort, protocol: m.protocol, description: m.description }, draggable: true });
+          addEdge({ id: `host-${id}`, source: 'host', target: id, style: { stroke: '#a855f7', strokeWidth: 1.5 } });
+        });
+      }
+
+      // ══════ Row 2: 인프라 계층 — Nginx | kscold-control | PostgreSQL ══════
       const infraY = ROW_GAP * 2;
-      // kscold-control은 맥미니 로컬 PM2 → 별도 노드
+      const nginxContainers = infraContainers.filter((c) => c.name.includes('nginx'));
+      const dbContainers = infraContainers.filter((c) => !c.name.includes('nginx'));
+      // 순서: Nginx Proxy(좌) | kscold-control(중) | PostgreSQL(우) — control↔DB 인접
       const hostServices = [
+        ...nginxContainers.map((c) => ({ id: `container-${c.id}`, label: c.name, subtitle: c.image, type: 'infra' as const, container: c })),
         { id: 'local-control', label: 'kscold-control', subtitle: 'NestJS · PM2 · :4000', type: 'local' as const },
-        ...infraContainers.map((c) => ({ id: `container-${c.id}`, label: c.name, subtitle: c.image, type: 'infra' as const, container: c })),
+        ...dbContainers.map((c) => ({ id: `container-${c.id}`, label: c.name, subtitle: c.image, type: 'infra' as const, container: c })),
       ];
-      const infraStartX = centerX - ((hostServices.length - 1) * COL_GAP) / 2 - 100;
+      const infraStartX = centerX - ((hostServices.length - 1) * COL_GAP) / 2 - NODE_HALF_W;
 
       hostServices.forEach((svc, i) => {
         if (svc.type === 'local') {
-          // 맥미니 로컬 서비스
           newNodes.push({
             id: svc.id,
             type: 'container',
@@ -105,7 +137,6 @@ export function useTopology() {
             draggable: true,
           });
         } else {
-          // 인프라 컨테이너 (nginx, infra-db)
           const container = (svc as { container: ContainerData }).container;
           const meta = getStackMeta(container.image, container.name);
           newNodes.push({
@@ -127,41 +158,45 @@ export function useTopology() {
         addEdge({ id: `host-${svc.id}`, source: 'host', target: svc.id, style: { stroke: '#64748b', strokeWidth: 2 } });
       });
 
-      // control → infra-db 연결
+      // control → infra-db 점선 연결
       const infraDbNode = infraContainers.find((c) => c.name.includes('infra-db'));
       if (infraDbNode) {
-        addEdge({ id: 'control-db', source: 'local-control', target: `container-${infraDbNode.id}`, style: { stroke: '#38bdf8', strokeWidth: 1.5, strokeDasharray: '6 3' }, label: 'control-db' });
+        addEdge({
+          id: 'control-db',
+          source: 'local-control',
+          target: `container-${infraDbNode.id}`,
+          style: { stroke: '#38bdf8', strokeWidth: 1.5, strokeDasharray: '6 3' },
+        });
       }
 
-      // ── Row 3: Nginx Sites ──
-      const nginxY = ROW_GAP * 3;
+      // ══════ Row 3: Nginx Sites — 앱 컨테이너와 같은 컬럼 ══════
+      const nginxY = ROW_GAP * 3.1;
       const nginxContainer = infraContainers.find((c) => c.name.includes('nginx'));
       const nginxNodeId = nginxContainer ? `container-${nginxContainer.id}` : null;
-      const nginxStartX = centerX - ((sites.length - 1) * COL_GAP) / 2 - 90;
-      sites.forEach((site, i) => {
+
+      sortedSites.forEach((site, i) => {
         const id = `nginx-${site.name}`;
-        newNodes.push({ id, type: 'nginx', position: { x: nginxStartX + i * COL_GAP, y: nginxY }, data: { ...site } as Record<string, unknown>, draggable: true });
+        newNodes.push({ id, type: 'nginx', position: { x: rowStartX + i * COL_GAP, y: nginxY }, data: { ...site } as Record<string, unknown>, draggable: true });
         if (nginxNodeId) {
-          addEdge({ id: `${nginxNodeId}-${id}`, source: nginxNodeId, target: id, style: { stroke: '#d97706', strokeWidth: 1.5 } });
+          const isStorage = site.name.includes('minio') || site.name.includes('bucket');
+          addEdge({ id: `${nginxNodeId}-${id}`, source: nginxNodeId, target: id, style: { stroke: isStorage ? '#e11d48' : '#d97706', strokeWidth: 1.5 } });
         }
       });
 
       // control.kscold.com → kscold-control 연결
-      const controlSite = sites.find((s) => s.name === 'control');
-      if (controlSite) {
+      if (sites.find((s) => s.name === 'control')) {
         addEdge({ id: 'nginx-control-local', source: 'nginx-control', target: 'local-control', animated: true, style: { stroke: '#22d3ee', strokeWidth: 1.5 } });
       }
 
-      // ── Row 4: 앱 컨테이너 (Docker) ──
-      const containerY = ROW_GAP * 4.2;
-      const containerStartX = centerX - ((appContainers.length - 1) * COL_GAP) / 2 - 110;
+      // ══════ Row 4: 앱 컨테이너 — site와 정확히 같은 컬럼 ══════
+      const containerY = ROW_GAP * 4.3;
       appContainers.forEach((container, i) => {
         const id = `container-${container.id}`;
         const meta = getStackMeta(container.image, container.name);
         newNodes.push({
           id,
           type: 'container',
-          position: { x: containerStartX + i * COL_GAP, y: containerY },
+          position: { x: rowStartX + i * COL_GAP, y: containerY },
           data: {
             label: meta.label || container.name,
             image: container.image,
@@ -173,25 +208,13 @@ export function useTopology() {
           draggable: true,
         });
 
-        // nginx site → 앱 컨테이너 연결
-        sites.forEach((site) => {
-          if (site.upstream.includes(container.name) || site.upstream.includes(container.name.replace('ubuntu-', ''))) {
+        // site → 앱 컨테이너 연결 (같은 컬럼 = 수직 직선)
+        sortedSites.forEach((site) => {
+          if (siteToApp.get(site.name) === container.id) {
             addEdge({ id: `nginx-${site.name}-${id}`, source: `nginx-${site.name}`, target: id, animated: site.enabled, style: { stroke: site.enabled ? '#22c55e' : '#4b5563', strokeWidth: 1.5 } });
           }
         });
       });
-
-      // UPnP (있으면)
-      const localUpnp = upnpMappings.filter((m) => m.local);
-      if (localUpnp.length > 0) {
-        const upnpY = ROW_GAP * 0.5;
-        const upnpStartX = centerX + 300;
-        localUpnp.forEach((m, i) => {
-          const id = `upnp-${m.publicPort}-${m.protocol}`;
-          newNodes.push({ id, type: 'upnp', position: { x: upnpStartX, y: upnpY + i * 60 }, data: { publicPort: m.publicPort, privatePort: m.privatePort, protocol: m.protocol, description: m.description }, draggable: true });
-          addEdge({ id: `host-${id}`, source: 'host', target: id, style: { stroke: '#a855f7', strokeWidth: 1.5 } });
-        });
-      }
 
       setNodes(newNodes);
       setEdges(newEdges);
