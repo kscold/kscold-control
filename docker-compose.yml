@@ -26,6 +26,7 @@ services:
       - ./nginx/conf.d:/etc/nginx/conf.d:ro
       - ./ssl:/etc/nginx/ssl:ro
       - certbot-webroot:/var/www/certbot
+      - /Users/kscold/Desktop/bucket:/var/www/bucket:ro
     depends_on:
       - ubuntu-galjido
     restart: unless-stopped
@@ -70,6 +71,37 @@ services:
     mem_limit: 3g
     restart: unless-stopped
 
+  # ===== kscold 블로그 인스턴스 (EC2) =====
+  ubuntu-blog:
+    image: kscold/ubuntu-blog:latest
+    container_name: ubuntu-blog
+    command: /entrypoint.sh
+    ports:
+      - "2225:22"
+      - "8083:8080"
+      - "3002:3000"
+      - "27019:27017"
+    environment:
+      - MONGODB_URI=mongodb://127.0.0.1:27017/kscold-blog
+      - JWT_SECRET=${BLOG_JWT_SECRET}
+      - JWT_ACCESS_EXPIRATION=3600000
+      - JWT_REFRESH_EXPIRATION=604800000
+      - CORS_ORIGINS=https://kscold.com
+      - FILE_UPLOAD_DIR=/app/uploads
+      - MINIO_ENDPOINT=http://host.docker.internal:9000
+      - MINIO_ACCESS_KEY=minioadmin
+      - MINIO_SECRET_KEY=minioadmin
+      - MINIO_BUCKET=blog
+      - MINIO_PUBLIC_URL=https://bucket.kscold.com
+    volumes:
+      - blog-uploads:/app/uploads
+      - blog-mongo-data:/data/db
+    cpus: '2'
+    mem_limit: 3g
+    restart: unless-stopped
+
 volumes:
   infra-db-data:
   certbot-webroot:
+  blog-uploads:
+  blog-mongo-data:
