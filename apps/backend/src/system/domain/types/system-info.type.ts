@@ -18,10 +18,30 @@ export interface DiskInfo {
   usedPercent: number;
 }
 
+export interface DockerStorageMetric {
+  size: number;
+  reclaimable: number;
+  active: number;
+  totalCount: number;
+}
+
+export interface DockerStorageUsage {
+  total: number;
+  reclaimable: number;
+  storageLabel: string;
+  storagePath: string | null;
+  storagePathSize: number;
+  images: DockerStorageMetric;
+  containers: DockerStorageMetric;
+  volumes: DockerStorageMetric;
+  buildCache: DockerStorageMetric;
+}
+
 export interface DiskBreakdown {
   docker: number;
   applications: number;
   other: number;
+  dockerUsage: DockerStorageUsage;
 }
 
 export interface LiveStats {
