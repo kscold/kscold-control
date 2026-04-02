@@ -6,6 +6,25 @@ export interface ContainerInfo {
   resources: { cpus: number; memory: string };
 }
 
+export interface DockerStorageMetric {
+  size: number;
+  reclaimable: number;
+  active: number;
+  totalCount: number;
+}
+
+export interface DockerStorageUsage {
+  total: number;
+  reclaimable: number;
+  storageLabel: string;
+  storagePath: string | null;
+  storagePathSize: number;
+  images: DockerStorageMetric;
+  containers: DockerStorageMetric;
+  volumes: DockerStorageMetric;
+  buildCache: DockerStorageMetric;
+}
+
 export interface SystemInfo {
   cpu: { count: number; model: string };
   memory: { total: number; used: number; free: number; usedPercent: number };
@@ -14,7 +33,12 @@ export interface SystemInfo {
     used: number;
     available: number;
     usedPercent: number;
-    breakdown: { docker: number; applications: number; other: number };
+    breakdown: {
+      docker: number;
+      applications: number;
+      other: number;
+      dockerUsage: DockerStorageUsage;
+    };
   };
   platform: string;
   hostname: string;
