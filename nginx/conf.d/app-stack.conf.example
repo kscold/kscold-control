@@ -1,10 +1,10 @@
-# congbang.kscold.com → ubuntu-congbang 컨테이너
-# Frontend: ubuntu-congbang:3000 (Next.js)
-# Backend API: ubuntu-congbang:8080 (Spring Boot)
+# app.example.com -> ubuntu-app container
+# Frontend: ubuntu-app:3000
+# Backend API: ubuntu-app:8080
 
 server {
     listen 80;
-    server_name congbang.kscold.com;
+    server_name app.example.com www.app.example.com;
 
     location /.well-known/acme-challenge/ {
         root /var/www/certbot;
@@ -18,22 +18,21 @@ server {
 server {
     listen 443 ssl;
     http2 on;
-    server_name congbang.kscold.com;
+    server_name app.example.com www.app.example.com;
 
-    ssl_certificate     /etc/nginx/ssl/congbang.kscold.com/fullchain.pem;
-    ssl_certificate_key /etc/nginx/ssl/congbang.kscold.com/privkey.pem;
+    ssl_certificate     /etc/nginx/ssl/app.example.com/fullchain.pem;
+    ssl_certificate_key /etc/nginx/ssl/app.example.com/privkey.pem;
     ssl_protocols TLSv1.2 TLSv1.3;
     ssl_prefer_server_ciphers on;
     ssl_ciphers HIGH:!aNULL:!MD5;
 
     client_max_body_size 20M;
 
-    # Next.js 프론트엔드
     location / {
-        proxy_pass http://ubuntu-congbang:3000;
+        proxy_pass http://ubuntu-app:3000;
         proxy_http_version 1.1;
         proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection 'upgrade';
+        proxy_set_header Connection "upgrade";
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -41,9 +40,8 @@ server {
         proxy_cache_bypass $http_upgrade;
     }
 
-    # Spring Boot API (trailing slash 제거 → /api/ prefix 보존)
     location /api/ {
-        proxy_pass http://ubuntu-congbang:8080;
+        proxy_pass http://ubuntu-app:8080;
         proxy_http_version 1.1;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
@@ -51,39 +49,33 @@ server {
         proxy_set_header X-Forwarded-Proto $scheme;
     }
 
-    # 파일 업로드 정적 파일
     location /uploads/ {
-        proxy_pass http://ubuntu-congbang:8080;
+        proxy_pass http://ubuntu-app:8080;
         proxy_http_version 1.1;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
     }
 
-    # WebSocket (Spring Boot)
     location /ws/ {
-        proxy_pass http://ubuntu-congbang:8080;
+        proxy_pass http://ubuntu-app:8080;
         proxy_http_version 1.1;
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection "upgrade";
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_read_timeout 3600;
+        proxy_send_timeout 3600;
     }
 
-    # Swagger UI
-    location /swagger-ui/ {
-        proxy_pass http://ubuntu-congbang:8080;
+    location /socket.io/ {
+        proxy_pass http://ubuntu-app:8080;
         proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-    }
-
-    # OpenAPI docs
-    location /v3/api-docs {
-        proxy_pass http://ubuntu-congbang:8080;
-        proxy_http_version 1.1;
-        proxy_set_header Host $host;
     }
 }
