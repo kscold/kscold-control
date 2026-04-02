@@ -8,10 +8,13 @@ import type {
   CpuStats,
   DiskBreakdown,
   DiskInfo,
+  DockerStorageUsage,
   MemoryStats,
 } from '../../domain/types/system-info.type';
+import { parseDockerSystemDfOutput } from './docker-disk-usage.util';
 
 const execAsync = promisify(exec);
+const DEFAULT_DOCKER_HOST = 'unix:///Users/kscold/.colima/default/docker.sock';
 
 @Injectable()
 export class OsMetricsRepositoryImpl implements IOsMetricsRepository {
@@ -46,17 +49,21 @@ export class OsMetricsRepositoryImpl implements IOsMetricsRepository {
     }
 
     let diskInfo: DiskInfo = { total: 0, used: 0, available: 0, usedPercent: 0 };
-    let diskBreakdown: DiskBreakdown = { docker: 0, applications: 0, other: 0 };
+    let diskBreakdown: DiskBreakdown = {
+      docker: 0,
+      applications: 0,
+      other: 0,
+      dockerUsage: this.createEmptyDockerUsage(),
+    };
 
     try {
       const home = process.env.HOME || '/Users/' + process.env.USER;
+      const dockerUsagePromise = this.getDockerStorageUsage(home);
 
-      const [dfResult, dockerResult, appsResult] = await Promise.all([
+      const [dfResult, appsResult, dockerUsage] = await Promise.all([
         execAsync('df -k /'),
-        execAsync(
-          `du -sk "${home}/Library/Containers/com.docker.docker" 2>/dev/null || echo "0\t-"`,
-        ),
         execAsync(`du -sk /Applications 2>/dev/null || echo "0\t-"`),
+        dockerUsagePromise,
       ]);
 
       const lines = dfResult.stdout.trim().split('\n');
@@ -73,15 +80,18 @@ export class OsMetricsRepositoryImpl implements IOsMetricsRepository {
           usedPercent: totalKB > 0 ? (realUsedKB / totalKB) * 100 : 0,
         };
 
-        const dockerKB = parseInt(dockerResult.stdout.trim().split(/\s+/)[0]) || 0;
         const appsKB = parseInt(appsResult.stdout.trim().split(/\s+/)[0]) || 0;
-        const dockerBytes = dockerKB * 1024;
         const appsBytes = appsKB * 1024;
+        const dockerBytes = Math.min(
+          dockerUsage.storagePathSize || dockerUsage.total,
+          Math.max(0, diskInfo.used - appsBytes),
+        );
 
         diskBreakdown = {
           docker: dockerBytes,
           applications: appsBytes,
           other: Math.max(0, diskInfo.used - dockerBytes - appsBytes),
+          dockerUsage,
         };
       }
 
@@ -172,5 +182,63 @@ export class OsMetricsRepositoryImpl implements IOsMetricsRepository {
       free: availableMem,
       usedPercent: Math.round((appMem / totalMem) * 1000) / 10,
     };
+  }
+
+  private createEmptyDockerUsage(): DockerStorageUsage {
+    return {
+      total: 0,
+      reclaimable: 0,
+      storageLabel: 'Docker',
+      storagePath: null,
+      storagePathSize: 0,
+      images: { size: 0, reclaimable: 0, active: 0, totalCount: 0 },
+      containers: { size: 0, reclaimable: 0, active: 0, totalCount: 0 },
+      volumes: { size: 0, reclaimable: 0, active: 0, totalCount: 0 },
+      buildCache: { size: 0, reclaimable: 0, active: 0, totalCount: 0 },
+    };
+  }
+
+  private async getDockerStorageUsage(home: string): Promise<DockerStorageUsage> {
+    const dockerUsage = this.createEmptyDockerUsage();
+    const dockerHost = process.env.DOCKER_HOST || DEFAULT_DOCKER_HOST;
+
+    try {
+      const { stdout } = await execAsync(
+        `DOCKER_HOST=${dockerHost} docker system df --format '{{json .}}'`,
+      );
+      Object.assign(dockerUsage, parseDockerSystemDfOutput(stdout));
+    } catch (error) {
+      this.logger.warn(`Failed to read docker system df: ${error instanceof Error ? error.message : String(error)}`);
+    }
+
+    const candidates = [
+      { label: 'Colima VM', path: `${home}/.colima` },
+      { label: 'Docker Desktop', path: `${home}/Library/Containers/com.docker.docker` },
+    ];
+
+    const sizes = await Promise.all(
+      candidates.map(async (candidate) => {
+        try {
+          const { stdout } = await execAsync(
+            `du -sk "${candidate.path}" 2>/dev/null || echo "0\t-"`,
+          );
+          return {
+            ...candidate,
+            size: (parseInt(stdout.trim().split(/\s+/)[0], 10) || 0) * 1024,
+          };
+        } catch {
+          return { ...candidate, size: 0 };
+        }
+      }),
+    );
+
+    const storage = sizes.sort((left, right) => right.size - left.size)[0];
+    if (storage?.size) {
+      dockerUsage.storageLabel = storage.label;
+      dockerUsage.storagePath = storage.path;
+      dockerUsage.storagePathSize = storage.size;
+    }
+
+    return dockerUsage;
   }
 }
