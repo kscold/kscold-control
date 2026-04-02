@@ -44,9 +44,9 @@ export function TopologyView() {
 
   return (
     <div className="h-full w-full bg-gray-950 relative">
-      {/* Header */}
-      <div className="absolute top-3 left-3 z-10 flex items-center gap-2">
-        <div className="bg-gray-900/90 backdrop-blur border border-gray-700 rounded-xl px-4 py-2 flex items-center gap-2">
+      {/* Header + Legend */}
+      <div className="absolute top-3 left-3 right-3 z-10 flex items-center gap-2">
+        <div className="bg-gray-900/90 backdrop-blur border border-gray-700 rounded-xl px-4 py-2 flex items-center gap-2 flex-shrink-0">
           <Network size={16} className="text-purple-400" />
           <span className="text-white font-bold text-sm">Infrastructure Topology</span>
           {processesLoading && (
@@ -56,36 +56,35 @@ export function TopologyView() {
         <button
           onClick={loadTopology}
           disabled={loading || processesLoading}
-          className="bg-gray-900/90 backdrop-blur border border-gray-700 rounded-xl px-3 py-2 text-gray-300 hover:text-white transition disabled:opacity-50"
+          className="bg-gray-900/90 backdrop-blur border border-gray-700 rounded-xl px-3 py-2 text-gray-300 hover:text-white transition disabled:opacity-50 flex-shrink-0"
         >
           <RefreshCw size={14} className={loading || processesLoading ? 'animate-spin' : ''} />
         </button>
-      </div>
-
-      {/* Legend */}
-      <div className="absolute top-3 right-3 z-10 bg-gray-900/90 backdrop-blur border border-gray-700 rounded-xl px-3 py-2">
-        <div className="flex flex-wrap gap-x-3 gap-y-1 text-[10px]">
-          {[
-            { color: 'bg-indigo-500', label: 'Internet' },
-            { color: 'bg-blue-500', label: 'Host' },
-            { color: 'bg-amber-500', label: 'Nginx' },
-            { color: 'bg-blue-400', label: 'App' },
-            { color: 'bg-sky-500', label: 'DB' },
-            { color: 'bg-purple-500', label: 'UPnP' },
-          ].map(({ color, label }) => (
-            <span key={label} className="flex items-center gap-1">
-              <span className={`w-2 h-2 rounded-full ${color}`} />
-              <span className="text-gray-400">{label}</span>
+        <div className="bg-gray-900/90 backdrop-blur border border-gray-700 rounded-xl px-3 py-2 ml-auto flex-shrink-0 overflow-hidden">
+          <div className="flex flex-wrap gap-x-2.5 gap-y-1 text-[10px]">
+            {[
+              { color: 'bg-indigo-500', label: 'Internet' },
+              { color: 'bg-blue-500', label: 'Host' },
+              { color: 'bg-amber-500', label: 'Nginx' },
+              { color: 'bg-blue-400', label: 'App' },
+              { color: 'bg-sky-500', label: 'DB' },
+              { color: 'bg-rose-500', label: 'Storage' },
+              { color: 'bg-purple-500', label: 'UPnP' },
+            ].map(({ color, label }) => (
+              <span key={label} className="flex items-center gap-1">
+                <span className={`w-2 h-2 rounded-full ${color}`} />
+                <span className="text-gray-400">{label}</span>
+              </span>
+            ))}
+            <span className="flex items-center gap-1 border-l border-gray-700 pl-2.5">
+              <Cpu size={9} className="text-indigo-400" />
+              <span className="text-gray-400">PM2</span>
             </span>
-          ))}
-          <span className="flex items-center gap-1 border-l border-gray-700 pl-3">
-            <Cpu size={9} className="text-indigo-400" />
-            <span className="text-gray-400">PM2</span>
-          </span>
-          <span className="flex items-center gap-1">
-            <Database size={9} className="text-purple-400" />
-            <span className="text-gray-400">Services</span>
-          </span>
+            <span className="flex items-center gap-1">
+              <Database size={9} className="text-purple-400" />
+              <span className="text-gray-400">Services</span>
+            </span>
+          </div>
         </div>
       </div>
 
