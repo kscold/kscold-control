@@ -110,9 +110,35 @@ services:
     mem_limit: 3g
     restart: unless-stopped
 
+  # ===== Slacord 인스턴스 (EC2) =====
+  ubuntu-slacord:
+    image: kscold/ubuntu-slacord:latest
+    container_name: ubuntu-slacord
+    command: /entrypoint.sh
+    env_file:
+      - ./env/slacord.env
+    ports:
+      - "2226:22"
+      - "8084:8082"
+      - "3003:3002"
+      - "27020:27017"
+    environment:
+      - NODE_ENV=production
+      - HOST=0.0.0.0
+      - PORT=8082
+      - INTERNAL_API_URL=http://127.0.0.1:8082
+      - NEXT_PUBLIC_APP_URL=https://slacord.kscold.com
+      - NEXT_PUBLIC_API_URL=https://slacord.kscold.com
+    volumes:
+      - slacord-mongo-data:/data/db
+    cpus: '2'
+    mem_limit: 3g
+    restart: unless-stopped
+
 volumes:
   infra-db-data:
   certbot-webroot:
   congbang-uploads:
   blog-uploads:
   blog-mongo-data:
+  slacord-mongo-data:

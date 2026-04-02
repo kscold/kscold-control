@@ -2,6 +2,7 @@ node_modules
 dist
 .turbo
 .env
+env/
 *.env.local
 .DS_Store
 
