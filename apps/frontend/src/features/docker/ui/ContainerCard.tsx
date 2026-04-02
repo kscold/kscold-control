@@ -1,8 +1,11 @@
-import { Play, Square, Trash2, Download, Globe } from 'lucide-react';
+import { Play, Square, Trash2, Download, Globe, Database } from 'lucide-react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { usePermissions } from '../../../hooks/usePermissions';
 import { PERMISSIONS } from '../../../constants/permissions';
 import type { Container } from '../../../types/domain.types';
+
+const MONGO_CONTAINERS = ['ubuntu-blog', 'ubuntu-congbang'];
 
 interface ContainerCardProps {
   container: Container;
@@ -25,6 +28,31 @@ export function ContainerCard({
 }: ContainerCardProps) {
   const { checkPermission } = usePermissions();
   const navigate = useNavigate();
+  const [backupState, setBackupState] = useState<'idle' | 'loading' | 'done' | 'error'>('idle');
+  const [backupMsg, setBackupMsg] = useState('');
+
+  const hasMongo = MONGO_CONTAINERS.includes(container.name);
+
+  const handleBackup = async () => {
+    setBackupState('loading');
+    setBackupMsg('');
+    try {
+      const token = localStorage.getItem('accessToken');
+      const res = await fetch(`/api/system/backup/mongodb/${container.name}`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || '백업 실패');
+      setBackupState('done');
+      setBackupMsg(`완료 (${data.size})`);
+      setTimeout(() => setBackupState('idle'), 4000);
+    } catch (e) {
+      setBackupState('error');
+      setBackupMsg(e instanceof Error ? e.message : '오류');
+      setTimeout(() => setBackupState('idle'), 4000);
+    }
+  };
 
   const handleConnectProxy = () => {
     // Find the first internal port to use as upstream
@@ -186,6 +214,33 @@ export function ContainerCard({
         >
           <Globe size={16} />
         </button>
+        {hasMongo && (
+          <button
+            onClick={handleBackup}
+            disabled={backupState === 'loading'}
+            className={`px-3 py-2 rounded transition-colors flex items-center gap-1 text-xs ${
+              backupState === 'loading'
+                ? 'bg-gray-600 text-gray-400 cursor-not-allowed'
+                : backupState === 'done'
+                  ? 'bg-green-700 text-white'
+                  : backupState === 'error'
+                    ? 'bg-red-700 text-white'
+                    : 'bg-blue-600 text-white hover:bg-blue-700'
+            }`}
+            title="MongoDB 백업"
+          >
+            <Database size={14} />
+            <span className="hidden sm:inline">
+              {backupState === 'loading'
+                ? '백업중...'
+                : backupState === 'done'
+                  ? backupMsg
+                  : backupState === 'error'
+                    ? '실패'
+                    : 'DB백업'}
+            </span>
+          </button>
+        )}
         <button
           onClick={() =>
             checkPermission(PERMISSIONS.DOCKER_DELETE, () => onDelete(container.id))
