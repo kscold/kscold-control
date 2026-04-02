@@ -36,9 +36,9 @@ services:
     image: postgres:15-alpine
     container_name: kscold-infra-db
     environment:
-      POSTGRES_DB: kscold-infra-db
-      POSTGRES_USER: admin
-      POSTGRES_PASSWORD: admin123
+      POSTGRES_DB: ${INFRA_DB_NAME:-kscold-infra-db}
+      POSTGRES_USER: ${INFRA_DB_USER:-admin}
+      POSTGRES_PASSWORD: ${INFRA_DB_PASSWORD}
     ports:
       - "5432:5432"
     volumes:
@@ -92,7 +92,7 @@ services:
       - "3002:3000"
       - "27019:27017"
     environment:
-      - MONGODB_URI=mongodb://kscold:Tmdcks6502%40@127.0.0.1:27017/kscold-blog?authSource=admin
+      - MONGODB_URI=${BLOG_MONGODB_URI}
       - JWT_SECRET=${BLOG_JWT_SECRET}
       - JWT_REFRESH_SECRET=${BLOG_JWT_REFRESH_SECRET}
       - JWT_ACCESS_EXPIRATION=3600000
