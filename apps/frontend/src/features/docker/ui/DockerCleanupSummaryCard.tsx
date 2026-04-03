@@ -45,6 +45,15 @@ export function DockerCleanupSummaryCard({
         </div>
         <div className="rounded-xl border border-gray-800 bg-gray-900/70 p-4">
           <div className="flex items-center gap-2 text-xs uppercase tracking-[0.24em] text-gray-400">
+            <Sparkles size={14} className="text-amber-300" />
+            <span>부분 실패</span>
+          </div>
+          <p className="mt-2 text-2xl font-semibold text-white">
+            {candidates.summary.warningCount}
+          </p>
+        </div>
+        <div className="rounded-xl border border-gray-800 bg-gray-900/70 p-4">
+          <div className="flex items-center gap-2 text-xs uppercase tracking-[0.24em] text-gray-400">
             <Sparkles size={14} className="text-cyan-300" />
             <span>운영 기준</span>
           </div>
