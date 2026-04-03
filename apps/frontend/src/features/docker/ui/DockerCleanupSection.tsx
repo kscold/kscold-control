@@ -65,6 +65,17 @@ export function DockerCleanupSection({
         </button>
       </div>
 
+      {candidates.warnings.length ? (
+        <div className="rounded-2xl border border-amber-500/20 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
+          <p className="font-medium">일부 정리 후보를 읽지 못했습니다.</p>
+          <ul className="mt-2 space-y-1 text-amber-50/90">
+            {candidates.warnings.map((warning) => (
+              <li key={warning}>- {warning}</li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+
       <DockerCleanupSummaryCard candidates={candidates} />
 
       <div className="grid gap-4 xl:grid-cols-2">

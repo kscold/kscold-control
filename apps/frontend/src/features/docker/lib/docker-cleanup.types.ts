@@ -25,7 +25,9 @@ export interface DockerCleanupCandidates {
     reclaimableBytes: number;
     readOnlyBytes: number;
     totalCandidates: number;
+    warningCount: number;
   };
+  warnings: string[];
 }
 
 export interface DockerCleanupResult {
