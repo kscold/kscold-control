@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { Layers3, Box, Database, PackageOpen, Trash2 } from 'lucide-react';
+import { dashboardStorageTones } from '../lib/dashboard.colors';
 import type { DockerStorageMetric, SystemInfo } from '../lib/dashboard.types';
 import { formatBytes } from '../lib/dashboard.utils';
 
@@ -11,11 +12,19 @@ interface StorageRowProps {
   label: string;
   metric: DockerStorageMetric;
   icon: ReactNode;
+  cardClassName: string;
+  accentClassName: string;
 }
 
-function StorageRow({ label, metric, icon }: StorageRowProps) {
+function StorageRow({
+  label,
+  metric,
+  icon,
+  cardClassName,
+  accentClassName,
+}: StorageRowProps) {
   return (
-    <div className="rounded-xl border border-gray-800 bg-gray-900/70 p-4">
+    <div className={`rounded-xl border p-4 ${cardClassName}`}>
       <div className="flex items-center gap-2 text-sm text-gray-300">
         {icon}
         <span>{label}</span>
@@ -24,7 +33,7 @@ function StorageRow({ label, metric, icon }: StorageRowProps) {
       <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-400">
         <span>{metric.active} active</span>
         <span>{metric.totalCount} total</span>
-        <span>reclaimable {formatBytes(metric.reclaimable)}</span>
+        <span className={accentClassName}>reclaimable {formatBytes(metric.reclaimable)}</span>
       </div>
     </div>
   );
@@ -75,22 +84,30 @@ export function DockerStorageDetailsCard({
         <StorageRow
           label="Images"
           metric={dockerUsage.images}
-          icon={<Layers3 size={16} className="text-blue-400" />}
+          icon={<Layers3 size={16} className={dashboardStorageTones.images.iconClassName} />}
+          cardClassName={dashboardStorageTones.images.cardClassName}
+          accentClassName={dashboardStorageTones.images.textClassName}
         />
         <StorageRow
           label="Containers"
           metric={dockerUsage.containers}
-          icon={<Box size={16} className="text-green-400" />}
+          icon={<Box size={16} className={dashboardStorageTones.containers.iconClassName} />}
+          cardClassName={dashboardStorageTones.containers.cardClassName}
+          accentClassName={dashboardStorageTones.containers.textClassName}
         />
         <StorageRow
           label="Volumes"
           metric={dockerUsage.volumes}
-          icon={<Database size={16} className="text-purple-400" />}
+          icon={<Database size={16} className={dashboardStorageTones.volumes.iconClassName} />}
+          cardClassName={dashboardStorageTones.volumes.cardClassName}
+          accentClassName={dashboardStorageTones.volumes.textClassName}
         />
         <StorageRow
           label="Build Cache"
           metric={dockerUsage.buildCache}
-          icon={<PackageOpen size={16} className="text-cyan-400" />}
+          icon={<PackageOpen size={16} className={dashboardStorageTones.buildCache.iconClassName} />}
+          cardClassName={dashboardStorageTones.buildCache.cardClassName}
+          accentClassName={dashboardStorageTones.buildCache.textClassName}
         />
       </div>
 

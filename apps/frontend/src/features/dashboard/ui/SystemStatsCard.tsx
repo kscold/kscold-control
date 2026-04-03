@@ -1,4 +1,8 @@
 import { Container, Cpu, Activity } from 'lucide-react';
+import {
+  getCpuProgressTone,
+  getMemoryProgressTone,
+} from '../lib/dashboard.colors';
 import type { ContainerInfo, LiveStats, SystemInfo } from '../lib/dashboard.types';
 import { formatBytes } from '../lib/dashboard.utils';
 import { DiskUsageCard } from './DiskUsageCard';
@@ -20,6 +24,8 @@ export function SystemStatsCard({
 }: SystemStatsCardProps) {
   const cpuUsage = liveStats?.cpu.usage ?? 0;
   const memUsage = liveStats?.memory.usedPercent ?? 0;
+  const cpuTone = getCpuProgressTone(cpuUsage);
+  const memoryTone = getMemoryProgressTone(memUsage);
 
   return (
     <>
@@ -31,7 +37,7 @@ export function SystemStatsCard({
           footer={<p className="text-xs text-green-400">{runningCount} running</p>}
         />
         <MetricCard
-          icon={<Cpu size={18} className="text-purple-400" />}
+          icon={<Cpu size={18} className={cpuTone.iconClassName} />}
           label="CPU"
           value={<p className="text-2xl sm:text-3xl font-bold text-white">{cpuUsage.toFixed(1)}%</p>}
           footer={
@@ -41,12 +47,11 @@ export function SystemStatsCard({
           }
           progress={{
             value: cpuUsage,
-            colorClassName:
-              cpuUsage > 80 ? 'bg-red-500' : cpuUsage > 50 ? 'bg-amber-400' : 'bg-green-400',
+            colorClassName: cpuTone.barClassName,
           }}
         />
         <MetricCard
-          icon={<Activity size={18} className="text-cyan-400" />}
+          icon={<Activity size={18} className={memoryTone.iconClassName} />}
           label="Memory"
           value={<p className="text-2xl sm:text-3xl font-bold text-white">{memUsage.toFixed(1)}%</p>}
           footer={
@@ -58,8 +63,7 @@ export function SystemStatsCard({
           }
           progress={{
             value: memUsage,
-            colorClassName:
-              memUsage > 80 ? 'bg-red-500' : memUsage > 60 ? 'bg-amber-400' : 'bg-blue-400',
+            colorClassName: memoryTone.barClassName,
           }}
         />
         <DiskUsageCard systemInfo={systemInfo} />
