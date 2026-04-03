@@ -44,6 +44,12 @@ export interface UpnpMappingData {
   local: boolean;
 }
 
+export interface ServiceNodeData {
+  label: string;
+  port: number;
+  icon: string;
+}
+
 export interface ContainerNodeData {
   label: string;
   image: string;
@@ -56,6 +62,33 @@ export interface ContainerNodeData {
 export interface HostNodeData {
   label: string;
   subtitle: string;
+}
+
+export interface TopologySnapshotNode {
+  id: string;
+  type: 'internet' | 'host' | 'container' | 'nginx' | 'service';
+  position: { x: number; y: number };
+  data: unknown;
+  draggable?: boolean;
+}
+
+export interface TopologySnapshotEdge {
+  id: string;
+  source: string;
+  target: string;
+  animated?: boolean;
+  style?: Record<string, unknown>;
+}
+
+export interface TopologySnapshot {
+  nodes: TopologySnapshotNode[];
+  edges: TopologySnapshotEdge[];
+  summary: {
+    generatedAt: number;
+    containerCount: number;
+    siteCount: number;
+    serviceNodeCount: number;
+  };
 }
 
 export interface StackMeta {
