@@ -31,6 +31,7 @@ export function TopologyLegend({
         type="button"
         onClick={onRefresh}
         disabled={loading}
+        aria-label="토폴로지 새로고침"
         className="flex-shrink-0 rounded-xl border border-gray-700 bg-gray-900/90 px-3 py-2 text-gray-300 transition hover:text-white disabled:opacity-50"
       >
         <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
