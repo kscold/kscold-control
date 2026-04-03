@@ -97,6 +97,7 @@ describe('ListContainersUseCase', () => {
         name: 'test-container-1',
         state: 'running',
         image: 'ubuntu:22.04',
+        created: 1_700_000_000,
         ports: [{ privatePort: 8080, publicPort: 3000, type: 'tcp' }],
       },
       {
@@ -104,6 +105,7 @@ describe('ListContainersUseCase', () => {
         name: 'test-container-2',
         state: 'stopped',
         image: 'nginx:latest',
+        created: 1_700_000_100,
         ports: [{ privatePort: 80, publicPort: 8080, type: 'tcp' }],
       },
     ];
@@ -159,6 +161,7 @@ describe('ListContainersUseCase', () => {
         name: 'unknown-container',
         state: 'running',
         image: 'redis:latest',
+        created: 1_700_000_200,
         ports: [],
       };
 
@@ -169,8 +172,9 @@ describe('ListContainersUseCase', () => {
 
       const result = await useCase.execute();
 
-      // Should only return 2 containers (skip the unknown one)
-      expect(result).toHaveLength(2);
+      expect(result).toHaveLength(3);
+      expect(result[2].isManaged).toBe(false);
+      expect(result[2].name).toBe('unknown-container');
     });
 
     it('should parse ports correctly', async () => {
@@ -198,7 +202,6 @@ describe('ListContainersUseCase', () => {
 
       const result = await useCase.execute();
 
-      // Should fallback to DB resources
       expect(result[0].resources).toEqual({ cpus: 2, memory: '4g' });
     });
 

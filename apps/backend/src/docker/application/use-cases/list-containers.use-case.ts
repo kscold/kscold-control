@@ -12,8 +12,7 @@ import { PortForwardingService } from '../services/port-forwarding.service';
 import { ResourceConfig } from '../../domain/value-objects/resource-config.vo';
 
 /**
- * List Containers Use Case
- * Retrieves all containers with live status from Docker
+ * Docker와 DB를 함께 조회해 컨테이너 목록을 구성합니다.
  */
 @Injectable()
 export class ListContainersUseCase {
@@ -28,15 +27,15 @@ export class ListContainersUseCase {
   ) {}
 
   async execute(userId?: string): Promise<ContainerResponseDto[]> {
-    // 1. Get containers from Docker
+    // 1. Docker 기준 실행 중인 컨테이너 목록을 먼저 읽습니다.
     const dockerContainers = await this.dockerClient.listContainers(true);
 
-    // 2. Get containers from DB
+    // 2. 사용자 범위에 맞는 관리 대상 컨테이너를 DB에서 읽습니다.
     const dbContainers = userId
       ? await this.containerRepo.findByUserId(userId)
       : await this.containerRepo.findAll();
 
-    // 3. Match Docker containers with DB containers
+    // 3. Docker 정보와 DB 정보를 합쳐 응답 DTO를 만듭니다.
     const results = await Promise.all(
       dockerContainers.map(async (dc) => {
         const dbContainer = dbContainers.find((dbc) =>
@@ -45,7 +44,7 @@ export class ListContainersUseCase {
 
         const isManaged = !!dbContainer;
 
-        // Parse ports
+        // 포트 매핑을 API 응답 형식으로 정리합니다.
         const ports: Record<string, number> = {};
         dc.ports.forEach((p) => {
           if (p.publicPort && p.privatePort) {
@@ -53,8 +52,9 @@ export class ListContainersUseCase {
           }
         });
 
-        // Get resource info from Docker inspection
-        let resources = { cpus: 0, memory: '0' };
+        // inspect 성공 시 Docker 기준 리소스를 우선 사용하고,
+        // 실패하면 관리 대상 컨테이너는 DB 값을 fallback으로 사용합니다.
+        let resources = dbContainer?.resources ?? { cpus: 0, memory: '0' };
         try {
           const inspectData = await this.dockerClient.inspectContainer(dc.id);
 
@@ -70,11 +70,11 @@ export class ListContainersUseCase {
           this.logger.error(`Failed to inspect container ${dc.id}:`, error);
         }
 
-        // Get external access info
+        // 외부 접속 정보는 포트 기준으로 다시 계산합니다.
         const externalAccess =
           this.portForwardingService.getExternalAccess(ports);
 
-        // If managed, update DB container if needed
+        // 관리 대상 컨테이너는 DB 포트 정보를 최신화합니다.
         if (isManaged && dbContainer) {
           if (JSON.stringify(dbContainer.ports) !== JSON.stringify(ports)) {
             dbContainer.ports = ports;
@@ -88,7 +88,12 @@ export class ListContainersUseCase {
           );
         }
 
-        // For unmanaged containers, create a virtual DTO
+        // 사용자 범위 조회에서는 관리되지 않는 외부 컨테이너를 숨깁니다.
+        if (userId) {
+          return null;
+        }
+
+        // 외부 컨테이너는 가상 DTO로 내려줍니다.
         return ContainerResponseDto.fromDockerContainer(
           dc,
           ports,
@@ -98,6 +103,6 @@ export class ListContainersUseCase {
       }),
     );
 
-    return results;
+    return results.filter((item): item is ContainerResponseDto => item !== null);
   }
 }

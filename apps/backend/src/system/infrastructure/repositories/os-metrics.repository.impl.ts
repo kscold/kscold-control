@@ -45,7 +45,18 @@ export class OsMetricsRepositoryImpl implements IOsMetricsRepository {
 
     if (this.diskCache && now - this.diskCache.timestamp < this.DISK_CACHE_TTL) {
       const { diskInfo, diskBreakdown } = this.diskCache.data;
-      return { ...diskInfo, breakdown: diskBreakdown };
+      return {
+        ...diskInfo,
+        breakdown: {
+          ...diskBreakdown,
+          dockerUsage: {
+            ...diskBreakdown.dockerUsage,
+            lastCollectedAt: this.diskCache.timestamp,
+            collectionState: 'fresh',
+            warning: null,
+          },
+        },
+      };
     }
 
     let diskInfo: DiskInfo = { total: 0, used: 0, available: 0, usedPercent: 0 };
@@ -98,9 +109,38 @@ export class OsMetricsRepositoryImpl implements IOsMetricsRepository {
       this.diskCache = { data: { diskInfo, diskBreakdown }, timestamp: now };
     } catch (error) {
       this.logger.error('Failed to get disk info:', error);
+
+      if (this.diskCache) {
+        const { diskInfo: cachedDiskInfo, diskBreakdown: cachedBreakdown } =
+          this.diskCache.data;
+
+        return {
+          ...cachedDiskInfo,
+          breakdown: {
+            ...cachedBreakdown,
+            dockerUsage: {
+              ...cachedBreakdown.dockerUsage,
+              lastCollectedAt: this.diskCache.timestamp,
+              collectionState: 'stale',
+              warning: '최근 수집값을 유지하고 있습니다.',
+            },
+          },
+        };
+      }
     }
 
-    return { ...diskInfo, breakdown: diskBreakdown };
+    return {
+      ...diskInfo,
+      breakdown: {
+        ...diskBreakdown,
+        dockerUsage: {
+          ...diskBreakdown.dockerUsage,
+          lastCollectedAt: now,
+          collectionState: 'fresh',
+          warning: null,
+        },
+      },
+    };
   }
 
   getSystemMeta(): { platform: string; hostname: string; uptime: number } {
@@ -191,6 +231,9 @@ export class OsMetricsRepositoryImpl implements IOsMetricsRepository {
       storageLabel: 'Docker',
       storagePath: null,
       storagePathSize: 0,
+      lastCollectedAt: null,
+      collectionState: 'fresh',
+      warning: null,
       images: { size: 0, reclaimable: 0, active: 0, totalCount: 0 },
       containers: { size: 0, reclaimable: 0, active: 0, totalCount: 0 },
       volumes: { size: 0, reclaimable: 0, active: 0, totalCount: 0 },
