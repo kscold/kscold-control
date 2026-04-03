@@ -5,6 +5,8 @@ import {
   CreateContainerRequest,
   ContainerStatsResponse,
 } from '../../types';
+import type { DockerCleanupCandidates, DockerCleanupResult } from '../../features/docker/lib/docker-cleanup.types';
+import type { TopologySnapshot } from '../../features/topology/lib/topology.types';
 
 /**
  * Docker API Service
@@ -176,6 +178,62 @@ export class DockerService extends BaseApiService {
     } catch (error) {
       this.logError('DockerService', 'removeComposeService', error);
       this.handleError(error, `Failed to remove compose service ${name}`);
+    }
+  }
+
+  async getTopologySnapshot(): Promise<TopologySnapshot> {
+    try {
+      const { data } = await api.get<TopologySnapshot>(
+        `${this.basePath}/topology/snapshot`,
+      );
+      return data;
+    } catch (error) {
+      this.logError('DockerService', 'getTopologySnapshot', error);
+      this.handleError(error, 'Failed to load topology snapshot');
+    }
+  }
+
+  async getCleanupCandidates(): Promise<DockerCleanupCandidates> {
+    try {
+      const { data } = await api.get<DockerCleanupCandidates>(
+        `${this.basePath}/cleanup/candidates`,
+      );
+      return data;
+    } catch (error) {
+      this.logError('DockerService', 'getCleanupCandidates', error);
+      this.handleError(error, 'Failed to load cleanup candidates');
+    }
+  }
+
+  async pruneDanglingImages(dryRun: boolean = true): Promise<DockerCleanupResult> {
+    return this.runCleanupAction('/cleanup/images/prune', dryRun);
+  }
+
+  async pruneBuildCache(dryRun: boolean = true): Promise<DockerCleanupResult> {
+    return this.runCleanupAction('/cleanup/build-cache/prune', dryRun);
+  }
+
+  async pruneExitedContainers(dryRun: boolean = true): Promise<DockerCleanupResult> {
+    return this.runCleanupAction('/cleanup/containers/prune-exited', dryRun);
+  }
+
+  async pruneDanglingVolumes(dryRun: boolean = true): Promise<DockerCleanupResult> {
+    return this.runCleanupAction('/cleanup/volumes/prune-dangling', dryRun);
+  }
+
+  private async runCleanupAction(
+    path: string,
+    dryRun: boolean,
+  ): Promise<DockerCleanupResult> {
+    try {
+      const { data } = await api.post<DockerCleanupResult>(
+        `${this.basePath}${path}`,
+        { dryRun },
+      );
+      return data;
+    } catch (error) {
+      this.logError('DockerService', 'runCleanupAction', error);
+      this.handleError(error, 'Failed to execute cleanup action');
     }
   }
 }

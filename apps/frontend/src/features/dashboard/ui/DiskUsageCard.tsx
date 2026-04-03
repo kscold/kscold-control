@@ -31,6 +31,20 @@ export function DiskUsageCard({ systemInfo }: DiskUsageCardProps) {
       footer={
         <>
           <p className="text-xs text-gray-400">{disk.usedPercent.toFixed(1)}% used</p>
+          <div className="mt-2 grid grid-cols-1 gap-1 text-xs sm:grid-cols-2">
+            <span className="text-gray-400">
+              저장 경로 기준 Docker {formatBytes(disk.breakdown.docker)}
+            </span>
+            <span className="text-gray-400">
+              엔진 내부 Docker {formatBytes(disk.breakdown.dockerUsage.total)}
+            </span>
+            <span className="text-gray-400">
+              재확보 가능 {formatBytes(disk.breakdown.dockerUsage.reclaimable)}
+            </span>
+            <span className="text-gray-400">
+              앱 {formatBytes(disk.breakdown.applications)}
+            </span>
+          </div>
           <div className="flex flex-wrap gap-x-3 gap-y-1 mt-2 text-xs">
             <span className="flex items-center gap-1">
               <span className="w-2 h-2 rounded-full bg-blue-400 inline-block" />

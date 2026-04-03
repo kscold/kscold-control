@@ -45,10 +45,16 @@ export function DockerStorageDetailsCard({
             Docker 저장소 세부 내역
           </h3>
           <p className="text-xs sm:text-sm text-gray-400 mt-1">
-            기준: docker system df
+            기준: docker system df · 엔진 내부 사용량 {formatBytes(dockerUsage.total)}
             {dockerUsage.storagePath
               ? ` · ${dockerUsage.storageLabel} ${formatBytes(dockerUsage.storagePathSize)}`
               : ''}
+          </p>
+          <p className="mt-1 text-[11px] text-gray-500">
+            마지막 수집{' '}
+            {dockerUsage.lastCollectedAt
+              ? new Date(dockerUsage.lastCollectedAt).toLocaleTimeString('ko-KR')
+              : '없음'}
           </p>
         </div>
         <div className="text-left sm:text-right">
@@ -58,6 +64,12 @@ export function DockerStorageDetailsCard({
           </p>
         </div>
       </div>
+
+      {dockerUsage.collectionState === 'stale' || dockerUsage.warning ? (
+        <div className="mt-4 rounded-xl border border-amber-500/20 bg-amber-500/10 px-3 py-2 text-xs text-amber-100">
+          {dockerUsage.warning ?? '최근 수집값을 보여주고 있습니다.'}
+        </div>
+      ) : null}
 
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3 mt-4">
         <StorageRow
@@ -85,8 +97,8 @@ export function DockerStorageDetailsCard({
       <div className="mt-4 flex items-start gap-2 rounded-xl border border-amber-500/20 bg-amber-500/5 px-3 py-2 text-xs text-amber-100">
         <Trash2 size={14} className="mt-0.5 flex-shrink-0 text-amber-300" />
         <p>
-          이 수치는 Docker 엔진 내부 사용량입니다. 대시보드 위 Disk 카드의 Docker 용량은
-          실제 저장 경로 기준으로 계산합니다.
+          엔진 내부 사용량과 실제 저장 경로 사용량은 다를 수 있습니다. Disk 카드는 저장
+          경로 기준, 이 카드는 Docker 엔진 기준으로 계산합니다.
         </p>
       </div>
     </div>

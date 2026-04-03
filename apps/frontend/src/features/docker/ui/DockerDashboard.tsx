@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { Plus, Filter } from 'lucide-react';
 import { usePermissions } from '../../../hooks/usePermissions';
 import { PERMISSIONS } from '../../../constants/permissions';
 import {
@@ -7,14 +6,19 @@ import {
   useContainerActions,
   useCreateContainer,
 } from '../hooks';
-import { ContainerList, CreateContainerModal } from './';
+import {
+  ContainerList,
+  CreateContainerModal,
+  DockerCleanupSection,
+  DockerContainerFilters,
+  DockerDashboardHeader,
+} from './';
 
 type FilterType = 'all' | 'managed' | 'external';
 
 /**
- * DockerDashboard Component
- * Main container management dashboard
- * Refactored with FSD architecture
+ * Docker 관리 화면의 메인 대시보드입니다.
+ * 컨테이너 목록과 안전 정리 후보를 함께 보여줍니다.
  */
 export function DockerDashboard() {
   const { containers, loading, reload } = useContainers();
@@ -55,54 +59,18 @@ export function DockerDashboard() {
 
   return (
     <div className="flex flex-col h-full p-4 sm:p-6 bg-gray-900 overflow-auto">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
-        <h1 className="text-xl sm:text-2xl font-bold text-white">
-          Docker 컨테이너
-        </h1>
-        <button
-          onClick={() => checkPermission(PERMISSIONS.DOCKER_CREATE, openModal)}
-          disabled={isCreating}
-          className="flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 w-full sm:w-auto"
-        >
-          <Plus size={20} />
-          인스턴스 생성
-        </button>
-      </div>
+      <DockerDashboardHeader
+        isCreating={isCreating}
+        onCreate={() => checkPermission(PERMISSIONS.DOCKER_CREATE, openModal)}
+      />
 
-      {/* Filter Tabs */}
-      <div className="flex items-center gap-2 mb-6 overflow-x-auto">
-        <Filter size={18} className="text-gray-400 flex-shrink-0" />
-        <button
-          onClick={() => setFilter('all')}
-          className={`px-4 py-2 rounded-lg text-sm font-medium transition whitespace-nowrap ${
-            filter === 'all'
-              ? 'bg-blue-600 text-white'
-              : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
-          }`}
-        >
-          All ({stats.total})
-        </button>
-        <button
-          onClick={() => setFilter('managed')}
-          className={`px-4 py-2 rounded-lg text-sm font-medium transition whitespace-nowrap ${
-            filter === 'managed'
-              ? 'bg-green-600 text-white'
-              : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
-          }`}
-        >
-          Managed ({stats.managed})
-        </button>
-        <button
-          onClick={() => setFilter('external')}
-          className={`px-4 py-2 rounded-lg text-sm font-medium transition whitespace-nowrap ${
-            filter === 'external'
-              ? 'bg-amber-600 text-white'
-              : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
-          }`}
-        >
-          External ({stats.external})
-        </button>
-      </div>
+      <DockerCleanupSection onRefreshContainers={reload} />
+
+      <DockerContainerFilters
+        filter={filter}
+        stats={stats}
+        onChange={setFilter}
+      />
 
       <ContainerList
         containers={filteredContainers}
