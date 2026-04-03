@@ -116,6 +116,34 @@ describe('DockerCleanupService', () => {
     expect(result.buildCache.items[0].label).toBe('cache-1');
     expect(result.composeOrphans.items[0].label).toBe('old-nginx');
     expect(result.artifactFiles.items[0].label).toBe('apps/frontend/dist');
+    expect(result.summary.warningCount).toBe(0);
+    expect(result.warnings).toEqual([]);
+  });
+
+  it('일부 수집에 실패해도 빈 카테고리와 경고를 반환한다', async () => {
+    dockerCommandService.run.mockImplementation(async (command: string) => {
+      if (command.includes("docker system df --format")) {
+        return [
+          '{"Active":"1","Reclaimable":"1.5GB (100%)","Size":"1.5GB","TotalCount":"1","Type":"Images"}',
+          '{"Active":"1","Reclaimable":"120MB (100%)","Size":"120MB","TotalCount":"1","Type":"Containers"}',
+          '{"Active":"0","Reclaimable":"256MB (100%)","Size":"256MB","TotalCount":"1","Type":"Local Volumes"}',
+          '{"Active":"0","Reclaimable":"512MB","Size":"512MB","TotalCount":"2","Type":"Build Cache"}',
+        ].join('\n');
+      }
+
+      if (command.includes('docker system df -v')) {
+        throw new Error('docker df detail unavailable');
+      }
+
+      return '';
+    });
+
+    const result = await service.getCandidates();
+
+    expect(result.images.items).toEqual([]);
+    expect(result.summary.warningCount).toBe(1);
+    expect(result.warnings[0]).toContain('Docker 상세 사용량');
+    expect(result.composeOrphans.items[0].label).toBe('old-nginx');
   });
 
   it('dryRun으로 dangling 이미지 예상치를 반환한다', async () => {
