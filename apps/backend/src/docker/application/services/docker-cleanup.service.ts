@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import * as fs from 'fs';
 import * as path from 'path';
 import { ComposeService } from './compose.service';
@@ -37,6 +37,7 @@ interface ParsedDfSections {
 
 @Injectable()
 export class DockerCleanupService {
+  private readonly logger = new Logger(DockerCleanupService.name);
   private readonly projectRoot = resolveDockerProjectRoot(__dirname);
 
   constructor(
@@ -48,14 +49,37 @@ export class DockerCleanupService {
   async getCandidates(): Promise<DockerCleanupCandidates> {
     const [dockerDfOutput, detailedDfOutput, orphanCandidates, artifactFiles] =
       await Promise.all([
-        this.dockerCommandService.run(`docker system df --format '{{json .}}'`),
-        this.dockerCommandService.run('docker system df -v'),
-        this.collectComposeOrphans(),
-        this.collectArtifactFiles(),
+        this.collectSafely(
+          'Docker 요약 사용량',
+          () => this.dockerCommandService.run(`docker system df --format '{{json .}}'`),
+          '',
+        ),
+        this.collectSafely(
+          'Docker 상세 사용량',
+          () => this.dockerCommandService.run('docker system df -v'),
+          '',
+        ),
+        this.collectSafely(
+          'Compose orphan 후보',
+          () => this.collectComposeOrphans(),
+          [] as DockerCleanupCandidateItem[],
+        ),
+        this.collectSafely(
+          '배포 부산물 파일',
+          () => this.collectArtifactFiles(),
+          [] as DockerCleanupCandidateItem[],
+        ),
       ]);
 
-    const usage = parseDockerSystemDfOutput(dockerDfOutput);
-    const sections = this.parseDetailedDfOutput(detailedDfOutput);
+    const warnings = [
+      dockerDfOutput.warning,
+      detailedDfOutput.warning,
+      orphanCandidates.warning,
+      artifactFiles.warning,
+    ].filter((warning): warning is string => Boolean(warning));
+
+    const usage = parseDockerSystemDfOutput(dockerDfOutput.value);
+    const sections = this.parseDetailedDfOutput(detailedDfOutput.value);
 
     const images = this.toCategory(
       sections.images.filter((item) => item.label === '<none>:<none>'),
@@ -67,9 +91,9 @@ export class DockerCleanupService {
       sections.volumes.filter((item) => item.detail === '0 links'),
     );
     const buildCache = this.toCategory(sections.buildCache, usage.buildCache.reclaimable);
-    const composeOrphans = this.toCategory(orphanCandidates, 0);
+    const composeOrphans = this.toCategory(orphanCandidates.value, 0);
     const artifacts = this.toCategory(
-      artifactFiles.map((item) => ({ ...item, readOnly: true })),
+      artifactFiles.value.map((item) => ({ ...item, readOnly: true })),
       0,
     );
 
@@ -94,7 +118,9 @@ export class DockerCleanupService {
           buildCache.items.length +
           composeOrphans.items.length +
           artifacts.items.length,
+        warningCount: warnings.length,
       },
+      warnings,
     };
   }
 
@@ -385,5 +411,25 @@ export class DockerCleanupService {
     return fs.readdirSync(targetPath).reduce((sum, entry) => {
       return sum + this.getPathSize(path.join(targetPath, entry));
     }, 0);
+  }
+
+  private async collectSafely<T>(
+    label: string,
+    collect: () => Promise<T>,
+    fallback: T,
+  ): Promise<{ value: T; warning?: string }> {
+    try {
+      return { value: await collect() };
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : '알 수 없는 오류가 발생했습니다.';
+
+      this.logger.warn(`${label} 수집에 실패했습니다: ${message}`);
+
+      return {
+        value: fallback,
+        warning: `${label} 수집에 실패해서 일부 정보만 표시합니다.`,
+      };
+    }
   }
 }

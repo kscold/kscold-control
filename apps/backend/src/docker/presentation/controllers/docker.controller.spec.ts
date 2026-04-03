@@ -71,7 +71,13 @@ describe('DockerController', () => {
       buildCache: { items: [], totalBytes: 0, reclaimableBytes: 0 },
       composeOrphans: { items: [], totalBytes: 0, reclaimableBytes: 0 },
       artifactFiles: { items: [], totalBytes: 0, reclaimableBytes: 0 },
-      summary: { reclaimableBytes: 0, readOnlyBytes: 0, totalCandidates: 0 },
+      summary: {
+        reclaimableBytes: 0,
+        readOnlyBytes: 0,
+        totalCandidates: 0,
+        warningCount: 0,
+      },
+      warnings: [],
     };
     dockerCleanupService.getCandidates.mockResolvedValueOnce(candidates);
 
