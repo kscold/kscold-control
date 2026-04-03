@@ -6,12 +6,16 @@
   "scripts": {
     "dev": "turbo run dev",
     "build": "turbo run build",
+    "test:backend": "pnpm --filter @kscold-control/backend test",
+    "test:frontend": "pnpm --filter @kscold-control/frontend test",
+    "test:e2e:control": "bash ./scripts/run-control-e2e.sh",
     "lint": "turbo run lint",
     "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md}\"",
     "clean": "turbo run clean && rm -rf node_modules"
   },
   "devDependencies": {
-    "turbo": "^2.0.0",
-    "prettier": "^3.2.0"
+    "@playwright/test": "^1.59.1",
+    "prettier": "^3.2.0",
+    "turbo": "^2.0.0"
   }
 }

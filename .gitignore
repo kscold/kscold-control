@@ -1,6 +1,9 @@
 node_modules
 dist
 .turbo
+.playwright
+playwright-report
+test-results
 .env
 env/*
 *.env.local
