@@ -12,6 +12,8 @@ import {
 } from '../../../common/exceptions';
 import { ResourceConfig } from '../../domain/value-objects/resource-config.vo';
 
+const DEFAULT_DOCKER_HOST = 'unix:///Users/kscold/.colima/default/docker.sock';
+
 /**
  * Dockerode Client Adapter
  * Wraps Dockerode to implement IDockerClient interface
@@ -23,8 +25,7 @@ export class DockerodeClientAdapter implements IDockerClient, OnModuleInit {
   onModuleInit() {
     try {
       const socketPath =
-        process.env.DOCKER_HOST?.replace('unix://', '') ||
-        '/var/run/docker.sock';
+        (process.env.DOCKER_HOST || DEFAULT_DOCKER_HOST).replace('unix://', '');
       this.docker = new Docker({ socketPath });
     } catch (error) {
       throw new DockerConnectionException(error.message);
