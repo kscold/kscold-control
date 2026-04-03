@@ -1,0 +1,389 @@
+import { Injectable } from '@nestjs/common';
+import * as fs from 'fs';
+import * as path from 'path';
+import { ComposeService } from './compose.service';
+import { DockerCommandService } from './docker-command.service';
+import { resolveDockerProjectRoot } from './docker-project-path.util';
+import type {
+  DockerCleanupCandidateItem,
+  DockerCleanupCandidates,
+  DockerCleanupCategory,
+  DockerCleanupResult,
+} from '../../domain/types/docker-cleanup.type';
+import {
+  parseDockerSizeToBytes,
+  parseDockerSystemDfOutput,
+} from '../../../system/infrastructure/repositories/docker-disk-usage.util';
+import {
+  DOCKER_CLIENT,
+  type IDockerClient,
+} from '../../domain/repositories/docker-client.interface';
+import { Inject } from '@nestjs/common';
+
+const ARTIFACT_PATHS = [
+  'apps/backend/dist',
+  'apps/frontend/dist',
+  'apps/frontend/.next',
+  'apps/frontend/standalone',
+  'release',
+];
+
+interface ParsedDfSections {
+  images: DockerCleanupCandidateItem[];
+  containers: DockerCleanupCandidateItem[];
+  volumes: DockerCleanupCandidateItem[];
+  buildCache: DockerCleanupCandidateItem[];
+}
+
+@Injectable()
+export class DockerCleanupService {
+  private readonly projectRoot = resolveDockerProjectRoot(__dirname);
+
+  constructor(
+    private readonly composeService: ComposeService,
+    private readonly dockerCommandService: DockerCommandService,
+    @Inject(DOCKER_CLIENT) private readonly dockerClient: IDockerClient,
+  ) {}
+
+  async getCandidates(): Promise<DockerCleanupCandidates> {
+    const [dockerDfOutput, detailedDfOutput, orphanCandidates, artifactFiles] =
+      await Promise.all([
+        this.dockerCommandService.run(`docker system df --format '{{json .}}'`),
+        this.dockerCommandService.run('docker system df -v'),
+        this.collectComposeOrphans(),
+        this.collectArtifactFiles(),
+      ]);
+
+    const usage = parseDockerSystemDfOutput(dockerDfOutput);
+    const sections = this.parseDetailedDfOutput(detailedDfOutput);
+
+    const images = this.toCategory(
+      sections.images.filter((item) => item.label === '<none>:<none>'),
+    );
+    const containers = this.toCategory(
+      sections.containers.filter((item) => item.state?.toLowerCase().startsWith('exited')),
+    );
+    const volumes = this.toCategory(
+      sections.volumes.filter((item) => item.detail === '0 links'),
+    );
+    const buildCache = this.toCategory(sections.buildCache, usage.buildCache.reclaimable);
+    const composeOrphans = this.toCategory(orphanCandidates, 0);
+    const artifacts = this.toCategory(
+      artifactFiles.map((item) => ({ ...item, readOnly: true })),
+      0,
+    );
+
+    return {
+      images,
+      containers,
+      volumes,
+      buildCache,
+      composeOrphans,
+      artifactFiles: artifacts,
+      summary: {
+        reclaimableBytes:
+          images.reclaimableBytes +
+          containers.reclaimableBytes +
+          volumes.reclaimableBytes +
+          buildCache.reclaimableBytes,
+        readOnlyBytes: composeOrphans.totalBytes + artifacts.totalBytes,
+        totalCandidates:
+          images.items.length +
+          containers.items.length +
+          volumes.items.length +
+          buildCache.items.length +
+          composeOrphans.items.length +
+          artifacts.items.length,
+      },
+    };
+  }
+
+  async pruneDanglingImages(dryRun: boolean = true): Promise<DockerCleanupResult> {
+    const candidates = (await this.getCandidates()).images.items;
+    if (dryRun) {
+      return this.createDryRunResult(candidates);
+    }
+
+    const output = await this.dockerCommandService.run('docker image prune -f');
+    return this.createExecResult(candidates, output);
+  }
+
+  async pruneExitedContainers(dryRun: boolean = true): Promise<DockerCleanupResult> {
+    const candidates = (await this.getCandidates()).containers.items;
+    if (dryRun) {
+      return this.createDryRunResult(candidates);
+    }
+
+    const output = await this.dockerCommandService.run('docker container prune -f');
+    return this.createExecResult(candidates, output);
+  }
+
+  async pruneDanglingVolumes(dryRun: boolean = true): Promise<DockerCleanupResult> {
+    const candidates = (await this.getCandidates()).volumes.items;
+    if (dryRun) {
+      return this.createDryRunResult(candidates);
+    }
+
+    const output = await this.dockerCommandService.run('docker volume prune -f');
+    return this.createExecResult(candidates, output);
+  }
+
+  async pruneBuildCache(dryRun: boolean = true): Promise<DockerCleanupResult> {
+    const category = (await this.getCandidates()).buildCache;
+    if (dryRun) {
+      return {
+        success: true,
+        dryRun: true,
+        reclaimedBytes: category.reclaimableBytes,
+        removedCount: category.items.length,
+        items: category.items,
+      };
+    }
+
+    const output = await this.dockerCommandService.run('docker builder prune -f');
+    return this.createExecResult(category.items, output, category.reclaimableBytes);
+  }
+
+  private toCategory(
+    items: DockerCleanupCandidateItem[],
+    reclaimableBytes?: number,
+  ): DockerCleanupCategory {
+    return {
+      items,
+      totalBytes: items.reduce((sum, item) => sum + item.size, 0),
+      reclaimableBytes:
+        reclaimableBytes ?? items.reduce((sum, item) => sum + (item.reclaimable ?? item.size), 0),
+    };
+  }
+
+  private createDryRunResult(items: DockerCleanupCandidateItem[]): DockerCleanupResult {
+    return {
+      success: true,
+      dryRun: true,
+      reclaimedBytes: items.reduce((sum, item) => sum + (item.reclaimable ?? item.size), 0),
+      removedCount: items.length,
+      items,
+    };
+  }
+
+  private createExecResult(
+    items: DockerCleanupCandidateItem[],
+    output: string,
+    fallbackBytes?: number,
+  ): DockerCleanupResult {
+    return {
+      success: true,
+      dryRun: false,
+      reclaimedBytes: this.extractReclaimedBytes(output) ?? fallbackBytes ?? 0,
+      removedCount: this.extractRemovedCount(output) || items.length,
+      items,
+    };
+  }
+
+  private extractRemovedCount(output: string): number {
+    return output
+      .split('\n')
+      .map((line) => line.trim())
+      .filter((line) => {
+        return (
+          line.startsWith('Deleted') ||
+          line.startsWith('Untagged:') ||
+          line.startsWith('deleted:')
+        );
+      }).length;
+  }
+
+  private extractReclaimedBytes(output: string): number | null {
+    const match = output.match(
+      /Total reclaimed space:\s*([0-9.]+\s*[A-Za-z]+)/i,
+    ) ?? output.match(/Total:\s*([0-9.]+\s*[A-Za-z]+)/i);
+
+    if (!match?.[1]) {
+      return null;
+    }
+
+    return parseDockerSizeToBytes(match[1]);
+  }
+
+  private parseDetailedDfOutput(stdout: string): ParsedDfSections {
+    const sections: ParsedDfSections = {
+      images: [],
+      containers: [],
+      volumes: [],
+      buildCache: [],
+    };
+
+    let currentSection: keyof ParsedDfSections | null = null;
+
+    for (const rawLine of stdout.split('\n')) {
+      const line = rawLine.trimEnd();
+      const normalized = line.trim();
+
+      if (!normalized) {
+        continue;
+      }
+
+      if (normalized === 'Images space usage:') {
+        currentSection = 'images';
+        continue;
+      }
+
+      if (normalized === 'Containers space usage:') {
+        currentSection = 'containers';
+        continue;
+      }
+
+      if (normalized === 'Local Volumes space usage:') {
+        currentSection = 'volumes';
+        continue;
+      }
+
+      if (normalized.startsWith('Build cache usage:')) {
+        currentSection = 'buildCache';
+        continue;
+      }
+
+      if (
+        normalized.startsWith('REPOSITORY') ||
+        normalized.startsWith('CONTAINER ID') ||
+        normalized.startsWith('VOLUME NAME') ||
+        normalized.startsWith('CACHE ID')
+      ) {
+        continue;
+      }
+
+      if (!currentSection) {
+        continue;
+      }
+
+      const columns = normalized.split(/\s{2,}/);
+
+      if (currentSection === 'images' && columns.length >= 8) {
+        sections.images.push({
+          id: columns[2],
+          label: `${columns[0]}:${columns[1]}`,
+          detail: `${columns[6]} unique · ${columns[7]} containers`,
+          size: parseDockerSizeToBytes(columns[4]),
+          reclaimable: columns[7] === '0' ? parseDockerSizeToBytes(columns[4]) : 0,
+        });
+      }
+
+      if (currentSection === 'containers' && columns.length >= 8) {
+        sections.containers.push({
+          id: columns[0],
+          label: columns[7],
+          detail: `${columns[1]} · ${columns[3]} volumes`,
+          size: parseDockerSizeToBytes(columns[4]),
+          state: columns[6],
+        });
+      }
+
+      if (currentSection === 'volumes' && columns.length >= 3) {
+        sections.volumes.push({
+          id: columns[0],
+          label: columns[0],
+          detail: `${columns[1]} links`,
+          size: parseDockerSizeToBytes(columns[2]),
+          reclaimable: columns[1] === '0' ? parseDockerSizeToBytes(columns[2]) : 0,
+        });
+      }
+
+      if (currentSection === 'buildCache' && columns.length >= 7) {
+        sections.buildCache.push({
+          id: columns[0],
+          label: columns[0],
+          detail: `${columns[1]} · ${columns[4]} · usage ${columns[5]}`,
+          size: parseDockerSizeToBytes(columns[2]),
+          reclaimable: parseDockerSizeToBytes(columns[2]),
+        });
+      }
+    }
+
+    return sections;
+  }
+
+  private async collectComposeOrphans(): Promise<DockerCleanupCandidateItem[]> {
+    const composeServices = new Set(this.composeService.listServices());
+    const containers = await this.dockerClient.listContainers(true);
+    const candidates: DockerCleanupCandidateItem[] = [];
+
+    for (const container of containers) {
+      const inspected = await this.dockerClient.inspectContainer(container.id);
+      const labels = inspected?.Config?.Labels ?? {};
+      const composeService = labels['com.docker.compose.service'];
+      const composeProject = labels['com.docker.compose.project'];
+
+      if (!composeService || !composeProject) {
+        continue;
+      }
+
+      if (composeProject !== 'kscold-control') {
+        continue;
+      }
+
+      if (composeServices.has(composeService)) {
+        continue;
+      }
+
+      candidates.push({
+        id: container.id,
+        label: container.name,
+        detail: `${composeProject} · ${composeService}`,
+        size: 0,
+        state: container.state,
+        readOnly: true,
+      });
+    }
+
+    return candidates;
+  }
+
+  private async collectArtifactFiles(): Promise<DockerCleanupCandidateItem[]> {
+    const candidates: DockerCleanupCandidateItem[] = [];
+
+    for (const relativePath of ARTIFACT_PATHS) {
+      const targetPath = path.join(this.projectRoot, relativePath);
+      if (!fs.existsSync(targetPath)) {
+        continue;
+      }
+
+      candidates.push({
+        id: relativePath,
+        label: relativePath,
+        detail: '배포 부산물',
+        size: this.getPathSize(targetPath),
+        readOnly: true,
+      });
+    }
+
+    const backupEntries = fs
+      .readdirSync(this.projectRoot)
+      .filter((entry) => entry.includes('backup'))
+      .map((entry) => path.join(this.projectRoot, entry))
+      .filter((entryPath) => fs.existsSync(entryPath));
+
+    for (const entryPath of backupEntries) {
+      const relativePath = path.relative(this.projectRoot, entryPath);
+      candidates.push({
+        id: relativePath,
+        label: relativePath,
+        detail: '백업 부산물',
+        size: this.getPathSize(entryPath),
+        readOnly: true,
+      });
+    }
+
+    return candidates;
+  }
+
+  private getPathSize(targetPath: string): number {
+    const stat = fs.statSync(targetPath);
+    if (stat.isFile()) {
+      return stat.size;
+    }
+
+    return fs.readdirSync(targetPath).reduce((sum, entry) => {
+      return sum + this.getPathSize(path.join(targetPath, entry));
+    }, 0);
+  }
+}

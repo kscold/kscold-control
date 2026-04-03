@@ -82,6 +82,7 @@ describe('StopContainerUseCase', () => {
 
     it('should throw ContainerNotFoundException if container not found', async () => {
       containerRepo.findById.mockResolvedValue(null);
+      dockerClient.stopContainer.mockRejectedValue(new Error('not found'));
 
       await expect(useCase.execute('invalid-id')).rejects.toThrow(
         ContainerNotFoundException,

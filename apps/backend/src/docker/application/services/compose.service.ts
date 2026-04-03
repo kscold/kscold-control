@@ -3,6 +3,7 @@ import { exec } from 'child_process';
 import { promisify } from 'util';
 import * as fs from 'fs';
 import * as path from 'path';
+import { resolveDockerProjectRoot } from './docker-project-path.util';
 
 const execAsync = promisify(exec);
 
@@ -10,17 +11,14 @@ const execAsync = promisify(exec);
 const yaml = require('js-yaml');
 
 /**
- * Docker Compose project directory
- * This is where docker-compose.yml lives
+ * docker-compose 서비스 생성에 쓰는 설정입니다.
  */
-const COMPOSE_DIR = path.resolve(__dirname, '../../../../../');
-
 export interface ComposeServiceConfig {
   name: string;
   image: string;
   ports: Record<string, number>; // { "22": 2224, "8080": 8083 }
-  cpus: string; // e.g., "2"
-  memLimit: string; // e.g., "4g"
+  cpus: string; // 예: "2"
+  memLimit: string; // 예: "4g"
   command?: string;
   environment?: Record<string, string>;
 }
@@ -28,13 +26,11 @@ export interface ComposeServiceConfig {
 @Injectable()
 export class ComposeService {
   private readonly logger = new Logger(ComposeService.name);
-  private readonly composeFilePath = path.join(
-    COMPOSE_DIR,
-    'docker-compose.yml',
-  );
+  private readonly projectRoot = resolveDockerProjectRoot(__dirname);
+  private readonly composeFilePath = path.join(this.projectRoot, 'docker-compose.yml');
 
   /**
-   * Read and parse docker-compose.yml
+   * docker-compose.yml을 읽어 파싱합니다.
    */
   readCompose(): any {
     const content = fs.readFileSync(this.composeFilePath, 'utf-8');
@@ -42,7 +38,7 @@ export class ComposeService {
   }
 
   /**
-   * Write docker-compose.yml
+   * docker-compose.yml을 저장합니다.
    */
   private writeCompose(data: any): void {
     const content = yaml.dump(data, {
@@ -55,7 +51,7 @@ export class ComposeService {
   }
 
   /**
-   * List all services defined in docker-compose.yml
+   * compose에 정의된 서비스 목록을 반환합니다.
    */
   listServices(): string[] {
     const compose = this.readCompose();
@@ -63,7 +59,7 @@ export class ComposeService {
   }
 
   /**
-   * Add a new ubuntu instance service to docker-compose.yml
+   * 새 서비스를 docker-compose.yml에 추가합니다.
    */
   addService(config: ComposeServiceConfig): void {
     const compose = this.readCompose();
@@ -74,7 +70,7 @@ export class ComposeService {
       );
     }
 
-    // Build port mappings array for compose format
+    // compose 형식에 맞춰 포트 매핑 배열을 생성합니다.
     const ports: string[] = [];
     for (const [internal, external] of Object.entries(config.ports)) {
       ports.push(`${external}:${internal}`);
@@ -101,7 +97,7 @@ export class ComposeService {
   }
 
   /**
-   * Remove a service from docker-compose.yml
+   * docker-compose.yml에서 서비스를 제거합니다.
    */
   removeService(name: string): void {
     const compose = this.readCompose();
@@ -110,7 +106,7 @@ export class ComposeService {
       throw new Error(`Service "${name}" not found in docker-compose.yml`);
     }
 
-    // Prevent removing critical infrastructure services
+    // 핵심 인프라 서비스는 제거하지 못하게 막습니다.
     const protectedServices = ['nginx', 'kscold-infra-db'];
     if (protectedServices.includes(name)) {
       throw new Error(`Cannot remove protected service "${name}"`);
@@ -118,7 +114,7 @@ export class ComposeService {
 
     delete compose.services[name];
 
-    // Also remove from depends_on of other services
+    // 다른 서비스의 depends_on에서도 함께 정리합니다.
     for (const svc of Object.values(compose.services) as any[]) {
       if (Array.isArray(svc.depends_on)) {
         svc.depends_on = svc.depends_on.filter((dep: string) => dep !== name);
@@ -131,13 +127,13 @@ export class ComposeService {
   }
 
   /**
-   * Run docker compose up for a specific service
+   * 특정 서비스를 docker compose up으로 기동합니다.
    */
   async upService(name: string): Promise<string> {
     try {
       const { stdout, stderr } = await execAsync(
         `docker compose -f "${this.composeFilePath}" up -d ${name}`,
-        { cwd: COMPOSE_DIR },
+        { cwd: this.projectRoot },
       );
       this.logger.log(`Compose up for "${name}": ${stdout}`);
       return stdout + stderr;
@@ -148,13 +144,13 @@ export class ComposeService {
   }
 
   /**
-   * Run docker compose down for a specific service (stop + remove)
+   * 특정 서비스를 중지하고 compose에서 제거합니다.
    */
   async downService(name: string): Promise<string> {
     try {
       const { stdout, stderr } = await execAsync(
         `docker compose -f "${this.composeFilePath}" stop ${name} && docker compose -f "${this.composeFilePath}" rm -f ${name}`,
-        { cwd: COMPOSE_DIR },
+        { cwd: this.projectRoot },
       );
       return stdout + stderr;
     } catch (error) {
@@ -164,7 +160,7 @@ export class ComposeService {
   }
 
   /**
-   * Get compose service info
+   * 특정 서비스의 compose 설정을 반환합니다.
    */
   getServiceConfig(name: string): any | null {
     const compose = this.readCompose();

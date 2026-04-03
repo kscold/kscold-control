@@ -17,10 +17,15 @@ import {
 } from './application/use-cases';
 import { PortForwardingService } from './application/services/port-forwarding.service';
 import { ComposeService } from './application/services/compose.service';
+import { DockerTopologyService } from './application/services/docker-topology.service';
+import { DockerCleanupService } from './application/services/docker-cleanup.service';
+import { DockerCommandService } from './application/services/docker-command.service';
 
 // Infrastructure
 import { TypeOrmContainerRepository } from './infrastructure/repositories/typeorm-container.repository';
 import { DockerodeClientAdapter } from './infrastructure/adapters/dockerode-client.adapter';
+import { NGINX_CONFIG_REPOSITORY } from '../nginx/domain/interfaces/nginx-config.repository';
+import { NginxConfigRepositoryImpl } from '../nginx/infrastructure/repositories/nginx-config.repository.impl';
 
 // Presentation
 import { DockerController } from './presentation/controllers/docker.controller';
@@ -52,6 +57,9 @@ import { AuthModule } from '../auth/auth.module';
     // Services
     PortForwardingService,
     ComposeService,
+    DockerTopologyService,
+    DockerCleanupService,
+    DockerCommandService,
 
     // Repository Implementations (DI)
     {
@@ -63,6 +71,10 @@ import { AuthModule } from '../auth/auth.module';
     {
       provide: DOCKER_CLIENT,
       useClass: DockerodeClientAdapter,
+    },
+    {
+      provide: NGINX_CONFIG_REPOSITORY,
+      useClass: NginxConfigRepositoryImpl,
     },
   ],
   exports: [

@@ -31,6 +31,9 @@ export interface DockerStorageUsage {
   storageLabel: string;
   storagePath: string | null;
   storagePathSize: number;
+  lastCollectedAt: number | null;
+  collectionState: 'fresh' | 'stale';
+  warning: string | null;
   images: DockerStorageMetric;
   containers: DockerStorageMetric;
   volumes: DockerStorageMetric;
