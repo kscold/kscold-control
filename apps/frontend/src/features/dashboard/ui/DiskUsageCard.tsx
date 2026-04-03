@@ -1,4 +1,8 @@
 import { HardDrive } from 'lucide-react';
+import {
+  dashboardStorageTones,
+  getDiskProgressTone,
+} from '../lib/dashboard.colors';
 import type { SystemInfo } from '../lib/dashboard.types';
 import { formatBytes } from '../lib/dashboard.utils';
 import { MetricCard } from './MetricCard';
@@ -11,7 +15,7 @@ export function DiskUsageCard({ systemInfo }: DiskUsageCardProps) {
   if (!systemInfo) {
     return (
       <MetricCard
-        icon={<HardDrive size={18} className="text-amber-400" />}
+        icon={<HardDrive size={18} className="text-orange-300" />}
         label="Disk"
         value={<p className="text-2xl sm:text-3xl font-bold text-white">...</p>}
       />
@@ -19,9 +23,52 @@ export function DiskUsageCard({ systemInfo }: DiskUsageCardProps) {
   }
 
   const { disk } = systemInfo;
+  const diskTone = getDiskProgressTone(disk.usedPercent);
+
+  const detailItems = [
+    {
+      label: '저장 경로 기준 Docker',
+      value: formatBytes(disk.breakdown.docker),
+      tone: dashboardStorageTones.storageDocker,
+    },
+    {
+      label: '엔진 내부 Docker',
+      value: formatBytes(disk.breakdown.dockerUsage.total),
+      tone: dashboardStorageTones.engineDocker,
+    },
+    {
+      label: '재확보 가능',
+      value: formatBytes(disk.breakdown.dockerUsage.reclaimable),
+      tone: dashboardStorageTones.reclaimable,
+    },
+    {
+      label: '앱',
+      value: formatBytes(disk.breakdown.applications),
+      tone: dashboardStorageTones.applications,
+    },
+  ];
+
+  const legendItems = [
+    {
+      label: 'Docker',
+      value: formatBytes(disk.breakdown.docker),
+      tone: dashboardStorageTones.storageDocker,
+    },
+    {
+      label: 'Apps',
+      value: formatBytes(disk.breakdown.applications),
+      tone: dashboardStorageTones.applications,
+    },
+    {
+      label: 'Other',
+      value: formatBytes(disk.breakdown.other),
+      tone: dashboardStorageTones.other,
+    },
+  ];
+
   return (
     <MetricCard
-      icon={<HardDrive size={18} className="text-amber-400" />}
+      icon={<HardDrive size={18} className={diskTone.iconClassName} />}
       label="Disk"
       value={
         <p className="text-lg sm:text-2xl font-bold text-white">
@@ -31,45 +78,32 @@ export function DiskUsageCard({ systemInfo }: DiskUsageCardProps) {
       footer={
         <>
           <p className="text-xs text-gray-400">{disk.usedPercent.toFixed(1)}% used</p>
-          <div className="mt-2 grid grid-cols-1 gap-1 text-xs sm:grid-cols-2">
-            <span className="text-gray-400">
-              저장 경로 기준 Docker {formatBytes(disk.breakdown.docker)}
-            </span>
-            <span className="text-gray-400">
-              엔진 내부 Docker {formatBytes(disk.breakdown.dockerUsage.total)}
-            </span>
-            <span className="text-gray-400">
-              재확보 가능 {formatBytes(disk.breakdown.dockerUsage.reclaimable)}
-            </span>
-            <span className="text-gray-400">
-              앱 {formatBytes(disk.breakdown.applications)}
-            </span>
+          <div className="mt-2 grid grid-cols-1 gap-2 text-xs sm:grid-cols-2">
+            {detailItems.map((item) => (
+              <div
+                key={item.label}
+                className={`rounded-lg border px-2.5 py-2 ${item.tone.cardClassName}`}
+              >
+                <p className={`text-[11px] ${item.tone.textClassName}`}>{item.label}</p>
+                <p className="mt-1 text-sm font-medium text-white">{item.value}</p>
+              </div>
+            ))}
           </div>
           <div className="flex flex-wrap gap-x-3 gap-y-1 mt-2 text-xs">
-            <span className="flex items-center gap-1">
-              <span className="w-2 h-2 rounded-full bg-blue-400 inline-block" />
-              <span className="text-gray-400">
-                Docker {formatBytes(disk.breakdown.docker)}
+            {legendItems.map((item) => (
+              <span key={item.label} className="flex items-center gap-1">
+                <span className={`inline-block h-2 w-2 rounded-full ${item.tone.dotClassName}`} />
+                <span className={`${item.tone.textClassName}`}>
+                  {item.label} {item.value}
+                </span>
               </span>
-            </span>
-            <span className="flex items-center gap-1">
-              <span className="w-2 h-2 rounded-full bg-purple-400 inline-block" />
-              <span className="text-gray-400">
-                Apps {formatBytes(disk.breakdown.applications)}
-              </span>
-            </span>
-            <span className="flex items-center gap-1">
-              <span className="w-2 h-2 rounded-full bg-amber-400 inline-block" />
-              <span className="text-gray-400">
-                Other {formatBytes(disk.breakdown.other)}
-              </span>
-            </span>
+            ))}
           </div>
         </>
       }
       progress={{
         value: disk.usedPercent,
-        colorClassName: 'bg-amber-400',
+        colorClassName: diskTone.barClassName,
       }}
     />
   );
