@@ -9,8 +9,17 @@ export interface TopologyCanvasElements {
 export function getTopologyCanvasElements(
   snapshot: TopologySnapshot | null,
 ): TopologyCanvasElements {
+  const hiddenNodeIds = new Set(
+    (snapshot?.nodes ?? [])
+      .filter((node) => node.type === 'service')
+      .map((node) => node.id),
+  );
+
   return {
-    nodes: (snapshot?.nodes ?? []) as unknown as Node[],
-    edges: (snapshot?.edges ?? []) as unknown as Edge[],
+    nodes: (snapshot?.nodes ?? [])
+      .filter((node) => node.type !== 'service') as unknown as Node[],
+    edges: (snapshot?.edges ?? []).filter(
+      (edge) => !hiddenNodeIds.has(edge.source) && !hiddenNodeIds.has(edge.target),
+    ) as unknown as Edge[],
   };
 }

@@ -88,8 +88,8 @@ export const ContainerNode = memo(function ContainerNode({ data }: NodeProps) {
       {runtimeServices.length > 0 && (
         <div className="px-3 py-1.5 border-t border-gray-800">
           <div className="flex items-center gap-1 mb-1.5">
-            <Database size={9} className="text-purple-400" />
-            <p className="text-[8px] text-purple-400 uppercase tracking-wider">Services</p>
+            <Database size={9} className="text-sky-400" />
+            <p className="text-[8px] text-sky-400 uppercase tracking-wider">Services</p>
           </div>
           {runtimeServices.map((s, i) => (
             <div key={i} className="flex items-center gap-1.5 mb-1 last:mb-0">
