@@ -7,7 +7,7 @@ import {
   type Node,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
-import { ContainerNode, HostNode, InternetNode, NginxNode, ServiceNode } from './nodes';
+import { ContainerNode, HostNode, InternetNode, NginxNode } from './nodes';
 import type { TopologySnapshot } from '../lib/topology.types';
 import { useTopologyCanvasState } from '../hooks/useTopologyCanvasState';
 
@@ -15,7 +15,6 @@ const nodeTypes = {
   host: HostNode,
   container: ContainerNode,
   nginx: NginxNode,
-  service: ServiceNode,
   internet: InternetNode,
 };
 
@@ -37,8 +36,6 @@ export function TopologyCanvas({ snapshot }: TopologyCanvasProps) {
         return '#22c55e';
       case 'nginx':
         return '#d97706';
-      case 'service':
-        return '#8b5cf6';
       default:
         return '#6b7280';
     }

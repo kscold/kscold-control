@@ -1,4 +1,4 @@
-import { Cpu, Database, RefreshCw, Server } from 'lucide-react';
+import { RefreshCw, Server } from 'lucide-react';
 
 interface TopologyLegendProps {
   loading: boolean;
@@ -12,7 +12,6 @@ const LEGEND_ITEMS = [
   { color: 'bg-amber-500', label: 'Nginx' },
   { color: 'bg-emerald-500', label: 'App' },
   { color: 'bg-sky-500', label: 'DB' },
-  { color: 'bg-violet-500', label: 'Service' },
 ];
 
 export function TopologyLegend({
@@ -23,7 +22,7 @@ export function TopologyLegend({
   return (
     <div className="absolute left-3 right-3 top-3 z-10 flex items-center gap-2">
       <div className="flex flex-shrink-0 items-center gap-2 rounded-xl border border-gray-700 bg-gray-900/90 px-4 py-2 backdrop-blur">
-        <Server size={16} className="text-purple-400" />
+        <Server size={16} className="text-sky-400" />
         <span className="text-sm font-bold text-white">Infrastructure Topology</span>
       </div>
 
@@ -44,14 +43,6 @@ export function TopologyLegend({
             <span className="text-gray-400">{item.label}</span>
           </span>
         ))}
-        <span className="flex items-center gap-1 border-l border-gray-700 pl-2.5">
-          <Cpu size={9} className="text-indigo-400" />
-          <span className="text-gray-400">PM2</span>
-        </span>
-        <span className="flex items-center gap-1">
-          <Database size={9} className="text-violet-400" />
-          <span className="text-gray-400">Services</span>
-        </span>
         {generatedAt ? (
           <span className="border-l border-gray-700 pl-2.5 text-gray-500">
             {new Date(generatedAt).toLocaleTimeString('ko-KR')}

@@ -35,4 +35,40 @@ describe('getTopologyCanvasElements', () => {
     expect(result.nodes[0].id).toBe('host');
     expect(result.edges[0].id).toBe('host-app');
   });
+
+  it('보조 service 노드와 연결선은 화면 렌더링에서 제외한다', () => {
+    const snapshot: TopologySnapshot = {
+      nodes: [
+        {
+          id: 'host',
+          type: 'host',
+          position: { x: 0, y: 0 },
+          data: { label: 'Host' },
+        },
+        {
+          id: 'service-mongo',
+          type: 'service',
+          position: { x: 100, y: 100 },
+          data: { label: 'MongoDB' },
+        },
+      ],
+      edges: [
+        { id: 'host-app', source: 'host', target: 'app' },
+        { id: 'app-service', source: 'app', target: 'service-mongo' },
+      ],
+      summary: {
+        generatedAt: Date.now(),
+        containerCount: 1,
+        siteCount: 1,
+        serviceNodeCount: 1,
+      },
+    };
+
+    const result = getTopologyCanvasElements(snapshot);
+
+    expect(result.nodes).toHaveLength(1);
+    expect(result.nodes[0].id).toBe('host');
+    expect(result.edges).toHaveLength(1);
+    expect(result.edges[0].id).toBe('host-app');
+  });
 });
