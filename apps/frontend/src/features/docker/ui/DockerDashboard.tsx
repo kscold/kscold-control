@@ -12,6 +12,7 @@ import {
   DockerCleanupSection,
   DockerContainerFilters,
   DockerDashboardHeader,
+  DockerDashboardSkeleton,
 } from './';
 
 type FilterType = 'all' | 'managed' | 'external';
@@ -21,7 +22,7 @@ type FilterType = 'all' | 'managed' | 'external';
  * 컨테이너 목록과 안전 정리 후보를 함께 보여줍니다.
  */
 export function DockerDashboard() {
-  const { containers, loading, reload } = useContainers();
+  const { containers, loading, error, reload } = useContainers();
   const { startContainer, stopContainer, deleteContainer, importContainer } =
     useContainerActions(reload);
   const {
@@ -49,12 +50,10 @@ export function DockerDashboard() {
     external: containers.filter((c) => !c.isManaged).length,
   };
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-full">
-        <div className="text-white">Loading...</div>
-      </div>
-    );
+  const showSkeleton = loading && containers.length === 0;
+
+  if (showSkeleton) {
+    return <DockerDashboardSkeleton />;
   }
 
   return (
@@ -63,6 +62,12 @@ export function DockerDashboard() {
         isCreating={isCreating}
         onCreate={() => checkPermission(PERMISSIONS.DOCKER_CREATE, openModal)}
       />
+
+      {error ? (
+        <div className="mb-6 rounded-2xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-100">
+          {error}
+        </div>
+      ) : null}
 
       <DockerCleanupSection onRefreshContainers={reload} />
 

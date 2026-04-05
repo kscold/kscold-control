@@ -7,6 +7,7 @@ import {
 } from '../hooks';
 import { DockerCleanupCategoryCard } from './DockerCleanupCategoryCard';
 import { DockerCleanupSummaryCard } from './DockerCleanupSummaryCard';
+import { SkeletonBlock } from '../../../shared/ui/SkeletonBlock';
 
 interface DockerCleanupSectionProps {
   onRefreshContainers: () => void;
@@ -25,9 +26,44 @@ export function DockerCleanupSection({
 
   if (loading && !candidates) {
     return (
-      <div className="mb-6 rounded-2xl border border-gray-800 bg-gray-950/60 p-5 text-sm text-gray-400">
-        정리 후보를 불러오는 중입니다.
-      </div>
+      <section className="mb-6 rounded-2xl border border-gray-800 bg-gray-950/60 p-5">
+        <div className="flex items-center justify-between gap-3">
+          <div className="space-y-2">
+            <SkeletonBlock className="h-3 w-24 rounded-md" />
+            <SkeletonBlock className="h-7 w-44 rounded-lg" />
+          </div>
+          <SkeletonBlock className="h-10 w-10 rounded-xl" />
+        </div>
+        <div className="mt-4 grid gap-4 xl:grid-cols-2">
+          {Array.from({ length: 4 }).map((_, index) => (
+            <div
+              key={index}
+              className="rounded-2xl border border-gray-800 bg-gray-900/70 p-5"
+            >
+              <div className="flex items-center justify-between gap-3">
+                <SkeletonBlock className="h-7 w-36 rounded-lg" />
+                <SkeletonBlock className="h-7 w-16 rounded-full" />
+              </div>
+              <div className="mt-4 grid grid-cols-3 gap-3">
+                {Array.from({ length: 3 }).map((_, metricIndex) => (
+                  <div
+                    key={metricIndex}
+                    className="rounded-xl border border-gray-800 bg-gray-950/50 p-3"
+                  >
+                    <SkeletonBlock className="h-3 w-14 rounded-md" />
+                    <SkeletonBlock className="mt-2 h-8 w-16 rounded-md" />
+                  </div>
+                ))}
+              </div>
+              <SkeletonBlock className="mt-4 h-20 w-full rounded-xl" />
+              <div className="mt-4 flex gap-2">
+                <SkeletonBlock className="h-11 flex-1 rounded-xl" />
+                <SkeletonBlock className="h-11 w-11 rounded-xl" />
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
     );
   }
 
