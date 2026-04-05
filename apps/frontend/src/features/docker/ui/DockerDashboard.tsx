@@ -5,6 +5,7 @@ import {
   useContainers,
   useContainerActions,
   useCreateContainer,
+  useDockerCleanupCandidates,
 } from '../hooks';
 import {
   ContainerList,
@@ -23,6 +24,12 @@ type FilterType = 'all' | 'managed' | 'external';
  */
 export function DockerDashboard() {
   const { containers, loading, error, reload } = useContainers();
+  const {
+    candidates,
+    loading: cleanupLoading,
+    error: cleanupError,
+    reload: reloadCleanup,
+  } = useDockerCleanupCandidates();
   const { startContainer, stopContainer, deleteContainer, importContainer } =
     useContainerActions(reload);
   const {
@@ -50,7 +57,9 @@ export function DockerDashboard() {
     external: containers.filter((c) => !c.isManaged).length,
   };
 
-  const showSkeleton = loading && containers.length === 0;
+  const showSkeleton =
+    (loading && containers.length === 0) ||
+    (cleanupLoading && !candidates);
 
   if (showSkeleton) {
     return <DockerDashboardSkeleton />;
@@ -69,7 +78,15 @@ export function DockerDashboard() {
         </div>
       ) : null}
 
-      <DockerCleanupSection onRefreshContainers={reload} />
+      <DockerCleanupSection
+        onRefreshContainers={reload}
+        candidates={candidates}
+        loading={cleanupLoading}
+        error={cleanupError}
+        onReload={() => {
+          void reloadCleanup();
+        }}
+      />
 
       <DockerContainerFilters
         filter={filter}

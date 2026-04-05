@@ -4,7 +4,7 @@ import type { SystemInfo } from '../lib/dashboard.types';
 
 export function useSystemInfo() {
   const [systemInfo, setSystemInfo] = useState<SystemInfo | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [lastLoadedAt, setLastLoadedAt] = useState<number | null>(null);
 

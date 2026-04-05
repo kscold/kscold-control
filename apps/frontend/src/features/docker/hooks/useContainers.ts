@@ -13,6 +13,7 @@ export function useContainers() {
 
   const loadContainers = async () => {
     try {
+      setLoading(true);
       setError(null);
       const data = await dockerService.listContainers();
       setContainers(data);

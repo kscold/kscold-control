@@ -43,6 +43,7 @@ describe('DiskUsageCard', () => {
     expect(screen.getByText(/저장 경로 기준 Docker/i)).toBeInTheDocument();
     expect(screen.getByText(/엔진 내부 Docker/i)).toBeInTheDocument();
     expect(screen.getByText(/재확보 가능/i)).toBeInTheDocument();
-    expect(screen.getAllByTestId('disk-usage-segment')).toHaveLength(3);
+    expect(screen.getAllByTestId('disk-usage-segment')).toHaveLength(4);
+    expect(screen.getByText(/Free/i)).toBeInTheDocument();
   });
 });

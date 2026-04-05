@@ -6,6 +6,7 @@ import {
 import type { SystemInfo } from '../lib/dashboard.types';
 import { formatBytes } from '../lib/dashboard.utils';
 import { MetricCard } from './MetricCard';
+import { StackedUsageBar } from './StackedUsageBar';
 
 interface DiskUsageCardProps {
   systemInfo: SystemInfo | null;
@@ -47,16 +48,25 @@ export function DiskUsageCard({ systemInfo }: DiskUsageCardProps) {
       label: 'Docker',
       value: disk.breakdown.docker,
       tone: dashboardStorageTones.storageDocker,
+      colorClassName: 'bg-cyan-400',
     },
     {
       label: 'Apps',
       value: disk.breakdown.applications,
       tone: dashboardStorageTones.applications,
+      colorClassName: 'bg-fuchsia-400',
     },
     {
       label: 'Other',
       value: disk.breakdown.other,
       tone: dashboardStorageTones.other,
+      colorClassName: 'bg-amber-300',
+    },
+    {
+      label: 'Free',
+      value: disk.available,
+      tone: dashboardStorageTones.free,
+      colorClassName: 'bg-slate-700',
     },
   ];
 
@@ -96,23 +106,15 @@ export function DiskUsageCard({ systemInfo }: DiskUsageCardProps) {
       }
       footer={
         <>
-          <div className="mt-2 h-3 overflow-hidden rounded-full bg-gray-700">
-            <div className="flex h-full w-full">
-              {diskSegments.map((item) => (
-                <div
-                  key={item.label}
-                  data-testid="disk-usage-segment"
-                  className={`${item.tone.barClassName} transition-all duration-500`}
-                  style={{
-                    width: `${Math.max(
-                      0,
-                      Math.min((item.value / Math.max(disk.total, 1)) * 100, 100),
-                    )}%`,
-                  }}
-                  title={`${item.label} ${formatBytes(item.value)}`}
-                />
-              ))}
-            </div>
+          <div className="mt-2">
+            <StackedUsageBar
+              total={disk.total}
+              segments={diskSegments.map((item) => ({
+                label: item.label,
+                value: item.value,
+                colorClassName: item.colorClassName,
+              }))}
+            />
           </div>
           <p className="text-xs text-gray-400">{disk.usedPercent.toFixed(1)}% used</p>
           <div className="mt-2 grid grid-cols-1 gap-2 text-xs sm:grid-cols-2">
@@ -129,7 +131,11 @@ export function DiskUsageCard({ systemInfo }: DiskUsageCardProps) {
           <div className="flex flex-wrap gap-x-3 gap-y-1 mt-2 text-xs">
             {legendItems.map((item) => (
               <span key={item.label} className="flex items-center gap-1">
-                <span className={`inline-block h-2 w-2 rounded-full ${item.tone.dotClassName}`} />
+                <span
+                  className={`inline-block h-2.5 w-2.5 rounded-full ${
+                    item.colorClassName ?? item.tone.dotClassName
+                  }`}
+                />
                 <span className={`${item.tone.textClassName}`}>
                   {item.label} {formatBytes(item.value)}
                 </span>
