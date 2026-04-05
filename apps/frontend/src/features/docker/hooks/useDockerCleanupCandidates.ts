@@ -11,6 +11,7 @@ export function useDockerCleanupCandidates() {
 
   const loadCandidates = useCallback(async () => {
     try {
+      setLoading(true);
       setError(null);
       const data = await dockerService.getCleanupCandidates();
       setCandidates(data);

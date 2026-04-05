@@ -1,26 +1,31 @@
 import { RefreshCw } from 'lucide-react';
 import { usePermissions } from '../../../hooks/usePermissions';
 import { PERMISSIONS } from '../../../constants/permissions';
-import {
-  useDockerCleanupActions,
-  useDockerCleanupCandidates,
-} from '../hooks';
+import { useDockerCleanupActions } from '../hooks';
 import { DockerCleanupCategoryCard } from './DockerCleanupCategoryCard';
 import { DockerCleanupSummaryCard } from './DockerCleanupSummaryCard';
 import { SkeletonBlock } from '../../../shared/ui/SkeletonBlock';
+import type { DockerCleanupCandidates } from '../lib/docker-cleanup.types';
 
 interface DockerCleanupSectionProps {
   onRefreshContainers: () => void;
+  candidates: DockerCleanupCandidates | null;
+  loading: boolean;
+  error: string | null;
+  onReload: () => void;
 }
 
 export function DockerCleanupSection({
   onRefreshContainers,
+  candidates,
+  loading,
+  error,
+  onReload,
 }: DockerCleanupSectionProps) {
-  const { candidates, loading, error, reload } = useDockerCleanupCandidates();
   const { hasPermission } = usePermissions();
   const { results, runningAction, previewAction, confirmAndRunAction } =
     useDockerCleanupActions(() => {
-      void reload();
+      onReload();
       onRefreshContainers();
     });
 
@@ -94,7 +99,7 @@ export function DockerCleanupSection({
         </div>
         <button
           type="button"
-          onClick={() => void reload()}
+          onClick={onReload}
           className="rounded-lg border border-gray-700 px-3 py-2 text-gray-300 transition hover:bg-gray-800 hover:text-white"
         >
           <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
