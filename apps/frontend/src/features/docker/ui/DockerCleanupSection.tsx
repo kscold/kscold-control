@@ -29,6 +29,30 @@ export function DockerCleanupSection({
       onRefreshContainers();
     });
 
+  const summarySkeleton = (
+    <div className="min-h-[252px] rounded-2xl border border-gray-800 bg-gray-950/60 p-4 sm:p-5">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+        <div className="space-y-2">
+          <SkeletonBlock className="h-4 w-24 rounded-md" />
+          <SkeletonBlock className="h-7 w-48 rounded-lg" />
+        </div>
+        <SkeletonBlock className="h-9 w-24 rounded-full" />
+      </div>
+      <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+        {Array.from({ length: 4 }).map((_, index) => (
+          <div
+            key={index}
+            className="rounded-xl border border-gray-800 bg-gray-900/70 p-4"
+          >
+            <SkeletonBlock className="h-3 w-20 rounded-md" />
+            <SkeletonBlock className="mt-2 h-8 w-24 rounded-lg" />
+            <SkeletonBlock className="mt-3 h-4 w-full rounded-md" />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+
   if (loading && !candidates) {
     return (
       <section className="mb-6 rounded-2xl border border-gray-800 bg-gray-950/60 p-5">
@@ -39,11 +63,12 @@ export function DockerCleanupSection({
           </div>
           <SkeletonBlock className="h-10 w-10 rounded-xl" />
         </div>
+        <div className="mt-4">{summarySkeleton}</div>
         <div className="mt-4 grid gap-4 xl:grid-cols-2">
           {Array.from({ length: 4 }).map((_, index) => (
             <div
               key={index}
-              className="rounded-2xl border border-gray-800 bg-gray-900/70 p-5"
+              className="min-h-[372px] rounded-2xl border border-gray-800 bg-gray-900/70 p-5"
             >
               <div className="flex items-center justify-between gap-3">
                 <SkeletonBlock className="h-7 w-36 rounded-lg" />

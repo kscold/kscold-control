@@ -24,7 +24,7 @@ export function StackedUsageBar({
 
   return (
     <div className="overflow-hidden rounded-full border border-white/5 bg-gray-950/80 p-[2px]">
-      <div className="flex h-3 w-full gap-[2px] rounded-full bg-gray-950/80">
+      <div className="flex h-3.5 w-full overflow-hidden rounded-full bg-gray-950/80">
         {visibleSegments.map((segment) => {
           const width = (segment.value / safeTotal) * 100;
 
@@ -32,7 +32,7 @@ export function StackedUsageBar({
             <div
               key={segment.label}
               data-testid="disk-usage-segment"
-              className={`h-full rounded-full ${segment.colorClassName} transition-[width] duration-500`}
+              className={`h-full ${segment.colorClassName} transition-[width] duration-500 first:rounded-l-full last:rounded-r-full`}
               style={{ width: `${Math.max(width, width > 0 ? 3 : 0)}%` }}
               title={`${segment.label} ${formatBytes(segment.value)}`}
             />
