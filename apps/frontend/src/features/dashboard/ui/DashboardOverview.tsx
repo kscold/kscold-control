@@ -4,18 +4,30 @@ import { useSystemInfo } from '../hooks/useSystemInfo';
 import { useLiveStats } from '../hooks/useLiveStats';
 import { useDashboardContainers } from '../hooks/useDashboardContainers';
 import { formatUptime } from '../lib/dashboard.utils';
+import { DashboardOverviewSkeleton } from './DashboardOverviewSkeleton';
 import { SystemStatsCard } from './SystemStatsCard';
 import { QuickActions } from './QuickActions';
 
 export function DashboardOverview() {
   const { systemInfo, loadSystemInfo, loading, error, lastLoadedAt } =
     useSystemInfo();
-  const { liveStats } = useLiveStats();
-  const { containers, runningCount } = useDashboardContainers();
+  const { liveStats, loading: liveStatsLoading } = useLiveStats();
+  const { containers, runningCount, loading: containersLoading } =
+    useDashboardContainers();
 
   useEffect(() => {
     loadSystemInfo();
   }, [loadSystemInfo]);
+
+  const showSkeleton =
+    !error &&
+    ((loading && !systemInfo) ||
+      (liveStatsLoading && !liveStats) ||
+      (containersLoading && containers.length === 0));
+
+  if (showSkeleton) {
+    return <DashboardOverviewSkeleton />;
+  }
 
   return (
     <div className="h-full overflow-auto p-4 sm:p-6 bg-gray-950">

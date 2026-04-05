@@ -4,14 +4,18 @@ import type { LiveStats } from '../lib/dashboard.types';
 
 export function useLiveStats() {
   const [liveStats, setLiveStats] = useState<LiveStats | null>(null);
+  const [loading, setLoading] = useState(true);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const loadLiveStats = useCallback(async () => {
     try {
+      setLoading(true);
       const { data } = await api.get<LiveStats>('/system/stats');
       setLiveStats(data);
     } catch (e) {
       console.error(e);
+    } finally {
+      setLoading(false);
     }
   }, []);
 
@@ -50,5 +54,5 @@ export function useLiveStats() {
     };
   }, [loadLiveStats]);
 
-  return { liveStats };
+  return { liveStats, loading };
 }

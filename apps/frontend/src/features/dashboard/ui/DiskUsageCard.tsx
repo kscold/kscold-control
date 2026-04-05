@@ -17,13 +17,48 @@ export function DiskUsageCard({ systemInfo }: DiskUsageCardProps) {
       <MetricCard
         icon={<HardDrive size={18} className="text-orange-300" />}
         label="Disk"
-        value={<p className="text-2xl sm:text-3xl font-bold text-white">...</p>}
+        value={
+          <div className="space-y-3">
+            <div className="h-10 w-44 animate-pulse rounded-lg bg-gray-800/85" />
+            <div className="h-3 w-full animate-pulse rounded-full bg-gray-800/85" />
+          </div>
+        }
+        footer={
+          <div className="mt-2 grid grid-cols-1 gap-2 text-xs sm:grid-cols-2">
+            {Array.from({ length: 4 }).map((_, index) => (
+              <div
+                key={index}
+                className="rounded-lg border border-gray-800 bg-gray-950/60 px-2.5 py-2"
+              >
+                <div className="h-3 w-20 animate-pulse rounded-md bg-gray-800/85" />
+                <div className="mt-2 h-6 w-24 animate-pulse rounded-md bg-gray-800/85" />
+              </div>
+            ))}
+          </div>
+        }
       />
     );
   }
 
   const { disk } = systemInfo;
   const diskTone = getDiskProgressTone(disk.usedPercent);
+  const diskSegments = [
+    {
+      label: 'Docker',
+      value: disk.breakdown.docker,
+      tone: dashboardStorageTones.storageDocker,
+    },
+    {
+      label: 'Apps',
+      value: disk.breakdown.applications,
+      tone: dashboardStorageTones.applications,
+    },
+    {
+      label: 'Other',
+      value: disk.breakdown.other,
+      tone: dashboardStorageTones.other,
+    },
+  ];
 
   const detailItems = [
     {
@@ -48,23 +83,7 @@ export function DiskUsageCard({ systemInfo }: DiskUsageCardProps) {
     },
   ];
 
-  const legendItems = [
-    {
-      label: 'Docker',
-      value: formatBytes(disk.breakdown.docker),
-      tone: dashboardStorageTones.storageDocker,
-    },
-    {
-      label: 'Apps',
-      value: formatBytes(disk.breakdown.applications),
-      tone: dashboardStorageTones.applications,
-    },
-    {
-      label: 'Other',
-      value: formatBytes(disk.breakdown.other),
-      tone: dashboardStorageTones.other,
-    },
-  ];
+  const legendItems = diskSegments;
 
   return (
     <MetricCard
@@ -77,6 +96,24 @@ export function DiskUsageCard({ systemInfo }: DiskUsageCardProps) {
       }
       footer={
         <>
+          <div className="mt-2 h-3 overflow-hidden rounded-full bg-gray-700">
+            <div className="flex h-full w-full">
+              {diskSegments.map((item) => (
+                <div
+                  key={item.label}
+                  data-testid="disk-usage-segment"
+                  className={`${item.tone.barClassName} transition-all duration-500`}
+                  style={{
+                    width: `${Math.max(
+                      0,
+                      Math.min((item.value / Math.max(disk.total, 1)) * 100, 100),
+                    )}%`,
+                  }}
+                  title={`${item.label} ${formatBytes(item.value)}`}
+                />
+              ))}
+            </div>
+          </div>
           <p className="text-xs text-gray-400">{disk.usedPercent.toFixed(1)}% used</p>
           <div className="mt-2 grid grid-cols-1 gap-2 text-xs sm:grid-cols-2">
             {detailItems.map((item) => (
@@ -94,17 +131,13 @@ export function DiskUsageCard({ systemInfo }: DiskUsageCardProps) {
               <span key={item.label} className="flex items-center gap-1">
                 <span className={`inline-block h-2 w-2 rounded-full ${item.tone.dotClassName}`} />
                 <span className={`${item.tone.textClassName}`}>
-                  {item.label} {item.value}
+                  {item.label} {formatBytes(item.value)}
                 </span>
               </span>
             ))}
           </div>
         </>
       }
-      progress={{
-        value: disk.usedPercent,
-        colorClassName: diskTone.barClassName,
-      }}
     />
   );
 }

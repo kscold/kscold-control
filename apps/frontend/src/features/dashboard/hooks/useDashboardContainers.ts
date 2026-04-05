@@ -4,14 +4,18 @@ import type { ContainerInfo } from '../lib/dashboard.types';
 
 export function useDashboardContainers() {
   const [containers, setContainers] = useState<ContainerInfo[]>([]);
+  const [loading, setLoading] = useState(true);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const loadContainers = useCallback(async () => {
     try {
+      setLoading(true);
       const { data } = await api.get<ContainerInfo[]>('/docker/containers');
       setContainers(data);
     } catch (e) {
       console.error(e);
+    } finally {
+      setLoading(false);
     }
   }, []);
 
@@ -54,5 +58,5 @@ export function useDashboardContainers() {
     (c) => c.liveStatus === 'running',
   ).length;
 
-  return { containers, runningCount };
+  return { containers, runningCount, loading };
 }

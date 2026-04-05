@@ -79,7 +79,7 @@ export function ContainerCard({
   };
 
   return (
-    <div className="bg-gray-800 rounded-lg p-4 border border-gray-700 hover:border-gray-600 transition-colors">
+    <div className="h-full rounded-lg border border-gray-700 bg-gray-800 p-4 transition-colors hover:border-gray-600">
       <div className="flex items-start justify-between mb-3">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1">

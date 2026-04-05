@@ -8,3 +8,4 @@ export * from './DockerCleanupSection';
 export * from './DockerCleanupSummaryCard';
 export * from './DockerCleanupCategoryCard';
 export * from './DockerCleanupItemRow';
+export * from './DockerDashboardSkeleton';
