@@ -10,7 +10,7 @@ export function DockerCleanupSummaryCard({
   candidates,
 }: DockerCleanupSummaryCardProps) {
   return (
-    <div className="rounded-2xl border border-gray-800 bg-gray-950/60 p-4 sm:p-5">
+    <div className="min-h-[252px] rounded-2xl border border-gray-800 bg-gray-950/60 p-4 sm:p-5">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <div className="flex items-center gap-2 text-sm text-gray-400">

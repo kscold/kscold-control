@@ -18,6 +18,7 @@ export function DiskUsageCard({ systemInfo }: DiskUsageCardProps) {
       <MetricCard
         icon={<HardDrive size={18} className="text-orange-300" />}
         label="Disk"
+        className="min-h-[332px]"
         value={
           <div className="space-y-3">
             <div className="h-10 w-44 animate-pulse rounded-lg bg-gray-800/85" />
@@ -48,25 +49,25 @@ export function DiskUsageCard({ systemInfo }: DiskUsageCardProps) {
       label: 'Docker',
       value: disk.breakdown.docker,
       tone: dashboardStorageTones.storageDocker,
-      colorClassName: 'bg-cyan-400',
+      colorClassName: dashboardStorageTones.storageDocker.barClassName,
     },
     {
       label: 'Apps',
       value: disk.breakdown.applications,
       tone: dashboardStorageTones.applications,
-      colorClassName: 'bg-fuchsia-400',
+      colorClassName: dashboardStorageTones.applications.barClassName,
     },
     {
       label: 'Other',
       value: disk.breakdown.other,
       tone: dashboardStorageTones.other,
-      colorClassName: 'bg-amber-300',
+      colorClassName: dashboardStorageTones.other.barClassName,
     },
     {
       label: 'Free',
       value: disk.available,
       tone: dashboardStorageTones.free,
-      colorClassName: 'bg-slate-700',
+      colorClassName: dashboardStorageTones.free.barClassName,
     },
   ];
 
@@ -99,6 +100,7 @@ export function DiskUsageCard({ systemInfo }: DiskUsageCardProps) {
     <MetricCard
       icon={<HardDrive size={18} className={diskTone.iconClassName} />}
       label="Disk"
+      className="min-h-[332px]"
       value={
         <p className="text-lg sm:text-2xl font-bold text-white">
           {formatBytes(disk.used)} / {formatBytes(disk.total)}
