@@ -46,6 +46,6 @@ test('토폴로지 화면에서 서버 스냅샷 기반 구조도를 렌더링�
   await expect(
     page.getByRole('button', { name: '토폴로지 새로고침' }),
   ).toBeVisible();
-  await expect(page.getByText('Internet')).toBeVisible();
+  await expect(page.getByTestId('rf__node-internet')).toContainText('Internet');
   await expect(page.getByText('Mac Mini (Host)')).toBeVisible();
 });
