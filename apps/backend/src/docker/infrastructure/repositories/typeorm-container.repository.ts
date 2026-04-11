@@ -23,6 +23,10 @@ export class TypeOrmContainerRepository implements IContainerRepository {
     return this.repository.findOne({ where: { dockerId } });
   }
 
+  async findByName(name: string): Promise<Container | null> {
+    return this.repository.findOne({ where: { name } });
+  }
+
   async findAll(): Promise<Container[]> {
     return this.repository.find();
   }

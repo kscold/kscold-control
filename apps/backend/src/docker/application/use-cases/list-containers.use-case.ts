@@ -10,6 +10,7 @@ import {
 import { ContainerResponseDto } from '../dto/container-response.dto';
 import { PortForwardingService } from '../services/port-forwarding.service';
 import { ResourceConfig } from '../../domain/value-objects/resource-config.vo';
+import { ComposeService } from '../services/compose.service';
 
 /**
  * Docker와 DB를 함께 조회해 컨테이너 목록을 구성합니다.
@@ -24,6 +25,7 @@ export class ListContainersUseCase {
     @Inject(DOCKER_CLIENT)
     private readonly dockerClient: IDockerClient,
     private readonly portForwardingService: PortForwardingService,
+    private readonly composeService: ComposeService,
   ) {}
 
   async execute(userId?: string): Promise<ContainerResponseDto[]> {
@@ -34,6 +36,7 @@ export class ListContainersUseCase {
     const dbContainers = userId
       ? await this.containerRepo.findByUserId(userId)
       : await this.containerRepo.findAll();
+    const composeServices = new Set(this.composeService.listServices());
 
     // 3. Docker 정보와 DB 정보를 합쳐 응답 DTO를 만듭니다.
     const results = await Promise.all(
@@ -43,6 +46,7 @@ export class ListContainersUseCase {
         );
 
         const isManaged = !!dbContainer;
+        const isComposeManaged = composeServices.has(dc.name);
 
         // 포트 매핑을 API 응답 형식으로 정리합니다.
         const ports: Record<string, number> = {};
@@ -85,6 +89,7 @@ export class ListContainersUseCase {
             { ...dbContainer, resources },
             dc.state,
             externalAccess,
+            isComposeManaged,
           );
         }
 
@@ -99,6 +104,7 @@ export class ListContainersUseCase {
           ports,
           resources,
           externalAccess,
+          isComposeManaged,
         );
       }),
     );

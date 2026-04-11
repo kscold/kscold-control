@@ -4,3 +4,6 @@ export * from './start-container.use-case';
 export * from './stop-container.use-case';
 export * from './remove-container.use-case';
 export * from './import-container.use-case';
+export * from './get-compose-provisioning-template.use-case';
+export * from './create-compose-service.use-case';
+export * from './remove-compose-service.use-case';

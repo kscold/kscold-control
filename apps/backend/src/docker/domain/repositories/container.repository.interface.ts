@@ -16,6 +16,11 @@ export interface IContainerRepository {
   findByDockerId(dockerId: string): Promise<Container | null>;
 
   /**
+   * Find container by name
+   */
+  findByName(name: string): Promise<Container | null>;
+
+  /**
    * Find all containers
    */
   findAll(): Promise<Container[]>;

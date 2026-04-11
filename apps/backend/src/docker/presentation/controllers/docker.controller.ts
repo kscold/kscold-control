@@ -22,6 +22,9 @@ import {
   StopContainerUseCase,
   RemoveContainerUseCase,
   ImportContainerUseCase,
+  GetComposeProvisioningTemplateUseCase,
+  CreateComposeServiceUseCase,
+  RemoveComposeServiceUseCase,
 } from '../../application/use-cases';
 import { CreateContainerDto } from '../../application/dto';
 import { ComposeService } from '../../application/services/compose.service';
@@ -49,6 +52,9 @@ export class DockerController {
     private readonly stopContainerUseCase: StopContainerUseCase,
     private readonly removeContainerUseCase: RemoveContainerUseCase,
     private readonly importContainerUseCase: ImportContainerUseCase,
+    private readonly getComposeProvisioningTemplateUseCase: GetComposeProvisioningTemplateUseCase,
+    private readonly createComposeServiceUseCase: CreateComposeServiceUseCase,
+    private readonly removeComposeServiceUseCase: RemoveComposeServiceUseCase,
     private readonly composeService: ComposeService,
     private readonly dockerTopologyService: DockerTopologyService,
     private readonly dockerCleanupService: DockerCleanupService,
@@ -196,6 +202,12 @@ export class DockerController {
     };
   }
 
+  @Get('compose/provisioning-template')
+  @RequirePermissions(PERMISSIONS.DOCKER_READ)
+  async getComposeProvisioningTemplate() {
+    return this.getComposeProvisioningTemplateUseCase.execute();
+  }
+
   /**
    * Add a new instance to docker-compose.yml and start it
    * POST /docker/compose/services
@@ -214,33 +226,16 @@ export class DockerController {
     },
     @Request() req: JwtRequest,
   ) {
-    // 1. Add to docker-compose.yml
-    this.composeService.addService(body);
+    const result = await this.createComposeServiceUseCase.execute(
+      body,
+      req.user.id,
+    );
 
-    // 2. docker compose up -d for the new service
-    const output = await this.composeService.upService(body.name);
-
-    // 3. Wait for container to be created, then import into DB
-    await new Promise((resolve) => setTimeout(resolve, 2000));
-
-    try {
-      const dockerContainers =
-        await this.listContainersUseCase.execute(undefined);
-      const newContainer = dockerContainers.find(
-        (c) => c.name === body.name || c.name === `/${body.name}`,
-      );
-
-      if (newContainer && !newContainer.isManaged) {
-        await this.importContainerUseCase.execute(
-          newContainer.dockerId,
-          req.user.id,
-        );
-      }
-    } catch (err) {
-      // Auto-import failed, but service is running
-    }
-
-    return { success: true, message: `Service "${body.name}" created`, output };
+    return {
+      success: true,
+      message: `Service "${body.name}" created`,
+      ...result,
+    };
   }
 
   /**
@@ -250,26 +245,8 @@ export class DockerController {
   @Delete('compose/services/:name')
   @RequirePermissions(PERMISSIONS.DOCKER_DELETE)
   async removeComposeService(@Param('name') name: string) {
-    // 1. Stop and remove the container
-    await this.composeService.downService(name);
+    await this.removeComposeServiceUseCase.execute(name);
 
-    // 2. Remove from docker-compose.yml
-    this.composeService.removeService(name);
-
-    // 3. Clean up DB entry if exists
-    try {
-      const containers = await this.listContainersUseCase.execute(undefined);
-      const container = containers.find((c) => c.name === name && c.isManaged);
-      if (container) {
-        await this.removeContainerUseCase.execute(container.id);
-      }
-    } catch {
-      // DB cleanup failed, but compose service is removed
-    }
-
-    return {
-      success: true,
-      message: `Service "${name}" removed from compose`,
-    };
+    return { success: true, message: `Service "${name}" removed from compose` };
   }
 }
