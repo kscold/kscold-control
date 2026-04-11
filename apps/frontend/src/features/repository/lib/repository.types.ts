@@ -33,3 +33,11 @@ export interface ClientFile {
   relativePath: string;
   file: File;
 }
+
+export interface FileContentResult {
+  path: string;
+  size: number;
+  encoding: 'utf8' | 'base64';
+  content: string;
+  truncated: boolean;
+}

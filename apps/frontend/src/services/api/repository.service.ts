@@ -6,6 +6,7 @@ import type {
   UploadResult,
   CreateProjectInput,
   ClientFile,
+  FileContentResult,
 } from '../../features/repository/lib/repository.types';
 
 /**
@@ -93,6 +94,19 @@ export class RepositoryService extends BaseApiService {
     } catch (error) {
       this.logError('RepositoryService', 'getTree', error);
       this.handleError(error, '파일 트리 조회 실패');
+    }
+  }
+
+  async readFile(projectId: string, path: string): Promise<FileContentResult> {
+    try {
+      const { data } = await api.get<FileContentResult>(
+        `${this.basePath}/projects/${projectId}/file`,
+        { params: { path } },
+      );
+      return data;
+    } catch (error) {
+      this.logError('RepositoryService', 'readFile', error);
+      this.handleError(error, '파일 내용 조회 실패');
     }
   }
 

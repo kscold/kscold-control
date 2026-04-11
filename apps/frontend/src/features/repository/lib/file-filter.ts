@@ -1,7 +1,7 @@
 /** 업로드에서 제외할 디렉토리/파일 패턴 — src 코드만 올리기 위한 필터 */
 
-/** 단일 파일 최대 크기 — 이보다 크면 자동 제외 (코드/설정 파일은 거의 5MB 이하) */
-export const MAX_FILE_SIZE_BYTES = 5 * 1024 * 1024;
+/** 단일 파일 최대 크기 — 이보다 크면 자동 제외 (코드/설정 파일은 거의 1MB 이하) */
+export const MAX_FILE_SIZE_BYTES = 1 * 1024 * 1024;
 
 const EXCLUDED_DIRS = new Set([
   'node_modules',
@@ -63,9 +63,23 @@ const EXCLUDED_EXTENSIONS = new Set([
   'zip', 'tar', 'gz', 'bz2', '7z', 'rar', 'iso', 'dmg', 'pkg',
   // 데이터 (대용량 가능)
   'sqlite', 'db', 'mdb', 'bak',
+  // ML/바이너리 데이터
+  'bin', 'pkl', 'pickle', 'npy', 'npz', 'h5', 'hdf5', 'feather', 'parquet',
+  'safetensors', 'ckpt', 'pt', 'pth', 'onnx', 'pb', 'tflite',
+  // 대용량 데이터/지도 (보통 빌드 산출물 또는 외부 데이터)
+  'geojson', 'shp', 'shx', 'dbf',
   // 임시
   'log', 'tmp', 'swp', 'swo', 'lock',
 ]);
+
+/** minified 산출물 패턴 — 확장자 검사로 못 잡는 패턴 */
+const MINIFIED_PATTERNS = [
+  /\.min\.js$/,
+  /\.min\.css$/,
+  /\.bundle\.js$/,
+  /\.chunk\.[a-f0-9]{6,}\.js$/,
+  /\bvendor\.[a-f0-9]+\.js$/,
+];
 
 const EXCLUDED_EXACT_FILENAMES = new Set([
   '.DS_Store',
@@ -95,6 +109,10 @@ export function getExcludeReason(relativePath: string, size: number): ExcludeRea
   // 정확 매칭 파일명
   if (EXCLUDED_EXACT_FILENAMES.has(fileName)) return 'name';
   if (EXCLUDED_DIRS.has(fileName)) return 'dir';
+  // minified / 빌드 산출물 패턴
+  for (const pattern of MINIFIED_PATTERNS) {
+    if (pattern.test(fileName)) return 'ext';
+  }
   // 확장자 필터
   const dotIdx = fileName.lastIndexOf('.');
   if (dotIdx > 0) {

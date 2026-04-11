@@ -3,7 +3,7 @@ import { FolderGit2, Plus, Loader2 } from 'lucide-react';
 import { useProjects } from '../hooks/useProjects';
 import { ProjectCard } from './ProjectCard';
 import { CreateProjectModal } from './CreateProjectModal';
-import { UploadDropzone } from './UploadDropzone';
+import { ProjectBrowser } from './ProjectBrowser';
 
 export function RepositoryView() {
   const { projects, loading, error, reload, create, remove } = useProjects();
@@ -77,24 +77,10 @@ export function RepositoryView() {
           )}
         </div>
 
-        {/* 우측: 업로드 영역 */}
+        {/* 우측: 프로젝트 브라우저 (트리 + 코드 뷰어 + 업로드) */}
         <div className="lg:col-span-2">
           {active ? (
-            <div className="space-y-4">
-              <div className="rounded-xl border border-gray-800 bg-gray-900/70 p-5">
-                <h2 className="text-base font-semibold text-white">{active.name}</h2>
-                {active.description && (
-                  <p className="mt-1 text-xs text-gray-500">{active.description}</p>
-                )}
-                <div className="mt-3 flex items-center gap-4 text-xs text-gray-500">
-                  <span>파일 {active.fileCount.toLocaleString()}개</span>
-                  <span>총 {(Number(active.totalSize) / 1024 / 1024).toFixed(2)} MB</span>
-                  <span>마지막 업데이트 {new Date(active.updatedAt).toLocaleString()}</span>
-                </div>
-              </div>
-
-              <UploadDropzone project={active} onUploaded={reload} />
-            </div>
+            <ProjectBrowser project={active} onUploaded={reload} />
           ) : (
             <div className="flex h-full min-h-[400px] items-center justify-center rounded-xl border border-dashed border-gray-800 bg-gray-900/30">
               <div className="text-center">
