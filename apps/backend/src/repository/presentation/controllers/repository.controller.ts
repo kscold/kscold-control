@@ -72,9 +72,11 @@ export class RepositoryController {
   @Post('projects/:id/upload')
   @RequirePermissions(PERMISSIONS.REPOSITORY_WRITE)
   @UseInterceptors(
-    FilesInterceptor('files', 5000, {
+    FilesInterceptor('files', 1000, {
       limits: {
-        fileSize: 100 * 1024 * 1024, // 100MB per file
+        fileSize: 10 * 1024 * 1024, // 10MB per file (코드/설정 파일 기준)
+        fields: 5000,
+        files: 1000,
       },
     }),
   )

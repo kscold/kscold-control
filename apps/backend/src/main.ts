@@ -1,5 +1,6 @@
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
+import { json, urlencoded } from 'express';
 import { AppModule } from './app.module';
 import { SpaFallbackFilter } from './common/filters/spa-fallback.filter';
 import { WinstonLoggerService } from './common/logger/winston.logger';
@@ -8,6 +9,10 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule, {
     logger: new WinstonLoggerService(),
   });
+
+  // 소스 저장소 청크 업로드 대비 — 배치당 ~50MB 허용
+  app.use(json({ limit: '100mb' }));
+  app.use(urlencoded({ extended: true, limit: '100mb' }));
 
   // CORS 설정
   app.enableCors({
