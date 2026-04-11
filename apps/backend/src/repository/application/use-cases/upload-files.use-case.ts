@@ -1,0 +1,70 @@
+import { Inject, Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import {
+  IProjectRepository,
+  PROJECT_REPOSITORY,
+} from '../../domain/repositories/project.repository.interface';
+import { FILE_STORAGE, IFileStorage } from '../../domain/repositories/file-storage.interface';
+import { Project } from '../../domain/entities/project.entity';
+
+export interface UploadFile {
+  relativePath: string;
+  buffer: Buffer;
+  size: number;
+}
+
+export interface UploadResult {
+  project: Project;
+  uploadedCount: number;
+  totalBytes: number;
+}
+
+@Injectable()
+export class UploadFilesUseCase {
+  constructor(
+    @Inject(PROJECT_REPOSITORY)
+    private readonly projectRepository: IProjectRepository,
+    @Inject(FILE_STORAGE)
+    private readonly fileStorage: IFileStorage,
+  ) {}
+
+  async execute(projectId: string, files: UploadFile[], replace: boolean): Promise<UploadResult> {
+    const project = await this.projectRepository.findById(projectId);
+    if (!project) {
+      throw new NotFoundException(`프로젝트를 찾을 수 없습니다: ${projectId}`);
+    }
+
+    if (!files || files.length === 0) {
+      throw new BadRequestException('업로드할 파일이 없습니다');
+    }
+
+    if (replace) {
+      await this.fileStorage.removeProject(project.name);
+      await this.fileStorage.ensureProject(project.name);
+    }
+
+    let totalBytes = 0;
+    for (const file of files) {
+      this.assertSafePath(file.relativePath);
+      await this.fileStorage.writeFile(project.name, file.relativePath, file.buffer);
+      totalBytes += file.size;
+    }
+
+    const stats = await this.fileStorage.getStats(project.name);
+    const updated = await this.projectRepository.update(projectId, {
+      fileCount: stats.fileCount,
+      totalSize: stats.totalSize,
+    });
+
+    return {
+      project: updated,
+      uploadedCount: files.length,
+      totalBytes,
+    };
+  }
+
+  private assertSafePath(relativePath: string): void {
+    if (relativePath.includes('..') || relativePath.startsWith('/')) {
+      throw new BadRequestException(`안전하지 않은 경로: ${relativePath}`);
+    }
+  }
+}

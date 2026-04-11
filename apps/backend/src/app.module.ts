@@ -12,6 +12,7 @@ import { LogsModule } from './logs/logs.module';
 import { NginxModule } from './nginx/nginx.module';
 import { UpnpModule } from './upnp/upnp.module';
 import { ClaudeChatModule } from './claude-chat/claude-chat.module';
+import { RepositoryModule } from './repository/repository.module';
 
 // Domain Entities (Clean Architecture)
 import { User } from './rbac/domain/entities/user.entity';
@@ -20,6 +21,7 @@ import { Permission } from './rbac/domain/entities/permission.entity';
 import { Session } from './terminal/domain/entities/session.entity';
 import { Message } from './terminal/domain/entities/message.entity';
 import { Container } from './docker/domain/entities/container.entity';
+import { Project } from './repository/domain/entities/project.entity';
 
 import { HttpLoggerMiddleware } from './common/middleware/http-logger.middleware';
 
@@ -39,7 +41,7 @@ import { HttpLoggerMiddleware } from './common/middleware/http-logger.middleware
     TypeOrmModule.forRoot({
       type: 'postgres',
       url: process.env.DATABASE_URL,
-      entities: [User, Role, Permission, Session, Message, Container],
+      entities: [User, Role, Permission, Session, Message, Container, Project],
       synchronize: process.env.NODE_ENV !== 'production',
       logging: process.env.NODE_ENV !== 'production',
     }),
@@ -54,6 +56,7 @@ import { HttpLoggerMiddleware } from './common/middleware/http-logger.middleware
     NginxModule,
     UpnpModule,
     ClaudeChatModule,
+    RepositoryModule,
   ],
 })
 export class AppModule implements NestModule {

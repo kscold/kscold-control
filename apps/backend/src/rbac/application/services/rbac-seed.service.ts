@@ -44,6 +44,9 @@ export class RbacSeedService {
       { name: PERMISSIONS.TERMINAL_ACCESS, description: '터미널 접근' },
       { name: PERMISSIONS.RBAC_MANAGE, description: 'RBAC 관리' },
       { name: PERMISSIONS.SYSTEM_READ, description: '시스템 정보 및 로그 조회' },
+      { name: PERMISSIONS.REPOSITORY_READ, description: '소스 저장소 조회/다운로드' },
+      { name: PERMISSIONS.REPOSITORY_WRITE, description: '소스 저장소 업로드' },
+      { name: PERMISSIONS.REPOSITORY_DELETE, description: '소스 저장소 삭제' },
     ];
 
     for (const perm of permissionData) {
