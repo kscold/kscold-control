@@ -17,6 +17,7 @@ module.exports = {
         DOCKER_HOST: process.env.DOCKER_HOST || 'unix:///home/example/.colima/default/docker.sock',
         JWT_SECRET: process.env.JWT_SECRET || 'kscold-infra-secret-change-in-production',
         CLAUDE_WORKING_DIR: process.env.CLAUDE_WORKING_DIR || '/home/example/Desktop',
+        REPOSITORY_STORAGE_DIR: process.env.REPOSITORY_STORAGE_DIR || '/home/example/repository-storage',
       },
       // 자동 재시작
       watch: false,

@@ -30,6 +30,11 @@ export const PERMISSIONS = {
 
   // RBAC
   RBAC_MANAGE: 'rbac:manage',
+
+  // Repository (소스 저장소)
+  REPOSITORY_READ: 'repository:read',
+  REPOSITORY_WRITE: 'repository:write',
+  REPOSITORY_DELETE: 'repository:delete',
 } as const;
 
 export type Permission = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];
