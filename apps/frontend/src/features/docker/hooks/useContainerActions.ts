@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { dockerService } from '../../../services/api/docker.service';
 import { useModalStore } from '../../../shared/model/modal.store';
+import type { Container } from '../../../types/domain.types';
 
 /**
  * useContainerActions Hook
@@ -36,13 +37,19 @@ export function useContainerActions(onSuccess?: () => void) {
     }
   };
 
-  const deleteContainer = (id: string) => {
+  const deleteContainer = (container: Container) => {
     showConfirm(
-      '정말 삭제하시겠습니까?',
+      container.isComposeManaged
+        ? 'compose 서비스와 관리 정보를 함께 삭제합니다. 계속할까요?'
+        : '정말 삭제하시겠습니까?',
       async () => {
         try {
           setLoading(true);
-          await dockerService.deleteContainer(id);
+          if (container.isComposeManaged) {
+            await dockerService.removeComposeService(container.name);
+          } else {
+            await dockerService.deleteContainer(container.id);
+          }
           onSuccess?.();
         } catch (error) {
           console.error('Failed to delete container:', error);

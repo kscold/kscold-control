@@ -11,6 +11,8 @@ interface CreateContainerModalProps {
   show: boolean;
   config: ContainerConfig;
   isCreating: boolean;
+  isPreparing: boolean;
+  templateWarning: string | null;
   onClose: () => void;
   onConfigChange: (updates: Partial<ContainerConfig>) => void;
   onCreate: () => void;
@@ -24,6 +26,8 @@ export function CreateContainerModal({
   show,
   config,
   isCreating,
+  isPreparing,
+  templateWarning,
   onClose,
   onConfigChange,
   onCreate,
@@ -39,6 +43,11 @@ export function CreateContainerModal({
         <p className="text-xs text-gray-400 mb-4">
           docker-compose.yml에 서비스가 추가되고 자동으로 시작됩니다.
         </p>
+        {templateWarning ? (
+          <div className="mb-4 rounded border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-100">
+            {templateWarning}
+          </div>
+        ) : null}
 
         <div className="space-y-3 sm:space-y-4">
           <div>
@@ -49,6 +58,7 @@ export function CreateContainerModal({
               type="text"
               value={config.name}
               onChange={(e) => onConfigChange({ name: e.target.value })}
+              disabled={isPreparing}
               className="w-full px-3 py-2 text-sm bg-gray-700 border border-gray-600 rounded text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
               placeholder="ubuntu-myproject"
             />
@@ -61,6 +71,7 @@ export function CreateContainerModal({
             <select
               value={config.image}
               onChange={(e) => onConfigChange({ image: e.target.value })}
+              disabled={isPreparing}
               className="w-full px-3 py-2 text-sm bg-gray-700 border border-gray-600 rounded text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option value="ubuntu:22.04">Ubuntu 22.04 LTS</option>
@@ -82,6 +93,7 @@ export function CreateContainerModal({
                 onChange={(e) =>
                   onConfigChange({ cpus: parseInt(e.target.value) })
                 }
+                disabled={isPreparing}
                 className="w-full px-3 py-2 text-sm bg-gray-700 border border-gray-600 rounded text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
@@ -93,6 +105,7 @@ export function CreateContainerModal({
               <select
                 value={config.memory}
                 onChange={(e) => onConfigChange({ memory: e.target.value })}
+                disabled={isPreparing}
                 className="w-full px-3 py-2 text-sm bg-gray-700 border border-gray-600 rounded text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 <option value="1g">1GB</option>
@@ -117,6 +130,7 @@ export function CreateContainerModal({
                 onChange={(e) =>
                   onConfigChange({ sshPort: parseInt(e.target.value) })
                 }
+                disabled={isPreparing}
                 className="w-full px-3 py-2 text-sm bg-gray-700 border border-gray-600 rounded text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
@@ -133,11 +147,19 @@ export function CreateContainerModal({
                 onChange={(e) =>
                   onConfigChange({ httpPort: parseInt(e.target.value) })
                 }
+                disabled={isPreparing}
                 className="w-full px-3 py-2 text-sm bg-gray-700 border border-gray-600 rounded text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
           </div>
         </div>
+
+        {isPreparing ? (
+          <div className="mt-4 space-y-2">
+            <div className="h-3 w-28 animate-pulse rounded bg-gray-700" />
+            <div className="h-10 animate-pulse rounded bg-gray-700/70" />
+          </div>
+        ) : null}
 
         <div className="flex gap-3 mt-6">
           <button
@@ -149,7 +171,7 @@ export function CreateContainerModal({
           </button>
           <button
             onClick={onCreate}
-            disabled={isCreating}
+            disabled={isCreating || isPreparing}
             className="flex-1 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
           >
             {isCreating ? '생성 중...' : '생성'}

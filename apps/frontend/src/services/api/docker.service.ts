@@ -2,6 +2,7 @@ import { api } from '../../lib/api';
 import { BaseApiService } from './base.service';
 import {
   Container,
+  ComposeProvisioningTemplate,
   CreateContainerRequest,
   ContainerStatsResponse,
 } from '../../types';
@@ -166,6 +167,21 @@ export class DockerService extends BaseApiService {
     } catch (error) {
       this.logError('DockerService', 'createComposeService', error);
       this.handleError(error, 'Failed to create compose service');
+    }
+  }
+
+  /**
+   * compose 인스턴스 생성 기본값을 조회합니다.
+   */
+  async getComposeProvisioningTemplate(): Promise<ComposeProvisioningTemplate> {
+    try {
+      const { data } = await api.get<ComposeProvisioningTemplate>(
+        `${this.basePath}/compose/provisioning-template`,
+      );
+      return data;
+    } catch (error) {
+      this.logError('DockerService', 'getComposeProvisioningTemplate', error);
+      this.handleError(error, 'Failed to load compose provisioning template');
     }
   }
 

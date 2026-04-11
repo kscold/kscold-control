@@ -6,7 +6,7 @@ interface ContainerListProps {
   containers: Container[];
   onStart: (id: string) => void;
   onStop: (id: string) => void;
-  onDelete: (id: string) => void;
+  onDelete: (container: Container) => void;
   onImport?: (dockerId: string) => void;
 }
 

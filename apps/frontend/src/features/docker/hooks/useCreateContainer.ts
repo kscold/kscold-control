@@ -16,8 +16,8 @@ const DEFAULT_CONFIG: ContainerConfig = {
   image: 'ubuntu:22.04',
   cpus: 2,
   memory: '4g',
-  sshPort: 2222,
-  httpPort: 8001,
+  sshPort: 2227,
+  httpPort: 8085,
 };
 
 /**
@@ -25,28 +25,46 @@ const DEFAULT_CONFIG: ContainerConfig = {
  * Manages container creation via docker-compose integration
  */
 export function useCreateContainer(
-  containerCount: number,
   onSuccess?: () => void,
 ) {
   const [isCreating, setIsCreating] = useState(false);
+  const [isPreparingTemplate, setIsPreparingTemplate] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [config, setConfig] = useState<ContainerConfig>(DEFAULT_CONFIG);
+  const [templateWarning, setTemplateWarning] = useState<string | null>(null);
   const { showAlert } = useModalStore();
 
-  const openModal = () => {
-    // Generate unique name and ports
-    setConfig({
-      ...DEFAULT_CONFIG,
-      name: `ubuntu-${Date.now()}`,
-      sshPort: 2222 + containerCount,
-      httpPort: 8001 + containerCount,
-    });
+  const openModal = async () => {
     setShowModal(true);
+    setIsPreparingTemplate(true);
+    setTemplateWarning(null);
+
+    try {
+      const template = await dockerService.getComposeProvisioningTemplate();
+      setConfig({
+        name: template.name,
+        image: template.image,
+        cpus: Number.parseInt(template.cpus, 10),
+        memory: template.memLimit,
+        sshPort: template.ports['22'],
+        httpPort: template.ports['8080'],
+      });
+    } catch (error) {
+      console.error('Failed to load compose provisioning template:', error);
+      setConfig(DEFAULT_CONFIG);
+      setTemplateWarning(
+        '기본 포트를 직접 입력해야 합니다. 최근 사용 포트를 다시 확인해 주세요.',
+      );
+    } finally {
+      setIsPreparingTemplate(false);
+    }
   };
 
   const closeModal = () => {
     setShowModal(false);
     setConfig(DEFAULT_CONFIG);
+    setTemplateWarning(null);
+    setIsPreparingTemplate(false);
   };
 
   const updateConfig = (updates: Partial<ContainerConfig>) => {
@@ -91,6 +109,8 @@ export function useCreateContainer(
     showModal,
     config,
     isCreating,
+    isPreparingTemplate,
+    templateWarning,
     openModal,
     closeModal,
     updateConfig,

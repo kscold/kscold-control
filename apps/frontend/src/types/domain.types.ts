@@ -57,6 +57,16 @@ export interface Container {
   liveStatus: string; // Real-time status from Docker
   externalAccess?: ExternalAccess;
   isManaged: boolean; // True if created by this system, False if external
+  isComposeManaged: boolean;
+}
+
+export interface ComposeProvisioningTemplate {
+  name: string;
+  image: string;
+  cpus: string;
+  memLimit: string;
+  command: string;
+  ports: Record<string, number>;
 }
 
 export interface CreateContainerConfig {
