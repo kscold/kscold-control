@@ -11,7 +11,7 @@ interface ContainerCardProps {
   container: Container;
   onStart: (id: string) => void;
   onStop: (id: string) => void;
-  onDelete: (id: string) => void;
+  onDelete: (container: Container) => void;
   onImport?: (dockerId: string) => void;
 }
 
@@ -241,12 +241,12 @@ export function ContainerCard({
             </span>
           </button>
         )}
-        <button
-          onClick={() =>
-            checkPermission(PERMISSIONS.DOCKER_DELETE, () => onDelete(container.id))
-          }
-          className="px-3 py-2 bg-red-600 text-white rounded hover:bg-red-700 transition-colors"
-          title="삭제"
+          <button
+            onClick={() =>
+              checkPermission(PERMISSIONS.DOCKER_DELETE, () => onDelete(container))
+            }
+            className="px-3 py-2 bg-red-600 text-white rounded hover:bg-red-700 transition-colors"
+            title="삭제"
         >
           <Trash2 size={16} />
         </button>

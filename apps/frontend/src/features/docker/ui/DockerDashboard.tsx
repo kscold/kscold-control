@@ -36,11 +36,13 @@ export function DockerDashboard() {
     showModal,
     config,
     isCreating,
+    isPreparingTemplate,
+    templateWarning,
     openModal,
     closeModal,
     updateConfig,
     createContainer,
-  } = useCreateContainer(containers.length, reload);
+  } = useCreateContainer(reload);
   const { checkPermission } = usePermissions();
   const [filter, setFilter] = useState<FilterType>('all');
 
@@ -106,6 +108,8 @@ export function DockerDashboard() {
         show={showModal}
         config={config}
         isCreating={isCreating}
+        isPreparing={isPreparingTemplate}
+        templateWarning={templateWarning}
         onClose={closeModal}
         onConfigChange={updateConfig}
         onCreate={createContainer}
