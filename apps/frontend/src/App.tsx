@@ -36,6 +36,9 @@ const NetworkPage = lazy(() =>
 const TopologyPage = lazy(() =>
   import('./pages/TopologyPage').then((m) => ({ default: m.TopologyPage })),
 );
+const RepositoryPage = lazy(() =>
+  import('./pages/RepositoryPage').then((m) => ({ default: m.RepositoryPage })),
+);
 
 function AuthPageLoader() {
   return (
@@ -181,6 +184,16 @@ export default function App() {
               <ErrorBoundary>
                 <Suspense fallback={<TopologySkeleton />}>
                   <TopologyPage />
+                </Suspense>
+              </ErrorBoundary>
+            }
+          />
+          <Route
+            path="repository"
+            element={
+              <ErrorBoundary>
+                <Suspense fallback={<RoutePageSkeleton />}>
+                  <RepositoryPage />
                 </Suspense>
               </ErrorBoundary>
             }

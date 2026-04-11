@@ -12,6 +12,7 @@ import {
   Globe,
   Network,
   GitBranch,
+  FolderGit2,
 } from 'lucide-react';
 import { useAuthStore } from '../shared/model/auth.store';
 
@@ -140,6 +141,21 @@ export function Layout() {
       >
         <GitBranch size={18} />
         토폴로지
+      </NavLink>
+
+      <NavLink
+        to="/repository"
+        onClick={() => setIsMobileMenuOpen(false)}
+        className={({ isActive }) =>
+          `flex items-center gap-3 px-3 py-2 rounded-lg text-sm ${
+            isActive
+              ? 'bg-blue-600 text-white'
+              : 'text-gray-400 hover:bg-gray-800 hover:text-white'
+          }`
+        }
+      >
+        <FolderGit2 size={18} />
+        소스 저장소
       </NavLink>
     </>
   );
