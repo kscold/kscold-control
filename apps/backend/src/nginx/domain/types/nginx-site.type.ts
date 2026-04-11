@@ -7,6 +7,7 @@ export interface NginxSite {
   sslKey: string;
   websocket: boolean;
   enabled: boolean;
+  source?: 'config' | 'inferred';
   raw?: string;
 }
 
