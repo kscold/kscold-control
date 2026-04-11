@@ -22,9 +22,72 @@ interface StackMeta {
   knownServices: Array<{ name: string; port: number; icon: string }>;
 }
 
+interface ContainerGatewayInfo {
+  mode: 'host-nginx' | 'container-nginx' | 'direct';
+  label: string;
+  details: string[];
+}
+
 const COL_GAP = 360;
 const ROW_GAP = 280;
 const NODE_HALF_W = 110;
+const INFERRED_SITE_HINTS: NginxSite[] = [
+  {
+    name: 'control',
+    domain: 'control.kscold.com',
+    upstream: 'http://host.docker.internal:4000',
+    ssl: true,
+    sslCert: '',
+    sslKey: '',
+    websocket: true,
+    enabled: true,
+    source: 'inferred',
+  },
+  {
+    name: 'slacord',
+    domain: 'slacord.cloud',
+    upstream: 'http://ubuntu-slacord:3002',
+    ssl: true,
+    sslCert: '',
+    sslKey: '',
+    websocket: true,
+    enabled: true,
+    source: 'inferred',
+  },
+  {
+    name: 'blog-main',
+    domain: 'kscold.com',
+    upstream: 'http://ubuntu-blog:3000',
+    ssl: true,
+    sslCert: '',
+    sslKey: '',
+    websocket: true,
+    enabled: true,
+    source: 'inferred',
+  },
+  {
+    name: 'congbang',
+    domain: 'congbang.kscold.com',
+    upstream: 'http://ubuntu-congbang:3000',
+    ssl: true,
+    sslCert: '',
+    sslKey: '',
+    websocket: true,
+    enabled: true,
+    source: 'inferred',
+  },
+  {
+    name: 'galjido',
+    domain: 'galjido.kscold.com',
+    upstream: 'http://ubuntu-galjido:8080',
+    ssl: true,
+    sslCert: '',
+    sslKey: '',
+    websocket: false,
+    enabled: true,
+    source: 'inferred',
+  },
+];
 
 @Injectable()
 export class DockerTopologyService {
@@ -37,10 +100,11 @@ export class DockerTopologyService {
   ) {}
 
   async getSnapshot(): Promise<TopologySnapshot> {
-    const [containers, sites] = await Promise.all([
+    const [containers, configuredSites] = await Promise.all([
       this.listContainersUseCase.execute(undefined),
       this.nginxConfigRepository.list(),
     ]);
+    const sites = this.mergeSites(configuredSites, containers);
 
     const processMap = await this.fetchProcesses(containers);
     const composeServices = new Set(this.composeService.listServices());
@@ -112,6 +176,7 @@ export class DockerTopologyService {
     const infraStartX = centerX - ((infraNodes.length - 1) * COL_GAP) / 2 - NODE_HALF_W;
     infraNodes.forEach((entry, index) => {
       if (!entry.container) {
+        const domains = this.getLocalControlDomains(sites);
         nodes.push({
           id: entry.id,
           type: 'container',
@@ -124,12 +189,16 @@ export class DockerTopologyService {
             meta: this.getLocalControlMeta(),
             processes: { pm2: [], services: [] },
             isLocal: true,
+            domains,
+            gateway: this.buildLocalGateway(domains),
           },
           draggable: true,
         });
       } else {
         const meta = this.getStackMeta(entry.container.image, entry.container.name);
         const processes = processMap[entry.container.id] ?? { pm2: [], services: [] };
+        const domains = this.getContainerDomains(entry.container, sites);
+        const gateway = this.buildContainerGateway(entry.container, processes.services, domains);
         nodes.push({
           id: entry.id,
           type: 'container',
@@ -142,6 +211,8 @@ export class DockerTopologyService {
             meta,
             processes,
             isInfra: true,
+            domains,
+            gateway,
           },
           draggable: true,
         });
@@ -165,7 +236,10 @@ export class DockerTopologyService {
         id: nodeId,
         type: 'nginx',
         position: { x: rowStartX + index * COL_GAP, y: ROW_GAP * 3.1 },
-        data: site,
+        data: {
+          ...site,
+          source: site.source ?? 'config',
+        },
         draggable: true,
       });
 
@@ -182,6 +256,8 @@ export class DockerTopologyService {
     appContainers.forEach((container, index) => {
       const meta = this.getStackMeta(container.image, container.name);
       const processes = processMap[container.id] ?? { pm2: [], services: [] };
+      const domains = this.getContainerDomains(container, sites);
+      const gateway = this.buildContainerGateway(container, processes.services, domains);
       const nodeId = `container-${container.id}`;
       const x = rowStartX + index * COL_GAP;
       const y = ROW_GAP * 4.3;
@@ -198,6 +274,8 @@ export class DockerTopologyService {
           meta,
           processes,
           composeManaged: composeServices.has(container.name),
+          domains,
+          gateway,
         },
         draggable: true,
       });
@@ -240,6 +318,44 @@ export class DockerTopologyService {
         serviceNodeCount: serviceNodeIds.size,
       },
     };
+  }
+
+  private mergeSites(
+    configuredSites: NginxSite[],
+    containers: ContainerResponseDto[],
+  ): NginxSite[] {
+    const merged = new Map<string, NginxSite>();
+
+    configuredSites.forEach((site) => {
+      merged.set(site.domain, {
+        ...site,
+        source: site.source ?? 'config',
+      });
+    });
+
+    INFERRED_SITE_HINTS.forEach((hint) => {
+      if (!this.isHintRelevant(hint, containers)) {
+        return;
+      }
+
+      if (merged.has(hint.domain)) {
+        return;
+      }
+
+      merged.set(hint.domain, hint);
+    });
+
+    return Array.from(merged.values());
+  }
+
+  private isHintRelevant(hint: NginxSite, containers: ContainerResponseDto[]): boolean {
+    if (this.isLocalControlUpstream(hint.upstream)) {
+      return true;
+    }
+
+    return containers.some((container) =>
+      this.matchesUpstreamHost(hint.upstream, container.name),
+    );
   }
 
   private async fetchProcesses(
@@ -333,6 +449,94 @@ export class DockerTopologyService {
   private isStorageSite(site: NginxSite): boolean {
     const target = `${site.name} ${site.domain} ${site.upstream}`.toLowerCase();
     return target.includes('minio') || target.includes('bucket') || target.includes('9000');
+  }
+
+  private getContainerDomains(
+    container: ContainerResponseDto,
+    sites: NginxSite[],
+  ): string[] {
+    return sites
+      .filter((site) => this.matchesUpstreamHost(site.upstream, container.name))
+      .map((site) => site.domain);
+  }
+
+  private getLocalControlDomains(sites: NginxSite[]): string[] {
+    return sites
+      .filter((site) => this.isLocalControlUpstream(site.upstream) || site.name === 'control')
+      .map((site) => site.domain);
+  }
+
+  private buildLocalGateway(domains: string[]): ContainerGatewayInfo {
+    return {
+      mode: domains.length > 0 ? 'host-nginx' : 'direct',
+      label: domains.length > 0 ? '공용 kscold-nginx 프록시' : '직접 접근',
+      details:
+        domains.length > 0
+          ? [
+              '실제 도메인은 공용 kscold-nginx가 host.docker.internal:4000으로 프록시합니다.',
+              'kscold-control은 컨테이너가 아니라 호스트 PM2 프로세스로 실행 중입니다.',
+            ]
+          : ['현재 연결된 공용 도메인을 찾지 못했습니다.'],
+    };
+  }
+
+  private buildContainerGateway(
+    container: ContainerResponseDto,
+    services: Array<{ name: string; port: number; icon: string }>,
+    domains: string[],
+  ): ContainerGatewayInfo {
+    const hasInternalNginx = services.some((service) =>
+      service.name.toLowerCase().includes('nginx'),
+    );
+    const upstreamPort = this.resolvePrimaryInternalPort(container.ports);
+
+    if (hasInternalNginx) {
+      return {
+        mode: 'container-nginx',
+        label: '컨테이너 내부 Nginx',
+        details: [
+          '컨테이너 내부에서 Nginx 프로세스가 감지되었습니다.',
+          upstreamPort ? `대표 웹 포트는 :${upstreamPort} 기준으로 보입니다.` : '대표 웹 포트를 찾지 못했습니다.',
+        ],
+      };
+    }
+
+    if (domains.length > 0) {
+      return {
+        mode: 'host-nginx',
+        label: '공용 kscold-nginx 프록시',
+        details: [
+          '실제 웹 도메인은 공용 kscold-nginx가 앞단에서 종료합니다.',
+          '이 Ubuntu 컨테이너 안에는 별도 Nginx가 없고, 앱 포트만 직접 노출됩니다.',
+          upstreamPort ? `대표 업스트림 포트는 :${upstreamPort} 입니다.` : '대표 업스트림 포트를 찾지 못했습니다.',
+        ],
+      };
+    }
+
+    return {
+      mode: 'direct',
+      label: '직접 노출 포트',
+      details: [
+        '현재 공용 도메인 연결은 감지되지 않았습니다.',
+        upstreamPort ? `대표 포트는 :${upstreamPort} 입니다.` : '대표 포트를 찾지 못했습니다.',
+      ],
+    };
+  }
+
+  private resolvePrimaryInternalPort(ports: Record<string, number>): string | null {
+    const priority = (value: string) => {
+      if (value === '80' || value === '443') return 0;
+      if (value === '3000' || value === '3001' || value === '3002') return 1;
+      if (value === '8080' || value === '8081' || value === '8082') return 2;
+      if (value === '22') return 99;
+      return 10;
+    };
+
+    const sortedPorts = Object.keys(ports).sort(
+      (left, right) => priority(left) - priority(right),
+    );
+
+    return sortedPorts[0] ?? null;
   }
 
   private addServiceNodes(

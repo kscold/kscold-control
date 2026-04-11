@@ -68,6 +68,18 @@ describe('DockerTopologyService', () => {
                 createdAt: new Date().toISOString(),
                 isManaged: true,
               },
+              {
+                id: 'slacord-app',
+                dockerId: 'dock-slacord',
+                name: 'ubuntu-slacord',
+                image: 'kscold/ubuntu-slacord:latest',
+                status: 'running',
+                liveStatus: 'running',
+                ports: { '3002': 3003, '8082': 8084, '22': 2226 },
+                resources: { cpus: 2, memory: '3g' },
+                createdAt: new Date().toISOString(),
+                isManaged: true,
+              },
             ]),
           },
         },
@@ -116,6 +128,13 @@ describe('DockerTopologyService', () => {
                 });
               }
 
+              if (dockerId === 'dock-slacord') {
+                return Promise.resolve({
+                  pm2: [{ name: 'slacord-backend', status: 'online', cpu: 0, memory: 0, restarts: 0 }],
+                  services: [{ name: 'MongoDB', port: 27017, icon: 'mongo' }],
+                });
+              }
+
               return Promise.resolve({ pm2: [], services: [{ name: 'Nginx', port: 80, icon: 'nginx' }] });
             }),
           } satisfies Partial<IDockerClient>,
@@ -128,11 +147,15 @@ describe('DockerTopologyService', () => {
 
   it('구성과 실행 상태를 합쳐 토폴로지 스냅샷을 만든다', async () => {
     const snapshot = await service.getSnapshot();
+    const blogNode = snapshot.nodes.find((node) => node.id === 'container-blog-app');
+    const controlNode = snapshot.nodes.find((node) => node.id === 'local-control');
+    const slacordNode = snapshot.nodes.find((node) => node.id === 'container-slacord-app');
 
-    expect(snapshot.summary.containerCount).toBe(3);
+    expect(snapshot.summary.containerCount).toBe(4);
     expect(snapshot.nodes.some((node) => node.id === 'host')).toBe(true);
     expect(snapshot.nodes.some((node) => node.id === 'local-control')).toBe(true);
     expect(snapshot.nodes.some((node) => node.id === 'nginx-blog')).toBe(true);
+    expect(snapshot.nodes.some((node) => node.id === 'nginx-slacord')).toBe(true);
     expect(
       snapshot.nodes.some((node) =>
         node.id === 'container-blog-app-service-SSH-22',
@@ -148,5 +171,30 @@ describe('DockerTopologyService', () => {
         (edge) => edge.source === 'nginx-control' && edge.target === 'local-control',
       ),
     ).toBe(true);
+    expect(blogNode?.data).toEqual(
+      expect.objectContaining({
+        domains: expect.arrayContaining(['blog.kscold.com', 'kscold.com']),
+        gateway: expect.objectContaining({
+          mode: 'host-nginx',
+          label: '공용 kscold-nginx 프록시',
+        }),
+      }),
+    );
+    expect(controlNode?.data).toEqual(
+      expect.objectContaining({
+        domains: expect.arrayContaining(['control.kscold.com']),
+        gateway: expect.objectContaining({
+          mode: 'host-nginx',
+        }),
+      }),
+    );
+    expect(slacordNode?.data).toEqual(
+      expect.objectContaining({
+        domains: expect.arrayContaining(['slacord.cloud']),
+        gateway: expect.objectContaining({
+          mode: 'host-nginx',
+        }),
+      }),
+    );
   });
 });
