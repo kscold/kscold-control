@@ -1,5 +1,8 @@
 /** 업로드에서 제외할 디렉토리/파일 패턴 — src 코드만 올리기 위한 필터 */
 
+/** 단일 파일 최대 크기 — 이보다 크면 자동 제외 (코드/설정 파일은 거의 5MB 이하) */
+export const MAX_FILE_SIZE_BYTES = 5 * 1024 * 1024;
+
 const EXCLUDED_DIRS = new Set([
   'node_modules',
   '.git',
@@ -22,12 +25,18 @@ const EXCLUDED_DIRS = new Set([
   '.turbo',
   '.cache',
   'target',
+  'bin',
   '.gradle',
   '.idea',
   '.vscode',
   '.vs',
+  '.metadata', // Eclipse
+  '.settings', // Eclipse
+  '.classpath',
+  '.project',
   '.DS_Store',
   '.serena',
+  '.claude',
   'coverage',
   '.nyc_output',
   'tmp',
@@ -36,20 +45,27 @@ const EXCLUDED_DIRS = new Set([
   '.expo',
   '.docusaurus',
   '__snapshots__',
+  'logs',
+  'log',
 ]);
 
-const EXCLUDED_FILE_PATTERNS = [
-  /\.pyc$/,
-  /\.pyo$/,
-  /\.class$/,
-  /\.log$/,
-  /\.tmp$/,
-  /\.swp$/,
-  /\.swo$/,
-  /\.DS_Store$/,
-  /^Thumbs\.db$/,
-  /\.lock$/,    // package-lock 등 — 필요하면 화이트리스트로 풀 것
-];
+const EXCLUDED_EXTENSIONS = new Set([
+  // 빌드 산출물
+  'pyc', 'pyo', 'class', 'jar', 'war', 'ear', 'dll', 'exe', 'so', 'dylib', 'a', 'lib', 'o', 'obj',
+  // 이미지/미디어 (코드 저장소면 일반적으로 큼)
+  'png', 'jpg', 'jpeg', 'gif', 'bmp', 'tiff', 'tif', 'ico', 'webp', 'psd', 'ai', 'eps',
+  'mp3', 'mp4', 'avi', 'mov', 'mkv', 'wmv', 'flv', 'webm', 'wav', 'flac', 'ogg', 'm4a',
+  // 폰트
+  'ttf', 'otf', 'woff', 'woff2', 'eot',
+  // 문서/오피스
+  'pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'odt', 'ods', 'odp', 'rtf',
+  // 압축
+  'zip', 'tar', 'gz', 'bz2', '7z', 'rar', 'iso', 'dmg', 'pkg',
+  // 데이터 (대용량 가능)
+  'sqlite', 'db', 'mdb', 'bak',
+  // 임시
+  'log', 'tmp', 'swp', 'swo', 'lock',
+]);
 
 const EXCLUDED_EXACT_FILENAMES = new Set([
   '.DS_Store',
@@ -61,21 +77,37 @@ export interface FilterStats {
   kept: number;
   filtered: number;
   filteredDirs: Set<string>;
+  filteredByExt: number;
+  filteredByDir: number;
+  filteredBySize: number;
   totalSize: number;
 }
 
-export function shouldExcludePath(relativePath: string): boolean {
+export type ExcludeReason = 'dir' | 'ext' | 'size' | 'name' | null;
+
+export function getExcludeReason(relativePath: string, size: number): ExcludeReason {
   const parts = relativePath.split('/');
+  // 디렉토리 필터
   for (const part of parts.slice(0, -1)) {
-    if (EXCLUDED_DIRS.has(part)) return true;
+    if (EXCLUDED_DIRS.has(part)) return 'dir';
   }
   const fileName = parts[parts.length - 1];
-  if (EXCLUDED_EXACT_FILENAMES.has(fileName)) return true;
-  if (EXCLUDED_DIRS.has(fileName)) return true;
-  for (const pattern of EXCLUDED_FILE_PATTERNS) {
-    if (pattern.test(fileName)) return true;
+  // 정확 매칭 파일명
+  if (EXCLUDED_EXACT_FILENAMES.has(fileName)) return 'name';
+  if (EXCLUDED_DIRS.has(fileName)) return 'dir';
+  // 확장자 필터
+  const dotIdx = fileName.lastIndexOf('.');
+  if (dotIdx > 0) {
+    const ext = fileName.slice(dotIdx + 1).toLowerCase();
+    if (EXCLUDED_EXTENSIONS.has(ext)) return 'ext';
   }
-  return false;
+  // 크기 필터
+  if (size > MAX_FILE_SIZE_BYTES) return 'size';
+  return null;
+}
+
+export function shouldExcludePath(relativePath: string, size = 0): boolean {
+  return getExcludeReason(relativePath, size) !== null;
 }
 
 export function filterFiles<T extends { relativePath: string; file: { size: number } }>(
@@ -84,20 +116,67 @@ export function filterFiles<T extends { relativePath: string; file: { size: numb
   const kept: T[] = [];
   const filteredDirs = new Set<string>();
   let totalSize = 0;
+  let filteredByDir = 0;
+  let filteredByExt = 0;
+  let filteredBySize = 0;
   let filtered = 0;
 
   for (const f of files) {
-    if (shouldExcludePath(f.relativePath)) {
+    const reason = getExcludeReason(f.relativePath, f.file.size);
+    if (reason !== null) {
       filtered++;
-      const firstSegment = f.relativePath.split('/')[0];
-      if (EXCLUDED_DIRS.has(firstSegment)) filteredDirs.add(firstSegment);
+      if (reason === 'dir') {
+        filteredByDir++;
+        const firstSegment = f.relativePath.split('/')[0];
+        if (EXCLUDED_DIRS.has(firstSegment)) filteredDirs.add(firstSegment);
+      } else if (reason === 'ext') {
+        filteredByExt++;
+      } else if (reason === 'size') {
+        filteredBySize++;
+      }
       continue;
     }
     kept.push(f);
     totalSize += f.file.size;
   }
 
-  return { kept, stats: { kept: kept.length, filtered, filteredDirs, totalSize } };
+  return {
+    kept,
+    stats: {
+      kept: kept.length,
+      filtered,
+      filteredDirs,
+      filteredByExt,
+      filteredByDir,
+      filteredBySize,
+      totalSize,
+    },
+  };
+}
+
+/** 청크 업로드용 — 파일 배열을 N개씩 또는 M바이트 이내 배치로 자름 */
+export function chunkFiles<T extends { file: { size: number } }>(
+  files: T[],
+  maxBatchFiles = 50,
+  maxBatchBytes = 8 * 1024 * 1024,
+): T[][] {
+  const batches: T[][] = [];
+  let cur: T[] = [];
+  let curBytes = 0;
+  for (const f of files) {
+    if (
+      cur.length >= maxBatchFiles ||
+      (cur.length > 0 && curBytes + f.file.size > maxBatchBytes)
+    ) {
+      batches.push(cur);
+      cur = [];
+      curBytes = 0;
+    }
+    cur.push(f);
+    curBytes += f.file.size;
+  }
+  if (cur.length > 0) batches.push(cur);
+  return batches;
 }
 
 export function formatBytes(bytes: number): string {

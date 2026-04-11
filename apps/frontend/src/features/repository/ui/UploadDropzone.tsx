@@ -1,7 +1,12 @@
 import { useRef, useState } from 'react';
 import { Upload, FolderUp, Loader2 } from 'lucide-react';
 import { repositoryService } from '../../../services/api/repository.service';
-import { filterFiles, formatBytes, type FilterStats } from '../lib/file-filter';
+import {
+  filterFiles,
+  formatBytes,
+  chunkFiles,
+  type FilterStats,
+} from '../lib/file-filter';
 import type { ClientFile, RepositoryProject } from '../lib/repository.types';
 
 interface UploadDropzoneProps {
@@ -17,9 +22,10 @@ export function UploadDropzone({ project, onUploaded }: UploadDropzoneProps) {
   const [error, setError] = useState<string | null>(null);
   const [lastStats, setLastStats] = useState<FilterStats | null>(null);
 
+  const [batchInfo, setBatchInfo] = useState<{ current: number; total: number } | null>(null);
+
   const handleFiles = async (fileList: FileList) => {
     const allFiles: ClientFile[] = Array.from(fileList).map((f) => ({
-      // webkitRelativePath: "myfolder/src/index.ts" — 첫 segment(폴더명) 제거
       relativePath: stripTopFolder(
         (f as File & { webkitRelativePath?: string }).webkitRelativePath || f.name,
       ),
@@ -34,10 +40,15 @@ export function UploadDropzone({ project, onUploaded }: UploadDropzoneProps) {
       return;
     }
 
+    const batches = chunkFiles(kept, 50, 8 * 1024 * 1024);
+
     if (
       !confirm(
         `${kept.length}개 파일 (${formatBytes(stats.totalSize)}) 업로드할까요?\n` +
-          (stats.filtered > 0 ? `필터: ${stats.filtered}개 제외` : ''),
+          `${batches.length}개 배치로 나눠서 전송됩니다\n` +
+          (stats.filtered > 0
+            ? `필터 제외: ${stats.filtered}개 (디렉토리 ${stats.filteredByDir}, 확장자 ${stats.filteredByExt}, 크기초과 ${stats.filteredBySize})`
+            : ''),
       )
     ) {
       return;
@@ -45,18 +56,27 @@ export function UploadDropzone({ project, onUploaded }: UploadDropzoneProps) {
 
     setUploading(true);
     setProgress(0);
+    setBatchInfo({ current: 0, total: batches.length });
     setError(null);
     try {
-      await repositoryService.uploadFiles(project.id, kept, {
-        replace: true,
-        onProgress: setProgress,
-      });
+      for (let i = 0; i < batches.length; i++) {
+        setBatchInfo({ current: i + 1, total: batches.length });
+        await repositoryService.uploadFiles(project.id, batches[i], {
+          // 첫 배치는 기존 내용 교체, 이후 배치는 이어붙임
+          replace: i === 0,
+          onProgress: (p) => {
+            const overall = Math.floor(((i + p / 100) / batches.length) * 100);
+            setProgress(overall);
+          },
+        });
+      }
       onUploaded();
     } catch (e) {
       setError(e instanceof Error ? e.message : '업로드 실패');
     } finally {
       setUploading(false);
       setProgress(0);
+      setBatchInfo(null);
     }
   };
 
@@ -81,7 +101,14 @@ export function UploadDropzone({ project, onUploaded }: UploadDropzoneProps) {
         {uploading ? (
           <>
             <Loader2 size={40} className="mx-auto animate-spin text-blue-400" />
-            <p className="mt-4 text-sm text-white">업로드 중... {progress}%</p>
+            <p className="mt-4 text-sm text-white">
+              업로드 중... {progress}%
+              {batchInfo && (
+                <span className="ml-2 text-xs text-gray-400">
+                  (배치 {batchInfo.current}/{batchInfo.total})
+                </span>
+              )}
+            </p>
             <div className="mt-3 mx-auto h-1.5 max-w-xs rounded-full bg-gray-800">
               <div
                 className="h-full rounded-full bg-blue-500 transition-all"
