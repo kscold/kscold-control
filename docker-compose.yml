@@ -1,26 +1,10 @@
-########################################################
-# kscold-control 인프라 — Docker Desktop에서 통합 관리
-#
-# 구조:
-#   nginx           → ALB (SSL 종료 + 리버스 프록시)
-#   kscold-infra-db → RDS (공유 PostgreSQL)
-#   ubuntu-galjido  → EC2 인스턴스 (갈지도 프로젝트)
-#
-# 새 프로젝트 추가 시:
-#   1. 이 파일에 ubuntu-xxx 서비스 추가
-#   2. nginx/conf.d/xxx.conf 프록시 설정 추가
-#   3. docker compose up -d
-########################################################
-
 services:
-
-  # ===== 게이트웨이 (ALB) =====
   nginx:
     image: nginx:alpine
     container_name: kscold-nginx
     ports:
-      - "80:80"
-      - "443:443"
+      - '80:80'
+      - '443:443'
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       - ./nginx/conf.d:/etc/nginx/conf.d:ro
@@ -30,8 +14,6 @@ services:
     depends_on:
       - ubuntu-galjido
     restart: unless-stopped
-
-  # ===== 공유 DB (RDS) =====
   kscold-infra-db:
     image: postgres:15-alpine
     container_name: kscold-infra-db
@@ -40,33 +22,29 @@ services:
       POSTGRES_USER: ${INFRA_DB_USER:-admin}
       POSTGRES_PASSWORD: ${INFRA_DB_PASSWORD}
     ports:
-      - "5432:5432"
+      - '5432:5432'
     volumes:
       - infra-db-data:/var/lib/postgresql/data
     restart: unless-stopped
-
-  # ===== 갈지도 인스턴스 (EC2) =====
   ubuntu-galjido:
     image: kscold/ubuntu-galjido:latest
     container_name: ubuntu-galjido
     command: bash -c "/entrypoint.sh"
     ports:
-      - "2223:22"
-      - "5433:5432"
-      - "8081:8080"
+      - '2223:22'
+      - '5433:5432'
+      - '8081:8080'
     cpus: '2'
     mem_limit: 4g
     restart: unless-stopped
-
-  # ===== 콩방 인스턴스 (EC2) =====
   ubuntu-congbang:
     image: kscold/ubuntu-congbang:latest
     container_name: ubuntu-congbang
     command: /entrypoint.sh
     ports:
-      - "2224:22"
-      - "8082:8080"
-      - "3001:3000"
+      - '2224:22'
+      - '8082:8080'
+      - '3001:3000'
     environment:
       - FILE_UPLOAD_DIR=/opt/congbang/uploads
       - MINIO_ENABLED=true
@@ -80,17 +58,15 @@ services:
     cpus: '2'
     mem_limit: 3g
     restart: unless-stopped
-
-  # ===== kscold 블로그 인스턴스 (EC2) =====
   ubuntu-blog:
     image: kscold/ubuntu-blog:latest
     container_name: ubuntu-blog
     command: /entrypoint.sh
     ports:
-      - "2225:22"
-      - "8083:8080"
-      - "3002:3000"
-      - "27019:27017"
+      - '2225:22'
+      - '8083:8080'
+      - '3002:3000'
+      - '27019:27017'
     environment:
       - MONGODB_URI=${BLOG_MONGODB_URI}
       - JWT_SECRET=${BLOG_JWT_SECRET}
@@ -110,8 +86,6 @@ services:
     cpus: '2'
     mem_limit: 3g
     restart: unless-stopped
-
-  # ===== Slacord 인스턴스 (EC2) =====
   ubuntu-slacord:
     image: kscold/ubuntu-slacord:latest
     container_name: ubuntu-slacord
@@ -119,10 +93,10 @@ services:
     env_file:
       - ./env/slacord.env
     ports:
-      - "2226:22"
-      - "8084:8082"
-      - "3003:3002"
-      - "27020:27017"
+      - '2226:22'
+      - '8084:8082'
+      - '3003:3002'
+      - '27020:27017'
     environment:
       - NODE_ENV=production
       - HOST=0.0.0.0
@@ -135,11 +109,20 @@ services:
     cpus: '2'
     mem_limit: 3g
     restart: unless-stopped
-
+  ubuntu-e2e-0405192603:
+    image: ubuntu:22.04
+    container_name: ubuntu-e2e-0405192603
+    command: sleep infinity
+    ports:
+      - '2299:22'
+      - '8099:8080'
+    cpus: '1'
+    mem_limit: 1g
+    restart: unless-stopped
 volumes:
-  infra-db-data:
-  certbot-webroot:
-  congbang-uploads:
-  blog-uploads:
-  blog-mongo-data:
-  slacord-mongo-data:
+  infra-db-data: null
+  certbot-webroot: null
+  congbang-uploads: null
+  blog-uploads: null
+  blog-mongo-data: null
+  slacord-mongo-data: null

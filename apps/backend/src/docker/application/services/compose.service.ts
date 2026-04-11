@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { exec } from 'child_process';
 import { promisify } from 'util';
 import * as fs from 'fs';
@@ -56,6 +56,69 @@ export class ComposeService {
   listServices(): string[] {
     const compose = this.readCompose();
     return Object.keys(compose.services || {});
+  }
+
+  /**
+   * 특정 이름의 서비스가 compose에 있는지 확인합니다.
+   */
+  hasService(name: string): boolean {
+    const compose = this.readCompose();
+    return Boolean(compose.services?.[name]);
+  }
+
+  /**
+   * 현재 compose와 Docker가 사용 중인 호스트 포트를 수집합니다.
+   */
+  async getUsedHostPorts(): Promise<Set<number>> {
+    const usedPorts = new Set<number>();
+    const compose = this.readCompose();
+
+    for (const service of Object.values(compose.services || {}) as Array<any>) {
+      for (const rawPort of service.ports || []) {
+        const hostPort = String(rawPort).split(':')[0];
+        const parsed = Number.parseInt(hostPort, 10);
+        if (Number.isFinite(parsed)) {
+          usedPorts.add(parsed);
+        }
+      }
+    }
+
+    try {
+      const { stdout } = await execAsync(
+        `docker ps -a --format "{{.Ports}}"`,
+        { cwd: this.projectRoot },
+      );
+
+      for (const line of stdout.split('\n')) {
+        const matches = line.matchAll(/:(\d+)->/g);
+        for (const match of matches) {
+          const parsed = Number.parseInt(match[1], 10);
+          if (Number.isFinite(parsed)) {
+            usedPorts.add(parsed);
+          }
+        }
+      }
+    } catch (error) {
+      this.logger.warn('Docker 포트 목록을 읽지 못해 compose 기준만 사용합니다.');
+    }
+
+    return usedPorts;
+  }
+
+  /**
+   * 요청한 호스트 포트가 이미 사용 중이면 생성 전에 막습니다.
+   */
+  async ensurePortsAvailable(ports: Record<string, number>): Promise<void> {
+    const usedPorts = await this.getUsedHostPorts();
+    const conflictedPorts = Object.values(ports).filter((port) =>
+      usedPorts.has(port),
+    );
+
+    if (conflictedPorts.length > 0) {
+      throw new BadRequestException(
+        `이미 사용 중인 포트가 있습니다: ${conflictedPorts.join(', ')}`,
+      );
+    }
   }
 
   /**
@@ -149,13 +212,31 @@ export class ComposeService {
   async downService(name: string): Promise<string> {
     try {
       const { stdout, stderr } = await execAsync(
-        `docker compose -f "${this.composeFilePath}" stop ${name} && docker compose -f "${this.composeFilePath}" rm -f ${name}`,
+        `docker compose -f "${this.composeFilePath}" rm -f -s ${name}`,
         { cwd: this.projectRoot },
       );
       return stdout + stderr;
     } catch (error) {
       this.logger.error(`Compose down failed for "${name}": ${error.message}`);
       throw error;
+    }
+  }
+
+  /**
+   * 서비스 생성 실패 시 컨테이너와 compose 정의를 함께 원복합니다.
+   */
+  async rollbackServiceCreation(name: string): Promise<void> {
+    try {
+      await execAsync(
+        `docker compose -f "${this.composeFilePath}" rm -f -s ${name}`,
+        { cwd: this.projectRoot },
+      );
+    } catch (error) {
+      this.logger.warn(`Compose rollback rm failed for "${name}"`);
+    }
+
+    if (this.hasService(name)) {
+      this.removeService(name);
     }
   }
 

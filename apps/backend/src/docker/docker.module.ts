@@ -14,6 +14,9 @@ import {
   StopContainerUseCase,
   RemoveContainerUseCase,
   ImportContainerUseCase,
+  GetComposeProvisioningTemplateUseCase,
+  CreateComposeServiceUseCase,
+  RemoveComposeServiceUseCase,
 } from './application/use-cases';
 import { PortForwardingService } from './application/services/port-forwarding.service';
 import { ComposeService } from './application/services/compose.service';
@@ -53,6 +56,9 @@ import { AuthModule } from '../auth/auth.module';
     StopContainerUseCase,
     RemoveContainerUseCase,
     ImportContainerUseCase,
+    GetComposeProvisioningTemplateUseCase,
+    CreateComposeServiceUseCase,
+    RemoveComposeServiceUseCase,
 
     // Services
     PortForwardingService,
@@ -85,6 +91,9 @@ import { AuthModule } from '../auth/auth.module';
     StopContainerUseCase,
     RemoveContainerUseCase,
     ImportContainerUseCase,
+    GetComposeProvisioningTemplateUseCase,
+    CreateComposeServiceUseCase,
+    RemoveComposeServiceUseCase,
   ],
 })
 export class DockerModule {}

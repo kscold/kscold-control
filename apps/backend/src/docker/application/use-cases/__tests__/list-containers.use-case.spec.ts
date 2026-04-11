@@ -9,6 +9,7 @@ import {
   DOCKER_CLIENT,
 } from '../../../domain/repositories/docker-client.interface';
 import { PortForwardingService } from '../../services/port-forwarding.service';
+import { ComposeService } from '../../services/compose.service';
 import { Container } from '../../../domain/entities/container.entity';
 
 describe('ListContainersUseCase', () => {
@@ -16,6 +17,7 @@ describe('ListContainersUseCase', () => {
   let containerRepo: jest.Mocked<IContainerRepository>;
   let dockerClient: jest.Mocked<IDockerClient>;
   let portForwardingService: jest.Mocked<PortForwardingService>;
+  let composeService: jest.Mocked<ComposeService>;
 
   beforeEach(async () => {
     const mockContainerRepo: Partial<IContainerRepository> = {
@@ -33,6 +35,10 @@ describe('ListContainersUseCase', () => {
       getExternalAccess: jest.fn(),
     };
 
+    const mockComposeService: Partial<ComposeService> = {
+      listServices: jest.fn(),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         ListContainersUseCase,
@@ -48,6 +54,10 @@ describe('ListContainersUseCase', () => {
           provide: PortForwardingService,
           useValue: mockPortForwardingService,
         },
+        {
+          provide: ComposeService,
+          useValue: mockComposeService,
+        },
       ],
     }).compile();
 
@@ -55,6 +65,7 @@ describe('ListContainersUseCase', () => {
     containerRepo = module.get(CONTAINER_REPOSITORY);
     dockerClient = module.get(DOCKER_CLIENT);
     portForwardingService = module.get(PortForwardingService);
+    composeService = module.get(ComposeService);
   });
 
   it('should be defined', () => {
@@ -128,6 +139,7 @@ describe('ListContainersUseCase', () => {
         domain: 'localhost',
         http: 'http://localhost:3000',
       });
+      composeService.listServices.mockReturnValue(['test-container-1']);
     });
 
     it('should list all containers when no userId provided', async () => {
@@ -153,6 +165,8 @@ describe('ListContainersUseCase', () => {
       expect(result[0].status).toBe('running');
       expect(result[1].name).toBe('test-container-2');
       expect(result[1].status).toBe('stopped');
+      expect(result[0].isComposeManaged).toBe(true);
+      expect(result[1].isComposeManaged).toBe(false);
     });
 
     it('should skip containers not in DB', async () => {
@@ -175,6 +189,7 @@ describe('ListContainersUseCase', () => {
       expect(result).toHaveLength(3);
       expect(result[2].isManaged).toBe(false);
       expect(result[2].name).toBe('unknown-container');
+      expect(result[2].isComposeManaged).toBe(false);
     });
 
     it('should parse ports correctly', async () => {

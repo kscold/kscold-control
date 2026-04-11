@@ -8,6 +8,9 @@ describe('DockerController', () => {
   const stopContainerUseCase = { execute: jest.fn() };
   const removeContainerUseCase = { execute: jest.fn() };
   const importContainerUseCase = { execute: jest.fn() };
+  const getComposeProvisioningTemplateUseCase = { execute: jest.fn() };
+  const createComposeServiceUseCase = { execute: jest.fn() };
+  const removeComposeServiceUseCase = { execute: jest.fn() };
   const composeService = {} as any;
   const dockerTopologyService = { getSnapshot: jest.fn() };
   const dockerCleanupService = {
@@ -26,6 +29,9 @@ describe('DockerController', () => {
     stopContainerUseCase as any,
     removeContainerUseCase as any,
     importContainerUseCase as any,
+    getComposeProvisioningTemplateUseCase as any,
+    createComposeServiceUseCase as any,
+    removeComposeServiceUseCase as any,
     composeService,
     dockerTopologyService as any,
     dockerCleanupService as any,
@@ -128,5 +134,59 @@ describe('DockerController', () => {
       ...dto,
       userId: 'user-42',
     });
+  });
+
+  it('compose 생성 기본값을 유스케이스에 위임한다', async () => {
+    getComposeProvisioningTemplateUseCase.execute.mockResolvedValueOnce({
+      name: 'ubuntu-260405',
+    });
+
+    await expect(controller.getComposeProvisioningTemplate()).resolves.toEqual({
+      name: 'ubuntu-260405',
+    });
+  });
+
+  it('compose 서비스 생성은 전용 유스케이스에 위임한다', async () => {
+    createComposeServiceUseCase.execute.mockResolvedValueOnce({
+      output: 'created',
+      container: { id: 'container-1' },
+    });
+
+    const result = await controller.addComposeService(
+      {
+        name: 'ubuntu-e2e',
+        image: 'ubuntu:22.04',
+        ports: { '22': 2227, '8080': 8085 },
+        cpus: '2',
+        memLimit: '4g',
+      },
+      {
+        user: { id: 'user-1' },
+      } as any,
+    );
+
+    expect(createComposeServiceUseCase.execute).toHaveBeenCalledWith(
+      {
+        name: 'ubuntu-e2e',
+        image: 'ubuntu:22.04',
+        ports: { '22': 2227, '8080': 8085 },
+        cpus: '2',
+        memLimit: '4g',
+      },
+      'user-1',
+    );
+    expect(result.success).toBe(true);
+  });
+
+  it('compose 서비스 삭제는 전용 유스케이스에 위임한다', async () => {
+    removeComposeServiceUseCase.execute.mockResolvedValueOnce({
+      output: 'removed',
+    });
+
+    await controller.removeComposeService('ubuntu-e2e');
+
+    expect(removeComposeServiceUseCase.execute).toHaveBeenCalledWith(
+      'ubuntu-e2e',
+    );
   });
 });

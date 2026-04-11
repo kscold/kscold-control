@@ -23,6 +23,7 @@ export class ContainerResponseDto {
     domain: string;
   };
   isManaged: boolean; // True if created by this system, False if external
+  isComposeManaged: boolean;
 
   /**
    * Map entity to response DTO
@@ -31,6 +32,7 @@ export class ContainerResponseDto {
     container: Container,
     liveStatus?: string,
     externalAccess?: any,
+    isComposeManaged: boolean = false,
   ): ContainerResponseDto {
     return {
       id: container.id,
@@ -44,6 +46,7 @@ export class ContainerResponseDto {
       createdAt: container.createdAt.toISOString(),
       externalAccess,
       isManaged: true,
+      isComposeManaged,
     };
   }
 
@@ -55,6 +58,7 @@ export class ContainerResponseDto {
     ports: Record<string, number>,
     resources: { cpus: number; memory: string },
     externalAccess?: any,
+    isComposeManaged: boolean = false,
   ): ContainerResponseDto {
     return {
       id: dockerContainer.id, // Use Docker ID as ID for unmanaged
@@ -68,6 +72,7 @@ export class ContainerResponseDto {
       createdAt: new Date(dockerContainer.created * 1000).toISOString(),
       externalAccess,
       isManaged: false,
+      isComposeManaged,
     };
   }
 
@@ -79,10 +84,17 @@ export class ContainerResponseDto {
       container: Container;
       liveStatus?: string;
       externalAccess?: any;
+      isComposeManaged?: boolean;
     }>,
   ): ContainerResponseDto[] {
-    return containers.map(({ container, liveStatus, externalAccess }) =>
-      ContainerResponseDto.fromEntity(container, liveStatus, externalAccess),
+    return containers.map(
+      ({ container, liveStatus, externalAccess, isComposeManaged }) =>
+        ContainerResponseDto.fromEntity(
+          container,
+          liveStatus,
+          externalAccess,
+          isComposeManaged,
+        ),
     );
   }
 }
