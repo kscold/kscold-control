@@ -26,6 +26,7 @@ import {
   UploadFilesUseCase,
   DownloadArchiveUseCase,
   BrowseTreeUseCase,
+  ReadFileUseCase,
 } from '../../application/use-cases';
 import { CreateProjectDto } from '../../application/dto/create-project.dto';
 import type { UploadFile } from '../../application/use-cases/upload-files.use-case';
@@ -47,6 +48,7 @@ export class RepositoryController {
     private readonly uploadFilesUseCase: UploadFilesUseCase,
     private readonly downloadArchiveUseCase: DownloadArchiveUseCase,
     private readonly browseTreeUseCase: BrowseTreeUseCase,
+    private readonly readFileUseCase: ReadFileUseCase,
   ) {}
 
   @Get('projects')
@@ -115,5 +117,11 @@ export class RepositoryController {
   @RequirePermissions(PERMISSIONS.REPOSITORY_READ)
   async browseTree(@Param('id') id: string) {
     return this.browseTreeUseCase.execute(id);
+  }
+
+  @Get('projects/:id/file')
+  @RequirePermissions(PERMISSIONS.REPOSITORY_READ)
+  async readFile(@Param('id') id: string, @Query('path') path: string) {
+    return this.readFileUseCase.execute(id, path);
   }
 }

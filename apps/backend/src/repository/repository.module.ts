@@ -12,6 +12,7 @@ import {
   UploadFilesUseCase,
   DownloadArchiveUseCase,
   BrowseTreeUseCase,
+  ReadFileUseCase,
 } from './application/use-cases';
 
 import { TypeOrmProjectRepository } from './infrastructure/repositories/typeorm-project.repository';
@@ -31,6 +32,7 @@ import { AuthModule } from '../auth/auth.module';
     UploadFilesUseCase,
     DownloadArchiveUseCase,
     BrowseTreeUseCase,
+    ReadFileUseCase,
     {
       provide: PROJECT_REPOSITORY,
       useClass: TypeOrmProjectRepository,
