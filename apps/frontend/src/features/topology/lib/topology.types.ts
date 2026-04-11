@@ -33,6 +33,7 @@ export interface NginxSiteData {
   ssl: boolean;
   enabled: boolean;
   websocket: boolean;
+  source?: 'config' | 'inferred';
 }
 
 export interface UpnpMappingData {
@@ -57,6 +58,12 @@ export interface ContainerNodeData {
   ports: Record<string, unknown>;
   meta: StackMeta;
   processes: ContainerProcesses;
+  domains?: string[];
+  gateway?: {
+    mode: 'host-nginx' | 'container-nginx' | 'direct';
+    label: string;
+    details: string[];
+  };
 }
 
 export interface HostNodeData {

@@ -13,6 +13,7 @@ export const NginxNode = memo(function NginxNode({ data }: NodeProps) {
   const iconColor = isBucket ? 'text-pink-400' : isMinio ? 'text-rose-400' : 'text-amber-400';
   const arrowColor = isBucket ? 'text-pink-500' : isMinio ? 'text-rose-500' : 'text-amber-500';
   const Icon = isMinio || isBucket ? HardDrive : Globe;
+  const inferred = d.source === 'inferred';
   return (
     <div className={`bg-gray-900 border-2 rounded-xl shadow-lg min-w-[180px] ${d.enabled ? borderColor : 'border-gray-600'}`}>
       <Handle type="target" position={Position.Top} className={`${handleColor} !w-2.5 !h-2.5`} />
@@ -21,6 +22,7 @@ export const NginxNode = memo(function NginxNode({ data }: NodeProps) {
         <Icon size={13} className={d.enabled ? iconColor : 'text-gray-500'} />
         <span className="text-white font-bold text-xs truncate flex-1">{d.domain}</span>
         <div className="flex gap-1 flex-shrink-0">
+          {inferred && <span className="text-[9px] bg-cyan-900 text-cyan-300 px-1 py-0.5 rounded">실운영</span>}
           {isBucket && <span className="text-[9px] bg-pink-900 text-pink-400 px-1 py-0.5 rounded">Bucket</span>}
           {isMinio && !isBucket && <span className="text-[9px] bg-rose-900 text-rose-400 px-1 py-0.5 rounded">Console</span>}
           {d.ssl && <span className="text-[9px] bg-green-900 text-green-400 px-1 py-0.5 rounded">SSL</span>}

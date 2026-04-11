@@ -49,6 +49,22 @@ export const ContainerNode = memo(function ContainerNode({ data }: NodeProps) {
         </div>
       )}
 
+      {d.domains && d.domains.length > 0 && (
+        <div className="px-3 py-1.5 border-t border-gray-800">
+          <p className="text-[8px] text-amber-400 uppercase tracking-wider mb-1">Domains</p>
+          <div className="flex flex-wrap gap-1">
+            {d.domains.map((domain) => (
+              <span
+                key={domain}
+                className="text-[9px] bg-amber-950 text-amber-300 px-1.5 py-0.5 rounded font-medium"
+              >
+                {domain}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Port Mappings */}
       {d.ports && Object.keys(d.ports).length > 0 && (
         <div className="px-3 py-1.5 border-t border-gray-800">
@@ -59,6 +75,22 @@ export const ContainerNode = memo(function ContainerNode({ data }: NodeProps) {
                 {String(external)}→{internal}
               </span>
             ))}
+          </div>
+        </div>
+      )}
+
+      {d.gateway && (
+        <div className="px-3 py-1.5 border-t border-gray-800">
+          <p className="text-[8px] text-cyan-400 uppercase tracking-wider mb-1">Web Gateway</p>
+          <div className="rounded-lg border border-cyan-900/70 bg-cyan-950/40 px-2 py-1.5">
+            <p className="text-[10px] font-medium text-cyan-200">{d.gateway.label}</p>
+            <div className="mt-1 space-y-0.5">
+              {d.gateway.details.map((detail) => (
+                <p key={detail} className="text-[9px] leading-4 text-cyan-100/80">
+                  {detail}
+                </p>
+              ))}
+            </div>
           </div>
         </div>
       )}
