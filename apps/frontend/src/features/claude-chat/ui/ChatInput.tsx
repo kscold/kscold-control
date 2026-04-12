@@ -32,7 +32,8 @@ export function ChatInput({ onSend, onAbort, isStreaming, isConnected }: ChatInp
 
   const handleKeyDown = useCallback(
     (e: KeyboardEvent<HTMLTextAreaElement>) => {
-      if (e.key === 'Enter' && !e.shiftKey) {
+      // e.nativeEvent.isComposing: 한국어 IME 조합 중 Enter 이중 발사 방지
+      if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
         e.preventDefault();
         handleSend();
       }

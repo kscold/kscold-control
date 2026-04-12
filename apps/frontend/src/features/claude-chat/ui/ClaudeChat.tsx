@@ -83,8 +83,8 @@ export function ClaudeChat({ onBackToTerminal }: ClaudeChatProps = {}) {
     ),
     onError: useCallback(
       (data: { message: string }) => {
-        // Append error as assistant message content
-        appendDelta(`\n\n⚠️ Error: ${data.message}`);
+        // 에러 텍스트를 스트리밍 메시지에 추가 (message-end가 오기 전 표시용)
+        appendDelta(`\n\n⚠️ ${data.message}`);
       },
       [appendDelta],
     ),

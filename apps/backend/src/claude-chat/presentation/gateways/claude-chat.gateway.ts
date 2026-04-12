@@ -167,6 +167,7 @@ export class ClaudeChatGateway
     emit('claude:message-start', { messageId: Date.now().toString() });
 
     let fullContent = '';
+    let messageEnded = false;
 
     this.processManager.sendPrompt(
       sessionId,
@@ -187,6 +188,9 @@ export class ClaudeChatGateway
             break;
 
           case 'message-end': {
+            if (messageEnded) break;
+            messageEnded = true;
+
             const assistantMsg = this.messageRepo.create({
               sessionId,
               role: 'assistant',
@@ -219,8 +223,9 @@ export class ClaudeChatGateway
             break;
 
           case 'process-exit':
-            // 처리 중 비정상 종료 → message-end 강제 emit (무한 로딩 방지)
-            if (fullContent) {
+            // 정상 종료(message-end 이미 발행)가 아닌 경우 → 무조건 message-end 발행해 무한 로딩 방지
+            if (!messageEnded) {
+              messageEnded = true;
               emit('claude:message-end', {
                 content: fullContent,
                 costUsd: 0,
