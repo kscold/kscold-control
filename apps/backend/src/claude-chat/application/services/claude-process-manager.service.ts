@@ -151,6 +151,13 @@ export class ClaudeProcessManagerService {
       stderrBuffer += data.toString();
     });
 
+    child.on('error', (err) => {
+      proc.isProcessing = false;
+      this.logger.error(`[ClaudeChat] Spawn error: ${err.message}`);
+      onEvent({ type: 'error', message: `Claude 실행 실패: ${err.message}` });
+      onEvent({ type: 'process-exit', code: -1 });
+    });
+
     child.on('exit', (code) => {
       proc.isProcessing = false;
       if (code !== 0 && stderrBuffer.trim()) {
