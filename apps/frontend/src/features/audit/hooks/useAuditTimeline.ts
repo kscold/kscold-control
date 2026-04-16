@@ -12,6 +12,7 @@ const EMPTY_SUMMARY: AuditSummary = {
     rbac: 0,
   },
   topActors: [],
+  topTargets: [],
 };
 
 export function useAuditTimeline() {

@@ -43,11 +43,19 @@ export interface AuditActorSummary {
   count: number;
 }
 
+export interface AuditTargetSummary {
+  key: string;
+  targetType: string | null;
+  targetId: string | null;
+  count: number;
+}
+
 export interface AuditSummary {
   total: number;
   last24Hours: number;
   byDomain: Record<AuditDomain, number>;
   topActors: AuditActorSummary[];
+  topTargets: AuditTargetSummary[];
 }
 
 export interface AuditExportResult {
