@@ -8,6 +8,7 @@ import type {
   AuditExportResult,
   AuditEvent,
   AuditSummary,
+  AuditTargetSummary,
   CreateAuditEventInput,
   ListAuditEventsInput,
 } from '../../domain/types/audit-event.type';
@@ -204,6 +205,10 @@ export class FileAuditLogRepository implements IAuditLogRepository {
       string,
       { actorId: string | null; actorEmail: string | null; count: number }
     >();
+    const targetMap = new Map<
+      string,
+      { targetType: string | null; targetId: string | null; count: number }
+    >();
 
     items.forEach((event) => {
       byDomain[event.domain] += 1;
@@ -216,6 +221,15 @@ export class FileAuditLogRepository implements IAuditLogRepository {
       };
       existing.count += 1;
       actorMap.set(actorKey, existing);
+
+      const targetKey = `${event.targetType ?? 'unknown'}:${event.targetId ?? '-'}`;
+      const targetExisting = targetMap.get(targetKey) ?? {
+        targetType: event.targetType,
+        targetId: event.targetId,
+        count: 0,
+      };
+      targetExisting.count += 1;
+      targetMap.set(targetKey, targetExisting);
     });
 
     const topActors: AuditActorSummary[] = Array.from(actorMap.entries())
@@ -234,6 +248,22 @@ export class FileAuditLogRepository implements IAuditLogRepository {
       })
       .slice(0, 6);
 
+    const topTargets: AuditTargetSummary[] = Array.from(targetMap.entries())
+      .map(([key, value]) => ({
+        key,
+        targetId: value.targetId,
+        targetType: value.targetType,
+        count: value.count,
+      }))
+      .sort((left, right) => {
+        if (right.count !== left.count) {
+          return right.count - left.count;
+        }
+
+        return left.key.localeCompare(right.key);
+      })
+      .slice(0, 6);
+
     return {
       total: items.length,
       last24Hours: items.filter(
@@ -241,6 +271,7 @@ export class FileAuditLogRepository implements IAuditLogRepository {
       ).length,
       byDomain,
       topActors,
+      topTargets,
     };
   }
 }

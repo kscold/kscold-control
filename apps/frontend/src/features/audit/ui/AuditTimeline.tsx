@@ -5,6 +5,7 @@ import {
   RefreshCw,
   Search,
   ShieldCheck,
+  Table2,
   Users,
 } from 'lucide-react';
 import { auditService } from '../../../services/api/audit.service';
@@ -63,6 +64,10 @@ function getDomainTone(domain: AuditEvent['domain']) {
 
 function getActorLabel(item: { actorEmail: string | null; actorId: string | null }) {
   return item.actorEmail || item.actorId || 'system';
+}
+
+function getTargetLabel(item: { targetType: string | null; targetId: string | null }) {
+  return `${item.targetType || 'unknown'} / ${item.targetId || '-'}`;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -159,6 +164,27 @@ function buildDiffEntries(metadata: Record<string, unknown>) {
     );
 }
 
+function buildDiffPreview(metadata: Record<string, unknown>) {
+  const entries = buildDiffEntries(metadata);
+
+  if (entries.length === 0) {
+    return null;
+  }
+
+  const preview = entries
+    .slice(0, 3)
+    .map((entry) => entry.path)
+    .join(', ');
+  const remainder = entries.length > 3 ? ` +${entries.length - 3}` : '';
+
+  return `${entries.length} changed · ${preview}${remainder}`;
+}
+
+function escapeCsvCell(value: unknown) {
+  const normalized = typeof value === 'string' ? value : JSON.stringify(value ?? '');
+  return `"${normalized.replace(/"/g, '""')}"`;
+}
+
 export function AuditTimeline() {
   const {
     actor,
@@ -212,7 +238,7 @@ export function AuditTimeline() {
     [selectedItem],
   );
 
-  const handleExport = async () => {
+  const handleExport = async (format: 'json' | 'csv') => {
     setIsExporting(true);
 
     try {
@@ -224,14 +250,66 @@ export function AuditTimeline() {
         target,
         to,
       });
-      const blob = new Blob([JSON.stringify(payload, null, 2)], {
-        type: 'application/json',
-      });
+      const blob =
+        format === 'json'
+          ? new Blob([JSON.stringify(payload, null, 2)], {
+              type: 'application/json',
+            })
+          : new Blob(
+              [[
+                [
+                  ['exportedAt', payload.exportedAt],
+                  ['domain', payload.filters.domain ?? 'all'],
+                  ['search', payload.filters.search ?? ''],
+                  ['actor', payload.filters.actor ?? ''],
+                  ['target', payload.filters.target ?? ''],
+                  ['from', payload.filters.from ?? ''],
+                  ['to', payload.filters.to ?? ''],
+                ]
+                  .map(([key, value]) => `${escapeCsvCell(key)},${escapeCsvCell(value)}`)
+                  .join('\n'),
+                '',
+                [
+                  'id',
+                  'domain',
+                  'action',
+                  'summary',
+                  'actorEmail',
+                  'actorId',
+                  'targetType',
+                  'targetId',
+                  'createdAt',
+                  'metadata',
+                ]
+                  .map((value) => escapeCsvCell(value))
+                  .join(','),
+                ...payload.items.map((item) =>
+                  [
+                    item.id,
+                    item.domain,
+                    item.action,
+                    item.summary,
+                    item.actorEmail ?? '',
+                    item.actorId ?? '',
+                    item.targetType ?? '',
+                    item.targetId ?? '',
+                    item.createdAt,
+                    JSON.stringify(item.metadata),
+                  ]
+                    .map((value) => escapeCsvCell(value))
+                    .join(','),
+                ),
+              ].join('\n')],
+              { type: 'text/csv;charset=utf-8' },
+            );
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
 
       link.href = url;
-      link.download = formatExportFilename(payload.exportedAt);
+      link.download =
+        format === 'json'
+          ? formatExportFilename(payload.exportedAt)
+          : formatExportFilename(payload.exportedAt).replace(/\.json$/, '.csv');
       link.click();
       window.URL.revokeObjectURL(url);
     } finally {
@@ -256,13 +334,24 @@ export function AuditTimeline() {
         <div className="flex flex-wrap items-center gap-2">
           <button
             type="button"
-            onClick={() => void handleExport()}
+            onClick={() => void handleExport('json')}
             disabled={isExporting}
             data-testid="audit-export-button"
             className="inline-flex items-center gap-2 rounded-xl border border-cyan-400/20 bg-cyan-500/10 px-4 py-2 text-sm text-cyan-100 transition hover:border-cyan-300/30 hover:text-white disabled:opacity-50"
           >
             <Download size={14} className={isExporting ? 'animate-bounce' : ''} />
             {isExporting ? '내보내는 중' : 'JSON 내보내기'}
+          </button>
+
+          <button
+            type="button"
+            onClick={() => void handleExport('csv')}
+            disabled={isExporting}
+            data-testid="audit-export-csv-button"
+            className="inline-flex items-center gap-2 rounded-xl border border-emerald-400/20 bg-emerald-500/10 px-4 py-2 text-sm text-emerald-100 transition hover:border-emerald-300/30 hover:text-white disabled:opacity-50"
+          >
+            <Table2 size={14} className={isExporting ? 'animate-pulse' : ''} />
+            {isExporting ? '내보내는 중' : 'CSV 내보내기'}
           </button>
 
           <button
@@ -400,50 +489,108 @@ export function AuditTimeline() {
         className="mb-4 rounded-2xl border border-white/10 bg-gray-900/70 p-4"
         data-testid="audit-top-actors"
       >
-        <div className="flex items-center gap-2 text-sm font-medium text-white">
-          <Users size={16} />
-          Top Actors
-        </div>
-        <div className="mt-3 grid gap-3 xl:grid-cols-3">
-          {summary.topActors.length > 0 ? (
-            summary.topActors.map((actorEntry) => {
-              const maxCount = summary.topActors[0]?.count ?? 1;
-              const width = Math.max(12, Math.round((actorEntry.count / maxCount) * 100));
-
-              return (
-                <button
-                  key={actorEntry.key}
-                  type="button"
-                  onClick={() => setActor(getActorLabel(actorEntry))}
-                  className="rounded-xl border border-white/10 bg-black/20 p-3 text-left transition hover:border-white/20"
-                >
-                  <div className="flex items-center justify-between gap-3">
-                    <div className="min-w-0 text-sm text-white">
-                      <div className="truncate font-medium">
-                        {getActorLabel(actorEntry)}
-                      </div>
-                      <div className="mt-1 text-xs text-gray-500">
-                        클릭해서 actor 필터 적용
-                      </div>
-                    </div>
-                    <div className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-xs text-gray-300">
-                      {actorEntry.count}건
-                    </div>
-                  </div>
-                  <div className="mt-3 h-2 rounded-full bg-white/5">
-                    <div
-                      className="h-full rounded-full bg-cyan-400/80"
-                      style={{ width: `${width}%` }}
-                    />
-                  </div>
-                </button>
-              );
-            })
-          ) : (
-            <div className="rounded-xl border border-dashed border-white/10 bg-black/20 px-4 py-6 text-sm text-gray-500 xl:col-span-3">
-              아직 집계할 actor 이벤트가 없습니다.
+        <div className="grid gap-4 xl:grid-cols-2">
+          <div>
+            <div className="flex items-center gap-2 text-sm font-medium text-white">
+              <Users size={16} />
+              Top Actors
             </div>
-          )}
+            <div className="mt-3 grid gap-3">
+              {summary.topActors.length > 0 ? (
+                summary.topActors.map((actorEntry) => {
+                  const maxCount = summary.topActors[0]?.count ?? 1;
+                  const width = Math.max(
+                    12,
+                    Math.round((actorEntry.count / maxCount) * 100),
+                  );
+
+                  return (
+                    <button
+                      key={actorEntry.key}
+                      type="button"
+                      onClick={() => setActor(getActorLabel(actorEntry))}
+                      className="rounded-xl border border-white/10 bg-black/20 p-3 text-left transition hover:border-white/20"
+                    >
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="min-w-0 text-sm text-white">
+                          <div className="truncate font-medium">
+                            {getActorLabel(actorEntry)}
+                          </div>
+                          <div className="mt-1 text-xs text-gray-500">
+                            클릭해서 actor 필터 적용
+                          </div>
+                        </div>
+                        <div className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-xs text-gray-300">
+                          {actorEntry.count}건
+                        </div>
+                      </div>
+                      <div className="mt-3 h-2 rounded-full bg-white/5">
+                        <div
+                          className="h-full rounded-full bg-cyan-400/80"
+                          style={{ width: `${width}%` }}
+                        />
+                      </div>
+                    </button>
+                  );
+                })
+              ) : (
+                <div className="rounded-xl border border-dashed border-white/10 bg-black/20 px-4 py-6 text-sm text-gray-500">
+                  아직 집계할 actor 이벤트가 없습니다.
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div data-testid="audit-top-targets">
+            <div className="flex items-center gap-2 text-sm font-medium text-white">
+              <History size={16} />
+              Top Targets
+            </div>
+            <div className="mt-3 grid gap-3">
+              {summary.topTargets.length > 0 ? (
+                summary.topTargets.map((targetEntry) => {
+                  const maxCount = summary.topTargets[0]?.count ?? 1;
+                  const width = Math.max(
+                    12,
+                    Math.round((targetEntry.count / maxCount) * 100),
+                  );
+
+                  return (
+                    <button
+                      key={targetEntry.key}
+                      type="button"
+                      onClick={() => setTarget(getTargetLabel(targetEntry))}
+                      className="rounded-xl border border-white/10 bg-black/20 p-3 text-left transition hover:border-white/20"
+                    >
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="min-w-0 text-sm text-white">
+                          <div className="truncate font-medium">
+                            {getTargetLabel(targetEntry)}
+                          </div>
+                          <div className="mt-1 text-xs text-gray-500">
+                            클릭해서 target 필터 적용
+                          </div>
+                        </div>
+                        <div className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-xs text-gray-300">
+                          {targetEntry.count}건
+                        </div>
+                      </div>
+                      <div className="mt-3 h-2 rounded-full bg-white/5">
+                        <div
+                          className="h-full rounded-full bg-amber-400/80"
+                          style={{ width: `${width}%` }}
+                        />
+                      </div>
+                    </button>
+                  );
+                })
+              ) : (
+                <div className="rounded-xl border border-dashed border-white/10 bg-black/20 px-4 py-6 text-sm text-gray-500">
+                  아직 집계할 target 이벤트가 없습니다.
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       </section>
 
@@ -462,6 +609,7 @@ export function AuditTimeline() {
           ) : (
             items.map((item) => {
               const active = item.id === selectedId;
+              const diffPreview = buildDiffPreview(item.metadata);
 
               return (
                 <button
@@ -498,6 +646,11 @@ export function AuditTimeline() {
                         </span>
                         <span>{formatTimestamp(item.createdAt)}</span>
                       </div>
+                      {diffPreview && (
+                        <div className="mt-2 text-xs text-cyan-200/90">
+                          {diffPreview}
+                        </div>
+                      )}
                     </div>
 
                     <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-gray-950/80 px-3 py-1.5 text-[11px] text-gray-400">
