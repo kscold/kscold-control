@@ -85,8 +85,22 @@ export class RbacController {
    */
   @Post('users')
   @RequirePermissions(PERMISSIONS.RBAC_MANAGE)
-  async createUser(@Body() dto: CreateUserDto) {
-    return this.createUserUseCase.execute(dto);
+  async createUser(@Body() dto: CreateUserDto, @Request() req: JwtRequest) {
+    const result = await this.createUserUseCase.execute(dto);
+    await this.auditLogService.record({
+      domain: 'rbac',
+      action: 'user.create',
+      summary: `사용자 ${dto.email}을 생성했습니다.`,
+      actorId: req.user?.id ?? req.user?.sub ?? null,
+      actorEmail: req.user?.email ?? null,
+      targetType: 'user',
+      targetId: result.id,
+      metadata: {
+        email: result.email,
+        roleCount: result.roles?.length ?? 0,
+      },
+    });
+    return result;
   }
 
   /**
@@ -94,8 +108,27 @@ export class RbacController {
    */
   @Put('users/:id')
   @RequirePermissions(PERMISSIONS.RBAC_MANAGE)
-  async updateUser(@Param('id') id: string, @Body() dto: UpdateUserDto) {
-    return this.updateUserUseCase.execute(id, dto);
+  async updateUser(
+    @Param('id') id: string,
+    @Body() dto: UpdateUserDto,
+    @Request() req: JwtRequest,
+  ) {
+    const result = await this.updateUserUseCase.execute(id, dto);
+    await this.auditLogService.record({
+      domain: 'rbac',
+      action: 'user.update',
+      summary: `사용자 ${id} 정보를 수정했습니다.`,
+      actorId: req.user?.id ?? req.user?.sub ?? null,
+      actorEmail: req.user?.email ?? null,
+      targetType: 'user',
+      targetId: id,
+      metadata: {
+        email: result.email,
+        updatedEmail: dto.email ?? null,
+        passwordChanged: Boolean(dto.password),
+      },
+    });
+    return result;
   }
 
   /**
@@ -103,8 +136,18 @@ export class RbacController {
    */
   @Delete('users/:id')
   @RequirePermissions(PERMISSIONS.RBAC_MANAGE)
-  async deleteUser(@Param('id') id: string) {
-    return this.deleteUserUseCase.execute(id);
+  async deleteUser(@Param('id') id: string, @Request() req: JwtRequest) {
+    const result = await this.deleteUserUseCase.execute(id);
+    await this.auditLogService.record({
+      domain: 'rbac',
+      action: 'user.delete',
+      summary: `사용자 ${id}를 삭제했습니다.`,
+      actorId: req.user?.id ?? req.user?.sub ?? null,
+      actorEmail: req.user?.email ?? null,
+      targetType: 'user',
+      targetId: id,
+    });
+    return result;
   }
 
   /**

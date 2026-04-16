@@ -17,6 +17,7 @@ export class AuditController {
     @Query('domain') domain?: AuditDomain | 'all',
     @Query('actorId') actorId?: string,
     @Query('targetId') targetId?: string,
+    @Query('search') search?: string,
     @Query('limit') limitRaw?: string,
   ) {
     const limit = parseInt(limitRaw ?? '', 10);
@@ -24,9 +25,28 @@ export class AuditController {
       domain: domain ?? 'all',
       actorId,
       targetId,
+      search,
       limit: Number.isFinite(limit) ? limit : 120,
     });
 
     return { items };
+  }
+
+  @Get('summary')
+  @RequirePermissions(PERMISSIONS.SYSTEM_READ)
+  async getSummary(
+    @Query('domain') domain?: AuditDomain | 'all',
+    @Query('actorId') actorId?: string,
+    @Query('targetId') targetId?: string,
+    @Query('search') search?: string,
+  ) {
+    const item = await this.auditLogService.summarize({
+      domain: domain ?? 'all',
+      actorId,
+      targetId,
+      search,
+    });
+
+    return { item };
   }
 }

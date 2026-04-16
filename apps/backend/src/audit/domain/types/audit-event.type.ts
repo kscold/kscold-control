@@ -28,5 +28,12 @@ export interface ListAuditEventsInput {
   domain?: AuditDomain | 'all';
   actorId?: string;
   targetId?: string;
+  search?: string;
   limit?: number;
+}
+
+export interface AuditSummary {
+  total: number;
+  last24Hours: number;
+  byDomain: Record<AuditDomain, number>;
 }
