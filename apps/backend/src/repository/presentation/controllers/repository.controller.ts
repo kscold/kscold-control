@@ -108,7 +108,8 @@ export class RepositoryController {
   @UseInterceptors(
     FilesInterceptor('files', 1000, {
       limits: {
-        fileSize: 10 * 1024 * 1024, // 10MB per file (코드/설정 파일 기준)
+        fileSize: 50 * 1024 * 1024, // 50MB per file
+        fieldSize: 10 * 1024 * 1024,
         fields: 5000,
         files: 1000,
       },
@@ -184,8 +185,10 @@ export class RepositoryController {
   @UseInterceptors(
     FilesInterceptor('files', 200, {
       limits: {
-        fileSize: 10 * 1024 * 1024,
+        fileSize: 50 * 1024 * 1024, // 파일 하나당 50MB (클라이언트 1MB 필터 보완)
+        fieldSize: 10 * 1024 * 1024,
         files: 200,
+        fields: 100,
       },
     }),
   )
