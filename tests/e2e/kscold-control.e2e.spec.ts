@@ -99,3 +99,11 @@ test('로그 화면에서 Docker live와 archive 소스 패널을 렌더링한�
     page.getByText(/직접 범위 조회는 시점 고정 조회입니다/),
   ).toBeVisible();
 });
+
+test('운영 감사 화면에서 타임라인을 렌더링한다', async ({ page }) => {
+  await page.goto('/audit');
+
+  await expect(page.getByRole('heading', { name: '운영 감사' })).toBeVisible();
+  await expect(page.getByTestId('audit-timeline')).toBeVisible();
+  await expect(page.getByText(/업로드나 운영 액션이 발생하면 여기에 쌓입니다|건의 이벤트가 보입니다/)).toBeVisible();
+});

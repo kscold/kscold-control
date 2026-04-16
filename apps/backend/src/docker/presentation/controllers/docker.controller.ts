@@ -30,6 +30,7 @@ import { CreateContainerDto } from '../../application/dto';
 import { ComposeService } from '../../application/services/compose.service';
 import { DockerTopologyService } from '../../application/services/docker-topology.service';
 import { DockerCleanupService } from '../../application/services/docker-cleanup.service';
+import { AuditLogService } from '../../../audit/application/services/audit-log.service';
 import {
   IDockerClient,
   DOCKER_CLIENT,
@@ -58,6 +59,7 @@ export class DockerController {
     private readonly composeService: ComposeService,
     private readonly dockerTopologyService: DockerTopologyService,
     private readonly dockerCleanupService: DockerCleanupService,
+    private readonly auditLogService: AuditLogService,
     @Inject(DOCKER_CLIENT) private readonly dockerClient: IDockerClient,
   ) {}
 
@@ -160,8 +162,17 @@ export class DockerController {
    */
   @Post('containers/:id/start')
   @RequirePermissions(PERMISSIONS.DOCKER_UPDATE)
-  async startContainer(@Param('id') id: string) {
+  async startContainer(@Param('id') id: string, @Request() req: JwtRequest) {
     await this.startContainerUseCase.execute(id);
+    await this.auditLogService.record({
+      domain: 'docker',
+      action: 'container.start',
+      summary: `컨테이너 ${id}를 시작했습니다.`,
+      actorId: req.user?.id ?? req.user?.sub ?? null,
+      actorEmail: req.user?.email ?? null,
+      targetType: 'container',
+      targetId: id,
+    });
     return { success: true, message: 'Container started successfully' };
   }
 
@@ -171,8 +182,17 @@ export class DockerController {
    */
   @Post('containers/:id/stop')
   @RequirePermissions(PERMISSIONS.DOCKER_UPDATE)
-  async stopContainer(@Param('id') id: string) {
+  async stopContainer(@Param('id') id: string, @Request() req: JwtRequest) {
     await this.stopContainerUseCase.execute(id);
+    await this.auditLogService.record({
+      domain: 'docker',
+      action: 'container.stop',
+      summary: `컨테이너 ${id}를 중지했습니다.`,
+      actorId: req.user?.id ?? req.user?.sub ?? null,
+      actorEmail: req.user?.email ?? null,
+      targetType: 'container',
+      targetId: id,
+    });
     return { success: true, message: 'Container stopped successfully' };
   }
 

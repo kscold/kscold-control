@@ -6,6 +6,7 @@ import {
   Delete,
   Param,
   Body,
+  Request,
   UseGuards,
 } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
@@ -17,6 +18,8 @@ import { CertService } from '../../application/services/cert.service';
 import { DnsService } from '../../application/services/dns.service';
 import { ListContainersUseCase } from '../../../docker/application/use-cases';
 import type { CreateNginxSiteDto } from '../../domain/types/nginx-site.type';
+import type { JwtRequest } from '../../../common/types/jwt-request.type';
+import { AuditLogService } from '../../../audit/application/services/audit-log.service';
 
 @Controller('nginx')
 @UseGuards(AuthGuard('jwt'), PermissionsGuard)
@@ -26,6 +29,7 @@ export class NginxController {
     private readonly certService: CertService,
     private readonly dnsService: DnsService,
     private readonly listContainersUseCase: ListContainersUseCase,
+    private readonly auditLogService: AuditLogService,
   ) {}
 
   @Get('sites')
@@ -66,8 +70,18 @@ export class NginxController {
 
   @Post('reload')
   @RequirePermissions(PERMISSIONS.SYSTEM_WRITE)
-  reloadNginx() {
-    return this.nginxSiteService.reloadNginx();
+  async reloadNginx(@Request() req: JwtRequest) {
+    const result = await this.nginxSiteService.reloadNginx();
+    await this.auditLogService.record({
+      domain: 'nginx',
+      action: 'reload',
+      summary: 'Nginx 리로드를 실행했습니다.',
+      actorId: req.user?.id ?? req.user?.sub ?? null,
+      actorEmail: req.user?.email ?? null,
+      targetType: 'service',
+      targetId: 'kscold-nginx',
+    });
+    return result;
   }
 
   /**
@@ -128,8 +142,18 @@ export class NginxController {
    */
   @Post('certs/renew')
   @RequirePermissions(PERMISSIONS.SYSTEM_WRITE)
-  renewCerts() {
-    return this.certService.renewAll();
+  async renewCerts(@Request() req: JwtRequest) {
+    const result = await this.certService.renewAll();
+    await this.auditLogService.record({
+      domain: 'nginx',
+      action: 'cert.renew-all',
+      summary: '인증서 전체 갱신을 실행했습니다.',
+      actorId: req.user?.id ?? req.user?.sub ?? null,
+      actorEmail: req.user?.email ?? null,
+      targetType: 'certificate',
+      targetId: 'all',
+    });
+    return result;
   }
 
   // ===== DNS Management Endpoints =====
