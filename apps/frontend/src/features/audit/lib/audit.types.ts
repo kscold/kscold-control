@@ -1,5 +1,11 @@
 export type AuditDomain = 'all' | 'repository' | 'docker' | 'nginx' | 'rbac';
 
+export interface AuditDiffSummary {
+  changeCount: number;
+  keys: string[];
+  preview: string;
+}
+
 export interface AuditEvent {
   id: string;
   domain: Exclude<AuditDomain, 'all'>;
@@ -10,6 +16,7 @@ export interface AuditEvent {
   targetType: string | null;
   targetId: string | null;
   metadata: Record<string, unknown>;
+  diffSummary?: AuditDiffSummary | null;
   createdAt: string;
 }
 
@@ -55,4 +62,15 @@ export interface AuditExportPayload {
   total: number;
   summary: AuditSummary;
   items: AuditEvent[];
+}
+
+export interface AuditFilterPreset {
+  id: string;
+  label: string;
+  actor: string;
+  domain: AuditDomain;
+  from: string;
+  search: string;
+  target: string;
+  to: string;
 }

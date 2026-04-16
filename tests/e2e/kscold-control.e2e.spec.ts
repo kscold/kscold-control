@@ -108,6 +108,8 @@ test('운영 감사 화면에서 타임라인을 렌더링한다', async ({ page
   await expect(page.getByTestId('audit-detail')).toBeVisible();
   await expect(page.getByTestId('audit-top-actors')).toBeVisible();
   await expect(page.getByTestId('audit-top-targets')).toBeVisible();
+  await expect(page.getByTestId('audit-time-presets')).toBeVisible();
+  await expect(page.getByTestId('audit-saved-presets')).toBeVisible();
   await expect(page.getByTestId('audit-export-button')).toBeVisible();
   await expect(page.getByTestId('audit-export-csv-button')).toBeVisible();
   await expect(page.getByText(/최근 24시간 .* 전체 .* 잡혀 있습니다/)).toBeVisible();

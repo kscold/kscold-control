@@ -188,6 +188,9 @@ function escapeCsvCell(value: unknown) {
 export function AuditTimeline() {
   const {
     actor,
+    applyPreset,
+    applyTimePreset,
+    clearFilters,
     setActor,
     domain,
     setDomain,
@@ -197,9 +200,14 @@ export function AuditTimeline() {
     isLoading,
     items,
     limit,
+    presetLabel,
     reload,
+    removePreset,
+    savedPresets,
+    saveCurrentPreset,
     search,
     setLimit,
+    setPresetLabel,
     setSearch,
     setTarget,
     summary,
@@ -425,18 +433,81 @@ export function AuditTimeline() {
 
         <button
           type="button"
-          onClick={() => {
-            setActor('');
-            setSearch('');
-            setTarget('');
-            setFrom('');
-            setTo('');
-            setDomain('all');
-          }}
+          onClick={clearFilters}
           className="rounded-xl border border-white/10 bg-gray-900/70 px-4 py-2 text-sm text-gray-300 transition hover:border-white/20 hover:text-white"
         >
           필터 초기화
         </button>
+      </div>
+
+      <div className="mb-4 grid gap-3 xl:grid-cols-[1.05fr_0.95fr]">
+        <section className="rounded-2xl border border-white/10 bg-gray-900/70 p-4">
+          <div className="text-sm font-medium text-white">시간 프리셋</div>
+          <div className="mt-3 flex flex-wrap gap-2" data-testid="audit-time-presets">
+            {[
+              { label: '최근 1시간', hours: 1 },
+              { label: '최근 6시간', hours: 6 },
+              { label: '최근 24시간', hours: 24 },
+              { label: '최근 7일', hours: 24 * 7 },
+            ].map((preset) => (
+              <button
+                key={preset.label}
+                type="button"
+                onClick={() => applyTimePreset(preset.hours)}
+                className="rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-sm text-gray-300 transition hover:border-white/20 hover:text-white"
+              >
+                {preset.label}
+              </button>
+            ))}
+          </div>
+        </section>
+
+        <section className="rounded-2xl border border-white/10 bg-gray-900/70 p-4">
+          <div className="text-sm font-medium text-white">저장 필터</div>
+          <div className="mt-3 flex gap-2">
+            <input
+              value={presetLabel}
+              onChange={(event) => setPresetLabel(event.target.value)}
+              placeholder="예: 야간 docker 점검"
+              className="min-w-0 flex-1 rounded-xl border border-gray-800 bg-gray-950 px-3 py-2 text-sm text-white placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+            <button
+              type="button"
+              onClick={saveCurrentPreset}
+              className="rounded-xl border border-cyan-400/20 bg-cyan-500/10 px-4 py-2 text-sm text-cyan-100 transition hover:border-cyan-300/30 hover:text-white"
+            >
+              저장
+            </button>
+          </div>
+          <div className="mt-3 flex flex-wrap gap-2" data-testid="audit-saved-presets">
+            {savedPresets.length > 0 ? (
+              savedPresets.map((preset) => (
+                <div
+                  key={preset.id}
+                  className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-black/20 pl-3 pr-2 py-2 text-sm text-gray-200"
+                >
+                  <button
+                    type="button"
+                    onClick={() => applyPreset(preset)}
+                    className="transition hover:text-white"
+                  >
+                    {preset.label}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => removePreset(preset.id)}
+                    aria-label={`${preset.label} preset 삭제`}
+                    className="rounded-full border border-white/10 px-2 py-0.5 text-xs text-gray-400 transition hover:border-rose-300/30 hover:text-rose-100"
+                  >
+                    삭제
+                  </button>
+                </div>
+              ))
+            ) : (
+              <div className="text-sm text-gray-500">아직 저장된 필터가 없습니다.</div>
+            )}
+          </div>
+        </section>
       </div>
 
       <div className="mb-4 grid gap-3 xl:grid-cols-[repeat(5,140px)_minmax(0,1fr)]">
@@ -609,7 +680,7 @@ export function AuditTimeline() {
           ) : (
             items.map((item) => {
               const active = item.id === selectedId;
-              const diffPreview = buildDiffPreview(item.metadata);
+              const diffPreview = item.diffSummary?.preview ?? buildDiffPreview(item.metadata);
 
               return (
                 <button
