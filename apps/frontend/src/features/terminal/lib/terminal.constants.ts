@@ -2,6 +2,10 @@ export const API_URL = import.meta.env.VITE_API_URL || '';
 export const SESSION_STORAGE_KEY = 'terminal_session_id';
 export const AUTO_REFRESH_INTERVAL = 5000;
 
+export function getTerminalSessionStorageKey(tabId: string) {
+  return `${SESSION_STORAGE_KEY}:${tabId}`;
+}
+
 /**
  * Terminal Theme
  */

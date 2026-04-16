@@ -11,10 +11,16 @@ interface UseTerminalSocketProps {
   onSessionReady: (data: {
     sessionId: string;
     isReconnect: boolean;
+    workingDirectory?: string | null;
+    shellPath?: string | null;
+    claudeBinaryPath?: string | null;
+    claudeLaunchCommand?: string | null;
   }) => boolean;
   onConnected: () => void;
   onDisconnected: () => void;
   onCommandCount: (count: number, limit: number) => void;
+  onOutput?: (content: string) => void;
+  onSessionClosed?: () => void;
 }
 
 /**
@@ -31,8 +37,26 @@ export function useTerminalSocket({
   onConnected,
   onDisconnected,
   onCommandCount,
+  onOutput,
+  onSessionClosed,
 }: UseTerminalSocketProps) {
   const socketRef = useRef<Socket | null>(null);
+  const handlersRef = useRef({
+    onSessionReady,
+    onConnected,
+    onDisconnected,
+    onCommandCount,
+    onOutput,
+    onSessionClosed,
+  });
+  handlersRef.current = {
+    onSessionReady,
+    onConnected,
+    onDisconnected,
+    onCommandCount,
+    onOutput,
+    onSessionClosed,
+  };
   const { showAlert } = useModalStore();
 
   useEffect(() => {
@@ -51,11 +75,11 @@ export function useTerminalSocket({
 
     // Connection events
     socket.on('connect', () => {
-      onConnected();
+      handlersRef.current.onConnected();
     });
 
     socket.on('disconnect', () => {
-      onDisconnected();
+      handlersRef.current.onDisconnected();
       xterm.writeln(
         `\r\n${TERMINAL_COLORS.yellow}연결이 끊어졌습니다. 재연결 중...${TERMINAL_COLORS.reset}\r\n`,
       );
@@ -64,8 +88,15 @@ export function useTerminalSocket({
     // Session ready
     socket.on(
       'terminal:session-ready',
-      (data: { sessionId: string; isReconnect: boolean }) => {
-        const isReconnect = onSessionReady(data);
+      (data: {
+        sessionId: string;
+        isReconnect: boolean;
+        workingDirectory?: string | null;
+        shellPath?: string | null;
+        claudeBinaryPath?: string | null;
+        claudeLaunchCommand?: string | null;
+      }) => {
+        const isReconnect = handlersRef.current.onSessionReady(data);
         if (isReconnect) {
           xterm.writeln(
             `\r\n${TERMINAL_COLORS.green}세션에 재연결되었습니다${TERMINAL_COLORS.reset}\r\n`,
@@ -114,6 +145,7 @@ export function useTerminalSocket({
     // Terminal output
     socket.on('terminal:output', (data: { type: string; content: string }) => {
       xterm.write(data.content);
+      handlersRef.current.onOutput?.(data.content);
     });
 
     // Error handling
@@ -134,7 +166,7 @@ export function useTerminalSocket({
     socket.on(
       'terminal:command-count',
       (data: { count: number; limit: number; remaining: number }) => {
-        onCommandCount(data.count, data.limit);
+        handlersRef.current.onCommandCount(data.count, data.limit);
         if (data.remaining <= 3 && data.remaining > 0) {
           xterm.writeln(
             `\r\n${TERMINAL_COLORS.yellow}⚠️  남은 명령어: ${data.remaining}회${TERMINAL_COLORS.reset}`,
@@ -147,7 +179,7 @@ export function useTerminalSocket({
     socket.on(
       'terminal:limit-reached',
       (data: { limit: number; count: number }) => {
-        onCommandCount(data.count, data.limit);
+        handlersRef.current.onCommandCount(data.count, data.limit);
         showAlert(
           `터미널 명령어 제한 (${data.limit}회)에 도달했습니다.\n관리자에게 문의하여 제한을 해제하세요.`,
           '명령어 제한 도달',
@@ -155,10 +187,14 @@ export function useTerminalSocket({
       },
     );
 
+    socket.on('terminal:session-closed', () => {
+      handlersRef.current.onSessionClosed?.();
+    });
+
     return () => {
       socket.disconnect();
     };
-  }, [token, xterm, savedSessionId]);
+  }, [token, xterm, savedSessionId, showAlert]);
 
   /**
    * Send input to terminal
@@ -215,7 +251,6 @@ export function useTerminalSocket({
   };
 
   return {
-    socket: socketRef.current,
     sendInput,
     resize,
     interrupt,

@@ -16,6 +16,25 @@ export interface DockerContainerSummary {
   status: string;
 }
 
+export interface DockerLogReadOptions {
+  containerId?: string;
+  containerName?: string;
+  tail?: number | 'all';
+  timestamps?: boolean;
+  since?: string;
+  filter?: 'all' | 'nginx-access' | 'nginx-error';
+}
+
+export interface DockerLogArchiveSource {
+  id: string;
+  label: string;
+  type: 'current' | 'rotated';
+  path: string;
+  size: number;
+  modifiedAt: string;
+  compressed: boolean;
+}
+
 export interface NginxStatus {
   running: boolean;
   version?: string;

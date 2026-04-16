@@ -3,6 +3,7 @@ import { useModalStore } from '../../../shared/model/modal.store';
 import { useTerminalSession } from '../hooks/useTerminalSession';
 import { useTerminalSetup } from '../hooks/useTerminalSetup';
 import { useTerminalSocket } from '../hooks/useTerminalSocket';
+import { getTerminalSessionStorageKey } from '../lib/terminal.constants';
 import { TerminalHeader } from './TerminalHeader';
 
 interface TerminalProps {
@@ -20,6 +21,7 @@ interface TerminalProps {
 export function Terminal({ terminalId, onSwitchToClaude }: TerminalProps) {
   const { token } = useAuthStore();
   const { showConfirm } = useModalStore();
+  const storageKey = getTerminalSessionStorageKey(terminalId);
 
   // Session management
   const {
@@ -29,7 +31,7 @@ export function Terminal({ terminalId, onSwitchToClaude }: TerminalProps) {
     setConnected,
     updateCommandCount,
     clearSession,
-  } = useTerminalSession();
+  } = useTerminalSession(storageKey);
 
   // XTerm.js setup (must be called before socket)
   const { terminalRef, xterm } = useTerminalSetup({
@@ -55,8 +57,8 @@ export function Terminal({ terminalId, onSwitchToClaude }: TerminalProps) {
   const handleClaudeCommand = () => {
     if (onSwitchToClaude) {
       onSwitchToClaude();
-    } else if (socket.socket && session.isConnected) {
-      socket.sendInput('claude\n');
+    } else if (session.isConnected) {
+      socket.sendInput(`${session.claudeLaunchCommand || 'claude'}\n`);
     }
   };
 

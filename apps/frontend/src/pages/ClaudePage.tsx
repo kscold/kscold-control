@@ -1,11 +1,18 @@
-import { Plus, X, TerminalSquare, MessageCircle } from 'lucide-react';
-import { Terminal } from '../features/terminal/ui';
+import { MessageCircle, Plus, Sparkles, TerminalSquare, X } from 'lucide-react';
+import { ClaudeCodeWorkspace, Terminal } from '../features/terminal/ui';
 import { ClaudeChat } from '../features/claude-chat/ui';
 import { useClaudeTabs } from '../features/claude-chat/hooks';
 
 export function ClaudePage() {
-  const { tabs, activeTabId, setActiveTabId, tabModes, setTabMode, createTab, closeTab } =
-    useClaudeTabs();
+  const {
+    tabs,
+    activeTabId,
+    setActiveTabId,
+    tabModes,
+    setTabMode,
+    createTab,
+    closeTab,
+  } = useClaudeTabs();
 
   return (
     <div className="h-full flex flex-col">
@@ -18,12 +25,16 @@ export function ClaudePage() {
               activeTabId === tab.id
                 ? tab.type === 'claude-chat'
                   ? 'border-orange-500 text-white bg-gray-800'
-                  : 'border-blue-500 text-white bg-gray-800'
+                  : tab.type === 'claude-code' || tabModes[tab.id] === 'claude'
+                    ? 'border-amber-400 text-white bg-gray-800'
+                    : 'border-blue-500 text-white bg-gray-800'
                 : 'border-transparent text-gray-400 hover:text-gray-300 hover:bg-gray-800'
             }`}
             onClick={() => setActiveTabId(tab.id)}
           >
-            {tab.type === 'claude-chat' || tabModes[tab.id] === 'claude' ? (
+            {tab.type === 'claude-code' || tabModes[tab.id] === 'claude' ? (
+              <Sparkles size={14} />
+            ) : tab.type === 'claude-chat' ? (
               <MessageCircle size={14} />
             ) : (
               <TerminalSquare size={14} />
@@ -43,6 +54,14 @@ export function ClaudePage() {
 
         {/* New Tab Buttons */}
         <div className="flex items-center ml-1 gap-0.5">
+          <button
+            onClick={() => createTab('claude-code')}
+            className="flex items-center gap-1 px-2 py-2 text-xs text-gray-400 hover:text-white hover:bg-gray-800 rounded transition-colors"
+            title="새 Claude Code"
+          >
+            <Sparkles size={14} />
+            <Plus size={12} />
+          </button>
           <button
             onClick={() => createTab('claude-chat')}
             className="flex items-center gap-1 px-2 py-2 text-xs text-gray-400 hover:text-white hover:bg-gray-800 rounded transition-colors"
@@ -69,9 +88,14 @@ export function ClaudePage() {
             key={tab.id}
             className={`absolute inset-0 ${activeTabId === tab.id ? 'block' : 'hidden'}`}
           >
-            {tab.type === 'terminal' ? (
+            {tab.type === 'claude-code' ? (
+              <ClaudeCodeWorkspace terminalId={tab.id} />
+            ) : tab.type === 'terminal' ? (
               tabModes[tab.id] === 'claude' ? (
-                <ClaudeChat onBackToTerminal={() => setTabMode(tab.id, 'terminal')} />
+                <ClaudeCodeWorkspace
+                  terminalId={tab.id}
+                  onBackToTerminal={() => setTabMode(tab.id, 'terminal')}
+                />
               ) : (
                 <Terminal
                   terminalId={tab.id}
@@ -79,7 +103,7 @@ export function ClaudePage() {
                 />
               )
             ) : (
-              <ClaudeChat />
+              <ClaudeChat tabId={tab.id} />
             )}
           </div>
         ))}

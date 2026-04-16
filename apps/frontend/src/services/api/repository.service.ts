@@ -7,6 +7,9 @@ import type {
   CreateProjectInput,
   ClientFile,
   FileContentResult,
+  CreateUploadSessionInput,
+  RepositoryUploadSession,
+  UploadSessionBatchResult,
 } from '../../features/repository/lib/repository.types';
 
 /**
@@ -70,8 +73,19 @@ export class RepositoryService extends BaseApiService {
         {
           headers: { 'Content-Type': 'multipart/form-data' },
           onUploadProgress: (e) => {
-            if (e.total && options.onProgress) {
-              options.onProgress(Math.round((e.loaded / e.total) * 100));
+            if (!options.onProgress) {
+              return;
+            }
+
+            const ratio =
+              typeof e.progress === 'number'
+                ? e.progress
+                : e.total
+                  ? e.loaded / e.total
+                  : null;
+
+            if (ratio !== null) {
+              options.onProgress(Math.round(ratio * 100));
             }
           },
           maxContentLength: Infinity,
@@ -82,6 +96,101 @@ export class RepositoryService extends BaseApiService {
     } catch (error) {
       this.logError('RepositoryService', 'uploadFiles', error);
       this.handleError(error, '업로드 실패');
+    }
+  }
+
+  async createUploadSession(
+    projectId: string,
+    input: CreateUploadSessionInput,
+  ): Promise<RepositoryUploadSession> {
+    try {
+      const { data } = await api.post<RepositoryUploadSession>(
+        `${this.basePath}/projects/${projectId}/upload-sessions`,
+        input,
+      );
+      return data;
+    } catch (error) {
+      this.logError('RepositoryService', 'createUploadSession', error);
+      this.handleError(error, '업로드 세션 생성 실패');
+    }
+  }
+
+  async getLatestUploadSession(
+    projectId: string,
+  ): Promise<RepositoryUploadSession | null> {
+    try {
+      const { data } = await api.get<{ item: RepositoryUploadSession | null }>(
+        `${this.basePath}/projects/${projectId}/upload-sessions/latest`,
+      );
+      return data.item ?? null;
+    } catch (error) {
+      this.logError('RepositoryService', 'getLatestUploadSession', error);
+      this.handleError(error, '업로드 세션 조회 실패');
+    }
+  }
+
+  async getUploadSession(
+    projectId: string,
+    sessionId: string,
+  ): Promise<RepositoryUploadSession | null> {
+    try {
+      const { data } = await api.get<{ item: RepositoryUploadSession | null }>(
+        `${this.basePath}/projects/${projectId}/upload-sessions/${sessionId}`,
+      );
+      return data.item ?? null;
+    } catch (error) {
+      this.logError('RepositoryService', 'getUploadSession', error);
+      this.handleError(error, '업로드 세션 상태 조회 실패');
+    }
+  }
+
+  async uploadSessionBatch(
+    projectId: string,
+    sessionId: string,
+    batchIndex: number,
+    files: ClientFile[],
+    options?: { onProgress?: (percent: number) => void },
+  ): Promise<UploadSessionBatchResult> {
+    try {
+      const formData = new FormData();
+      const relativePaths: string[] = [];
+
+      for (const cf of files) {
+        formData.append('files', cf.file, cf.file.name);
+        relativePaths.push(cf.relativePath);
+      }
+      formData.append('relativePaths', JSON.stringify(relativePaths));
+
+      const { data } = await api.post<UploadSessionBatchResult>(
+        `${this.basePath}/projects/${projectId}/upload-sessions/${sessionId}/batches/${batchIndex}`,
+        formData,
+        {
+          headers: { 'Content-Type': 'multipart/form-data' },
+          onUploadProgress: (e) => {
+            if (!options?.onProgress) {
+              return;
+            }
+
+            const ratio =
+              typeof e.progress === 'number'
+                ? e.progress
+                : e.total
+                  ? e.loaded / e.total
+                  : null;
+
+            if (ratio !== null) {
+              options.onProgress(Math.round(ratio * 100));
+            }
+          },
+          maxContentLength: Infinity,
+          maxBodyLength: Infinity,
+        },
+      );
+
+      return data;
+    } catch (error) {
+      this.logError('RepositoryService', 'uploadSessionBatch', error);
+      this.handleError(error, '업로드 배치 전송 실패');
     }
   }
 

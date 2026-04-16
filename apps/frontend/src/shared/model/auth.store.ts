@@ -1,6 +1,8 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import axios from 'axios';
+import { CLAUDE_SESSION_STORAGE_KEY } from '../../features/claude-chat/lib/claude-chat.constants';
+import { SESSION_STORAGE_KEY } from '../../features/terminal/lib/terminal.constants';
 
 const API_URL = import.meta.env.VITE_API_URL || '';
 
@@ -21,6 +23,19 @@ interface AuthState {
   hasPermission: (permission: string) => boolean;
 }
 
+function clearSessionStorageByPrefix(prefix: string) {
+  const keysToRemove: string[] = [];
+
+  for (let index = 0; index < localStorage.length; index += 1) {
+    const key = localStorage.key(index);
+    if (key && (key === prefix || key.startsWith(`${prefix}:`))) {
+      keysToRemove.push(key);
+    }
+  }
+
+  keysToRemove.forEach((key) => localStorage.removeItem(key));
+}
+
 export const useAuthStore = create<AuthState>()(
   persist(
     (set, get) => ({
@@ -38,7 +53,8 @@ export const useAuthStore = create<AuthState>()(
 
       logout: () => {
         // 터미널 세션도 함께 정리
-        localStorage.removeItem('terminal_session_id');
+        clearSessionStorageByPrefix(SESSION_STORAGE_KEY);
+        clearSessionStorageByPrefix(CLAUDE_SESSION_STORAGE_KEY);
         set({ token: null, user: null });
       },
 

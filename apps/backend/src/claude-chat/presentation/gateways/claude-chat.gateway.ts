@@ -107,7 +107,11 @@ export class ClaudeChatGateway
 
       this.sessionMapper.mapClientToSession(client.id, session.id);
 
-      client.emit('claude:session-ready', { sessionId: session.id, isReconnect });
+      client.emit('claude:session-ready', {
+        sessionId: session.id,
+        isReconnect,
+        workingDirectory: this.processManager.getWorkingDirectory(),
+      });
 
       if (isReconnect) {
         const messages = await this.messageRepo.findBySession(session.id);
@@ -230,7 +234,7 @@ export class ClaudeChatGateway
                 content: fullContent,
                 costUsd: 0,
                 durationMs: 0,
-                totalCostUsd: 0,
+                totalCostUsd: this.processManager.getTotalCostUsd(sessionId),
               });
               fullContent = '';
             }
@@ -279,6 +283,7 @@ export class ClaudeChatGateway
     client.emit('claude:session-ready', {
       sessionId: newSession.id,
       isReconnect: false,
+      workingDirectory: this.processManager.getWorkingDirectory(),
     });
 
     return { success: true };

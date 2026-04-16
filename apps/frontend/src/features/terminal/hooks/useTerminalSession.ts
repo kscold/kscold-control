@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { SESSION_STORAGE_KEY } from '../lib/terminal.constants';
 import type { TerminalSession } from '../lib/terminal.types';
 
 /**
@@ -8,19 +7,23 @@ import type { TerminalSession } from '../lib/terminal.types';
  *
  * Extracted from ClaudeTerminal.tsx lines 22-23, 82-92, 188-206
  */
-export function useTerminalSession() {
+export function useTerminalSession(storageKey: string) {
   const [session, setSession] = useState<TerminalSession>({
     sessionId: null,
     isConnected: false,
     commandCount: 0,
     commandLimit: -1,
+    workingDirectory: null,
+    shellPath: null,
+    claudeBinaryPath: null,
+    claudeLaunchCommand: null,
   });
 
   /**
    * Get saved session ID from localStorage
    */
   const getSavedSessionId = (): string | null => {
-    return localStorage.getItem(SESSION_STORAGE_KEY);
+    return localStorage.getItem(storageKey);
   };
 
   /**
@@ -29,12 +32,20 @@ export function useTerminalSession() {
   const handleSessionReady = (data: {
     sessionId: string;
     isReconnect: boolean;
+    workingDirectory?: string | null;
+    shellPath?: string | null;
+    claudeBinaryPath?: string | null;
+    claudeLaunchCommand?: string | null;
   }) => {
     setSession((prev) => ({
       ...prev,
       sessionId: data.sessionId,
+      workingDirectory: data.workingDirectory ?? prev.workingDirectory,
+      shellPath: data.shellPath ?? prev.shellPath,
+      claudeBinaryPath: data.claudeBinaryPath ?? prev.claudeBinaryPath,
+      claudeLaunchCommand: data.claudeLaunchCommand ?? prev.claudeLaunchCommand,
     }));
-    localStorage.setItem(SESSION_STORAGE_KEY, data.sessionId);
+    localStorage.setItem(storageKey, data.sessionId);
     return data.isReconnect;
   };
 
@@ -60,12 +71,16 @@ export function useTerminalSession() {
    * Clear session (logout or session close)
    */
   const clearSession = () => {
-    localStorage.removeItem(SESSION_STORAGE_KEY);
+    localStorage.removeItem(storageKey);
     setSession({
       sessionId: null,
       isConnected: false,
       commandCount: 0,
       commandLimit: -1,
+      workingDirectory: null,
+      shellPath: null,
+      claudeBinaryPath: null,
+      claudeLaunchCommand: null,
     });
   };
 
