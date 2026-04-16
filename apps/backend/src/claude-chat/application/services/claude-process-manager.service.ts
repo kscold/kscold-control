@@ -1,6 +1,10 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { spawn, ChildProcess } from 'child_process';
 import { createInterface } from 'readline';
+import {
+  prependClaudeBinaryDir,
+  resolveClaudeBinary,
+} from '../../../common/utils';
 
 interface ClaudeProcess {
   process: ChildProcess;
@@ -34,6 +38,34 @@ export class ClaudeProcessManagerService {
   private readonly logger = new Logger(ClaudeProcessManagerService.name);
   private readonly processes = new Map<string, ClaudeProcess>();
 
+  private getHomeDirectory(): string {
+    return process.env.HOME || '/Users/kscold';
+  }
+
+  getWorkingDirectory(): string {
+    return process.env.CLAUDE_WORKING_DIR || this.getHomeDirectory();
+  }
+
+  getClaudeBinaryPath(): string | null {
+    return resolveClaudeBinary(this.getHomeDirectory()).binaryPath;
+  }
+
+  getTotalCostUsd(sessionId: string): number {
+    return this.processes.get(sessionId)?.totalCostUsd ?? 0;
+  }
+
+  private serializeToolInput(input: unknown): string {
+    if (typeof input === 'string') {
+      return input;
+    }
+
+    try {
+      return JSON.stringify(input).substring(0, 200);
+    } catch {
+      return '[unserializable tool input]';
+    }
+  }
+
   sendPrompt(
     sessionId: string,
     prompt: string,
@@ -47,7 +79,8 @@ export class ClaudeProcessManagerService {
 
     const args = [
       '-p',
-      '--output-format', 'stream-json',
+      '--output-format',
+      'stream-json',
       '--include-partial-messages', // 실시간 스트리밍 토큰 전송
     ];
 
@@ -58,24 +91,27 @@ export class ClaudeProcessManagerService {
 
     args.push(prompt);
 
-    const homeDir = process.env.HOME || '/Users/kscold';
+    const homeDir = this.getHomeDirectory();
+    const workingDir = this.getWorkingDirectory();
+    const claudeBinaryPath = this.getClaudeBinaryPath();
+    const command = claudeBinaryPath || 'claude';
 
     // CLAUDE* 환경변수 제거 (중첩 실행 방지)
     // ANTHROPIC_API_KEY를 명시적으로 넣지 않음 →
     //   PM2 env에 있으면 filteredEnv에 포함됨
     //   없으면 claude가 ~/.claude.json / keychain에서 직접 읽음
     const filteredEnv = Object.fromEntries(
-      Object.entries(process.env).filter(
-        ([key]) => !key.startsWith('CLAUDE'),
-      ),
+      Object.entries(process.env).filter(([key]) => !key.startsWith('CLAUDE')),
     );
 
-    const child = spawn('claude', args, {
-      cwd: homeDir,
+    const child = spawn(command, args, {
+      cwd: workingDir,
       env: {
         ...filteredEnv,
         HOME: homeDir,
-        PATH: process.env.PATH,
+        PATH: prependClaudeBinaryDir(claudeBinaryPath),
+        ...(claudeBinaryPath ? { CLAUDE_CODE_BIN: claudeBinaryPath } : {}),
+        CLAUDE_WORKING_DIR: workingDir,
       },
       stdio: ['pipe', 'pipe', 'pipe'],
     });
@@ -89,6 +125,7 @@ export class ClaudeProcessManagerService {
     this.processes.set(sessionId, proc);
 
     let lastTextLength = 0;
+    const seenToolKeys = new Set<string>();
 
     const rl = createInterface({ input: child.stdout });
     rl.on('line', (line) => {
@@ -101,23 +138,35 @@ export class ClaudeProcessManagerService {
           proc.claudeSessionId = event.session_id;
         }
 
-        if (event.type === 'assistant' && event.message?.content) {
+        if (
+          event.type === 'assistant' &&
+          Array.isArray(event.message?.content)
+        ) {
           for (const block of event.message.content) {
             if (block.type === 'text') {
               // --include-partial-messages: 누적 텍스트에서 새 부분만 추출
-              const newText = block.text.substring(lastTextLength);
-              lastTextLength = block.text.length;
+              const blockText =
+                typeof block.text === 'string'
+                  ? block.text
+                  : String(block.text || '');
+              const newText = blockText.substring(lastTextLength);
+              lastTextLength = blockText.length;
               if (newText) {
                 onEvent({ type: 'text-delta', text: newText });
               }
             } else if (block.type === 'tool_use') {
+              const toolInput = this.serializeToolInput(block.input);
+              const toolKey = block.id || `${block.name}:${toolInput}`;
+
+              if (seenToolKeys.has(toolKey)) {
+                continue;
+              }
+
+              seenToolKeys.add(toolKey);
               onEvent({
                 type: 'tool-use',
                 tool: block.name,
-                input:
-                  typeof block.input === 'string'
-                    ? block.input
-                    : JSON.stringify(block.input).substring(0, 200),
+                input: toolInput,
                 status: 'start',
               });
             }
@@ -132,6 +181,7 @@ export class ClaudeProcessManagerService {
           proc.totalCostUsd += cost;
           proc.isProcessing = false;
           lastTextLength = 0;
+          seenToolKeys.clear();
 
           onEvent({
             type: 'message-end',
@@ -153,6 +203,7 @@ export class ClaudeProcessManagerService {
 
     child.on('error', (err) => {
       proc.isProcessing = false;
+      seenToolKeys.clear();
       this.logger.error(`[ClaudeChat] Spawn error: ${err.message}`);
       onEvent({ type: 'error', message: `Claude 실행 실패: ${err.message}` });
       onEvent({ type: 'process-exit', code: -1 });
@@ -160,6 +211,8 @@ export class ClaudeProcessManagerService {
 
     child.on('exit', (code) => {
       proc.isProcessing = false;
+      lastTextLength = 0;
+      seenToolKeys.clear();
       if (code !== 0 && stderrBuffer.trim()) {
         this.logger.error(`Exit ${code}: ${stderrBuffer.trim()}`);
         onEvent({ type: 'error', message: stderrBuffer.trim() });

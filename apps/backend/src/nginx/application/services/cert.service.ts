@@ -11,6 +11,8 @@ const execAsync = promisify(exec);
 
 const SSL_DIR = path.resolve(__dirname, '../../../../../../ssl');
 const COMPOSE_DIR = path.resolve(__dirname, '../../../../../../');
+const LETSENCRYPT_DIR = '/etc/letsencrypt';
+const LETSENCRYPT_LIB_DIR = '/var/lib/letsencrypt';
 
 @Injectable()
 export class CertService {
@@ -72,7 +74,8 @@ export class CertService {
       'docker run --rm',
       `--name certbot-${domain.replace(/\./g, '-')}`,
       `-v ${webrootVolume}:/var/www/certbot`,
-      `-v "${SSL_DIR}:/etc/ssl-output"`,
+      `-v "${LETSENCRYPT_DIR}:${LETSENCRYPT_DIR}"`,
+      `-v "${LETSENCRYPT_LIB_DIR}:${LETSENCRYPT_LIB_DIR}"`,
       'certbot/certbot certonly',
       '--webroot',
       '-w /var/www/certbot',
@@ -80,7 +83,7 @@ export class CertService {
       `--email ${email}`,
       '--agree-tos',
       '--non-interactive',
-      '--cert-name temp-cert',
+      `--cert-name ${domain}`,
     ].join(' ');
 
     try {
@@ -122,7 +125,8 @@ export class CertService {
       'docker run --rm',
       '--name certbot-renew',
       `-v ${webrootVolume}:/var/www/certbot`,
-      `-v certbot-letsencrypt:/etc/letsencrypt`,
+      `-v "${LETSENCRYPT_DIR}:${LETSENCRYPT_DIR}"`,
+      `-v "${LETSENCRYPT_LIB_DIR}:${LETSENCRYPT_LIB_DIR}"`,
       'certbot/certbot renew',
       '--webroot',
       '-w /var/www/certbot',
@@ -217,15 +221,26 @@ export class CertService {
       fs.mkdirSync(domainDir, { recursive: true });
     }
 
-    const cmd = [
-      'docker run --rm',
-      '-v certbot-letsencrypt:/etc/letsencrypt:ro',
-      `-v "${domainDir}:/output"`,
-      'alpine sh -c',
-      `"cp /etc/letsencrypt/live/temp-cert/fullchain.pem /output/fullchain.pem 2>/dev/null || cp /etc/letsencrypt/live/${domain}/fullchain.pem /output/fullchain.pem && cp /etc/letsencrypt/live/temp-cert/privkey.pem /output/privkey.pem 2>/dev/null || cp /etc/letsencrypt/live/${domain}/privkey.pem /output/privkey.pem"`,
-    ].join(' ');
+    const liveDirCandidates = [
+      path.join(LETSENCRYPT_DIR, 'live', domain),
+      path.join(LETSENCRYPT_DIR, 'live', 'temp-cert'),
+    ];
+    const sourceDir = liveDirCandidates.find((candidate) =>
+      fs.existsSync(path.join(candidate, 'fullchain.pem')),
+    );
 
-    await execAsync(cmd, { timeout: 30000 });
+    if (!sourceDir) {
+      throw new Error(`발급된 인증서 디렉터리를 찾지 못했습니다: ${domain}`);
+    }
+
+    fs.copyFileSync(
+      path.join(sourceDir, 'fullchain.pem'),
+      path.join(domainDir, 'fullchain.pem'),
+    );
+    fs.copyFileSync(
+      path.join(sourceDir, 'privkey.pem'),
+      path.join(domainDir, 'privkey.pem'),
+    );
   }
 
   /**

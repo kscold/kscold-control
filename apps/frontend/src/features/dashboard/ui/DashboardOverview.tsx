@@ -12,8 +12,11 @@ export function DashboardOverview() {
   const { systemInfo, loadSystemInfo, loading, error, lastLoadedAt } =
     useSystemInfo();
   const { liveStats, loading: liveStatsLoading } = useLiveStats();
-  const { containers, runningCount, loading: containersLoading } =
-    useDashboardContainers();
+  const {
+    containers,
+    runningCount,
+    loading: containersLoading,
+  } = useDashboardContainers();
 
   useEffect(() => {
     loadSystemInfo();

@@ -5,7 +5,11 @@ import { API_URL } from '../lib/claude-chat.constants';
 interface UseClaudeChatSocketOptions {
   token: string | null;
   savedSessionId: string | null;
-  onSessionReady: (data: { sessionId: string; isReconnect: boolean }) => void;
+  onSessionReady: (data: {
+    sessionId: string;
+    isReconnect: boolean;
+    workingDirectory?: string | null;
+  }) => void;
   onHistory: (data: { messages: any[] }) => void;
   onMessageStart: () => void;
   onTextDelta: (data: { text: string }) => void;
@@ -42,6 +46,12 @@ export function useClaudeChatSocket(options: UseClaudeChatSocketOptions) {
 
     socket.on('connect', () => {
       optionsRef.current.onConnect();
+    });
+
+    socket.on('connect_error', (error) => {
+      optionsRef.current.onError({
+        message: error.message || 'Claude 채팅 서버에 연결할 수 없습니다',
+      });
     });
 
     socket.on('disconnect', () => {
@@ -87,7 +97,12 @@ export function useClaudeChatSocket(options: UseClaudeChatSocketOptions) {
   }, [options.token, options.savedSessionId]);
 
   const sendMessage = useCallback((message: string) => {
-    socketRef.current?.emit('claude:send-message', { message });
+    if (!socketRef.current?.connected) {
+      return false;
+    }
+
+    socketRef.current.emit('claude:send-message', { message });
+    return true;
   }, []);
 
   const abort = useCallback(() => {

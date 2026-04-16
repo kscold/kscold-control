@@ -1,6 +1,10 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { ComposeService } from './compose.service';
-import type { TopologySnapshot, TopologySnapshotEdge, TopologySnapshotNode } from '../../domain/types/topology-snapshot.type';
+import type {
+  TopologySnapshot,
+  TopologySnapshotEdge,
+  TopologySnapshotNode,
+} from '../../domain/types/topology-snapshot.type';
 import type { NginxSite } from '../../../nginx/domain/types/nginx-site.type';
 import {
   NGINX_CONFIG_REPOSITORY,
@@ -8,9 +12,15 @@ import {
 } from '../../../nginx/domain/interfaces/nginx-config.repository';
 import { ListContainersUseCase } from '../use-cases';
 import type { ContainerResponseDto } from '../dto/container-response.dto';
-import { DOCKER_CLIENT, type IDockerClient } from '../../domain/repositories/docker-client.interface';
+import {
+  DOCKER_CLIENT,
+  type IDockerClient,
+} from '../../domain/repositories/docker-client.interface';
 
-type RuntimeProcesses = { pm2: any[]; services: Array<{ name: string; port: number; icon: string }> };
+type RuntimeProcesses = {
+  pm2: any[];
+  services: Array<{ name: string; port: number; icon: string }>;
+};
 
 interface StackMeta {
   label: string;
@@ -28,9 +38,18 @@ interface ContainerGatewayInfo {
   details: string[];
 }
 
-const COL_GAP = 360;
-const ROW_GAP = 280;
+interface AppColumnEntry {
+  container: ContainerResponseDto;
+  columnIndex: number;
+}
+
+const COL_GAP = 400;
 const NODE_HALF_W = 110;
+const INTERNET_Y = 0;
+const HOST_Y = 180;
+const INFRA_Y = 410;
+const SITE_Y = 800;
+const APP_Y = 1160;
 const INFERRED_SITE_HINTS: NginxSite[] = [
   {
     name: 'control',
@@ -124,15 +143,52 @@ export class DockerTopologyService {
     const containerNodeMap = new Map<string, string>();
     const serviceNodeIds = new Set<string>();
 
-    const totalColumns = Math.max(sites.length, containers.length, 5);
+    const infraContainers = containers.filter((container) =>
+      this.isInfraContainer(container),
+    );
+    const appContainers = containers.filter(
+      (container) => !this.isInfraContainer(container),
+    );
+    const sortedSites = this.sortSites(sites, appContainers);
+    const appColumns = this.buildAppColumns(appContainers, sortedSites);
+    const nginxContainer = infraContainers.find((container) =>
+      container.name.includes('nginx'),
+    );
+    const nginxContainers = infraContainers.filter((container) =>
+      container.name.includes('nginx'),
+    );
+    const dbContainers = infraContainers.filter(
+      (container) => !container.name.includes('nginx'),
+    );
+
+    const infraNodes: Array<{
+      id: string;
+      label: string;
+      container?: ContainerResponseDto;
+    }> = [
+      ...nginxContainers.map((container) => ({
+        id: `container-${container.id}`,
+        label: container.name,
+        container,
+      })),
+      { id: 'local-control', label: 'kscold-control' },
+      ...dbContainers.map((container) => ({
+        id: `container-${container.id}`,
+        label: container.name,
+        container,
+      })),
+    ];
+
+    const totalColumns = Math.max(sortedSites.length, appColumns.length, 5);
     const totalWidth = totalColumns * COL_GAP;
     const centerX = totalWidth / 2;
-    const rowStartX = centerX - ((totalColumns - 1) * COL_GAP) / 2 - NODE_HALF_W;
+    const rowStartX =
+      centerX - ((totalColumns - 1) * COL_GAP) / 2 - NODE_HALF_W;
 
     nodes.push({
       id: 'internet',
       type: 'internet',
-      position: { x: centerX - 80, y: 0 },
+      position: { x: centerX - 80, y: INTERNET_Y },
       data: { label: 'Internet' },
       draggable: true,
     });
@@ -140,7 +196,7 @@ export class DockerTopologyService {
     nodes.push({
       id: 'host',
       type: 'host',
-      position: { x: centerX - 110, y: ROW_GAP * 0.9 },
+      position: { x: centerX - 110, y: HOST_Y },
       data: {
         label: 'Mac Mini (Host)',
         subtitle: 'macOS · Colima · Docker · PM2',
@@ -156,31 +212,15 @@ export class DockerTopologyService {
       style: { stroke: '#6366f1', strokeWidth: 2 },
     });
 
-    const infraContainers = containers.filter((container) =>
-      this.isInfraContainer(container),
-    );
-    const appContainers = containers.filter((container) => !this.isInfraContainer(container));
-    const nginxContainer = infraContainers.find((container) =>
-      container.name.includes('nginx'),
-    );
-
-    const infraNodes: Array<{ id: string; label: string; container?: ContainerResponseDto }> = [
-      ...infraContainers.map((container) => ({
-        id: `container-${container.id}`,
-        label: container.name,
-        container,
-      })),
-      { id: 'local-control', label: 'kscold-control' },
-    ];
-
-    const infraStartX = centerX - ((infraNodes.length - 1) * COL_GAP) / 2 - NODE_HALF_W;
+    const infraStartX =
+      centerX - ((infraNodes.length - 1) * COL_GAP) / 2 - NODE_HALF_W;
     infraNodes.forEach((entry, index) => {
       if (!entry.container) {
         const domains = this.getLocalControlDomains(sites);
         nodes.push({
           id: entry.id,
           type: 'container',
-          position: { x: infraStartX + index * COL_GAP, y: ROW_GAP * 2 },
+          position: { x: infraStartX + index * COL_GAP, y: INFRA_Y },
           data: {
             label: entry.label,
             image: 'local (PM2)',
@@ -195,14 +235,24 @@ export class DockerTopologyService {
           draggable: true,
         });
       } else {
-        const meta = this.getStackMeta(entry.container.image, entry.container.name);
-        const processes = processMap[entry.container.id] ?? { pm2: [], services: [] };
+        const meta = this.getStackMeta(
+          entry.container.image,
+          entry.container.name,
+        );
+        const processes = processMap[entry.container.id] ?? {
+          pm2: [],
+          services: [],
+        };
         const domains = this.getContainerDomains(entry.container, sites);
-        const gateway = this.buildContainerGateway(entry.container, processes.services, domains);
+        const gateway = this.buildContainerGateway(
+          entry.container,
+          processes.services,
+          domains,
+        );
         nodes.push({
           id: entry.id,
           type: 'container',
-          position: { x: infraStartX + index * COL_GAP, y: ROW_GAP * 2 },
+          position: { x: infraStartX + index * COL_GAP, y: INFRA_Y },
           data: {
             label: meta.label || entry.container.name,
             image: entry.container.image,
@@ -218,7 +268,15 @@ export class DockerTopologyService {
         });
 
         containerNodeMap.set(entry.container.name, entry.id);
-        this.addServiceNodes(nodes, addEdge, serviceNodeIds, entry.id, processes.services, infraStartX + index * COL_GAP, ROW_GAP * 2);
+        this.addServiceNodes(
+          nodes,
+          addEdge,
+          serviceNodeIds,
+          entry.id,
+          processes.services,
+          infraStartX + index * COL_GAP,
+          INFRA_Y,
+        );
       }
 
       addEdge({
@@ -229,13 +287,12 @@ export class DockerTopologyService {
       });
     });
 
-    const sortedSites = this.sortSites(sites, appContainers);
     sortedSites.forEach((site, index) => {
       const nodeId = `nginx-${site.name}`;
       nodes.push({
         id: nodeId,
         type: 'nginx',
-        position: { x: rowStartX + index * COL_GAP, y: ROW_GAP * 3.1 },
+        position: { x: rowStartX + index * COL_GAP, y: SITE_Y },
         data: {
           ...site,
           source: site.source ?? 'config',
@@ -253,14 +310,18 @@ export class DockerTopologyService {
       }
     });
 
-    appContainers.forEach((container, index) => {
+    appColumns.forEach(({ container, columnIndex }) => {
       const meta = this.getStackMeta(container.image, container.name);
       const processes = processMap[container.id] ?? { pm2: [], services: [] };
       const domains = this.getContainerDomains(container, sites);
-      const gateway = this.buildContainerGateway(container, processes.services, domains);
+      const gateway = this.buildContainerGateway(
+        container,
+        processes.services,
+        domains,
+      );
       const nodeId = `container-${container.id}`;
-      const x = rowStartX + index * COL_GAP;
-      const y = ROW_GAP * 4.3;
+      const x = rowStartX + columnIndex * COL_GAP;
+      const y = APP_Y;
 
       nodes.push({
         id: nodeId,
@@ -287,11 +348,23 @@ export class DockerTopologyService {
         target: nodeId,
         style: { stroke: '#334155', strokeWidth: 1.5, strokeDasharray: '6 3' },
       });
-      this.addServiceNodes(nodes, addEdge, serviceNodeIds, nodeId, processes.services, x, y);
+      this.addServiceNodes(
+        nodes,
+        addEdge,
+        serviceNodeIds,
+        nodeId,
+        processes.services,
+        x,
+        y,
+      );
     });
 
     for (const site of sortedSites) {
-      const target = this.resolveUpstreamTarget(site, containers, containerNodeMap);
+      const target = this.resolveUpstreamTarget(
+        site,
+        containers,
+        containerNodeMap,
+      );
       if (!target) {
         continue;
       }
@@ -348,7 +421,10 @@ export class DockerTopologyService {
     return Array.from(merged.values());
   }
 
-  private isHintRelevant(hint: NginxSite, containers: ContainerResponseDto[]): boolean {
+  private isHintRelevant(
+    hint: NginxSite,
+    containers: ContainerResponseDto[],
+  ): boolean {
     if (this.isLocalControlUpstream(hint.upstream)) {
       return true;
     }
@@ -363,10 +439,15 @@ export class DockerTopologyService {
   ): Promise<Record<string, RuntimeProcesses>> {
     const entries = await Promise.all(
       containers
-        .filter((container) => container.liveStatus === 'running' && container.dockerId)
+        .filter(
+          (container) =>
+            container.liveStatus === 'running' && container.dockerId,
+        )
         .map(async (container) => {
           try {
-            const processes = await this.dockerClient.getContainerProcesses(container.dockerId);
+            const processes = await this.dockerClient.getContainerProcesses(
+              container.dockerId,
+            );
             return [container.id, processes] as const;
           } catch {
             return [container.id, { pm2: [], services: [] }] as const;
@@ -378,12 +459,19 @@ export class DockerTopologyService {
   }
 
   private isInfraContainer(container: ContainerResponseDto): boolean {
-    return container.name.includes('nginx') || container.name.includes('infra-db');
+    return (
+      container.name.includes('nginx') || container.name.includes('infra-db')
+    );
   }
 
-  private sortSites(sites: NginxSite[], appContainers: ContainerResponseDto[]): NginxSite[] {
+  private sortSites(
+    sites: NginxSite[],
+    appContainers: ContainerResponseDto[],
+  ): NginxSite[] {
     const appLinked = sites.filter((site) =>
-      appContainers.some((container) => this.matchesUpstreamHost(site.upstream, container.name)),
+      appContainers.some((container) =>
+        this.matchesUpstreamHost(site.upstream, container.name),
+      ),
     );
     const controlSites = sites.filter((site) =>
       this.isLocalControlUpstream(site.upstream),
@@ -391,15 +479,54 @@ export class DockerTopologyService {
     const storageSites = sites.filter((site) => this.isStorageSite(site));
     const seen = new Set<string>();
 
-    return [...appLinked, ...controlSites, ...storageSites, ...sites]
-      .filter((site) => {
+    return [...appLinked, ...controlSites, ...storageSites, ...sites].filter(
+      (site) => {
         if (seen.has(site.name)) {
           return false;
         }
 
         seen.add(site.name);
         return true;
+      },
+    );
+  }
+
+  private buildAppColumns(
+    appContainers: ContainerResponseDto[],
+    sortedSites: NginxSite[],
+  ): AppColumnEntry[] {
+    const usedContainerIds = new Set<string>();
+    const alignedEntries: AppColumnEntry[] = [];
+
+    sortedSites.forEach((site, columnIndex) => {
+      const matchedContainer = appContainers.find(
+        (container) =>
+          !usedContainerIds.has(container.id) &&
+          this.matchesUpstreamHost(site.upstream, container.name),
+      );
+
+      if (!matchedContainer) {
+        return;
+      }
+
+      usedContainerIds.add(matchedContainer.id);
+      alignedEntries.push({
+        container: matchedContainer,
+        columnIndex,
       });
+    });
+
+    const orphanContainers = appContainers.filter(
+      (container) => !usedContainerIds.has(container.id),
+    );
+
+    return [
+      ...alignedEntries,
+      ...orphanContainers.map((container, index) => ({
+        container,
+        columnIndex: sortedSites.length + index,
+      })),
+    ];
   }
 
   private resolveUpstreamTarget(
@@ -412,7 +539,9 @@ export class DockerTopologyService {
     }
 
     const upstreamHost = this.extractUpstreamHost(site.upstream);
-    const container = containers.find((entry) => this.matchesUpstreamHost(site.upstream, entry.name));
+    const container = containers.find((entry) =>
+      this.matchesUpstreamHost(site.upstream, entry.name),
+    );
     if (container) {
       return containerNodeMap.get(container.name) ?? null;
     }
@@ -433,7 +562,10 @@ export class DockerTopologyService {
     }
   }
 
-  private matchesUpstreamHost(upstream: string, containerName: string): boolean {
+  private matchesUpstreamHost(
+    upstream: string,
+    containerName: string,
+  ): boolean {
     const upstreamHost = this.extractUpstreamHost(upstream);
     return (
       upstreamHost === containerName ||
@@ -443,12 +575,20 @@ export class DockerTopologyService {
 
   private isLocalControlUpstream(upstream: string): boolean {
     const host = this.extractUpstreamHost(upstream);
-    return host === 'host.docker.internal' || host === 'localhost' || host === '127.0.0.1';
+    return (
+      host === 'host.docker.internal' ||
+      host === 'localhost' ||
+      host === '127.0.0.1'
+    );
   }
 
   private isStorageSite(site: NginxSite): boolean {
     const target = `${site.name} ${site.domain} ${site.upstream}`.toLowerCase();
-    return target.includes('minio') || target.includes('bucket') || target.includes('9000');
+    return (
+      target.includes('minio') ||
+      target.includes('bucket') ||
+      target.includes('9000')
+    );
   }
 
   private getContainerDomains(
@@ -462,7 +602,10 @@ export class DockerTopologyService {
 
   private getLocalControlDomains(sites: NginxSite[]): string[] {
     return sites
-      .filter((site) => this.isLocalControlUpstream(site.upstream) || site.name === 'control')
+      .filter(
+        (site) =>
+          this.isLocalControlUpstream(site.upstream) || site.name === 'control',
+      )
       .map((site) => site.domain);
   }
 
@@ -496,7 +639,9 @@ export class DockerTopologyService {
         label: '컨테이너 내부 Nginx',
         details: [
           '컨테이너 내부에서 Nginx 프로세스가 감지되었습니다.',
-          upstreamPort ? `대표 웹 포트는 :${upstreamPort} 기준으로 보입니다.` : '대표 웹 포트를 찾지 못했습니다.',
+          upstreamPort
+            ? `대표 웹 포트는 :${upstreamPort} 기준으로 보입니다.`
+            : '대표 웹 포트를 찾지 못했습니다.',
         ],
       };
     }
@@ -508,7 +653,9 @@ export class DockerTopologyService {
         details: [
           '실제 웹 도메인은 공용 kscold-nginx가 앞단에서 종료합니다.',
           '이 Ubuntu 컨테이너 안에는 별도 Nginx가 없고, 앱 포트만 직접 노출됩니다.',
-          upstreamPort ? `대표 업스트림 포트는 :${upstreamPort} 입니다.` : '대표 업스트림 포트를 찾지 못했습니다.',
+          upstreamPort
+            ? `대표 업스트림 포트는 :${upstreamPort} 입니다.`
+            : '대표 업스트림 포트를 찾지 못했습니다.',
         ],
       };
     }
@@ -518,12 +665,16 @@ export class DockerTopologyService {
       label: '직접 노출 포트',
       details: [
         '현재 공용 도메인 연결은 감지되지 않았습니다.',
-        upstreamPort ? `대표 포트는 :${upstreamPort} 입니다.` : '대표 포트를 찾지 못했습니다.',
+        upstreamPort
+          ? `대표 포트는 :${upstreamPort} 입니다.`
+          : '대표 포트를 찾지 못했습니다.',
       ],
     };
   }
 
-  private resolvePrimaryInternalPort(ports: Record<string, number>): string | null {
+  private resolvePrimaryInternalPort(
+    ports: Record<string, number>,
+  ): string | null {
     const priority = (value: string) => {
       if (value === '80' || value === '443') return 0;
       if (value === '3000' || value === '3001' || value === '3002') return 1;
@@ -583,7 +734,11 @@ export class DockerTopologyService {
       shadowColor: 'shadow-cyan-500/20',
       headerBg: 'bg-cyan-950',
       stacks: [
-        { name: 'NestJS', badge: 'Node.js', color: 'bg-cyan-900 text-cyan-300' },
+        {
+          name: 'NestJS',
+          badge: 'Node.js',
+          color: 'bg-cyan-900 text-cyan-300',
+        },
         { name: 'PM2', badge: 'Local', color: 'bg-gray-700 text-gray-300' },
       ],
       knownServices: [
@@ -597,7 +752,10 @@ export class DockerTopologyService {
     const normalizedImage = image.toLowerCase();
     const normalizedName = containerName.toLowerCase();
 
-    if (normalizedImage.includes('slacord') || normalizedName.includes('slacord')) {
+    if (
+      normalizedImage.includes('slacord') ||
+      normalizedName.includes('slacord')
+    ) {
       return {
         label: 'Slacord',
         type: 'app',
@@ -605,9 +763,17 @@ export class DockerTopologyService {
         shadowColor: 'shadow-emerald-500/20',
         headerBg: 'bg-emerald-950',
         stacks: [
-          { name: 'NestJS', badge: 'API', color: 'bg-emerald-900 text-emerald-300' },
+          {
+            name: 'NestJS',
+            badge: 'API',
+            color: 'bg-emerald-900 text-emerald-300',
+          },
           { name: 'Next.js', badge: 'Web', color: 'bg-blue-900 text-blue-300' },
-          { name: 'PM2', badge: 'Process', color: 'bg-indigo-900 text-indigo-300' },
+          {
+            name: 'PM2',
+            badge: 'Process',
+            color: 'bg-indigo-900 text-indigo-300',
+          },
         ],
         knownServices: [],
       };
@@ -621,14 +787,25 @@ export class DockerTopologyService {
         shadowColor: 'shadow-violet-500/20',
         headerBg: 'bg-violet-950',
         stacks: [
-          { name: 'Spring Boot', badge: 'API', color: 'bg-violet-900 text-violet-300' },
-          { name: 'Next.js', badge: 'Web', color: 'bg-green-900 text-green-300' },
+          {
+            name: 'Spring Boot',
+            badge: 'API',
+            color: 'bg-violet-900 text-violet-300',
+          },
+          {
+            name: 'Next.js',
+            badge: 'Web',
+            color: 'bg-green-900 text-green-300',
+          },
         ],
         knownServices: [],
       };
     }
 
-    if (normalizedImage.includes('congbang') || normalizedName.includes('congbang')) {
+    if (
+      normalizedImage.includes('congbang') ||
+      normalizedName.includes('congbang')
+    ) {
       return {
         label: 'CongBang',
         type: 'app',
@@ -636,15 +813,30 @@ export class DockerTopologyService {
         shadowColor: 'shadow-blue-500/20',
         headerBg: 'bg-blue-950',
         stacks: [
-          { name: 'Spring Boot', badge: 'Java', color: 'bg-orange-900 text-orange-300' },
-          { name: 'Next.js', badge: 'Node', color: 'bg-green-900 text-green-300' },
-          { name: 'PM2', badge: 'Process', color: 'bg-indigo-900 text-indigo-300' },
+          {
+            name: 'Spring Boot',
+            badge: 'Java',
+            color: 'bg-orange-900 text-orange-300',
+          },
+          {
+            name: 'Next.js',
+            badge: 'Node',
+            color: 'bg-green-900 text-green-300',
+          },
+          {
+            name: 'PM2',
+            badge: 'Process',
+            color: 'bg-indigo-900 text-indigo-300',
+          },
         ],
         knownServices: [],
       };
     }
 
-    if (normalizedImage.includes('galjido') || normalizedName.includes('galjido')) {
+    if (
+      normalizedImage.includes('galjido') ||
+      normalizedName.includes('galjido')
+    ) {
       return {
         label: 'Galjido',
         type: 'app',
@@ -652,21 +844,35 @@ export class DockerTopologyService {
         shadowColor: 'shadow-purple-500/20',
         headerBg: 'bg-purple-950',
         stacks: [
-          { name: 'Ubuntu', badge: '22.04', color: 'bg-orange-900 text-orange-300' },
+          {
+            name: 'Ubuntu',
+            badge: '22.04',
+            color: 'bg-orange-900 text-orange-300',
+          },
           { name: 'OpenSSH', badge: ':22', color: 'bg-gray-700 text-gray-300' },
         ],
         knownServices: [],
       };
     }
 
-    if (normalizedImage.includes('postgres') || normalizedName.includes('postgres') || normalizedName.includes('infra-db')) {
+    if (
+      normalizedImage.includes('postgres') ||
+      normalizedName.includes('postgres') ||
+      normalizedName.includes('infra-db')
+    ) {
       return {
         label: 'PostgreSQL',
         type: 'db',
         color: 'border-sky-500',
         shadowColor: 'shadow-sky-500/20',
         headerBg: 'bg-sky-950',
-        stacks: [{ name: 'PostgreSQL 15', badge: 'Alpine', color: 'bg-sky-900 text-sky-300' }],
+        stacks: [
+          {
+            name: 'PostgreSQL 15',
+            badge: 'Alpine',
+            color: 'bg-sky-900 text-sky-300',
+          },
+        ],
         knownServices: [{ name: 'PostgreSQL', port: 5432, icon: '🐘' }],
       };
     }
@@ -679,8 +885,16 @@ export class DockerTopologyService {
         shadowColor: 'shadow-amber-500/20',
         headerBg: 'bg-amber-950',
         stacks: [
-          { name: 'Nginx', badge: 'Reverse Proxy', color: 'bg-amber-900 text-amber-300' },
-          { name: 'SSL/TLS', badge: 'Ingress', color: 'bg-green-900 text-green-300' },
+          {
+            name: 'Nginx',
+            badge: 'Reverse Proxy',
+            color: 'bg-amber-900 text-amber-300',
+          },
+          {
+            name: 'SSL/TLS',
+            badge: 'Ingress',
+            color: 'bg-green-900 text-green-300',
+          },
         ],
         knownServices: [{ name: 'HTTP', port: 80, icon: '🌐' }],
       };
@@ -693,7 +907,13 @@ export class DockerTopologyService {
         color: 'border-green-500',
         shadowColor: 'shadow-green-500/20',
         headerBg: 'bg-green-950',
-        stacks: [{ name: 'MongoDB', badge: 'NoSQL', color: 'bg-green-900 text-green-300' }],
+        stacks: [
+          {
+            name: 'MongoDB',
+            badge: 'NoSQL',
+            color: 'bg-green-900 text-green-300',
+          },
+        ],
         knownServices: [{ name: 'MongoDB', port: 27017, icon: '🍃' }],
       };
     }
@@ -705,7 +925,9 @@ export class DockerTopologyService {
         color: 'border-red-500',
         shadowColor: 'shadow-red-500/20',
         headerBg: 'bg-red-950',
-        stacks: [{ name: 'Redis', badge: 'Cache', color: 'bg-red-900 text-red-300' }],
+        stacks: [
+          { name: 'Redis', badge: 'Cache', color: 'bg-red-900 text-red-300' },
+        ],
         knownServices: [{ name: 'Redis', port: 6379, icon: '🟥' }],
       };
     }

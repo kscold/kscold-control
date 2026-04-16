@@ -25,6 +25,7 @@ export function useTerminalSetup({
   const terminalRef = useRef<HTMLDivElement>(null);
   const xtermRef = useRef<Terminal | null>(null);
   const fitAddonRef = useRef<FitAddon | null>(null);
+  const fitFrameRef = useRef<number | null>(null);
   // xterm을 state로 노출 → 초기화 완료 시 리렌더 트리거 → 소켓 연결 가능
   const [xtermInstance, setXtermInstance] = useState<Terminal | null>(null);
 
@@ -41,6 +42,10 @@ export function useTerminalSetup({
       fontFamily: TERMINAL_FONT.family,
       theme: TERMINAL_THEME,
       allowProposedApi: true,
+      allowTransparency: true,
+      scrollback: 5000,
+      rightClickSelectsWord: true,
+      macOptionIsMeta: true,
     });
 
     const fitAddon = new FitAddon();
@@ -50,10 +55,27 @@ export function useTerminalSetup({
     xterm.unicode.activeVersion = '11'; // Unicode 11 활성화 (한글 2칸 너비)
     xterm.open(terminalRef.current);
 
-    // fitAddon을 비동기로 실행
-    setTimeout(() => {
-      fitAddon.fit();
-    }, 100);
+    const scheduleFit = () => {
+      if (fitFrameRef.current !== null) {
+        window.cancelAnimationFrame(fitFrameRef.current);
+      }
+
+      fitFrameRef.current = window.requestAnimationFrame(() => {
+        fitFrameRef.current = null;
+
+        try {
+          fitAddon.fit();
+        } catch {
+          // terminal container가 아직 숨김/미측정 상태면 다음 리사이즈에서 다시 맞춘다
+        }
+      });
+    };
+
+    window.setTimeout(scheduleFit, 80);
+    window.setTimeout(scheduleFit, 220);
+    document.fonts?.ready.then(() => {
+      scheduleFit();
+    });
 
     xtermRef.current = xterm;
     fitAddonRef.current = fitAddon;
@@ -79,13 +101,19 @@ export function useTerminalSetup({
 
     // 윈도우 리사이즈
     const handleResize = () => {
-      fitAddon.fit();
+      scheduleFit();
     };
     window.addEventListener('resize', handleResize);
+    window.visualViewport?.addEventListener('resize', handleResize);
+
+    const resizeObserver = new ResizeObserver(() => {
+      scheduleFit();
+    });
+    resizeObserver.observe(terminalRef.current);
 
     // 클립보드에서 읽어 터미널에 붙여넣기
-    const pasteFromClipboard = async (e: KeyboardEvent) => {
-      e.preventDefault();
+    const pasteFromClipboard = async (e?: KeyboardEvent) => {
+      e?.preventDefault();
       try {
         const text = await navigator.clipboard.readText();
         xterm.paste(text);
@@ -97,7 +125,11 @@ export function useTerminalSetup({
     // 키보드 이벤트 핸들러 (capture: true → 브라우저보다 먼저 실행)
     const handleKeyDown = (e: KeyboardEvent) => {
       // Ctrl+Shift+C (또는 Cmd+Shift+C): 선택 텍스트 복사 (Chrome 가로채기 방지)
-      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'C') {
+      if (
+        (e.ctrlKey || e.metaKey) &&
+        e.shiftKey &&
+        e.key.toLowerCase() === 'c'
+      ) {
         e.preventDefault();
         e.stopPropagation();
         const selection = xterm.getSelection();
@@ -108,7 +140,17 @@ export function useTerminalSetup({
       }
 
       // Ctrl+Shift+V (또는 Cmd+Shift+V): 붙여넣기 (브라우저 기본 동작 차단)
-      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'V') {
+      if (
+        ((e.ctrlKey || e.metaKey) &&
+          e.shiftKey &&
+          e.key.toLowerCase() === 'v') ||
+        (e.metaKey && e.key.toLowerCase() === 'v')
+      ) {
+        pasteFromClipboard(e);
+        return;
+      }
+
+      if (e.shiftKey && e.key === 'Insert') {
         pasteFromClipboard(e);
         return;
       }
@@ -124,12 +166,29 @@ export function useTerminalSetup({
       }
     };
 
+    const handlePaste = (event: ClipboardEvent) => {
+      const text = event.clipboardData?.getData('text');
+      if (!text) {
+        return;
+      }
+
+      event.preventDefault();
+      xterm.paste(text);
+    };
+
     // capture: true → 브라우저 단축키보다 먼저 실행
     terminalRef.current.addEventListener('keydown', handleKeyDown, true);
+    terminalRef.current.addEventListener('paste', handlePaste);
 
     return () => {
       window.removeEventListener('resize', handleResize);
+      window.visualViewport?.removeEventListener('resize', handleResize);
+      resizeObserver.disconnect();
+      if (fitFrameRef.current !== null) {
+        window.cancelAnimationFrame(fitFrameRef.current);
+      }
       terminalRef.current?.removeEventListener('keydown', handleKeyDown, true);
+      terminalRef.current?.removeEventListener('paste', handlePaste);
       xterm.dispose();
     };
   }, []);

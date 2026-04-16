@@ -19,8 +19,10 @@ import {
   SessionMapperService,
   TerminalLimitService,
   TerminalSessionService,
+  WorkspaceFileService,
   WsPermissionService,
 } from './application/services';
+import { WorkspaceFileController } from './presentation/controllers/workspace-file.controller';
 
 // Presentation
 import { TerminalGateway } from './presentation/gateways/terminal.gateway';
@@ -47,6 +49,7 @@ import { RbacModule } from '../rbac/rbac.module';
     }),
     RbacModule,
   ],
+  controllers: [WorkspaceFileController],
   providers: [
     // Infrastructure
     { provide: SESSION_REPOSITORY, useClass: TypeOrmSessionRepository },
@@ -57,6 +60,7 @@ import { RbacModule } from '../rbac/rbac.module';
     SessionMapperService,
     TerminalLimitService,
     TerminalSessionService,
+    WorkspaceFileService,
     WsPermissionService,
 
     // Presentation

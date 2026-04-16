@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import { useModalStore } from '../../../shared/model/modal.store';
+import { getClaudeSessionStorageKey } from '../lib/claude-chat.constants';
+import { getTerminalSessionStorageKey } from '../../terminal/lib/terminal.constants';
 
-export type TabType = 'terminal' | 'claude-chat';
+export type TabType = 'terminal' | 'claude-chat' | 'claude-code';
 
 export interface Tab {
   id: string;
@@ -11,10 +13,12 @@ export interface Tab {
 
 export function useClaudeTabs() {
   const [tabs, setTabs] = useState<Tab[]>([
-    { id: 'chat-1', title: 'Claude Chat', type: 'claude-chat' },
+    { id: 'claude-code-1', title: 'Claude Code', type: 'claude-code' },
   ]);
-  const [activeTabId, setActiveTabId] = useState('chat-1');
-  const [tabModes, setTabModes] = useState<Record<string, 'terminal' | 'claude'>>({});
+  const [activeTabId, setActiveTabId] = useState('claude-code-1');
+  const [tabModes, setTabModes] = useState<
+    Record<string, 'terminal' | 'claude'>
+  >({});
   const { showAlert } = useModalStore();
 
   const setTabMode = (tabId: string, mode: 'terminal' | 'claude') =>
@@ -23,7 +27,12 @@ export function useClaudeTabs() {
   const createTab = (type: TabType) => {
     const newId = `${type}-${Date.now()}`;
     const count = tabs.filter((t) => t.type === type).length + 1;
-    const title = type === 'claude-chat' ? `Claude Chat ${count}` : `Terminal ${count}`;
+    const title =
+      type === 'claude-code'
+        ? `Claude Code ${count}`
+        : type === 'claude-chat'
+          ? `Claude Chat ${count}`
+          : `Terminal ${count}`;
     setTabs((prev) => [...prev, { id: newId, title, type }]);
     setActiveTabId(newId);
   };
@@ -33,6 +42,10 @@ export function useClaudeTabs() {
       showAlert('최소 1개의 탭이 필요합니다');
       return;
     }
+
+    localStorage.removeItem(getClaudeSessionStorageKey(id));
+    localStorage.removeItem(getTerminalSessionStorageKey(id));
+
     const newTabs = tabs.filter((t) => t.id !== id);
     setTabs(newTabs);
     if (activeTabId === id) {
@@ -40,5 +53,13 @@ export function useClaudeTabs() {
     }
   };
 
-  return { tabs, activeTabId, setActiveTabId, tabModes, setTabMode, createTab, closeTab };
+  return {
+    tabs,
+    activeTabId,
+    setActiveTabId,
+    tabModes,
+    setTabMode,
+    createTab,
+    closeTab,
+  };
 }

@@ -8,38 +8,77 @@ interface ChatMessageProps {
 
 export function ChatMessage({ message }: ChatMessageProps) {
   const isUser = message.role === 'user';
+  const timestamp = message.timestamp.toLocaleTimeString('ko-KR', {
+    hour: '2-digit',
+    minute: '2-digit',
+  });
 
   return (
-    <div className={`flex ${isUser ? 'justify-end' : 'justify-start'} mb-3`}>
+    <div className={`mb-4 flex ${isUser ? 'justify-end' : 'justify-start'}`}>
       <div
-        className={`max-w-[85%] sm:max-w-[75%] ${
+        className={`max-w-[92%] sm:max-w-[78%] ${
           isUser
-            ? 'bg-blue-600 text-white rounded-2xl rounded-br-md px-4 py-2.5'
-            : 'bg-gray-800 text-gray-100 rounded-2xl rounded-bl-md px-4 py-3'
+            ? 'rounded-[26px] rounded-br-lg border border-orange-300/20 bg-[linear-gradient(180deg,rgba(251,146,60,0.95),rgba(234,88,12,0.92))] px-4 py-3 text-white shadow-[0_18px_48px_rgba(249,115,22,0.18)]'
+            : 'rounded-[26px] rounded-bl-lg border border-white/8 bg-[linear-gradient(180deg,rgba(30,41,59,0.92),rgba(15,23,42,0.92))] px-4 py-4 text-slate-100'
         }`}
       >
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <span
+              className={`rounded-full px-2.5 py-1 text-[11px] uppercase tracking-[0.24em] ${
+                isUser
+                  ? 'bg-white/15 text-orange-50'
+                  : 'border border-white/10 bg-white/5 text-slate-300'
+              }`}
+            >
+              {isUser ? 'You' : 'Claude'}
+            </span>
+            {message.isStreaming && (
+              <span className="text-[11px] uppercase tracking-[0.24em] text-amber-300">
+                streaming
+              </span>
+            )}
+          </div>
+          <span
+            className={`text-xs ${isUser ? 'text-orange-100/80' : 'text-slate-500'}`}
+          >
+            {timestamp}
+          </span>
+        </div>
+
         {isUser ? (
-          <p className="text-sm whitespace-pre-wrap break-words">{message.content}</p>
+          <p className="whitespace-pre-wrap break-words text-sm leading-7">
+            {message.content}
+          </p>
         ) : (
           <>
             {message.tools && message.tools.length > 0 && (
               <ToolIndicator tools={message.tools} />
             )}
-            <div className="text-sm prose-sm">
+            <div className="text-sm">
               <MarkdownRenderer content={message.content} />
               {message.isStreaming && !message.content && (
                 <span className="inline-flex gap-1">
-                  <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                  <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                  <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                  <span
+                    className="h-2 w-2 animate-bounce rounded-full bg-slate-400"
+                    style={{ animationDelay: '0ms' }}
+                  />
+                  <span
+                    className="h-2 w-2 animate-bounce rounded-full bg-slate-400"
+                    style={{ animationDelay: '150ms' }}
+                  />
+                  <span
+                    className="h-2 w-2 animate-bounce rounded-full bg-slate-400"
+                    style={{ animationDelay: '300ms' }}
+                  />
                 </span>
               )}
               {message.isStreaming && message.content && (
-                <span className="inline-block w-1.5 h-4 bg-gray-400 ml-0.5 animate-pulse align-text-bottom" />
+                <span className="ml-0.5 inline-block h-4 w-1.5 animate-pulse align-text-bottom bg-amber-300" />
               )}
             </div>
             {message.costUsd !== undefined && (
-              <div className="mt-2 pt-1.5 border-t border-gray-700 text-xs text-gray-500 flex items-center gap-3">
+              <div className="mt-4 flex items-center gap-3 border-t border-white/8 pt-2 text-xs text-slate-500">
                 <span>${message.costUsd.toFixed(4)}</span>
                 {message.durationMs && (
                   <span>{(message.durationMs / 1000).toFixed(1)}s</span>

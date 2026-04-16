@@ -49,9 +49,11 @@ export function TopologyCanvas({ snapshot }: TopologyCanvasProps) {
       onEdgesChange={onEdgesChange}
       nodeTypes={nodeTypes}
       fitView
-      fitViewOptions={{ padding: 0.3 }}
+      fitViewOptions={{ padding: 0.16 }}
       defaultEdgeOptions={{ type: 'smoothstep' }}
       proOptions={{ hideAttribution: true }}
+      minZoom={0.35}
+      maxZoom={1.2}
       style={{ background: '#030712' }}
     >
       <Background

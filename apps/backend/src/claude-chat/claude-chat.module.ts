@@ -5,8 +5,10 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TerminalModule } from '../terminal/terminal.module';
 import { RbacModule } from '../rbac/rbac.module';
 
+import { ClaudeDiagnosticsService } from './application/services/claude-diagnostics.service';
 import { ClaudeProcessManagerService } from './application/services/claude-process-manager.service';
 import { ClaudeSessionMapperService } from './application/services/claude-session-mapper.service';
+import { ClaudeDiagnosticsController } from './presentation/controllers/claude-diagnostics.controller';
 import { ClaudeChatGateway } from './presentation/gateways/claude-chat.gateway';
 
 @Module({
@@ -28,11 +30,13 @@ import { ClaudeChatGateway } from './presentation/gateways/claude-chat.gateway';
     }),
     RbacModule,
   ],
+  controllers: [ClaudeDiagnosticsController],
   providers: [
+    ClaudeDiagnosticsService,
     ClaudeProcessManagerService,
     ClaudeSessionMapperService,
     ClaudeChatGateway,
   ],
-  exports: [ClaudeChatGateway],
+  exports: [ClaudeChatGateway, ClaudeDiagnosticsService],
 })
 export class ClaudeChatModule {}

@@ -21,11 +21,9 @@ describe('DockerTopologyService', () => {
         {
           provide: ComposeService,
           useValue: {
-            listServices: jest.fn().mockReturnValue([
-              'nginx',
-              'kscold-infra-db',
-              'ubuntu-blog',
-            ]),
+            listServices: jest
+              .fn()
+              .mockReturnValue(['nginx', 'kscold-infra-db', 'ubuntu-blog']),
           },
         },
         {
@@ -113,30 +111,51 @@ describe('DockerTopologyService', () => {
         {
           provide: DOCKER_CLIENT,
           useValue: {
-            getContainerProcesses: jest.fn().mockImplementation((dockerId: string) => {
-              if (dockerId === 'dock-db') {
+            getContainerProcesses: jest
+              .fn()
+              .mockImplementation((dockerId: string) => {
+                if (dockerId === 'dock-db') {
+                  return Promise.resolve({
+                    pm2: [],
+                    services: [{ name: 'PostgreSQL', port: 5432, icon: 'pg' }],
+                  });
+                }
+
+                if (dockerId === 'dock-blog') {
+                  return Promise.resolve({
+                    pm2: [
+                      {
+                        name: 'blog-api',
+                        status: 'online',
+                        cpu: 0,
+                        memory: 0,
+                        restarts: 0,
+                      },
+                    ],
+                    services: [{ name: 'SSH', port: 22, icon: 'ssh' }],
+                  });
+                }
+
+                if (dockerId === 'dock-slacord') {
+                  return Promise.resolve({
+                    pm2: [
+                      {
+                        name: 'slacord-backend',
+                        status: 'online',
+                        cpu: 0,
+                        memory: 0,
+                        restarts: 0,
+                      },
+                    ],
+                    services: [{ name: 'MongoDB', port: 27017, icon: 'mongo' }],
+                  });
+                }
+
                 return Promise.resolve({
                   pm2: [],
-                  services: [{ name: 'PostgreSQL', port: 5432, icon: 'pg' }],
+                  services: [{ name: 'Nginx', port: 80, icon: 'nginx' }],
                 });
-              }
-
-              if (dockerId === 'dock-blog') {
-                return Promise.resolve({
-                  pm2: [{ name: 'blog-api', status: 'online', cpu: 0, memory: 0, restarts: 0 }],
-                  services: [{ name: 'SSH', port: 22, icon: 'ssh' }],
-                });
-              }
-
-              if (dockerId === 'dock-slacord') {
-                return Promise.resolve({
-                  pm2: [{ name: 'slacord-backend', status: 'online', cpu: 0, memory: 0, restarts: 0 }],
-                  services: [{ name: 'MongoDB', port: 27017, icon: 'mongo' }],
-                });
-              }
-
-              return Promise.resolve({ pm2: [], services: [{ name: 'Nginx', port: 80, icon: 'nginx' }] });
-            }),
+              }),
           } satisfies Partial<IDockerClient>,
         },
       ],
@@ -147,28 +166,50 @@ describe('DockerTopologyService', () => {
 
   it('구성과 실행 상태를 합쳐 토폴로지 스냅샷을 만든다', async () => {
     const snapshot = await service.getSnapshot();
-    const blogNode = snapshot.nodes.find((node) => node.id === 'container-blog-app');
-    const controlNode = snapshot.nodes.find((node) => node.id === 'local-control');
-    const slacordNode = snapshot.nodes.find((node) => node.id === 'container-slacord-app');
+    const blogNode = snapshot.nodes.find(
+      (node) => node.id === 'container-blog-app',
+    );
+    const blogSiteNode = snapshot.nodes.find(
+      (node) => node.id === 'nginx-blog',
+    );
+    const controlNode = snapshot.nodes.find(
+      (node) => node.id === 'local-control',
+    );
+    const slacordNode = snapshot.nodes.find(
+      (node) => node.id === 'container-slacord-app',
+    );
+    const slacordSiteNode = snapshot.nodes.find(
+      (node) => node.id === 'nginx-slacord',
+    );
+    const hostNode = snapshot.nodes.find((node) => node.id === 'host');
+    const infraDbNode = snapshot.nodes.find(
+      (node) => node.id === 'container-infra-db',
+    );
 
     expect(snapshot.summary.containerCount).toBe(4);
     expect(snapshot.nodes.some((node) => node.id === 'host')).toBe(true);
-    expect(snapshot.nodes.some((node) => node.id === 'local-control')).toBe(true);
+    expect(snapshot.nodes.some((node) => node.id === 'local-control')).toBe(
+      true,
+    );
     expect(snapshot.nodes.some((node) => node.id === 'nginx-blog')).toBe(true);
-    expect(snapshot.nodes.some((node) => node.id === 'nginx-slacord')).toBe(true);
+    expect(snapshot.nodes.some((node) => node.id === 'nginx-slacord')).toBe(
+      true,
+    );
     expect(
-      snapshot.nodes.some((node) =>
-        node.id === 'container-blog-app-service-SSH-22',
+      snapshot.nodes.some(
+        (node) => node.id === 'container-blog-app-service-SSH-22',
       ),
     ).toBe(true);
     expect(
       snapshot.edges.some(
-        (edge) => edge.source === 'nginx-blog' && edge.target === 'container-blog-app',
+        (edge) =>
+          edge.source === 'nginx-blog' && edge.target === 'container-blog-app',
       ),
     ).toBe(true);
     expect(
       snapshot.edges.some(
-        (edge) => edge.source === 'nginx-control' && edge.target === 'local-control',
+        (edge) =>
+          edge.source === 'nginx-control' && edge.target === 'local-control',
       ),
     ).toBe(true);
     expect(blogNode?.data).toEqual(
@@ -196,5 +237,14 @@ describe('DockerTopologyService', () => {
         }),
       }),
     );
+    expect(blogNode?.position.x).toBe(blogSiteNode?.position.x);
+    expect(slacordNode?.position.x).toBe(slacordSiteNode?.position.x);
+    expect((slacordNode?.position.x ?? 0) - (blogNode?.position.x ?? 0)).toBeGreaterThan(350);
+    expect(controlNode?.position.x).toBeLessThan(
+      infraDbNode?.position.x ?? 0,
+    );
+    expect(
+      (blogSiteNode?.position.y ?? 0) - (hostNode?.position.y ?? 0),
+    ).toBeGreaterThan(500);
   });
 });

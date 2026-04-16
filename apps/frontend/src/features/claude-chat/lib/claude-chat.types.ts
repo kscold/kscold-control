@@ -18,5 +18,8 @@ export interface ToolUse {
 export interface ClaudeChatSession {
   sessionId: string | null;
   isConnected: boolean;
+  isReady: boolean;
   totalCostUsd: number;
+  workingDirectory: string | null;
+  lastError: string | null;
 }

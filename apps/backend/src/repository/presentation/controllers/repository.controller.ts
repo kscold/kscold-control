@@ -24,12 +24,16 @@ import {
   ListProjectsUseCase,
   DeleteProjectUseCase,
   UploadFilesUseCase,
+  CreateUploadSessionUseCase,
+  GetUploadSessionUseCase,
+  UploadSessionBatchUseCase,
   DownloadArchiveUseCase,
   BrowseTreeUseCase,
   ReadFileUseCase,
 } from '../../application/use-cases';
 import { CreateProjectDto } from '../../application/dto/create-project.dto';
 import type { UploadFile } from '../../application/use-cases/upload-files.use-case';
+import type { CreateUploadSessionInput } from '../../application/use-cases/create-upload-session.use-case';
 
 interface MulterFile {
   fieldname: string;
@@ -46,6 +50,9 @@ export class RepositoryController {
     private readonly listProjectsUseCase: ListProjectsUseCase,
     private readonly deleteProjectUseCase: DeleteProjectUseCase,
     private readonly uploadFilesUseCase: UploadFilesUseCase,
+    private readonly createUploadSessionUseCase: CreateUploadSessionUseCase,
+    private readonly getUploadSessionUseCase: GetUploadSessionUseCase,
+    private readonly uploadSessionBatchUseCase: UploadSessionBatchUseCase,
     private readonly downloadArchiveUseCase: DownloadArchiveUseCase,
     private readonly browseTreeUseCase: BrowseTreeUseCase,
     private readonly readFileUseCase: ReadFileUseCase,
@@ -102,6 +109,70 @@ export class RepositoryController {
     }));
 
     return this.uploadFilesUseCase.execute(id, uploadFiles, replace === 'true');
+  }
+
+  @Post('projects/:id/upload-sessions')
+  @RequirePermissions(PERMISSIONS.REPOSITORY_WRITE)
+  async createUploadSession(
+    @Param('id') id: string,
+    @Body() body: CreateUploadSessionInput,
+  ) {
+    return this.createUploadSessionUseCase.execute(id, body);
+  }
+
+  @Get('projects/:id/upload-sessions/latest')
+  @RequirePermissions(PERMISSIONS.REPOSITORY_READ)
+  async getLatestUploadSession(@Param('id') id: string) {
+    const item = await this.getUploadSessionUseCase.executeLatest(id);
+    return { item };
+  }
+
+  @Get('projects/:id/upload-sessions/:sessionId')
+  @RequirePermissions(PERMISSIONS.REPOSITORY_READ)
+  async getUploadSession(
+    @Param('id') id: string,
+    @Param('sessionId') sessionId: string,
+  ) {
+    const item = await this.getUploadSessionUseCase.executeById(id, sessionId);
+    return { item };
+  }
+
+  @Post('projects/:id/upload-sessions/:sessionId/batches/:batchIndex')
+  @RequirePermissions(PERMISSIONS.REPOSITORY_WRITE)
+  @UseInterceptors(
+    FilesInterceptor('files', 200, {
+      limits: {
+        fileSize: 10 * 1024 * 1024,
+        files: 200,
+      },
+    }),
+  )
+  async uploadSessionBatch(
+    @Param('id') id: string,
+    @Param('sessionId') sessionId: string,
+    @Param('batchIndex') batchIndexRaw: string,
+    @UploadedFiles() files: MulterFile[],
+    @Body('relativePaths') relativePathsRaw: string | string[],
+  ) {
+    const batchIndex = parseInt(batchIndexRaw, 10);
+    const paths: string[] = Array.isArray(relativePathsRaw)
+      ? relativePathsRaw
+      : relativePathsRaw
+        ? JSON.parse(relativePathsRaw)
+        : [];
+
+    const uploadFiles = files.map((file, index) => ({
+      relativePath: paths[index] ?? file.originalname,
+      buffer: file.buffer,
+      size: file.size,
+    }));
+
+    return this.uploadSessionBatchUseCase.execute(
+      id,
+      sessionId,
+      batchIndex,
+      uploadFiles,
+    );
   }
 
   @Get('projects/:id/download')

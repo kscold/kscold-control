@@ -4,18 +4,23 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { Project } from './domain/entities/project.entity';
 import { PROJECT_REPOSITORY } from './domain/repositories/project.repository.interface';
 import { FILE_STORAGE } from './domain/repositories/file-storage.interface';
+import { UPLOAD_SESSION_REPOSITORY } from './domain/repositories/upload-session.repository.interface';
 
 import {
   CreateProjectUseCase,
   ListProjectsUseCase,
   DeleteProjectUseCase,
   UploadFilesUseCase,
+  CreateUploadSessionUseCase,
+  GetUploadSessionUseCase,
+  UploadSessionBatchUseCase,
   DownloadArchiveUseCase,
   BrowseTreeUseCase,
   ReadFileUseCase,
 } from './application/use-cases';
 
 import { TypeOrmProjectRepository } from './infrastructure/repositories/typeorm-project.repository';
+import { LocalUploadSessionRepository } from './infrastructure/repositories/local-upload-session.repository';
 import { LocalFileStorageService } from './infrastructure/storage/local-file-storage.service';
 
 import { RepositoryController } from './presentation/controllers/repository.controller';
@@ -30,6 +35,9 @@ import { AuthModule } from '../auth/auth.module';
     ListProjectsUseCase,
     DeleteProjectUseCase,
     UploadFilesUseCase,
+    CreateUploadSessionUseCase,
+    GetUploadSessionUseCase,
+    UploadSessionBatchUseCase,
     DownloadArchiveUseCase,
     BrowseTreeUseCase,
     ReadFileUseCase,
@@ -40,6 +48,10 @@ import { AuthModule } from '../auth/auth.module';
     {
       provide: FILE_STORAGE,
       useClass: LocalFileStorageService,
+    },
+    {
+      provide: UPLOAD_SESSION_REPOSITORY,
+      useClass: LocalUploadSessionRepository,
     },
   ],
 })

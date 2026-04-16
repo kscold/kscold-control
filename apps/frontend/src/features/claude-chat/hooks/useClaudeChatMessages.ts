@@ -1,6 +1,31 @@
 import { useState, useCallback, useRef } from 'react';
 import { ChatMessage, ToolUse } from '../lib/claude-chat.types';
 
+export function appendUniqueToolUse(
+  existingTools: ToolUse[],
+  nextTool: ToolUse,
+) {
+  const hasSameTool = existingTools.some(
+    (existing) =>
+      existing.tool === nextTool.tool &&
+      existing.input === nextTool.input &&
+      existing.status === nextTool.status,
+  );
+
+  if (hasSameTool) {
+    return existingTools;
+  }
+
+  return [...existingTools, nextTool];
+}
+
+export function completeToolUses(tools: ToolUse[] = []) {
+  return tools.map((tool) => ({
+    ...tool,
+    status: 'end' as const,
+  }));
+}
+
 export function useClaudeChatMessages() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isStreaming, setIsStreaming] = useState(false);
@@ -45,7 +70,12 @@ export function useClaudeChatMessages() {
   }, []);
 
   const addToolUse = useCallback((tool: ToolUse) => {
-    toolsRef.current = [...toolsRef.current, tool];
+    const nextTools = appendUniqueToolUse(toolsRef.current, tool);
+    if (nextTools === toolsRef.current) {
+      return;
+    }
+
+    toolsRef.current = nextTools;
     setMessages((prev) => {
       const updated = [...prev];
       const last = updated[updated.length - 1];
@@ -68,6 +98,7 @@ export function useClaudeChatMessages() {
           updated[updated.length - 1] = {
             ...last,
             content: data.content || last.content,
+            tools: completeToolUses(last.tools),
             costUsd: data.costUsd,
             durationMs: data.durationMs,
             isStreaming: false,
@@ -97,6 +128,7 @@ export function useClaudeChatMessages() {
           role: m.role as 'user' | 'assistant',
           content: m.content,
           costUsd: m.metadata?.costUsd,
+          durationMs: m.metadata?.durationMs,
           timestamp: new Date(m.timestamp),
         }));
       setMessages(loaded);

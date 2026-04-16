@@ -92,7 +92,14 @@ export class TerminalGateway
 
       this.sessionMapper.mapClientToSession(client.id, session.id);
 
-      client.emit('terminal:session-ready', { sessionId: session.id, isReconnect });
+      client.emit('terminal:session-ready', {
+        sessionId: session.id,
+        isReconnect,
+        workingDirectory: this.ptyManager.getWorkingDirectory(),
+        shellPath: this.ptyManager.getShellPath(),
+        claudeBinaryPath: this.ptyManager.getClaudeBinaryPath(),
+        claudeLaunchCommand: this.ptyManager.getClaudeLaunchCommand(),
+      });
 
       if (isReconnect) {
         const messages = await this.terminalSession.getHistory(session.id);
@@ -121,7 +128,11 @@ export class TerminalGateway
 
           shell.onData(async (data) => {
             try {
-              await this.terminalSession.saveMessage(session.id, 'system', data);
+              await this.terminalSession.saveMessage(
+                session.id,
+                'system',
+                data,
+              );
             } catch (err) {
               this.logger.error('[Terminal] Failed to save output to DB:', err);
             }
@@ -275,7 +286,11 @@ export class TerminalGateway
       content: string;
     },
   ) {
-    await this.terminalSession.saveMessage(data.sessionId, data.role, data.content);
+    await this.terminalSession.saveMessage(
+      data.sessionId,
+      data.role,
+      data.content,
+    );
     return { success: true };
   }
 

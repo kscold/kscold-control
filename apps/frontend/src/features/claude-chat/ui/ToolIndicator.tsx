@@ -11,7 +11,9 @@ const TOOL_LABELS: Record<string, { label: string; color: string }> = {
 };
 
 function getToolInfo(tool: string) {
-  return TOOL_LABELS[tool] || { label: tool, color: 'bg-gray-700 text-gray-300' };
+  return (
+    TOOL_LABELS[tool] || { label: tool, color: 'bg-gray-700 text-gray-300' }
+  );
 }
 
 interface ToolIndicatorProps {
@@ -22,22 +24,35 @@ export function ToolIndicator({ tools }: ToolIndicatorProps) {
   if (!tools || tools.length === 0) return null;
 
   return (
-    <div className="flex flex-wrap gap-1.5 mt-1.5 mb-1">
+    <div className="mb-3 space-y-2 rounded-2xl border border-white/8 bg-slate-950/70 p-3">
       {tools.map((t, i) => {
         const info = getToolInfo(t.tool);
         return (
-          <span
-            key={i}
-            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium ${info.color}`}
+          <div
+            key={`${t.tool}-${t.input}-${i}`}
+            className="flex items-start justify-between gap-3 rounded-2xl border border-white/6 bg-white/5 px-3 py-2"
           >
-            {t.status === 'start' && (
-              <span className="w-1.5 h-1.5 rounded-full bg-current animate-pulse" />
-            )}
-            {info.label}
-            {t.input && (
-              <span className="opacity-60 truncate max-w-[120px]">{t.input}</span>
-            )}
-          </span>
+            <div className="min-w-0">
+              <div className="flex items-center gap-2">
+                <span
+                  className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium ${info.color}`}
+                >
+                  {t.status === 'start' && (
+                    <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-current" />
+                  )}
+                  {info.label}
+                </span>
+                <span className="text-[11px] uppercase tracking-[0.18em] text-slate-500">
+                  {t.status === 'end' ? 'completed' : 'running'}
+                </span>
+              </div>
+              {t.input && (
+                <p className="mt-1 truncate font-mono text-xs text-slate-400">
+                  {t.input}
+                </p>
+              )}
+            </div>
+          </div>
         );
       })}
     </div>

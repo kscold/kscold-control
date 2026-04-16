@@ -13,9 +13,12 @@ import type {
   LogType,
   Pm2LogResult,
   DockerContainerSummary,
+  DockerLogArchiveSource,
+  DockerLogReadOptions,
   NginxStatus,
   SystemInfo,
 } from '../../domain/types/log.type';
+import type { ChildProcessWithoutNullStreams } from 'child_process';
 
 @Injectable()
 export class LogsService {
@@ -34,10 +37,18 @@ export class LogsService {
     logType: LogType,
     lines: number = 100,
     containerId?: string,
+    dockerOptions?: Omit<DockerLogReadOptions, 'containerId'>,
   ): Promise<string[]> {
     switch (logType) {
       case 'docker':
-        return this.dockerLogReader.readLogs(lines, containerId);
+        return this.dockerLogReader.readContainerLogs({
+          containerId,
+          containerName: dockerOptions?.containerName,
+          tail: dockerOptions?.tail ?? lines,
+          timestamps: dockerOptions?.timestamps ?? false,
+          since: dockerOptions?.since,
+          filter: dockerOptions?.filter ?? 'all',
+        });
       case 'pm2':
         return this.fileLogReader.readLogs(lines, logType);
       case 'backend':
@@ -55,6 +66,31 @@ export class LogsService {
 
   async getDockerContainers(): Promise<DockerContainerSummary[]> {
     return this.dockerLogReader.listContainers();
+  }
+
+  async getDockerArchiveSources(
+    containerId: string,
+  ): Promise<DockerLogArchiveSource[]> {
+    return this.dockerLogReader.listArchiveSources(containerId);
+  }
+
+  async getDockerArchiveLogs(
+    options: DockerLogReadOptions & { sourceId: string },
+  ): Promise<string[]> {
+    return this.dockerLogReader.readArchiveLogs(options);
+  }
+
+  createDockerLogStream(
+    options: DockerLogReadOptions,
+  ): ChildProcessWithoutNullStreams {
+    return this.dockerLogReader.createLogStream(options);
+  }
+
+  filterDockerLogLines(
+    lines: string[],
+    options: DockerLogReadOptions,
+  ): string[] {
+    return this.dockerLogReader.applyFilters(lines, options);
   }
 
   async getNginxStatus(): Promise<NginxStatus> {
