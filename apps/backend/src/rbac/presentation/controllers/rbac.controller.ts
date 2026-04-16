@@ -30,7 +30,6 @@ import {
   CreateUserDto,
   UpdateUserDto,
   AssignRolesDto,
-  SetTerminalLimitDto,
 } from '../../application/dto';
 
 // Presentation Layer
@@ -96,8 +95,7 @@ export class RbacController {
       targetType: 'user',
       targetId: result.id,
       metadata: {
-        email: result.email,
-        roleCount: result.roles?.length ?? 0,
+        after: this.toUserSnapshot(result),
       },
     });
     return result;
@@ -113,6 +111,7 @@ export class RbacController {
     @Body() dto: UpdateUserDto,
     @Request() req: JwtRequest,
   ) {
+    const beforeUser = await this.getUserSnapshot(id);
     const result = await this.updateUserUseCase.execute(id, dto);
     await this.auditLogService.record({
       domain: 'rbac',
@@ -123,8 +122,8 @@ export class RbacController {
       targetType: 'user',
       targetId: id,
       metadata: {
-        email: result.email,
-        updatedEmail: dto.email ?? null,
+        before: beforeUser,
+        after: this.toUserSnapshot(result),
         passwordChanged: Boolean(dto.password),
       },
     });
@@ -137,7 +136,8 @@ export class RbacController {
   @Delete('users/:id')
   @RequirePermissions(PERMISSIONS.RBAC_MANAGE)
   async deleteUser(@Param('id') id: string, @Request() req: JwtRequest) {
-    const result = await this.deleteUserUseCase.execute(id);
+    const beforeUser = await this.getUserSnapshot(id);
+    await this.deleteUserUseCase.execute(id);
     await this.auditLogService.record({
       domain: 'rbac',
       action: 'user.delete',
@@ -146,8 +146,11 @@ export class RbacController {
       actorEmail: req.user?.email ?? null,
       targetType: 'user',
       targetId: id,
+      metadata: {
+        before: beforeUser,
+      },
     });
-    return result;
+    return { success: true };
   }
 
   /**
@@ -160,6 +163,7 @@ export class RbacController {
     @Body() requestDto: AssignRolesRequestDto,
     @Request() req: JwtRequest,
   ) {
+    const beforeUser = await this.getUserSnapshot(userId);
     const dto: AssignRolesDto = {
       userId,
       roleIds: requestDto.roleIds,
@@ -174,7 +178,8 @@ export class RbacController {
       targetType: 'user',
       targetId: userId,
       metadata: {
-        roleIds: requestDto.roleIds,
+        before: beforeUser,
+        after: this.toUserSnapshot(result),
       },
     });
     return result;
@@ -188,6 +193,7 @@ export class RbacController {
   @Post('users/:id/reset-terminal-limit')
   @RequirePermissions(PERMISSIONS.RBAC_MANAGE)
   async resetTerminalLimit(@Param('id') id: string, @Request() req: JwtRequest) {
+    const beforeUser = await this.getUserSnapshot(id);
     const result = await this.manageTerminalLimitUseCase.resetCommandCount(id);
     await this.auditLogService.record({
       domain: 'rbac',
@@ -197,6 +203,18 @@ export class RbacController {
       actorEmail: req.user?.email ?? null,
       targetType: 'user',
       targetId: id,
+      metadata: {
+        before: beforeUser,
+        after: beforeUser
+          ? {
+              ...beforeUser,
+              terminalCommandCount: result.terminalCommandCount,
+            }
+          : {
+              terminalCommandCount: result.terminalCommandCount,
+              terminalCommandLimit: result.terminalCommandLimit,
+            },
+      },
     });
     return result;
   }
@@ -211,6 +229,7 @@ export class RbacController {
     @Body() requestDto: SetTerminalLimitRequestDto,
     @Request() req: JwtRequest,
   ) {
+    const beforeUser = await this.getUserSnapshot(id);
     const result = await this.manageTerminalLimitUseCase.setCommandLimit(
       id,
       requestDto.limit,
@@ -224,9 +243,46 @@ export class RbacController {
       targetType: 'user',
       targetId: id,
       metadata: {
-        limit: requestDto.limit,
+        before: beforeUser,
+        after: beforeUser
+          ? {
+              ...beforeUser,
+              terminalCommandLimit: result.terminalCommandLimit,
+            }
+          : {
+              terminalCommandLimit: result.terminalCommandLimit,
+            },
       },
     });
     return result;
+  }
+
+  private async getUserSnapshot(id: string) {
+    const users = await this.listUsersUseCase.execute();
+    return this.toUserSnapshot(users.find((user) => user.id === id));
+  }
+
+  private toUserSnapshot(
+    user:
+      | {
+          id: string;
+          email: string;
+          roles?: Array<{ name: string }>;
+          terminalCommandCount: number;
+          terminalCommandLimit: number;
+        }
+      | undefined,
+  ) {
+    if (!user) {
+      return null;
+    }
+
+    return {
+      id: user.id,
+      email: user.email,
+      roles: (user.roles ?? []).map((role) => role.name),
+      terminalCommandCount: user.terminalCommandCount,
+      terminalCommandLimit: user.terminalCommandLimit,
+    };
   }
 }

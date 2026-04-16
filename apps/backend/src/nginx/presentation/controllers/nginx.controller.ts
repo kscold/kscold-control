@@ -51,8 +51,8 @@ export class NginxController {
       targetType: 'site',
       targetId: dto.name,
       metadata: {
-        domain: dto.domain,
-        enabled: result.enabled,
+        after: this.toSiteSnapshot(result),
+        testResult: result.testResult.success,
       },
     });
     return result;
@@ -65,6 +65,7 @@ export class NginxController {
     @Body() dto: CreateNginxSiteDto,
     @Request() req: JwtRequest,
   ) {
+    const beforeSite = await this.getSiteSnapshot(name);
     const result = await this.nginxSiteService.updateSite(name, dto);
     await this.auditLogService.record({
       domain: 'nginx',
@@ -75,8 +76,9 @@ export class NginxController {
       targetType: 'site',
       targetId: name,
       metadata: {
-        domain: dto.domain,
-        enabled: result.enabled,
+        before: beforeSite,
+        after: this.toSiteSnapshot(result),
+        testResult: result.testResult.success,
       },
     });
     return result;
@@ -85,6 +87,7 @@ export class NginxController {
   @Delete('sites/:name')
   @RequirePermissions(PERMISSIONS.SYSTEM_WRITE)
   async deleteSite(@Param('name') name: string, @Request() req: JwtRequest) {
+    const beforeSite = await this.getSiteSnapshot(name);
     const result = await this.nginxSiteService.deleteSite(name);
     await this.auditLogService.record({
       domain: 'nginx',
@@ -94,6 +97,10 @@ export class NginxController {
       actorEmail: req.user?.email ?? null,
       targetType: 'site',
       targetId: name,
+      metadata: {
+        before: beforeSite,
+        testResult: result.testResult.success,
+      },
     });
     return result;
   }
@@ -101,6 +108,7 @@ export class NginxController {
   @Post('sites/:name/toggle')
   @RequirePermissions(PERMISSIONS.SYSTEM_WRITE)
   async toggleSite(@Param('name') name: string, @Request() req: JwtRequest) {
+    const beforeSite = await this.getSiteSnapshot(name);
     const result = await this.nginxSiteService.toggleSite(name);
     await this.auditLogService.record({
       domain: 'nginx',
@@ -111,7 +119,16 @@ export class NginxController {
       targetType: 'site',
       targetId: name,
       metadata: {
-        enabled: result.enabled,
+        before: beforeSite,
+        after: beforeSite
+          ? {
+              ...beforeSite,
+              enabled: result.enabled,
+            }
+          : {
+              enabled: result.enabled,
+            },
+        testResult: result.testResult.success,
       },
     });
     return result;
@@ -262,5 +279,37 @@ export class NginxController {
     const sites = await this.nginxSiteService.listSites();
     const domains = sites.map((s: any) => s.domain);
     return this.dnsService.verifyAll(domains);
+  }
+
+  private async getSiteSnapshot(name: string) {
+    const items = await this.nginxSiteService.listSites();
+    return this.toSiteSnapshot(items.find((item) => item.name === name) ?? null);
+  }
+
+  private toSiteSnapshot(
+    site:
+      | {
+          name: string;
+          domain: string;
+          upstream: string;
+          ssl: boolean;
+          websocket: boolean;
+          enabled: boolean;
+        }
+      | null
+      | undefined,
+  ) {
+    if (!site) {
+      return null;
+    }
+
+    return {
+      name: site.name,
+      domain: site.domain,
+      upstream: site.upstream,
+      ssl: site.ssl,
+      websocket: site.websocket,
+      enabled: site.enabled,
+    };
   }
 }

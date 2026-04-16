@@ -1,3 +1,4 @@
+import { useEffect, useMemo, useState } from 'react';
 import { History, RefreshCw, Search, ShieldCheck } from 'lucide-react';
 import { useAuditTimeline } from '../hooks/useAuditTimeline';
 import type { AuditDomain, AuditEvent } from '../lib/audit.types';
@@ -40,20 +41,119 @@ function getDomainTone(domain: AuditEvent['domain']) {
   }
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+}
+
+function formatValue(value: unknown) {
+  if (value === null || value === undefined) {
+    return '-';
+  }
+
+  if (typeof value === 'string') {
+    return value;
+  }
+
+  if (typeof value === 'number' || typeof value === 'boolean') {
+    return String(value);
+  }
+
+  return JSON.stringify(value);
+}
+
+function flattenRecord(
+  value: Record<string, unknown>,
+  prefix = '',
+  output = new Map<string, unknown>(),
+) {
+  Object.entries(value).forEach(([key, nestedValue]) => {
+    const nextPath = prefix ? `${prefix}.${key}` : key;
+
+    if (isRecord(nestedValue) && Object.keys(nestedValue).length > 0) {
+      flattenRecord(nestedValue, nextPath, output);
+      return;
+    }
+
+    output.set(nextPath, nestedValue);
+  });
+
+  return output;
+}
+
+function buildDiffEntries(metadata: Record<string, unknown>) {
+  const before = isRecord(metadata.before) ? metadata.before : null;
+  const after = isRecord(metadata.after) ? metadata.after : null;
+
+  if (!before && !after) {
+    return [];
+  }
+
+  const beforeMap = before ? flattenRecord(before) : new Map<string, unknown>();
+  const afterMap = after ? flattenRecord(after) : new Map<string, unknown>();
+  const paths = Array.from(
+    new Set([...beforeMap.keys(), ...afterMap.keys()]),
+  ).sort((left, right) => left.localeCompare(right));
+
+  return paths
+    .map((path) => {
+      const beforeValue = beforeMap.get(path);
+      const afterValue = afterMap.get(path);
+
+      if (JSON.stringify(beforeValue) === JSON.stringify(afterValue)) {
+        return null;
+      }
+
+      return {
+        path,
+        beforeValue,
+        afterValue,
+      };
+    })
+    .filter(
+      (
+        entry,
+      ): entry is {
+        path: string;
+        beforeValue: unknown;
+        afterValue: unknown;
+      } => Boolean(entry),
+    );
+}
+
 export function AuditTimeline() {
   const {
+    actor,
+    setActor,
     domain,
     setDomain,
-    limit,
-    setLimit,
-    search,
-    setSearch,
-    items,
-    summary,
-    isLoading,
     error,
+    from,
+    setFrom,
+    isLoading,
+    items,
+    limit,
     reload,
+    search,
+    setLimit,
+    setSearch,
+    setTarget,
+    summary,
+    target,
+    to,
+    setTo,
   } = useAuditTimeline();
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (items.length === 0) {
+      setSelectedId(null);
+      return;
+    }
+
+    if (!selectedId || !items.some((item) => item.id === selectedId)) {
+      setSelectedId(items[0].id);
+    }
+  }, [items, selectedId]);
 
   const summaryCards: Array<{
     domain: AuditDomain;
@@ -66,6 +166,11 @@ export function AuditTimeline() {
     { domain: 'nginx', label: 'Nginx', value: summary.byDomain.nginx },
     { domain: 'rbac', label: 'RBAC', value: summary.byDomain.rbac },
   ];
+  const selectedItem = items.find((item) => item.id === selectedId) ?? null;
+  const diffEntries = useMemo(
+    () => buildDiffEntries(selectedItem?.metadata ?? {}),
+    [selectedItem],
+  );
 
   return (
     <div className="h-full overflow-auto bg-gray-950 p-4 sm:p-6">
@@ -121,7 +226,7 @@ export function AuditTimeline() {
         </div>
       </div>
 
-      <div className="mb-4 grid gap-3 xl:grid-cols-[minmax(0,1fr)_repeat(5,140px)]">
+      <div className="mb-4 grid gap-3 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_repeat(2,220px)]">
         <label className="relative">
           <Search
             size={16}
@@ -130,11 +235,42 @@ export function AuditTimeline() {
           <input
             value={search}
             onChange={(event) => setSearch(event.target.value)}
-            placeholder="이벤트, actor, target, metadata 검색"
+            placeholder="이벤트, metadata, action 검색"
             className="w-full rounded-xl border border-gray-800 bg-gray-900 py-2 pl-10 pr-3 text-sm text-white placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
         </label>
 
+        <input
+          value={actor}
+          onChange={(event) => setActor(event.target.value)}
+          placeholder="actor email 또는 id"
+          className="w-full rounded-xl border border-gray-800 bg-gray-900 px-3 py-2 text-sm text-white placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+        />
+
+        <input
+          value={target}
+          onChange={(event) => setTarget(event.target.value)}
+          placeholder="target type 또는 id"
+          className="w-full rounded-xl border border-gray-800 bg-gray-900 px-3 py-2 text-sm text-white placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+        />
+
+        <button
+          type="button"
+          onClick={() => {
+            setActor('');
+            setSearch('');
+            setTarget('');
+            setFrom('');
+            setTo('');
+            setDomain('all');
+          }}
+          className="rounded-xl border border-white/10 bg-gray-900/70 px-4 py-2 text-sm text-gray-300 transition hover:border-white/20 hover:text-white"
+        >
+          필터 초기화
+        </button>
+      </div>
+
+      <div className="mb-4 grid gap-3 xl:grid-cols-[repeat(5,140px)_minmax(0,1fr)]">
         {summaryCards.map((card) => {
           const active = domain === card.domain;
           return (
@@ -154,6 +290,30 @@ export function AuditTimeline() {
             </button>
           );
         })}
+
+        <div className="grid gap-3 sm:grid-cols-2">
+          <label className="rounded-xl border border-white/10 bg-gray-900/70 px-3 py-2 text-xs text-gray-400">
+            시작 시각
+            <input
+              aria-label="감사 시작 시각"
+              type="datetime-local"
+              value={from}
+              onChange={(event) => setFrom(event.target.value)}
+              className="mt-2 w-full rounded-lg border border-gray-800 bg-gray-950 px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </label>
+
+          <label className="rounded-xl border border-white/10 bg-gray-900/70 px-3 py-2 text-xs text-gray-400">
+            끝 시각
+            <input
+              aria-label="감사 끝 시각"
+              type="datetime-local"
+              value={to}
+              onChange={(event) => setTo(event.target.value)}
+              className="mt-2 w-full rounded-lg border border-gray-800 bg-gray-950 px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </label>
+        </div>
       </div>
 
       {error && (
@@ -162,57 +322,154 @@ export function AuditTimeline() {
         </div>
       )}
 
-      <div className="space-y-3" data-testid="audit-timeline">
-        {items.length === 0 && !isLoading ? (
-          <div className="rounded-2xl border border-dashed border-white/10 bg-gray-900/50 px-6 py-10 text-center text-sm text-gray-500">
-            검색 조건에 맞는 감사 이벤트가 없습니다.
-          </div>
-        ) : (
-          items.map((item) => (
-            <article
-              key={item.id}
-              className="rounded-2xl border border-white/10 bg-gray-900/70 p-4"
-            >
-              <div className="flex flex-wrap items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span
-                      className={`rounded-full border px-2.5 py-1 text-[11px] font-medium ${getDomainTone(
-                        item.domain,
-                      )}`}
-                    >
-                      {item.domain}
-                    </span>
-                    <span className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[11px] text-gray-300">
-                      {item.action}
-                    </span>
-                  </div>
-                  <h2 className="mt-3 text-base font-semibold text-white">
-                    {item.summary}
-                  </h2>
-                  <div className="mt-2 flex flex-wrap gap-4 text-xs text-gray-400">
-                    <span>actor {item.actorEmail || item.actorId || 'system'}</span>
-                    <span>
-                      target {item.targetType || 'unknown'} / {item.targetId || '-'}
-                    </span>
-                    <span>{formatTimestamp(item.createdAt)}</span>
-                  </div>
-                </div>
+      <div className="grid gap-4 2xl:grid-cols-[minmax(0,1.15fr)_420px]">
+        <div className="space-y-3" data-testid="audit-timeline">
+          {items.length === 0 && !isLoading ? (
+            <div className="rounded-2xl border border-dashed border-white/10 bg-gray-900/50 px-6 py-10 text-center text-sm text-gray-500">
+              검색 조건에 맞는 감사 이벤트가 없습니다.
+            </div>
+          ) : (
+            items.map((item) => {
+              const active = item.id === selectedId;
 
-                <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-gray-950/80 px-3 py-1.5 text-[11px] text-gray-400">
-                  <History size={12} />
-                  timeline
+              return (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => setSelectedId(item.id)}
+                  className={`block w-full rounded-2xl border p-4 text-left transition ${
+                    active
+                      ? 'border-blue-500/60 bg-blue-500/10'
+                      : 'border-white/10 bg-gray-900/70 hover:border-white/20'
+                  }`}
+                >
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span
+                          className={`rounded-full border px-2.5 py-1 text-[11px] font-medium ${getDomainTone(
+                            item.domain,
+                          )}`}
+                        >
+                          {item.domain}
+                        </span>
+                        <span className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[11px] text-gray-300">
+                          {item.action}
+                        </span>
+                      </div>
+                      <h2 className="mt-3 text-base font-semibold text-white">
+                        {item.summary}
+                      </h2>
+                      <div className="mt-2 flex flex-wrap gap-4 text-xs text-gray-400">
+                        <span>actor {item.actorEmail || item.actorId || 'system'}</span>
+                        <span>
+                          target {item.targetType || 'unknown'} / {item.targetId || '-'}
+                        </span>
+                        <span>{formatTimestamp(item.createdAt)}</span>
+                      </div>
+                    </div>
+
+                    <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-gray-950/80 px-3 py-1.5 text-[11px] text-gray-400">
+                      <History size={12} />
+                      detail
+                    </div>
+                  </div>
+                </button>
+              );
+            })
+          )}
+        </div>
+
+        <aside
+          className="rounded-2xl border border-white/10 bg-gray-900/70 p-4"
+          data-testid="audit-detail"
+        >
+          {selectedItem ? (
+            <div className="space-y-4">
+              <div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <span
+                    className={`rounded-full border px-2.5 py-1 text-[11px] font-medium ${getDomainTone(
+                      selectedItem.domain,
+                    )}`}
+                  >
+                    {selectedItem.domain}
+                  </span>
+                  <span className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[11px] text-gray-300">
+                    {selectedItem.action}
+                  </span>
+                </div>
+                <h2 className="mt-3 text-lg font-semibold text-white">
+                  {selectedItem.summary}
+                </h2>
+                <div className="mt-3 grid gap-2 text-sm text-gray-300">
+                  <div>actor: {selectedItem.actorEmail || selectedItem.actorId || 'system'}</div>
+                  <div>
+                    target: {selectedItem.targetType || 'unknown'} /{' '}
+                    {selectedItem.targetId || '-'}
+                  </div>
+                  <div>time: {formatTimestamp(selectedItem.createdAt)}</div>
                 </div>
               </div>
 
-              {Object.keys(item.metadata ?? {}).length > 0 && (
-                <pre className="mt-3 overflow-auto rounded-xl border border-white/8 bg-black/30 p-3 text-[11px] leading-5 text-slate-300">
-                  {JSON.stringify(item.metadata, null, 2)}
-                </pre>
+              <section className="rounded-xl border border-white/10 bg-black/20 p-4">
+                <div className="text-[11px] uppercase tracking-[0.22em] text-gray-500">
+                  Detail Diff
+                </div>
+
+                {diffEntries.length > 0 ? (
+                  <div className="mt-3 space-y-3">
+                    {diffEntries.map((entry) => (
+                      <div
+                        key={entry.path}
+                        className="rounded-xl border border-white/8 bg-black/20 p-3"
+                      >
+                        <div className="text-xs font-medium text-cyan-100">{entry.path}</div>
+                        <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                          <div className="rounded-lg border border-rose-400/20 bg-rose-500/10 p-2">
+                            <div className="text-[11px] uppercase tracking-[0.18em] text-rose-200/80">
+                              Before
+                            </div>
+                            <div className="mt-1 break-all text-xs text-rose-50">
+                              {formatValue(entry.beforeValue)}
+                            </div>
+                          </div>
+                          <div className="rounded-lg border border-emerald-400/20 bg-emerald-500/10 p-2">
+                            <div className="text-[11px] uppercase tracking-[0.18em] text-emerald-200/80">
+                              After
+                            </div>
+                            <div className="mt-1 break-all text-xs text-emerald-50">
+                              {formatValue(entry.afterValue)}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="mt-3 text-sm text-gray-500">
+                    before/after 메타가 없는 이벤트입니다.
+                  </div>
+                )}
+              </section>
+
+              {Object.keys(selectedItem.metadata ?? {}).length > 0 && (
+                <section className="rounded-xl border border-white/10 bg-black/20 p-4">
+                  <div className="text-[11px] uppercase tracking-[0.22em] text-gray-500">
+                    Raw Metadata
+                  </div>
+                  <pre className="mt-3 overflow-auto rounded-xl border border-white/8 bg-black/30 p-3 text-[11px] leading-5 text-slate-300">
+                    {JSON.stringify(selectedItem.metadata, null, 2)}
+                  </pre>
+                </section>
               )}
-            </article>
-          ))
-        )}
+            </div>
+          ) : (
+            <div className="flex h-full min-h-[320px] items-center justify-center rounded-xl border border-dashed border-white/10 bg-black/20 p-6 text-center text-sm text-gray-500">
+              왼쪽 타임라인에서 이벤트를 선택하면 상세 diff와 메타데이터를 확인할 수 있습니다.
+            </div>
+          )}
+        </aside>
       </div>
     </div>
   );

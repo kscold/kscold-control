@@ -26,9 +26,13 @@ export interface CreateAuditEventInput {
 
 export interface ListAuditEventsInput {
   domain?: AuditDomain | 'all';
+  actor?: string;
   actorId?: string;
+  target?: string;
   targetId?: string;
   search?: string;
+  from?: string;
+  to?: string;
   limit?: number;
 }
 
