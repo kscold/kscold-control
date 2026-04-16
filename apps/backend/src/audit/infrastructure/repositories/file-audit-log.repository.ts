@@ -10,6 +10,19 @@ import type {
   ListAuditEventsInput,
 } from '../../domain/types/audit-event.type';
 
+function normalizeDate(value?: string) {
+  if (!value) {
+    return null;
+  }
+
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    return null;
+  }
+
+  return parsed.getTime();
+}
+
 function resolveAuditLogPath() {
   const currentRoot = process.cwd();
   const backendRoot = currentRoot.endsWith(path.join('apps', 'backend'))
@@ -98,15 +111,51 @@ export class FileAuditLogRepository implements IAuditLogRepository {
     items: AuditEvent[],
     input: Omit<ListAuditEventsInput, 'limit'> | ListAuditEventsInput,
   ) {
+    const fromTime = normalizeDate(input.from);
+    const toTime = normalizeDate(input.to);
+    const normalizedActor = input.actor?.trim().toLowerCase() ?? '';
     const normalizedSearch = input.search?.trim().toLowerCase() ?? '';
+    const normalizedTarget = input.target?.trim().toLowerCase() ?? '';
 
     return items.filter((event) => {
+      const eventTime = new Date(event.createdAt).getTime();
+
+      if (fromTime !== null && eventTime < fromTime) {
+        return false;
+      }
+
+      if (toTime !== null && eventTime > toTime) {
+        return false;
+      }
+
       if (input.domain && input.domain !== 'all' && event.domain !== input.domain) {
         return false;
       }
 
+      if (normalizedActor) {
+        const actorHaystack = [event.actorEmail, event.actorId]
+          .filter(Boolean)
+          .join(' ')
+          .toLowerCase();
+
+        if (!actorHaystack.includes(normalizedActor)) {
+          return false;
+        }
+      }
+
       if (input.actorId && event.actorId !== input.actorId) {
         return false;
+      }
+
+      if (normalizedTarget) {
+        const targetHaystack = [event.targetType, event.targetId]
+          .filter(Boolean)
+          .join(' ')
+          .toLowerCase();
+
+        if (!targetHaystack.includes(normalizedTarget)) {
+          return false;
+        }
       }
 
       if (input.targetId && event.targetId !== input.targetId) {

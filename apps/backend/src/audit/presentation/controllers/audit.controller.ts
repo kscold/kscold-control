@@ -15,17 +15,25 @@ export class AuditController {
   @RequirePermissions(PERMISSIONS.SYSTEM_READ)
   async listEvents(
     @Query('domain') domain?: AuditDomain | 'all',
+    @Query('actor') actor?: string,
     @Query('actorId') actorId?: string,
+    @Query('target') target?: string,
     @Query('targetId') targetId?: string,
     @Query('search') search?: string,
+    @Query('from') from?: string,
+    @Query('to') to?: string,
     @Query('limit') limitRaw?: string,
   ) {
     const limit = parseInt(limitRaw ?? '', 10);
     const items = await this.auditLogService.list({
       domain: domain ?? 'all',
+      actor,
       actorId,
+      target,
       targetId,
       search,
+      from,
+      to,
       limit: Number.isFinite(limit) ? limit : 120,
     });
 
@@ -36,15 +44,23 @@ export class AuditController {
   @RequirePermissions(PERMISSIONS.SYSTEM_READ)
   async getSummary(
     @Query('domain') domain?: AuditDomain | 'all',
+    @Query('actor') actor?: string,
     @Query('actorId') actorId?: string,
+    @Query('target') target?: string,
     @Query('targetId') targetId?: string,
     @Query('search') search?: string,
+    @Query('from') from?: string,
+    @Query('to') to?: string,
   ) {
     const item = await this.auditLogService.summarize({
       domain: domain ?? 'all',
+      actor,
       actorId,
+      target,
       targetId,
       search,
+      from,
+      to,
     });
 
     return { item };
