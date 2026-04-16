@@ -140,7 +140,22 @@ export class DockerController {
   @RequirePermissions(PERMISSIONS.DOCKER_CREATE)
   async createContainer(@Body() dto: CreateContainerDto, @Request() req: JwtRequest) {
     dto.userId = req.user.id;
-    return this.createContainerUseCase.execute(dto);
+    const result = await this.createContainerUseCase.execute(dto);
+    await this.auditLogService.record({
+      domain: 'docker',
+      action: 'container.create',
+      summary: `컨테이너 ${dto.name}을 생성했습니다.`,
+      actorId: req.user?.id ?? req.user?.sub ?? null,
+      actorEmail: req.user?.email ?? null,
+      targetType: 'container',
+      targetId: result.id ?? dto.name,
+      metadata: {
+        name: dto.name,
+        image: dto.image,
+        ports: dto.ports,
+      },
+    });
+    return result;
   }
 
   /**
@@ -153,7 +168,22 @@ export class DockerController {
     @Body() body: { dockerId: string },
     @Request() req: JwtRequest,
   ) {
-    return this.importContainerUseCase.execute(body.dockerId, req.user.id);
+    const result = await this.importContainerUseCase.execute(body.dockerId, req.user.id);
+    await this.auditLogService.record({
+      domain: 'docker',
+      action: 'container.import',
+      summary: `외부 Docker 컨테이너 ${body.dockerId}를 가져왔습니다.`,
+      actorId: req.user?.id ?? req.user?.sub ?? null,
+      actorEmail: req.user?.email ?? null,
+      targetType: 'container',
+      targetId: result.id ?? body.dockerId,
+      metadata: {
+        dockerId: body.dockerId,
+        name: result.name,
+        image: result.image,
+      },
+    });
+    return result;
   }
 
   /**
@@ -202,8 +232,17 @@ export class DockerController {
    */
   @Delete('containers/:id')
   @RequirePermissions(PERMISSIONS.DOCKER_DELETE)
-  async removeContainer(@Param('id') id: string) {
+  async removeContainer(@Param('id') id: string, @Request() req: JwtRequest) {
     await this.removeContainerUseCase.execute(id);
+    await this.auditLogService.record({
+      domain: 'docker',
+      action: 'container.remove',
+      summary: `컨테이너 ${id}를 제거했습니다.`,
+      actorId: req.user?.id ?? req.user?.sub ?? null,
+      actorEmail: req.user?.email ?? null,
+      targetType: 'container',
+      targetId: id,
+    });
     return { success: true, message: 'Container removed successfully' };
   }
 
@@ -251,6 +290,20 @@ export class DockerController {
       req.user.id,
     );
 
+    await this.auditLogService.record({
+      domain: 'docker',
+      action: 'compose.create-service',
+      summary: `Compose 서비스 ${body.name}을 생성했습니다.`,
+      actorId: req.user?.id ?? req.user?.sub ?? null,
+      actorEmail: req.user?.email ?? null,
+      targetType: 'compose-service',
+      targetId: body.name,
+      metadata: {
+        image: body.image,
+        ports: body.ports,
+      },
+    });
+
     return {
       success: true,
       message: `Service "${body.name}" created`,
@@ -264,8 +317,17 @@ export class DockerController {
    */
   @Delete('compose/services/:name')
   @RequirePermissions(PERMISSIONS.DOCKER_DELETE)
-  async removeComposeService(@Param('name') name: string) {
+  async removeComposeService(@Param('name') name: string, @Request() req: JwtRequest) {
     await this.removeComposeServiceUseCase.execute(name);
+    await this.auditLogService.record({
+      domain: 'docker',
+      action: 'compose.remove-service',
+      summary: `Compose 서비스 ${name}을 제거했습니다.`,
+      actorId: req.user?.id ?? req.user?.sub ?? null,
+      actorEmail: req.user?.email ?? null,
+      targetType: 'compose-service',
+      targetId: name,
+    });
 
     return { success: true, message: `Service "${name}" removed from compose` };
   }

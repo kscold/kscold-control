@@ -12,3 +12,14 @@ export interface AuditEvent {
   metadata: Record<string, unknown>;
   createdAt: string;
 }
+
+export interface AuditSummary {
+  total: number;
+  last24Hours: number;
+  byDomain: {
+    repository: number;
+    docker: number;
+    nginx: number;
+    rbac: number;
+  };
+}

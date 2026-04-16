@@ -1,4 +1,4 @@
-import { History, RefreshCw, ShieldCheck } from 'lucide-react';
+import { History, RefreshCw, Search, ShieldCheck } from 'lucide-react';
 import { useAuditTimeline } from '../hooks/useAuditTimeline';
 import type { AuditDomain, AuditEvent } from '../lib/audit.types';
 
@@ -41,8 +41,31 @@ function getDomainTone(domain: AuditEvent['domain']) {
 }
 
 export function AuditTimeline() {
-  const { domain, setDomain, limit, setLimit, items, isLoading, error, reload } =
-    useAuditTimeline();
+  const {
+    domain,
+    setDomain,
+    limit,
+    setLimit,
+    search,
+    setSearch,
+    items,
+    summary,
+    isLoading,
+    error,
+    reload,
+  } = useAuditTimeline();
+
+  const summaryCards: Array<{
+    domain: AuditDomain;
+    label: string;
+    value: number;
+  }> = [
+    { domain: 'all', label: '전체 이벤트', value: summary.total },
+    { domain: 'repository', label: 'Repository', value: summary.byDomain.repository },
+    { domain: 'docker', label: 'Docker', value: summary.byDomain.docker },
+    { domain: 'nginx', label: 'Nginx', value: summary.byDomain.nginx },
+    { domain: 'rbac', label: 'RBAC', value: summary.byDomain.rbac },
+  ];
 
   return (
     <div className="h-full overflow-auto bg-gray-950 p-4 sm:p-6">
@@ -94,10 +117,43 @@ export function AuditTimeline() {
         </select>
 
         <div className="rounded-xl border border-white/10 bg-gray-900/70 px-4 py-3 text-sm text-gray-300">
-          {items.length > 0
-            ? `${items.length}건의 이벤트가 보입니다. 운영 변경 흐름을 시간순으로 빠르게 복기할 수 있습니다.`
-            : '아직 기록된 감사 이벤트가 없습니다. 업로드나 운영 액션이 발생하면 여기에 쌓입니다.'}
+          최근 24시간 {summary.last24Hours}건, 전체 {summary.total}건이 잡혀 있습니다.
         </div>
+      </div>
+
+      <div className="mb-4 grid gap-3 xl:grid-cols-[minmax(0,1fr)_repeat(5,140px)]">
+        <label className="relative">
+          <Search
+            size={16}
+            className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-500"
+          />
+          <input
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder="이벤트, actor, target, metadata 검색"
+            className="w-full rounded-xl border border-gray-800 bg-gray-900 py-2 pl-10 pr-3 text-sm text-white placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+        </label>
+
+        {summaryCards.map((card) => {
+          const active = domain === card.domain;
+          return (
+            <button
+              key={card.domain}
+              onClick={() => setDomain(card.domain)}
+              className={`rounded-xl border px-3 py-3 text-left transition ${
+                active
+                  ? 'border-blue-500 bg-blue-500/15 text-blue-50'
+                  : 'border-white/10 bg-gray-900/70 text-gray-300 hover:border-white/20 hover:text-white'
+              }`}
+            >
+              <div className="text-[11px] uppercase tracking-[0.22em] text-gray-500">
+                {card.label}
+              </div>
+              <div className="mt-2 text-xl font-semibold">{card.value}</div>
+            </button>
+          );
+        })}
       </div>
 
       {error && (
@@ -109,7 +165,7 @@ export function AuditTimeline() {
       <div className="space-y-3" data-testid="audit-timeline">
         {items.length === 0 && !isLoading ? (
           <div className="rounded-2xl border border-dashed border-white/10 bg-gray-900/50 px-6 py-10 text-center text-sm text-gray-500">
-            감사 이벤트가 아직 없습니다.
+            검색 조건에 맞는 감사 이벤트가 없습니다.
           </div>
         ) : (
           items.map((item) => (

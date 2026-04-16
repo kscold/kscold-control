@@ -40,26 +40,81 @@ export class NginxController {
 
   @Post('sites')
   @RequirePermissions(PERMISSIONS.SYSTEM_WRITE)
-  createSite(@Body() dto: CreateNginxSiteDto) {
-    return this.nginxSiteService.createSite(dto);
+  async createSite(@Body() dto: CreateNginxSiteDto, @Request() req: JwtRequest) {
+    const result = await this.nginxSiteService.createSite(dto);
+    await this.auditLogService.record({
+      domain: 'nginx',
+      action: 'site.create',
+      summary: `Nginx 사이트 ${dto.name}(${dto.domain})를 생성했습니다.`,
+      actorId: req.user?.id ?? req.user?.sub ?? null,
+      actorEmail: req.user?.email ?? null,
+      targetType: 'site',
+      targetId: dto.name,
+      metadata: {
+        domain: dto.domain,
+        enabled: result.enabled,
+      },
+    });
+    return result;
   }
 
   @Put('sites/:name')
   @RequirePermissions(PERMISSIONS.SYSTEM_WRITE)
-  updateSite(@Param('name') name: string, @Body() dto: CreateNginxSiteDto) {
-    return this.nginxSiteService.updateSite(name, dto);
+  async updateSite(
+    @Param('name') name: string,
+    @Body() dto: CreateNginxSiteDto,
+    @Request() req: JwtRequest,
+  ) {
+    const result = await this.nginxSiteService.updateSite(name, dto);
+    await this.auditLogService.record({
+      domain: 'nginx',
+      action: 'site.update',
+      summary: `Nginx 사이트 ${name} 설정을 수정했습니다.`,
+      actorId: req.user?.id ?? req.user?.sub ?? null,
+      actorEmail: req.user?.email ?? null,
+      targetType: 'site',
+      targetId: name,
+      metadata: {
+        domain: dto.domain,
+        enabled: result.enabled,
+      },
+    });
+    return result;
   }
 
   @Delete('sites/:name')
   @RequirePermissions(PERMISSIONS.SYSTEM_WRITE)
-  deleteSite(@Param('name') name: string) {
-    return this.nginxSiteService.deleteSite(name);
+  async deleteSite(@Param('name') name: string, @Request() req: JwtRequest) {
+    const result = await this.nginxSiteService.deleteSite(name);
+    await this.auditLogService.record({
+      domain: 'nginx',
+      action: 'site.delete',
+      summary: `Nginx 사이트 ${name}를 삭제했습니다.`,
+      actorId: req.user?.id ?? req.user?.sub ?? null,
+      actorEmail: req.user?.email ?? null,
+      targetType: 'site',
+      targetId: name,
+    });
+    return result;
   }
 
   @Post('sites/:name/toggle')
   @RequirePermissions(PERMISSIONS.SYSTEM_WRITE)
-  toggleSite(@Param('name') name: string) {
-    return this.nginxSiteService.toggleSite(name);
+  async toggleSite(@Param('name') name: string, @Request() req: JwtRequest) {
+    const result = await this.nginxSiteService.toggleSite(name);
+    await this.auditLogService.record({
+      domain: 'nginx',
+      action: result.enabled ? 'site.enable' : 'site.disable',
+      summary: `Nginx 사이트 ${name}를 ${result.enabled ? '활성화' : '비활성화'}했습니다.`,
+      actorId: req.user?.id ?? req.user?.sub ?? null,
+      actorEmail: req.user?.email ?? null,
+      targetType: 'site',
+      targetId: name,
+      metadata: {
+        enabled: result.enabled,
+      },
+    });
+    return result;
   }
 
   @Post('test')
@@ -129,11 +184,30 @@ export class NginxController {
    */
   @Post('certs/issue')
   @RequirePermissions(PERMISSIONS.SYSTEM_WRITE)
-  issueCert(@Body() body: { domain: string; email: string; mode?: string }) {
-    if (body.mode === 'standalone') {
-      return this.certService.issueCertStandalone(body.domain, body.email);
-    }
-    return this.certService.issueCert(body.domain, body.email);
+  async issueCert(
+    @Body() body: { domain: string; email: string; mode?: string },
+    @Request() req: JwtRequest,
+  ) {
+    const result =
+      body.mode === 'standalone'
+        ? await this.certService.issueCertStandalone(body.domain, body.email)
+        : await this.certService.issueCert(body.domain, body.email);
+
+    await this.auditLogService.record({
+      domain: 'nginx',
+      action: 'cert.issue',
+      summary: `도메인 ${body.domain} 인증서 발급을 실행했습니다.`,
+      actorId: req.user?.id ?? req.user?.sub ?? null,
+      actorEmail: req.user?.email ?? null,
+      targetType: 'certificate',
+      targetId: body.domain,
+      metadata: {
+        email: body.email,
+        mode: body.mode ?? 'webroot',
+      },
+    });
+
+    return result;
   }
 
   /**
