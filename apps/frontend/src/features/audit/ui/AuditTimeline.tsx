@@ -1,5 +1,13 @@
 import { useEffect, useMemo, useState } from 'react';
-import { History, RefreshCw, Search, ShieldCheck } from 'lucide-react';
+import {
+  Download,
+  History,
+  RefreshCw,
+  Search,
+  ShieldCheck,
+  Users,
+} from 'lucide-react';
+import { auditService } from '../../../services/api/audit.service';
 import { useAuditTimeline } from '../hooks/useAuditTimeline';
 import type { AuditDomain, AuditEvent } from '../lib/audit.types';
 
@@ -26,6 +34,18 @@ function formatTimestamp(value: string) {
   });
 }
 
+function formatExportFilename(value: string) {
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    return 'audit-export.json';
+  }
+
+  return `audit-export-${parsed
+    .toISOString()
+    .replace(/:/g, '-')
+    .replace(/\.\d{3}Z$/, 'Z')}.json`;
+}
+
 function getDomainTone(domain: AuditEvent['domain']) {
   switch (domain) {
     case 'repository':
@@ -39,6 +59,10 @@ function getDomainTone(domain: AuditEvent['domain']) {
     default:
       return 'border-white/10 bg-white/5 text-slate-200';
   }
+}
+
+function getActorLabel(item: { actorEmail: string | null; actorId: string | null }) {
+  return item.actorEmail || item.actorId || 'system';
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -80,6 +104,17 @@ function flattenRecord(
   return output;
 }
 
+function getChangeTone(changeType: 'added' | 'removed' | 'changed') {
+  switch (changeType) {
+    case 'added':
+      return 'border-emerald-400/20 bg-emerald-500/10 text-emerald-100';
+    case 'removed':
+      return 'border-rose-400/20 bg-rose-500/10 text-rose-100';
+    default:
+      return 'border-amber-400/20 bg-amber-500/10 text-amber-100';
+  }
+}
+
 function buildDiffEntries(metadata: Record<string, unknown>) {
   const before = isRecord(metadata.before) ? metadata.before : null;
   const after = isRecord(metadata.after) ? metadata.after : null;
@@ -96,6 +131,8 @@ function buildDiffEntries(metadata: Record<string, unknown>) {
 
   return paths
     .map((path) => {
+      const beforeExists = beforeMap.has(path);
+      const afterExists = afterMap.has(path);
       const beforeValue = beforeMap.get(path);
       const afterValue = afterMap.get(path);
 
@@ -104,6 +141,7 @@ function buildDiffEntries(metadata: Record<string, unknown>) {
       }
 
       return {
+        changeType: !beforeExists ? 'added' : !afterExists ? 'removed' : 'changed',
         path,
         beforeValue,
         afterValue,
@@ -113,6 +151,7 @@ function buildDiffEntries(metadata: Record<string, unknown>) {
       (
         entry,
       ): entry is {
+        changeType: 'added' | 'removed' | 'changed';
         path: string;
         beforeValue: unknown;
         afterValue: unknown;
@@ -143,6 +182,7 @@ export function AuditTimeline() {
     setTo,
   } = useAuditTimeline();
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [isExporting, setIsExporting] = useState(false);
 
   useEffect(() => {
     if (items.length === 0) {
@@ -172,6 +212,33 @@ export function AuditTimeline() {
     [selectedItem],
   );
 
+  const handleExport = async () => {
+    setIsExporting(true);
+
+    try {
+      const payload = await auditService.exportEvents({
+        actor,
+        domain,
+        from,
+        search,
+        target,
+        to,
+      });
+      const blob = new Blob([JSON.stringify(payload, null, 2)], {
+        type: 'application/json',
+      });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+
+      link.href = url;
+      link.download = formatExportFilename(payload.exportedAt);
+      link.click();
+      window.URL.revokeObjectURL(url);
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   return (
     <div className="h-full overflow-auto bg-gray-950 p-4 sm:p-6">
       <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
@@ -186,14 +253,27 @@ export function AuditTimeline() {
           </p>
         </div>
 
-        <button
-          onClick={() => void reload()}
-          disabled={isLoading}
-          className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-gray-900 px-4 py-2 text-sm text-gray-200 transition hover:border-white/20 hover:text-white disabled:opacity-50"
-        >
-          <RefreshCw size={14} className={isLoading ? 'animate-spin' : ''} />
-          새로고침
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={() => void handleExport()}
+            disabled={isExporting}
+            data-testid="audit-export-button"
+            className="inline-flex items-center gap-2 rounded-xl border border-cyan-400/20 bg-cyan-500/10 px-4 py-2 text-sm text-cyan-100 transition hover:border-cyan-300/30 hover:text-white disabled:opacity-50"
+          >
+            <Download size={14} className={isExporting ? 'animate-bounce' : ''} />
+            {isExporting ? '내보내는 중' : 'JSON 내보내기'}
+          </button>
+
+          <button
+            onClick={() => void reload()}
+            disabled={isLoading}
+            className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-gray-900 px-4 py-2 text-sm text-gray-200 transition hover:border-white/20 hover:text-white disabled:opacity-50"
+          >
+            <RefreshCw size={14} className={isLoading ? 'animate-spin' : ''} />
+            새로고침
+          </button>
+        </div>
       </div>
 
       <div className="mb-4 grid gap-3 lg:grid-cols-[220px_180px_minmax(0,1fr)]">
@@ -316,6 +396,57 @@ export function AuditTimeline() {
         </div>
       </div>
 
+      <section
+        className="mb-4 rounded-2xl border border-white/10 bg-gray-900/70 p-4"
+        data-testid="audit-top-actors"
+      >
+        <div className="flex items-center gap-2 text-sm font-medium text-white">
+          <Users size={16} />
+          Top Actors
+        </div>
+        <div className="mt-3 grid gap-3 xl:grid-cols-3">
+          {summary.topActors.length > 0 ? (
+            summary.topActors.map((actorEntry) => {
+              const maxCount = summary.topActors[0]?.count ?? 1;
+              const width = Math.max(12, Math.round((actorEntry.count / maxCount) * 100));
+
+              return (
+                <button
+                  key={actorEntry.key}
+                  type="button"
+                  onClick={() => setActor(getActorLabel(actorEntry))}
+                  className="rounded-xl border border-white/10 bg-black/20 p-3 text-left transition hover:border-white/20"
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="min-w-0 text-sm text-white">
+                      <div className="truncate font-medium">
+                        {getActorLabel(actorEntry)}
+                      </div>
+                      <div className="mt-1 text-xs text-gray-500">
+                        클릭해서 actor 필터 적용
+                      </div>
+                    </div>
+                    <div className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-xs text-gray-300">
+                      {actorEntry.count}건
+                    </div>
+                  </div>
+                  <div className="mt-3 h-2 rounded-full bg-white/5">
+                    <div
+                      className="h-full rounded-full bg-cyan-400/80"
+                      style={{ width: `${width}%` }}
+                    />
+                  </div>
+                </button>
+              );
+            })
+          ) : (
+            <div className="rounded-xl border border-dashed border-white/10 bg-black/20 px-4 py-6 text-sm text-gray-500 xl:col-span-3">
+              아직 집계할 actor 이벤트가 없습니다.
+            </div>
+          )}
+        </div>
+      </section>
+
       {error && (
         <div className="mb-4 rounded-xl border border-rose-400/20 bg-rose-500/10 px-4 py-3 text-sm text-rose-100">
           {error}
@@ -361,7 +492,7 @@ export function AuditTimeline() {
                         {item.summary}
                       </h2>
                       <div className="mt-2 flex flex-wrap gap-4 text-xs text-gray-400">
-                        <span>actor {item.actorEmail || item.actorId || 'system'}</span>
+                        <span>actor {getActorLabel(item)}</span>
                         <span>
                           target {item.targetType || 'unknown'} / {item.targetId || '-'}
                         </span>
@@ -403,7 +534,7 @@ export function AuditTimeline() {
                   {selectedItem.summary}
                 </h2>
                 <div className="mt-3 grid gap-2 text-sm text-gray-300">
-                  <div>actor: {selectedItem.actorEmail || selectedItem.actorId || 'system'}</div>
+                  <div>actor: {getActorLabel(selectedItem)}</div>
                   <div>
                     target: {selectedItem.targetType || 'unknown'} /{' '}
                     {selectedItem.targetId || '-'}
@@ -424,7 +555,16 @@ export function AuditTimeline() {
                         key={entry.path}
                         className="rounded-xl border border-white/8 bg-black/20 p-3"
                       >
-                        <div className="text-xs font-medium text-cyan-100">{entry.path}</div>
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <div className="text-xs font-medium text-cyan-100">{entry.path}</div>
+                          <span
+                            className={`rounded-full border px-2 py-0.5 text-[10px] uppercase tracking-[0.18em] ${getChangeTone(
+                              entry.changeType,
+                            )}`}
+                          >
+                            {entry.changeType}
+                          </span>
+                        </div>
                         <div className="mt-2 grid gap-2 sm:grid-cols-2">
                           <div className="rounded-lg border border-rose-400/20 bg-rose-500/10 p-2">
                             <div className="text-[11px] uppercase tracking-[0.18em] text-rose-200/80">

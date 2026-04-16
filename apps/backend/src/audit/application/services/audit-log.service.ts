@@ -26,4 +26,8 @@ export class AuditLogService {
   async summarize(input: Omit<ListAuditEventsInput, 'limit'>) {
     return this.auditLogRepository.summarize(input);
   }
+
+  async export(input: Omit<ListAuditEventsInput, 'limit'>) {
+    return this.auditLogRepository.export(input);
+  }
 }
