@@ -89,4 +89,12 @@ test('로그 화면에서 Docker live와 archive 소스 패널을 렌더링한�
   await expect(page.getByRole('button', { name: 'Live' })).toBeVisible();
   await expect(page.getByRole('button', { name: '소스 새로고침' })).toBeVisible();
   await expect(page.getByText(/live stream과 회전된 docker json-file/)).toBeVisible();
+  await expect(page.getByRole('button', { name: '에러만' })).toBeVisible();
+
+  await page.getByRole('combobox').nth(3).selectOption('custom');
+  await expect(page.getByLabel('시작 시각')).toBeVisible();
+  await expect(page.getByLabel('끝 시각')).toBeVisible();
+  await expect(
+    page.getByText(/직접 범위 조회는 시점 고정 조회입니다/),
+  ).toBeVisible();
 });

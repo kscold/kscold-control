@@ -21,6 +21,8 @@ const NGINX_ACCESS_PATTERN =
   /(?:^|\s)\[[0-9]{2}\/[A-Za-z]{3}\/[0-9]{4}:[0-9:]{8}\s[+\-][0-9]{4}\]\s"[A-Z]+ .* HTTP\/[0-9.]+"/;
 const NGINX_ERROR_PATTERN =
   /\[(?:emerg|alert|crit|error|warn|notice|info|debug)\]/i;
+const GENERIC_ERROR_PATTERN =
+  /(?:^|[\s\]])(?:error|warn|fatal|panic|exception|traceback|failed|denied|critical)(?:[\s:\]])/i;
 const DURATION_PATTERN = /^(\d+)([smhd])$/i;
 
 interface DockerLogFileInfo {
@@ -63,6 +65,10 @@ export class DockerLogReaderRepository implements IDockerLogReader {
 
       if (options.since) {
         args.push('--since', this.sanitizeSince(options.since));
+      }
+
+      if (options.until) {
+        args.push('--until', this.sanitizeSince(options.until));
       }
 
       args.push(containerId);
@@ -111,11 +117,11 @@ export class DockerLogReaderRepository implements IDockerLogReader {
         .map((line) => this.formatArchiveJsonLine(line, options.timestamps))
         .filter((line): line is string => Boolean(line));
 
-      const sinceThreshold = this.resolveSinceThreshold(options.since);
+      const windowRange = this.resolveTimeRange(options.since, options.until);
       const timeFiltered =
-        sinceThreshold === null
+        windowRange === null
           ? formatted
-          : formatted.filter((line) => this.isWithinSince(line, sinceThreshold));
+          : formatted.filter((line) => this.isWithinTimeRange(line, windowRange));
 
       return this.applyFilters(timeFiltered, options);
     } catch (error) {
@@ -194,6 +200,9 @@ export class DockerLogReaderRepository implements IDockerLogReader {
     if (options.since) {
       args.push('--since', this.sanitizeSince(options.since));
     }
+    if (options.until) {
+      args.push('--until', this.sanitizeSince(options.until));
+    }
 
     args.push(this.sanitizeContainerId(options.containerId));
     return spawn('docker', args, {
@@ -202,11 +211,15 @@ export class DockerLogReaderRepository implements IDockerLogReader {
   }
 
   applyFilters(lines: string[], options: DockerLogReadOptions): string[] {
-    if (
-      !options.filter ||
-      options.filter === 'all' ||
-      options.containerName !== 'kscold-nginx'
-    ) {
+    if (!options.filter || options.filter === 'all') {
+      return lines;
+    }
+
+    if (options.filter === 'errors') {
+      return lines.filter((line) => this.matchesGenericError(line));
+    }
+
+    if (options.containerName !== 'kscold-nginx') {
       return lines;
     }
 
@@ -331,12 +344,28 @@ export class DockerLogReaderRepository implements IDockerLogReader {
     }
   }
 
-  private resolveSinceThreshold(since?: string): number | null {
-    if (!since) {
+  private resolveTimeRange(
+    since?: string,
+    until?: string,
+  ): { since: number | null; until: number | null } | null {
+    const parsedSince = this.resolveTimeThreshold(since);
+    const parsedUntil = this.resolveTimeThreshold(until);
+    if (parsedSince === null && parsedUntil === null) {
       return null;
     }
 
-    const durationMatch = since.match(DURATION_PATTERN);
+    return {
+      since: parsedSince,
+      until: parsedUntil,
+    };
+  }
+
+  private resolveTimeThreshold(value?: string): number | null {
+    if (!value) {
+      return null;
+    }
+
+    const durationMatch = value.match(DURATION_PATTERN);
     if (durationMatch) {
       const amount = parseInt(durationMatch[1], 10);
       const unit = durationMatch[2].toLowerCase();
@@ -351,16 +380,36 @@ export class DockerLogReaderRepository implements IDockerLogReader {
       return Date.now() - amount * multiplier;
     }
 
-    const parsed = Date.parse(since);
+    const parsed = Date.parse(value);
     return Number.isNaN(parsed) ? null : parsed;
   }
 
-  private isWithinSince(line: string, threshold: number): boolean {
+  private isWithinTimeRange(
+    line: string,
+    range: { since: number | null; until: number | null },
+  ): boolean {
     const token = line.split(' ')[0];
     const parsed = Date.parse(token);
     if (Number.isNaN(parsed)) {
       return true;
     }
-    return parsed >= threshold;
+
+    if (range.since !== null && parsed < range.since) {
+      return false;
+    }
+
+    if (range.until !== null && parsed > range.until) {
+      return false;
+    }
+
+    return true;
+  }
+
+  private matchesGenericError(line: string): boolean {
+    if (NGINX_ERROR_PATTERN.test(line)) {
+      return true;
+    }
+
+    return GENERIC_ERROR_PATTERN.test(line);
   }
 }
