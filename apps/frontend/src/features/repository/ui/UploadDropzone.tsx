@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState } from 'react';
-import { Upload, FolderUp, Loader2, RefreshCw, RotateCcw } from 'lucide-react';
+import { useEffect, useRef, useState, useCallback } from 'react';
+import { Upload, FolderUp, Loader2, RefreshCw, RotateCcw, Filter } from 'lucide-react';
 import { repositoryService } from '../../../services/api/repository.service';
 import {
   filterFiles,
@@ -207,6 +207,8 @@ export function UploadDropzone({
 }: UploadDropzoneProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [dragOver, setDragOver] = useState(false);
+  const [scanning, setScanning] = useState(false);
+  const [scanCount, setScanCount] = useState(0);
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
@@ -266,6 +268,8 @@ export function UploadDropzone({
 
   useEffect(() => {
     setDragOver(false);
+    setScanning(false);
+    setScanCount(0);
     setUploading(false);
     setProgress(0);
     setError(null);
@@ -276,7 +280,7 @@ export function UploadDropzone({
     void loadLatestSession();
   }, [project.id]);
 
-  const handleFiles = async (fileList: FileList) => {
+  const handleFiles = useCallback(async (fileList: FileList) => {
     const allFiles: ClientFile[] = Array.from(fileList).map((f) => ({
       relativePath: stripTopFolder(
         (f as File & { webkitRelativePath?: string }).webkitRelativePath ||
@@ -285,7 +289,9 @@ export function UploadDropzone({
       file: f,
     }));
 
+    setScanCount(allFiles.length);
     const { kept, stats } = filterFiles(allFiles);
+    setScanning(false);
     setLastStats(stats);
     setError(null);
 
@@ -322,7 +328,7 @@ export function UploadDropzone({
     if (inputRef.current) {
       inputRef.current.value = '';
     }
-  };
+  }, [serverSession, project]);
 
   const startUpload = async () => {
     if (!pendingUpload) {
@@ -552,9 +558,13 @@ export function UploadDropzone({
         onDrop={async (e) => {
           e.preventDefault();
           setDragOver(false);
+          setScanning(true);
+          setScanCount(0);
+          setPendingUpload(null);
+          setError(null);
           await collectFromDataTransfer(e.dataTransfer, handleFiles);
         }}
-        onClick={() => !uploading && inputRef.current?.click()}
+        onClick={() => !uploading && !scanning && inputRef.current?.click()}
         className={`cursor-pointer rounded-2xl border-2 border-dashed p-10 text-center transition-all ${
           dragOver
             ? 'border-blue-500 bg-blue-950/20'
@@ -582,6 +592,15 @@ export function UploadDropzone({
               />
             </div>
           </>
+        ) : scanning ? (
+          <>
+            <Loader2 size={40} className="mx-auto animate-spin text-violet-400" />
+            <p className="mt-4 text-sm font-semibold text-white">파일 분석 중...</p>
+            {scanCount > 0 && (
+              <p className="mt-1 text-xs text-gray-400">{scanCount.toLocaleString()}개 파일 발견</p>
+            )}
+            <p className="mt-1 text-xs text-gray-500">불필요한 파일 자동 제외 처리 중</p>
+          </>
         ) : (
           <>
             <FolderUp size={40} className="mx-auto text-gray-500" />
@@ -601,7 +620,14 @@ export function UploadDropzone({
           webkitdirectory=""
           directory=""
           className="hidden"
-          onChange={(e) => e.target.files && handleFiles(e.target.files)}
+          onChange={async (e) => {
+            if (!e.target.files) return;
+            setScanning(true);
+            setScanCount(0);
+            setPendingUpload(null);
+            setError(null);
+            await handleFiles(e.target.files);
+          }}
         />
       </div>
 
@@ -698,16 +724,37 @@ export function UploadDropzone({
         </div>
       )}
 
-      {lastStats && !pendingUpload && !uploading && (
+      {lastStats && !pendingUpload && !uploading && !scanning && (
         <div className="rounded-lg border border-gray-800 bg-gray-900/50 p-3 text-xs text-gray-400">
-          마지막 선택 요약 — 보존: {lastStats.kept}개 · 제외:{' '}
-          {lastStats.filtered}개 · 크기: {formatBytes(lastStats.totalSize)}
-          <div className="mt-1 text-gray-500">
-            실제 업로드 여부와 서버 반영 상태는 위 활동 카드에서 확인됩니다.
+          <div className="flex items-center gap-1.5 mb-1.5">
+            <Filter size={11} className="text-gray-500" />
+            <span className="font-medium text-gray-300">마지막 분석 결과</span>
           </div>
-          {lastStats.filteredDirs.size > 0 && (
-            <div className="mt-1 text-gray-600">
-              제외된 폴더: {Array.from(lastStats.filteredDirs).join(', ')}
+          <div className="grid grid-cols-3 gap-2 text-center">
+            <div className="rounded bg-gray-800/60 p-1.5">
+              <div className="text-green-400 font-semibold">{lastStats.kept.toLocaleString()}</div>
+              <div className="text-gray-500 mt-0.5">업로드</div>
+            </div>
+            <div className="rounded bg-gray-800/60 p-1.5">
+              <div className="text-red-400 font-semibold">{lastStats.filtered.toLocaleString()}</div>
+              <div className="text-gray-500 mt-0.5">제외</div>
+            </div>
+            <div className="rounded bg-gray-800/60 p-1.5">
+              <div className="text-blue-400 font-semibold">{formatBytes(lastStats.totalSize)}</div>
+              <div className="text-gray-500 mt-0.5">총 크기</div>
+            </div>
+          </div>
+          {lastStats.filtered > 0 && (
+            <div className="mt-2 space-y-0.5 text-gray-500">
+              {lastStats.filteredByDir > 0 && (
+                <div>· 제외 폴더({lastStats.filteredByDir.toLocaleString()}개): {Array.from(lastStats.filteredDirs).slice(0, 5).join(', ')}{lastStats.filteredDirs.size > 5 ? ` 외 ${lastStats.filteredDirs.size - 5}개` : ''}</div>
+              )}
+              {lastStats.filteredByExt > 0 && (
+                <div>· 빌드산출물·바이너리·이미지({lastStats.filteredByExt.toLocaleString()}개) 제외</div>
+              )}
+              {lastStats.filteredBySize > 0 && (
+                <div>· 1MB 초과 대용량 파일({lastStats.filteredBySize.toLocaleString()}개) 제외</div>
+              )}
             </div>
           )}
         </div>

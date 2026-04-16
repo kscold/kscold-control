@@ -165,7 +165,7 @@ export class RepositoryService extends BaseApiService {
         `${this.basePath}/projects/${projectId}/upload-sessions/${sessionId}/batches/${batchIndex}`,
         formData,
         {
-          headers: { 'Content-Type': 'multipart/form-data' },
+          // Content-Type 수동 설정 금지 — 브라우저가 boundary 포함한 multipart/form-data 자동 설정
           onUploadProgress: (e) => {
             if (!options?.onProgress) {
               return;

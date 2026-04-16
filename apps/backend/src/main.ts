@@ -6,8 +6,10 @@ import { SpaFallbackFilter } from './common/filters/spa-fallback.filter';
 import { WinstonLoggerService } from './common/logger/winston.logger';
 
 async function bootstrap() {
+  // bodyParser: false — multer(multipart)와 충돌 방지, 수동으로 body-parser 추가
   const app = await NestFactory.create(AppModule, {
     logger: new WinstonLoggerService(),
+    bodyParser: false,
   });
 
   // 소스 저장소 청크 업로드 대비 — 배치당 ~50MB 허용
