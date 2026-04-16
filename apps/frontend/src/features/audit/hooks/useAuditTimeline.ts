@@ -11,20 +11,8 @@ const EMPTY_SUMMARY: AuditSummary = {
     nginx: 0,
     rbac: 0,
   },
+  topActors: [],
 };
-
-function toIsoDateTime(value: string) {
-  if (!value) {
-    return undefined;
-  }
-
-  const parsed = new Date(value);
-  if (Number.isNaN(parsed.getTime())) {
-    return undefined;
-  }
-
-  return parsed.toISOString();
-}
 
 export function useAuditTimeline() {
   const [domain, setDomain] = useState<AuditDomain>('all');
@@ -53,19 +41,19 @@ export function useAuditTimeline() {
         auditService.listEvents({
           actor: deferredActor,
           domain,
-          from: toIsoDateTime(deferredFrom),
+          from: deferredFrom,
           limit,
           search: deferredSearch,
           target: deferredTarget,
-          to: toIsoDateTime(deferredTo),
+          to: deferredTo,
         }),
         auditService.getSummary({
           actor: deferredActor,
           domain,
-          from: toIsoDateTime(deferredFrom),
+          from: deferredFrom,
           search: deferredSearch,
           target: deferredTarget,
-          to: toIsoDateTime(deferredTo),
+          to: deferredTo,
         }),
       ]);
       setItems(nextItems);

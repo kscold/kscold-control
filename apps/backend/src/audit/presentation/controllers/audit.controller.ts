@@ -65,4 +65,30 @@ export class AuditController {
 
     return { item };
   }
+
+  @Get('export')
+  @RequirePermissions(PERMISSIONS.SYSTEM_READ)
+  async exportEvents(
+    @Query('domain') domain?: AuditDomain | 'all',
+    @Query('actor') actor?: string,
+    @Query('actorId') actorId?: string,
+    @Query('target') target?: string,
+    @Query('targetId') targetId?: string,
+    @Query('search') search?: string,
+    @Query('from') from?: string,
+    @Query('to') to?: string,
+  ) {
+    const item = await this.auditLogService.export({
+      domain: domain ?? 'all',
+      actor,
+      actorId,
+      target,
+      targetId,
+      search,
+      from,
+      to,
+    });
+
+    return { item };
+  }
 }

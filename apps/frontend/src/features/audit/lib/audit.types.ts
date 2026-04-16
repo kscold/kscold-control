@@ -13,6 +13,13 @@ export interface AuditEvent {
   createdAt: string;
 }
 
+export interface AuditActorSummary {
+  key: string;
+  actorId: string | null;
+  actorEmail: string | null;
+  count: number;
+}
+
 export interface AuditSummary {
   total: number;
   last24Hours: number;
@@ -22,4 +29,22 @@ export interface AuditSummary {
     nginx: number;
     rbac: number;
   };
+  topActors: AuditActorSummary[];
+}
+
+export interface AuditExportPayload {
+  exportedAt: string;
+  filters: {
+    actor?: string;
+    actorId?: string;
+    domain?: AuditDomain;
+    from?: string;
+    search?: string;
+    target?: string;
+    targetId?: string;
+    to?: string;
+  };
+  total: number;
+  summary: AuditSummary;
+  items: AuditEvent[];
 }

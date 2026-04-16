@@ -4,6 +4,8 @@ import * as path from 'path';
 import { randomUUID } from 'crypto';
 import type { IAuditLogRepository } from '../../domain/interfaces/audit-log.repository.interface';
 import type {
+  AuditActorSummary,
+  AuditExportResult,
   AuditEvent,
   AuditSummary,
   CreateAuditEventInput,
@@ -70,24 +72,29 @@ export class FileAuditLogRepository implements IAuditLogRepository {
     input: Omit<ListAuditEventsInput, 'limit'>,
   ): Promise<AuditSummary> {
     const items = this.filterEvents(await this.readAllEvents(), input);
-    const threshold = Date.now() - 24 * 60 * 60 * 1000;
-    const byDomain: AuditSummary['byDomain'] = {
-      repository: 0,
-      docker: 0,
-      nginx: 0,
-      rbac: 0,
-    };
+    return this.buildSummary(items);
+  }
 
-    items.forEach((event) => {
-      byDomain[event.domain] += 1;
-    });
+  async export(
+    input: Omit<ListAuditEventsInput, 'limit'>,
+  ): Promise<AuditExportResult> {
+    const items = this.filterEvents(await this.readAllEvents(), input);
 
     return {
+      exportedAt: new Date().toISOString(),
+      filters: {
+        actor: input.actor,
+        actorId: input.actorId,
+        domain: input.domain ?? 'all',
+        from: input.from,
+        search: input.search,
+        target: input.target,
+        targetId: input.targetId,
+        to: input.to,
+      },
       total: items.length,
-      last24Hours: items.filter(
-        (event) => new Date(event.createdAt).getTime() >= threshold,
-      ).length,
-      byDomain,
+      summary: this.buildSummary(items),
+      items,
     };
   }
 
@@ -183,5 +190,57 @@ export class FileAuditLogRepository implements IAuditLogRepository {
 
       return true;
     });
+  }
+
+  private buildSummary(items: AuditEvent[]): AuditSummary {
+    const threshold = Date.now() - 24 * 60 * 60 * 1000;
+    const byDomain: AuditSummary['byDomain'] = {
+      repository: 0,
+      docker: 0,
+      nginx: 0,
+      rbac: 0,
+    };
+    const actorMap = new Map<
+      string,
+      { actorId: string | null; actorEmail: string | null; count: number }
+    >();
+
+    items.forEach((event) => {
+      byDomain[event.domain] += 1;
+
+      const actorKey = event.actorEmail ?? event.actorId ?? 'system';
+      const existing = actorMap.get(actorKey) ?? {
+        actorId: event.actorId,
+        actorEmail: event.actorEmail,
+        count: 0,
+      };
+      existing.count += 1;
+      actorMap.set(actorKey, existing);
+    });
+
+    const topActors: AuditActorSummary[] = Array.from(actorMap.entries())
+      .map(([key, value]) => ({
+        key,
+        actorId: value.actorId,
+        actorEmail: value.actorEmail,
+        count: value.count,
+      }))
+      .sort((left, right) => {
+        if (right.count !== left.count) {
+          return right.count - left.count;
+        }
+
+        return left.key.localeCompare(right.key);
+      })
+      .slice(0, 6);
+
+    return {
+      total: items.length,
+      last24Hours: items.filter(
+        (event) => new Date(event.createdAt).getTime() >= threshold,
+      ).length,
+      byDomain,
+      topActors,
+    };
   }
 }
