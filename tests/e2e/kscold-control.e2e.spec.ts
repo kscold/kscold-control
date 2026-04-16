@@ -70,6 +70,7 @@ test('터미널 화면에서 Claude Code 워크스페이스를 렌더링한다',
   await page.getByRole('button', { name: '파일 패널 열기' }).click();
   await expect(page.getByTestId('claude-workspace-files')).toBeVisible();
   await expect(page.getByTestId('claude-workspace-tree')).toBeVisible();
+  await expect(page.getByTestId('claude-workspace-recent')).toBeVisible();
   await expect(page.getByTestId('claude-ship-controls')).toBeVisible();
   await expect(
     page.getByRole('button', { name: 'Create Branch' }),

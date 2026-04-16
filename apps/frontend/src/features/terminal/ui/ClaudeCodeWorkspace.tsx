@@ -99,7 +99,6 @@ export function ClaudeCodeWorkspace({
   const autoBootRequestedRef = useRef(false);
   const bootWatchdogRef = useRef<number | null>(null);
   const pendingPromptRef = useRef<string | null>(null);
-  const workspaceFiles = useWorkspaceFileEditor();
 
   const {
     session,
@@ -109,6 +108,7 @@ export function ClaudeCodeWorkspace({
     updateCommandCount,
     clearSession,
   } = useTerminalSession(storageKey);
+  const workspaceFiles = useWorkspaceFileEditor(session.workingDirectory);
 
   const { terminalRef, xterm } = useTerminalSetup({
     onData: (data) => socket.sendInput(data),
@@ -799,6 +799,7 @@ export function ClaudeCodeWorkspace({
                       pathInput={workspaceFiles.pathInput}
                       setPathInput={workspaceFiles.setPathInput}
                       references={workspaceFiles.references}
+                      recentPaths={workspaceFiles.recentPaths}
                       activePath={workspaceFiles.activePath}
                       activeReference={workspaceFiles.activeReference}
                       activeFile={workspaceFiles.activeFile}
