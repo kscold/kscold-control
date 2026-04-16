@@ -5,6 +5,12 @@ export type LogType =
   | 'docker'
   | 'pm2';
 
+export type DockerLogFilter =
+  | 'all'
+  | 'errors'
+  | 'nginx-access'
+  | 'nginx-error';
+
 export interface Pm2LogResult {
   out: string[];
   error: string[];
@@ -22,7 +28,8 @@ export interface DockerLogReadOptions {
   tail?: number | 'all';
   timestamps?: boolean;
   since?: string;
-  filter?: 'all' | 'nginx-access' | 'nginx-error';
+  until?: string;
+  filter?: DockerLogFilter;
 }
 
 export interface DockerLogArchiveSource {

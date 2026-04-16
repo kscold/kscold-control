@@ -47,6 +47,7 @@ export class LogsService {
           tail: dockerOptions?.tail ?? lines,
           timestamps: dockerOptions?.timestamps ?? false,
           since: dockerOptions?.since,
+          until: dockerOptions?.until,
           filter: dockerOptions?.filter ?? 'all',
         });
       case 'pm2':

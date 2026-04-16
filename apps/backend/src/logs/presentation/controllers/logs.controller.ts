@@ -6,7 +6,7 @@ import { RequirePermissions } from '../../../common/decorators/permissions.decor
 import { PERMISSIONS } from '../../../common/constants/permissions';
 import type { JwtRequest } from '../../../common/types/jwt-request.type';
 import { LogsService } from '../../application/services/logs.service';
-import { LogType } from '../../domain/types/log.type';
+import { LogType, type DockerLogFilter } from '../../domain/types/log.type';
 
 @Controller('logs')
 @UseGuards(AuthGuard('jwt'), PermissionsGuard)
@@ -25,7 +25,8 @@ export class LogsController {
     @Query('containerName') containerName?: string,
     @Query('timestamps') timestamps?: string,
     @Query('since') since?: string,
-    @Query('filter') filter?: 'all' | 'nginx-access' | 'nginx-error',
+    @Query('until') until?: string,
+    @Query('filter') filter?: DockerLogFilter,
   ) {
     const lineCount =
       lines && lines !== 'all' ? parseInt(lines, 10) || 100 : 100;
@@ -41,12 +42,26 @@ export class LogsController {
       timestamps:
         type === 'docker' ? timestamps === 'true' || timestamps === '1' : false,
       since: type === 'docker' ? since : undefined,
+      until: type === 'docker' ? until : undefined,
       filter: type === 'docker' ? filter ?? 'all' : 'all',
     });
     return {
       type,
       lines: type === 'docker' ? dockerTail ?? lineCount : lineCount,
       logs,
+      meta:
+        type === 'docker'
+          ? {
+              containerId,
+              containerName,
+              source: 'live',
+              since: since ?? null,
+              until: until ?? null,
+              filter: filter ?? 'all',
+              timestamps: timestamps === 'true' || timestamps === '1',
+              requestedAt: new Date().toISOString(),
+            }
+          : undefined,
     };
   }
 
@@ -89,7 +104,8 @@ export class LogsController {
     @Query('lines') lines?: string,
     @Query('timestamps') timestamps?: string,
     @Query('since') since?: string,
-    @Query('filter') filter?: 'all' | 'nginx-access' | 'nginx-error',
+    @Query('until') until?: string,
+    @Query('filter') filter?: DockerLogFilter,
   ) {
     if (!containerId || !sourceId) {
       return { lines: 0, sourceId, logs: [] };
@@ -104,6 +120,7 @@ export class LogsController {
       tail,
       timestamps: timestamps === 'true' || timestamps === '1',
       since,
+      until,
       filter: filter ?? 'all',
     });
 
@@ -111,6 +128,17 @@ export class LogsController {
       sourceId,
       lines: tail,
       logs,
+      meta: {
+        containerId,
+        containerName,
+        source: 'archive',
+        sourceId,
+        since: since ?? null,
+        until: until ?? null,
+        filter: filter ?? 'all',
+        timestamps: timestamps === 'true' || timestamps === '1',
+        requestedAt: new Date().toISOString(),
+      },
     };
   }
 
@@ -123,7 +151,7 @@ export class LogsController {
     @Query('containerName') containerName?: string,
     @Query('timestamps') timestamps?: string,
     @Query('since') since?: string,
-    @Query('filter') filter?: 'all' | 'nginx-access' | 'nginx-error',
+    @Query('filter') filter?: DockerLogFilter,
   ) {
     if (!containerId) {
       res.status(400).json({ message: 'containerId is required' });
