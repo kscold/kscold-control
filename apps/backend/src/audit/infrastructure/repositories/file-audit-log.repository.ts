@@ -5,6 +5,7 @@ import { randomUUID } from 'crypto';
 import type { IAuditLogRepository } from '../../domain/interfaces/audit-log.repository.interface';
 import type {
   AuditActorSummary,
+  AuditDiffSummary,
   AuditExportResult,
   AuditEvent,
   AuditSummary,
@@ -33,6 +34,62 @@ function resolveAuditLogPath() {
     : path.join(currentRoot, 'apps', 'backend');
 
   return path.join(backendRoot, 'data', 'audit-log.jsonl');
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+}
+
+function flattenRecord(
+  value: Record<string, unknown>,
+  prefix = '',
+  output = new Map<string, unknown>(),
+) {
+  Object.entries(value).forEach(([key, nestedValue]) => {
+    const nextPath = prefix ? `${prefix}.${key}` : key;
+
+    if (isRecord(nestedValue) && Object.keys(nestedValue).length > 0) {
+      flattenRecord(nestedValue, nextPath, output);
+      return;
+    }
+
+    output.set(nextPath, nestedValue);
+  });
+
+  return output;
+}
+
+function buildDiffSummary(metadata: Record<string, unknown>): AuditDiffSummary | null {
+  const before = isRecord(metadata.before) ? metadata.before : null;
+  const after = isRecord(metadata.after) ? metadata.after : null;
+
+  if (!before && !after) {
+    return null;
+  }
+
+  const beforeMap = before ? flattenRecord(before) : new Map<string, unknown>();
+  const afterMap = after ? flattenRecord(after) : new Map<string, unknown>();
+  const keys = Array.from(
+    new Set([...beforeMap.keys(), ...afterMap.keys()]),
+  ).filter((path) => {
+    const beforeValue = beforeMap.get(path);
+    const afterValue = afterMap.get(path);
+    return JSON.stringify(beforeValue) !== JSON.stringify(afterValue);
+  });
+
+  if (keys.length === 0) {
+    return null;
+  }
+
+  const preview = `${keys.length} changed · ${keys
+    .slice(0, 3)
+    .join(', ')}${keys.length > 3 ? ` +${keys.length - 3}` : ''}`;
+
+  return {
+    changeCount: keys.length,
+    keys,
+    preview,
+  };
 }
 
 @Injectable()
@@ -105,7 +162,7 @@ export class FileAuditLogRepository implements IAuditLogRepository {
       return raw
         .split('\n')
         .filter((line) => line.trim())
-        .map((line) => JSON.parse(line) as AuditEvent)
+        .map((line) => this.enrichEvent(JSON.parse(line) as AuditEvent))
         .sort(
           (left, right) =>
             new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime(),
@@ -178,6 +235,7 @@ export class FileAuditLogRepository implements IAuditLogRepository {
           event.actorId,
           event.targetType,
           event.targetId,
+          event.diffSummary?.preview,
           JSON.stringify(event.metadata),
         ]
           .filter(Boolean)
@@ -272,6 +330,13 @@ export class FileAuditLogRepository implements IAuditLogRepository {
       byDomain,
       topActors,
       topTargets,
+    };
+  }
+
+  private enrichEvent(event: AuditEvent): AuditEvent {
+    return {
+      ...event,
+      diffSummary: buildDiffSummary(event.metadata ?? {}),
     };
   }
 }
