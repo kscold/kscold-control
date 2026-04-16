@@ -40,6 +40,7 @@ interface ClaudeWorkspaceFilePanelProps {
   pathInput: string;
   setPathInput: (value: string) => void;
   references: WorkspaceFileReference[];
+  recentPaths: string[];
   activePath: string | null;
   activeReference: WorkspaceFileReference | null;
   activeFile: WorkspaceFileRecord | null;
@@ -429,6 +430,7 @@ export function ClaudeWorkspaceFilePanel({
   pathInput,
   setPathInput,
   references,
+  recentPaths,
   activePath,
   activeReference,
   activeFile,
@@ -667,6 +669,38 @@ export function ClaudeWorkspaceFilePanel({
           })}
         </div>
       )}
+
+      <div className="mt-4" data-testid="claude-workspace-recent">
+        <div className="mb-2 text-xs uppercase tracking-[0.22em] text-slate-500">
+          Recent Files
+        </div>
+        {recentPaths.length > 0 ? (
+          <div className="flex flex-wrap gap-2">
+            {recentPaths.map((path) => {
+              const isActive = path === activePath;
+              return (
+                <button
+                  key={path}
+                  onClick={() => onOpenPath(path)}
+                  className={`rounded-full border px-3 py-1.5 text-left text-xs transition ${
+                    isActive
+                      ? 'border-violet-300/35 bg-violet-500/10 text-violet-100'
+                      : 'border-white/10 bg-slate-950/80 text-slate-300 hover:border-white/20 hover:text-white'
+                  }`}
+                  title={path}
+                >
+                  {getWorkspaceFileDisplayPath(path, workingDirectory)}
+                </button>
+              );
+            })}
+          </div>
+        ) : (
+          <p className="text-xs text-slate-500">
+            아직 연 파일이 없습니다. 트리나 Review Queue에서 파일을 열면 여기에
+            쌓입니다.
+          </p>
+        )}
+      </div>
 
       {changes.length > 0 && (
         <div className="mt-4">

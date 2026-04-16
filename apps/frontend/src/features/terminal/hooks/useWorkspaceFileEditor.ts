@@ -13,6 +13,25 @@ import {
   mergeWorkspaceFileReferences,
 } from '../lib/workspace-file.utils';
 
+const RECENT_FILE_LIMIT = 8;
+
+function parseStoredPaths(rawValue: string | null): string[] {
+  if (!rawValue) {
+    return [];
+  }
+
+  try {
+    const parsed = JSON.parse(rawValue);
+    if (!Array.isArray(parsed)) {
+      return [];
+    }
+
+    return parsed.filter((value): value is string => typeof value === 'string');
+  } catch {
+    return [];
+  }
+}
+
 function toReference(referenceOrPath: WorkspaceFileReference | string) {
   if (typeof referenceOrPath !== 'string') {
     return referenceOrPath;
@@ -26,10 +45,12 @@ function toReference(referenceOrPath: WorkspaceFileReference | string) {
   } satisfies WorkspaceFileReference;
 }
 
-export function useWorkspaceFileEditor() {
+export function useWorkspaceFileEditor(workspaceScope: string | null) {
   const carryRef = useRef('');
   const draftTemplateRef = useRef({ title: '', body: '' });
+  const restoredRecentRef = useRef(false);
   const [references, setReferences] = useState<WorkspaceFileReference[]>([]);
+  const [recentPaths, setRecentPaths] = useState<string[]>([]);
   const [pathInput, setPathInput] = useState('');
   const [activePath, setActivePath] = useState<string | null>(null);
   const [activeReference, setActiveReference] =
@@ -88,6 +109,40 @@ export function useWorkspaceFileEditor() {
   const [draftTitle, setDraftTitle] = useState('');
   const [draftBody, setDraftBody] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const recentStorageKey = useMemo(
+    () => `claude-workspace-recent:${workspaceScope || 'workspace'}`,
+    [workspaceScope],
+  );
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    restoredRecentRef.current = false;
+    setRecentPaths(parseStoredPaths(window.localStorage.getItem(recentStorageKey)));
+  }, [recentStorageKey]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    window.localStorage.setItem(recentStorageKey, JSON.stringify(recentPaths));
+  }, [recentPaths, recentStorageKey]);
+
+  const rememberRecentPath = useCallback((path: string) => {
+    if (!path.trim()) {
+      return;
+    }
+
+    setRecentPaths((previous) =>
+      [path, ...previous.filter((entry) => entry !== path)].slice(
+        0,
+        RECENT_FILE_LIMIT,
+      ),
+    );
+  }, []);
 
   const registerOutput = useCallback((content: string) => {
     const mergedContent = `${carryRef.current}${content}`;
@@ -191,6 +246,19 @@ export function useWorkspaceFileEditor() {
         setDiff(null);
       }
 
+      if (
+        fileResult.status === 'fulfilled' ||
+        diffResult.status === 'fulfilled'
+      ) {
+        rememberRecentPath(
+          fileResult.status === 'fulfilled'
+            ? fileResult.value.path
+            : diffResult.status === 'fulfilled'
+              ? diffResult.value.path
+              : reference.path,
+        );
+      }
+
       if (fileResult.status === 'rejected') {
         const allowMissingForDeleted =
           diffResult.status === 'fulfilled' &&
@@ -208,7 +276,7 @@ export function useWorkspaceFileEditor() {
       setIsLoading(false);
       setIsDiffLoading(false);
     },
-    [],
+    [rememberRecentPath],
   );
 
   const openFile = useCallback(
@@ -217,6 +285,20 @@ export function useWorkspaceFileEditor() {
     },
     [syncSelection],
   );
+
+  useEffect(() => {
+    if (
+      restoredRecentRef.current ||
+      activePath ||
+      recentPaths.length === 0 ||
+      !tree
+    ) {
+      return;
+    }
+
+    restoredRecentRef.current = true;
+    void syncSelection(recentPaths[0], { suppressMissing: true });
+  }, [activePath, recentPaths, syncSelection, tree]);
 
   const saveFile = useCallback(async () => {
     if (!activeFile || activeFile.encoding !== 'utf8') {
@@ -447,6 +529,7 @@ export function useWorkspaceFileEditor() {
 
   return {
     references,
+    recentPaths,
     pathInput,
     setPathInput,
     activePath,
