@@ -13,6 +13,7 @@ import {
   Network,
   GitBranch,
   FolderGit2,
+  History,
 } from 'lucide-react';
 import { useAuthStore } from '../shared/model/auth.store';
 
@@ -156,6 +157,21 @@ export function Layout() {
       >
         <FolderGit2 size={18} />
         소스 저장소
+      </NavLink>
+
+      <NavLink
+        to="/audit"
+        onClick={() => setIsMobileMenuOpen(false)}
+        className={({ isActive }) =>
+          `flex items-center gap-3 px-3 py-2 rounded-lg text-sm ${
+            isActive
+              ? 'bg-blue-600 text-white'
+              : 'text-gray-400 hover:bg-gray-800 hover:text-white'
+          }`
+        }
+      >
+        <History size={18} />
+        운영 감사
       </NavLink>
     </>
   );

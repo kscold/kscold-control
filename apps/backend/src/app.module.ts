@@ -13,6 +13,7 @@ import { NginxModule } from './nginx/nginx.module';
 import { UpnpModule } from './upnp/upnp.module';
 import { ClaudeChatModule } from './claude-chat/claude-chat.module';
 import { RepositoryModule } from './repository/repository.module';
+import { AuditModule } from './audit/audit.module';
 
 // Domain Entities (Clean Architecture)
 import { User } from './rbac/domain/entities/user.entity';
@@ -53,6 +54,7 @@ import { HttpLoggerMiddleware } from './common/middleware/http-logger.middleware
     SystemModule,
     RbacModule,
     LogsModule,
+    AuditModule,
     NginxModule,
     UpnpModule,
     ClaudeChatModule,

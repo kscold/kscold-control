@@ -19,6 +19,7 @@ import { PermissionsGuard } from '../../../common/guards';
 import { RequirePermissions } from '../../../common/decorators';
 import { PERMISSIONS } from '../../../common/constants/permissions';
 import type { JwtRequest } from '../../../common/types/jwt-request.type';
+import { AuditLogService } from '../../../audit/application/services/audit-log.service';
 import {
   CreateProjectUseCase,
   ListProjectsUseCase,
@@ -56,6 +57,7 @@ export class RepositoryController {
     private readonly downloadArchiveUseCase: DownloadArchiveUseCase,
     private readonly browseTreeUseCase: BrowseTreeUseCase,
     private readonly readFileUseCase: ReadFileUseCase,
+    private readonly auditLogService: AuditLogService,
   ) {}
 
   @Get('projects')
@@ -68,13 +70,36 @@ export class RepositoryController {
   @Post('projects')
   @RequirePermissions(PERMISSIONS.REPOSITORY_WRITE)
   async createProject(@Body() dto: CreateProjectDto, @Request() req: JwtRequest) {
-    return this.createProjectUseCase.execute(dto, req.user?.sub ?? null);
+    const project = await this.createProjectUseCase.execute(dto, req.user?.sub ?? null);
+    await this.auditLogService.record({
+      domain: 'repository',
+      action: 'project.create',
+      summary: `프로젝트 ${project.name}를 생성했습니다.`,
+      actorId: req.user?.id ?? req.user?.sub ?? null,
+      actorEmail: req.user?.email ?? null,
+      targetType: 'project',
+      targetId: project.id,
+      metadata: {
+        name: project.name,
+        description: project.description ?? null,
+      },
+    });
+    return project;
   }
 
   @Delete('projects/:id')
   @RequirePermissions(PERMISSIONS.REPOSITORY_DELETE)
-  async deleteProject(@Param('id') id: string) {
+  async deleteProject(@Param('id') id: string, @Request() req: JwtRequest) {
     await this.deleteProjectUseCase.execute(id);
+    await this.auditLogService.record({
+      domain: 'repository',
+      action: 'project.delete',
+      summary: `프로젝트 ${id}를 삭제했습니다.`,
+      actorId: req.user?.id ?? req.user?.sub ?? null,
+      actorEmail: req.user?.email ?? null,
+      targetType: 'project',
+      targetId: id,
+    });
     return { success: true };
   }
 
@@ -116,8 +141,25 @@ export class RepositoryController {
   async createUploadSession(
     @Param('id') id: string,
     @Body() body: CreateUploadSessionInput,
+    @Request() req: JwtRequest,
   ) {
-    return this.createUploadSessionUseCase.execute(id, body);
+    const session = await this.createUploadSessionUseCase.execute(id, body);
+    await this.auditLogService.record({
+      domain: 'repository',
+      action: 'upload.session.create',
+      summary: `프로젝트 ${id} 업로드 세션을 시작했습니다.`,
+      actorId: req.user?.id ?? req.user?.sub ?? null,
+      actorEmail: req.user?.email ?? null,
+      targetType: 'project',
+      targetId: id,
+      metadata: {
+        sessionId: session.id,
+        totalFiles: session.totalFiles,
+        totalBytes: session.totalBytes,
+        batchCount: session.batches.length,
+      },
+    });
+    return session;
   }
 
   @Get('projects/:id/upload-sessions/latest')
@@ -153,6 +195,7 @@ export class RepositoryController {
     @Param('batchIndex') batchIndexRaw: string,
     @UploadedFiles() files: MulterFile[],
     @Body('relativePaths') relativePathsRaw: string | string[],
+    @Request() req: JwtRequest,
   ) {
     const batchIndex = parseInt(batchIndexRaw, 10);
     const paths: string[] = Array.isArray(relativePathsRaw)
@@ -167,12 +210,29 @@ export class RepositoryController {
       size: file.size,
     }));
 
-    return this.uploadSessionBatchUseCase.execute(
+    const result = await this.uploadSessionBatchUseCase.execute(
       id,
       sessionId,
       batchIndex,
       uploadFiles,
     );
+    await this.auditLogService.record({
+      domain: 'repository',
+      action: 'upload.batch.complete',
+      summary: `프로젝트 ${id} 업로드 배치 ${batchIndex + 1}을 반영했습니다.`,
+      actorId: req.user?.id ?? req.user?.sub ?? null,
+      actorEmail: req.user?.email ?? null,
+      targetType: 'project',
+      targetId: id,
+      metadata: {
+        sessionId,
+        batchIndex,
+        uploadedCount: result.uploadedCount,
+        failedFiles: result.failedFiles.length,
+        status: result.session.status,
+      },
+    });
+    return result;
   }
 
   @Get('projects/:id/download')
