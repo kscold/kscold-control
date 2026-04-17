@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Delete,
@@ -17,9 +18,9 @@ import { FilesInterceptor } from '@nestjs/platform-express';
 import type { Response } from 'express';
 import { PermissionsGuard } from '../../../common/guards';
 import { RequirePermissions } from '../../../common/decorators';
+import { Audit } from '../../../common/decorators/audit.decorator';
 import { PERMISSIONS } from '../../../common/constants/permissions';
 import type { JwtRequest } from '../../../common/types/jwt-request.type';
-import { AuditLogService } from '../../../audit/application/services/audit-log.service';
 import {
   CreateProjectUseCase,
   ListProjectsUseCase,
@@ -31,6 +32,8 @@ import {
   DownloadArchiveUseCase,
   BrowseTreeUseCase,
   ReadFileUseCase,
+  ListVersionsUseCase,
+  CleanupVersionsUseCase,
 } from '../../application/use-cases';
 import { CreateProjectDto } from '../../application/dto/create-project.dto';
 import type { UploadFile } from '../../application/use-cases/upload-files.use-case';
@@ -41,6 +44,16 @@ interface MulterFile {
   originalname: string;
   buffer: Buffer;
   size: number;
+}
+
+function parseRelativePaths(raw: string | string[] | undefined): string[] {
+  if (Array.isArray(raw)) return raw;
+  if (!raw) return [];
+  try {
+    return JSON.parse(raw) as string[];
+  } catch {
+    throw new BadRequestException('relativePaths 값이 올바른 JSON 배열이 아닙니다.');
+  }
 }
 
 @Controller('repository')
@@ -57,7 +70,8 @@ export class RepositoryController {
     private readonly downloadArchiveUseCase: DownloadArchiveUseCase,
     private readonly browseTreeUseCase: BrowseTreeUseCase,
     private readonly readFileUseCase: ReadFileUseCase,
-    private readonly auditLogService: AuditLogService,
+    private readonly listVersionsUseCase: ListVersionsUseCase,
+    private readonly cleanupVersionsUseCase: CleanupVersionsUseCase,
   ) {}
 
   @Get('projects')
@@ -69,37 +83,32 @@ export class RepositoryController {
 
   @Post('projects')
   @RequirePermissions(PERMISSIONS.REPOSITORY_WRITE)
+  @Audit({
+    domain: 'repository',
+    action: 'project.create',
+    summary: (ctx) => `프로젝트 ${(ctx.response as { name: string }).name}를 생성했습니다.`,
+    targetType: 'project',
+    targetId: (ctx) => (ctx.response as { id: string }).id,
+    metadata: (ctx) => {
+      const r = ctx.response as { name: string; description?: string | null };
+      return { name: r.name, description: r.description ?? null };
+    },
+  })
   async createProject(@Body() dto: CreateProjectDto, @Request() req: JwtRequest) {
-    const project = await this.createProjectUseCase.execute(dto, req.user?.sub ?? null);
-    await this.auditLogService.record({
-      domain: 'repository',
-      action: 'project.create',
-      summary: `프로젝트 ${project.name}를 생성했습니다.`,
-      actorId: req.user?.id ?? req.user?.sub ?? null,
-      actorEmail: req.user?.email ?? null,
-      targetType: 'project',
-      targetId: project.id,
-      metadata: {
-        name: project.name,
-        description: project.description ?? null,
-      },
-    });
-    return project;
+    return this.createProjectUseCase.execute(dto, req.user?.sub ?? null);
   }
 
   @Delete('projects/:id')
   @RequirePermissions(PERMISSIONS.REPOSITORY_DELETE)
-  async deleteProject(@Param('id') id: string, @Request() req: JwtRequest) {
+  @Audit({
+    domain: 'repository',
+    action: 'project.delete',
+    summary: (ctx) => `프로젝트 ${ctx.params.id}를 삭제했습니다.`,
+    targetType: 'project',
+    targetId: (ctx) => ctx.params.id,
+  })
+  async deleteProject(@Param('id') id: string) {
     await this.deleteProjectUseCase.execute(id);
-    await this.auditLogService.record({
-      domain: 'repository',
-      action: 'project.delete',
-      summary: `프로젝트 ${id}를 삭제했습니다.`,
-      actorId: req.user?.id ?? req.user?.sub ?? null,
-      actorEmail: req.user?.email ?? null,
-      targetType: 'project',
-      targetId: id,
-    });
     return { success: true };
   }
 
@@ -121,12 +130,7 @@ export class RepositoryController {
     @Body('relativePaths') relativePathsRaw: string | string[],
     @Query('replace') replace?: string,
   ) {
-    // 클라이언트가 파일과 같은 순서로 보낸 relativePath 배열
-    const paths: string[] = Array.isArray(relativePathsRaw)
-      ? relativePathsRaw
-      : relativePathsRaw
-        ? JSON.parse(relativePathsRaw)
-        : [];
+    const paths: string[] = parseRelativePaths(relativePathsRaw);
 
     const uploadFiles: UploadFile[] = files.map((f, idx) => ({
       relativePath: paths[idx] ?? f.originalname,
@@ -139,28 +143,32 @@ export class RepositoryController {
 
   @Post('projects/:id/upload-sessions')
   @RequirePermissions(PERMISSIONS.REPOSITORY_WRITE)
+  @Audit({
+    domain: 'repository',
+    action: 'upload.session.create',
+    summary: (ctx) => `프로젝트 ${ctx.params.id} 업로드 세션을 시작했습니다.`,
+    targetType: 'project',
+    targetId: (ctx) => ctx.params.id,
+    metadata: (ctx) => {
+      const r = ctx.response as {
+        id: string;
+        totalFiles: number;
+        totalBytes: number;
+        batches: unknown[];
+      };
+      return {
+        sessionId: r.id,
+        totalFiles: r.totalFiles,
+        totalBytes: r.totalBytes,
+        batchCount: r.batches.length,
+      };
+    },
+  })
   async createUploadSession(
     @Param('id') id: string,
     @Body() body: CreateUploadSessionInput,
-    @Request() req: JwtRequest,
   ) {
-    const session = await this.createUploadSessionUseCase.execute(id, body);
-    await this.auditLogService.record({
-      domain: 'repository',
-      action: 'upload.session.create',
-      summary: `프로젝트 ${id} 업로드 세션을 시작했습니다.`,
-      actorId: req.user?.id ?? req.user?.sub ?? null,
-      actorEmail: req.user?.email ?? null,
-      targetType: 'project',
-      targetId: id,
-      metadata: {
-        sessionId: session.id,
-        totalFiles: session.totalFiles,
-        totalBytes: session.totalBytes,
-        batchCount: session.batches.length,
-      },
-    });
-    return session;
+    return this.createUploadSessionUseCase.execute(id, body);
   }
 
   @Get('projects/:id/upload-sessions/latest')
@@ -185,27 +193,44 @@ export class RepositoryController {
   @UseInterceptors(
     FilesInterceptor('files', 200, {
       limits: {
-        fileSize: 50 * 1024 * 1024, // 파일 하나당 50MB (클라이언트 1MB 필터 보완)
+        fileSize: 50 * 1024 * 1024,
         fieldSize: 10 * 1024 * 1024,
         files: 200,
         fields: 100,
       },
     }),
   )
+  @Audit({
+    domain: 'repository',
+    action: 'upload.batch.complete',
+    summary: (ctx) =>
+      `프로젝트 ${ctx.params.id} 업로드 배치 ${parseInt(ctx.params.batchIndex, 10) + 1}을 반영했습니다.`,
+    targetType: 'project',
+    targetId: (ctx) => ctx.params.id,
+    metadata: (ctx) => {
+      const r = ctx.response as {
+        uploadedCount: number;
+        failedFiles: unknown[];
+        session: { status: string };
+      };
+      return {
+        sessionId: ctx.params.sessionId,
+        batchIndex: parseInt(ctx.params.batchIndex, 10),
+        uploadedCount: r.uploadedCount,
+        failedFiles: r.failedFiles.length,
+        status: r.session.status,
+      };
+    },
+  })
   async uploadSessionBatch(
     @Param('id') id: string,
     @Param('sessionId') sessionId: string,
     @Param('batchIndex') batchIndexRaw: string,
     @UploadedFiles() files: MulterFile[],
     @Body('relativePaths') relativePathsRaw: string | string[],
-    @Request() req: JwtRequest,
   ) {
     const batchIndex = parseInt(batchIndexRaw, 10);
-    const paths: string[] = Array.isArray(relativePathsRaw)
-      ? relativePathsRaw
-      : relativePathsRaw
-        ? JSON.parse(relativePathsRaw)
-        : [];
+    const paths: string[] = parseRelativePaths(relativePathsRaw);
 
     const uploadFiles = files.map((file, index) => ({
       relativePath: paths[index] ?? file.originalname,
@@ -213,29 +238,7 @@ export class RepositoryController {
       size: file.size,
     }));
 
-    const result = await this.uploadSessionBatchUseCase.execute(
-      id,
-      sessionId,
-      batchIndex,
-      uploadFiles,
-    );
-    await this.auditLogService.record({
-      domain: 'repository',
-      action: 'upload.batch.complete',
-      summary: `프로젝트 ${id} 업로드 배치 ${batchIndex + 1}을 반영했습니다.`,
-      actorId: req.user?.id ?? req.user?.sub ?? null,
-      actorEmail: req.user?.email ?? null,
-      targetType: 'project',
-      targetId: id,
-      metadata: {
-        sessionId,
-        batchIndex,
-        uploadedCount: result.uploadedCount,
-        failedFiles: result.failedFiles.length,
-        status: result.session.status,
-      },
-    });
-    return result;
+    return this.uploadSessionBatchUseCase.execute(id, sessionId, batchIndex, uploadFiles);
   }
 
   @Get('projects/:id/download')
@@ -257,5 +260,31 @@ export class RepositoryController {
   @RequirePermissions(PERMISSIONS.REPOSITORY_READ)
   async readFile(@Param('id') id: string, @Query('path') path: string) {
     return this.readFileUseCase.execute(id, path);
+  }
+
+  @Get('projects/:id/versions')
+  @RequirePermissions(PERMISSIONS.REPOSITORY_READ)
+  async listVersions(@Param('id') id: string) {
+    const versions = await this.listVersionsUseCase.execute(id);
+    return { items: versions };
+  }
+
+  @Delete('projects/:id/versions/cleanup')
+  @RequirePermissions(PERMISSIONS.REPOSITORY_DELETE)
+  @Audit({
+    domain: 'repository',
+    action: 'versions.cleanup',
+    summary: (ctx) => {
+      const r = ctx.response as { projectName: string; deleted: number };
+      return `프로젝트 ${r.projectName} 이전 버전 ${r.deleted}개를 삭제했습니다.`;
+    },
+    targetType: 'project',
+    targetId: (ctx) => ctx.params.id,
+    metadata: (ctx) => ({ deleted: (ctx.response as { deleted: number }).deleted }),
+  })
+  async cleanupVersions(@Param('id') id: string) {
+    const { projectName, deleted } = await this.cleanupVersionsUseCase.execute(id, 1);
+    // projectName 을 응답에 포함시켜 @Audit summary 팩토리에서 사용
+    return { projectName, deleted };
   }
 }

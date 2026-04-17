@@ -7,7 +7,10 @@ import {
   FileTreeNode,
   IFileStorage,
   ProjectStats,
+  ProjectVersion,
 } from '../../domain/repositories/file-storage.interface';
+
+const VERSIONS_DIR = '.versions';
 
 @Injectable()
 export class LocalFileStorageService implements IFileStorage {
@@ -18,10 +21,24 @@ export class LocalFileStorageService implements IFileStorage {
     this.baseDir = process.env.REPOSITORY_STORAGE_DIR ?? '/var/repos';
   }
 
+  // ── 경로 헬퍼 ──────────────────────────────────────────────────────────────
+
   private projectPath(projectName: string): string {
     const safe = path.basename(projectName);
     return path.join(this.baseDir, safe);
   }
+
+  /**
+   * 경로 순회 공격 방어: target 이 projectDir 하위인지 확인.
+   * 위반 시 Error 를 throw 합니다.
+   */
+  private assertSafeFilePath(projectDir: string, target: string): void {
+    if (!path.resolve(target).startsWith(path.resolve(projectDir))) {
+      throw new Error(`Path traversal blocked: ${path.relative(projectDir, target)}`);
+    }
+  }
+
+  // ── 기본 파일 조작 ─────────────────────────────────────────────────────────
 
   async ensureProject(projectName: string): Promise<void> {
     const dir = this.projectPath(projectName);
@@ -31,12 +48,7 @@ export class LocalFileStorageService implements IFileStorage {
   async writeFile(projectName: string, relativePath: string, buffer: Buffer): Promise<void> {
     const dir = this.projectPath(projectName);
     const target = path.join(dir, relativePath);
-
-    const resolved = path.resolve(target);
-    if (!resolved.startsWith(path.resolve(dir))) {
-      throw new Error(`Path traversal blocked: ${relativePath}`);
-    }
-
+    this.assertSafeFilePath(dir, target);
     await fs.mkdir(path.dirname(target), { recursive: true });
     await fs.writeFile(target, buffer);
   }
@@ -45,6 +57,22 @@ export class LocalFileStorageService implements IFileStorage {
     const dir = this.projectPath(projectName);
     await fs.rm(dir, { recursive: true, force: true });
   }
+
+  async readFile(projectName: string, relativePath: string): Promise<Buffer> {
+    const dir = this.projectPath(projectName);
+    const target = path.join(dir, relativePath);
+    this.assertSafeFilePath(dir, target);
+    return fs.readFile(target);
+  }
+
+  async createReadStream(projectName: string, relativePath: string): Promise<Readable> {
+    const dir = this.projectPath(projectName);
+    const target = path.join(dir, relativePath);
+    this.assertSafeFilePath(dir, target);
+    return createReadStream(target);
+  }
+
+  // ── 파일 트리 조회 (.versions 제외) ───────────────────────────────────────
 
   async listTree(projectName: string): Promise<FileTreeNode> {
     const root = this.projectPath(projectName);
@@ -56,59 +84,26 @@ export class LocalFileStorageService implements IFileStorage {
     const relPath = path.relative(root, currentPath) || '';
 
     if (stats.isFile()) {
-      return {
-        name,
-        path: relPath,
-        type: 'file',
-        size: stats.size,
-      };
+      return { name, path: relPath, type: 'file', size: stats.size };
     }
 
     const entries = await fs.readdir(currentPath, { withFileTypes: true });
     const children: FileTreeNode[] = [];
-    for (const entry of entries.sort((a, b) => {
-      if (a.isDirectory() !== b.isDirectory()) return a.isDirectory() ? -1 : 1;
-      return a.name.localeCompare(b.name);
-    })) {
+
+    for (const entry of entries
+      .filter((e) => e.name !== VERSIONS_DIR) // .versions 숨김
+      .sort((a, b) => {
+        if (a.isDirectory() !== b.isDirectory()) return a.isDirectory() ? -1 : 1;
+        return a.name.localeCompare(b.name);
+      })) {
       const child = await this.walk(path.join(currentPath, entry.name), root, entry.name);
       children.push(child);
     }
 
-    return {
-      name,
-      path: relPath,
-      type: 'directory',
-      children,
-    };
+    return { name, path: relPath, type: 'directory', children };
   }
 
-  async readFile(projectName: string, relativePath: string): Promise<Buffer> {
-    const dir = this.projectPath(projectName);
-    const target = path.resolve(path.join(dir, relativePath));
-    if (!target.startsWith(path.resolve(dir))) {
-      throw new Error(`Path traversal blocked: ${relativePath}`);
-    }
-    return fs.readFile(target);
-  }
-
-  async archiveProject(projectName: string): Promise<Readable> {
-    const dir = this.projectPath(projectName);
-    await fs.access(dir);
-
-    const tar = spawn('tar', ['-czf', '-', '-C', dir, '.'], {
-      stdio: ['ignore', 'pipe', 'pipe'],
-    });
-
-    tar.stderr.on('data', (chunk) => {
-      this.logger.warn(`tar stderr: ${chunk.toString()}`);
-    });
-
-    tar.on('error', (err) => {
-      this.logger.error(`tar spawn error`, err);
-    });
-
-    return tar.stdout;
-  }
+  // ── 통계 (.versions 제외) ─────────────────────────────────────────────────
 
   async getStats(projectName: string): Promise<ProjectStats> {
     const dir = this.projectPath(projectName);
@@ -121,10 +116,12 @@ export class LocalFileStorageService implements IFileStorage {
       let entries;
       try {
         entries = await fs.readdir(cur, { withFileTypes: true });
-      } catch {
+      } catch (err) {
+        this.logger.warn(`getStats: readdir 실패 — ${cur}`, (err as Error).message);
         continue;
       }
       for (const entry of entries) {
+        if (entry.name === VERSIONS_DIR) continue; // .versions 제외
         const full = path.join(cur, entry.name);
         if (entry.isDirectory()) {
           stack.push(full);
@@ -133,7 +130,9 @@ export class LocalFileStorageService implements IFileStorage {
           try {
             const st = await fs.stat(full);
             totalSize += st.size;
-          } catch {}
+          } catch (err) {
+            this.logger.warn(`getStats: stat 실패 — ${full}`, (err as Error).message);
+          }
         }
       }
     }
@@ -141,12 +140,132 @@ export class LocalFileStorageService implements IFileStorage {
     return { fileCount, totalSize };
   }
 
-  async createReadStream(projectName: string, relativePath: string): Promise<Readable> {
+  // ── 아카이브 다운로드 ──────────────────────────────────────────────────────
+
+  async archiveProject(projectName: string): Promise<Readable> {
     const dir = this.projectPath(projectName);
-    const target = path.resolve(path.join(dir, relativePath));
-    if (!target.startsWith(path.resolve(dir))) {
-      throw new Error(`Path traversal blocked: ${relativePath}`);
+    await fs.access(dir);
+
+    const tar = spawn(
+      'tar',
+      ['-czf', '-', '-C', dir, '--exclude', `./${VERSIONS_DIR}`, '.'],
+      { stdio: ['ignore', 'pipe', 'pipe'] },
+    );
+
+    tar.stderr.on('data', (chunk) => {
+      this.logger.warn(`tar stderr: ${chunk.toString()}`);
+    });
+    tar.on('error', (err) => {
+      this.logger.error('tar spawn error', err);
+    });
+
+    return tar.stdout;
+  }
+
+  // ── 버전 히스토리 ──────────────────────────────────────────────────────────
+
+  async createSnapshot(projectName: string): Promise<ProjectVersion> {
+    const dir = this.projectPath(projectName);
+    const versionsDir = path.join(dir, VERSIONS_DIR);
+    await fs.mkdir(versionsDir, { recursive: true });
+
+    const now = new Date();
+    const id = now.toISOString().replace(/[:.]/g, '-');
+    const filename = `${id}.tar.gz`;
+    const dest = path.join(versionsDir, filename);
+
+    await new Promise<void>((resolve, reject) => {
+      const tar = spawn(
+        'tar',
+        ['-czf', dest, '-C', dir, '--exclude', `./${VERSIONS_DIR}`, '.'],
+        { stdio: ['ignore', 'pipe', 'pipe'] },
+      );
+      tar.on('exit', (code) => {
+        if (code === 0) resolve();
+        else reject(new Error(`tar exited with code ${code}`));
+      });
+      tar.on('error', reject);
+    });
+
+    const stat = await fs.stat(dest);
+    return { id, createdAt: now, compressedSize: stat.size, filename };
+  }
+
+  async listVersions(projectName: string): Promise<ProjectVersion[]> {
+    const dir = this.projectPath(projectName);
+    const versionsDir = path.join(dir, VERSIONS_DIR);
+
+    let entries: string[];
+    try {
+      entries = await fs.readdir(versionsDir);
+    } catch (err) {
+      const code = (err as NodeJS.ErrnoException).code;
+      if (code !== 'ENOENT') {
+        this.logger.warn(`listVersions: readdir 실패 — ${versionsDir}`, (err as Error).message);
+      }
+      return [];
     }
-    return createReadStream(target);
+
+    const versions: ProjectVersion[] = [];
+    for (const filename of entries) {
+      if (!filename.endsWith('.tar.gz')) continue;
+      const id = filename.replace(/\.tar\.gz$/, '');
+      const fullPath = path.join(versionsDir, filename);
+      try {
+        const stat = await fs.stat(fullPath);
+        versions.push({ id, createdAt: stat.mtime, compressedSize: stat.size, filename });
+      } catch (err) {
+        this.logger.warn(`listVersions: stat 실패 — ${fullPath}`, (err as Error).message);
+      }
+    }
+
+    // 최신순 정렬
+    return versions.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+  }
+
+  async cleanupVersions(projectName: string, keepCount = 1): Promise<number> {
+    const versions = await this.listVersions(projectName);
+    if (versions.length <= keepCount) return 0;
+
+    const toDelete = versions.slice(keepCount);
+    const dir = this.projectPath(projectName);
+    const versionsDir = path.join(dir, VERSIONS_DIR);
+    let deleted = 0;
+
+    for (const v of toDelete) {
+      try {
+        await fs.unlink(path.join(versionsDir, v.filename));
+        deleted++;
+      } catch (err) {
+        this.logger.warn(`cleanupVersions: unlink 실패 — ${v.filename}`, (err as Error).message);
+      }
+    }
+    return deleted;
+  }
+
+  async restoreVersion(projectName: string, versionId: string): Promise<void> {
+    const dir = this.projectPath(projectName);
+    const versionsDir = path.join(dir, VERSIONS_DIR);
+    const safe = path.basename(versionId);
+    const src = path.join(versionsDir, `${safe}.tar.gz`);
+
+    // 기존 파일 삭제 (.versions 제외)
+    const entries = await fs.readdir(dir, { withFileTypes: true });
+    for (const entry of entries) {
+      if (entry.name === VERSIONS_DIR) continue;
+      await fs.rm(path.join(dir, entry.name), { recursive: true, force: true });
+    }
+
+    // 복원
+    await new Promise<void>((resolve, reject) => {
+      const tar = spawn('tar', ['-xzf', src, '-C', dir], {
+        stdio: ['ignore', 'pipe', 'pipe'],
+      });
+      tar.on('exit', (code) => {
+        if (code === 0) resolve();
+        else reject(new Error(`tar restore exited with code ${code}`));
+      });
+      tar.on('error', reject);
+    });
   }
 }

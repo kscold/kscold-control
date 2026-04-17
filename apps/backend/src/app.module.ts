@@ -1,3 +1,4 @@
+import { APP_INTERCEPTOR } from '@nestjs/core';
 import { Module, NestModule, MiddlewareConsumer } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ConfigModule } from '@nestjs/config';
@@ -25,6 +26,7 @@ import { Container } from './docker/domain/entities/container.entity';
 import { Project } from './repository/domain/entities/project.entity';
 
 import { HttpLoggerMiddleware } from './common/middleware/http-logger.middleware';
+import { AuditInterceptor } from './common/interceptors';
 
 @Module({
   imports: [
@@ -59,6 +61,12 @@ import { HttpLoggerMiddleware } from './common/middleware/http-logger.middleware
     UpnpModule,
     ClaudeChatModule,
     RepositoryModule,
+  ],
+  providers: [
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: AuditInterceptor,
+    },
   ],
 })
 export class AppModule implements NestModule {
