@@ -10,6 +10,7 @@ import type {
   CreateUploadSessionInput,
   RepositoryUploadSession,
   UploadSessionBatchResult,
+  ProjectVersion,
 } from '../../features/repository/lib/repository.types';
 
 /**
@@ -216,6 +217,30 @@ export class RepositoryService extends BaseApiService {
     } catch (error) {
       this.logError('RepositoryService', 'readFile', error);
       this.handleError(error, '파일 내용 조회 실패');
+    }
+  }
+
+  async listVersions(projectId: string): Promise<ProjectVersion[]> {
+    try {
+      const { data } = await api.get<{ items: ProjectVersion[] }>(
+        `${this.basePath}/projects/${projectId}/versions`,
+      );
+      return data.items;
+    } catch (error) {
+      this.logError('RepositoryService', 'listVersions', error);
+      this.handleError(error, '버전 목록 조회 실패');
+    }
+  }
+
+  async cleanupVersions(projectId: string): Promise<{ deleted: number }> {
+    try {
+      const { data } = await api.delete<{ deleted: number }>(
+        `${this.basePath}/projects/${projectId}/versions/cleanup`,
+      );
+      return data;
+    } catch (error) {
+      this.logError('RepositoryService', 'cleanupVersions', error);
+      this.handleError(error, '이전 버전 삭제 실패');
     }
   }
 

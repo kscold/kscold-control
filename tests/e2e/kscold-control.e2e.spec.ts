@@ -112,6 +112,7 @@ test('운영 감사 화면에서 타임라인을 렌더링한다', async ({ page
   await expect(page.getByTestId('audit-saved-presets')).toBeVisible();
   await expect(page.getByTestId('audit-export-button')).toBeVisible();
   await expect(page.getByTestId('audit-export-csv-button')).toBeVisible();
+  await expect(page.getByTestId('audit-copy-url-button')).toBeVisible();
   await expect(page.getByText(/최근 24시간 .* 전체 .* 잡혀 있습니다/)).toBeVisible();
   await expect(page.getByPlaceholder('이벤트, metadata, action 검색')).toBeVisible();
   await expect(page.getByPlaceholder('actor email 또는 id')).toBeVisible();
