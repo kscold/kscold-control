@@ -15,6 +15,13 @@ export interface ProjectStats {
   totalSize: number;
 }
 
+export interface ProjectVersion {
+  id: string;          // 파일명(타임스탬프) 기반 ID
+  createdAt: Date;
+  compressedSize: number;  // tar.gz 파일 크기 (bytes)
+  filename: string;
+}
+
 export interface IFileStorage {
   /** 프로젝트 디렉토리 생성 */
   ensureProject(projectName: string): Promise<void>;
@@ -36,4 +43,16 @@ export interface IFileStorage {
 
   /** 프로젝트 통계 (파일 수 + 총 바이트) */
   getStats(projectName: string): Promise<ProjectStats>;
+
+  /** 현재 파일 상태를 .versions/ 에 tar.gz 스냅샷으로 저장 */
+  createSnapshot(projectName: string): Promise<ProjectVersion>;
+
+  /** 버전 목록 조회 (최신순) */
+  listVersions(projectName: string): Promise<ProjectVersion[]>;
+
+  /** 오래된 버전 삭제 — keepCount 이외 전부 삭제 (기본 1개 유지) */
+  cleanupVersions(projectName: string, keepCount?: number): Promise<number>;
+
+  /** 특정 버전 복원 (해당 tar.gz로 파일 교체) */
+  restoreVersion(projectName: string, versionId: string): Promise<void>;
 }

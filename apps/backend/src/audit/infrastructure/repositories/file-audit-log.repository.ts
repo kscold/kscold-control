@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import { randomUUID } from 'crypto';
@@ -94,6 +94,7 @@ function buildDiffSummary(metadata: Record<string, unknown>): AuditDiffSummary |
 
 @Injectable()
 export class FileAuditLogRepository implements IAuditLogRepository {
+  private readonly logger = new Logger(FileAuditLogRepository.name);
   private readonly filePath = resolveAuditLogPath();
 
   async append(input: CreateAuditEventInput): Promise<AuditEvent> {
@@ -119,9 +120,9 @@ export class FileAuditLogRepository implements IAuditLogRepository {
   async list(input: ListAuditEventsInput): Promise<AuditEvent[]> {
     try {
       const items = this.filterEvents(await this.readAllEvents(), input);
-
       return items.slice(0, Math.min(Math.max(input.limit ?? 100, 1), 500));
-    } catch {
+    } catch (error) {
+      this.logger.error('감사 로그 목록 조회 실패', (error as Error).stack);
       return [];
     }
   }
@@ -157,19 +158,32 @@ export class FileAuditLogRepository implements IAuditLogRepository {
   }
 
   private async readAllEvents(): Promise<AuditEvent[]> {
+    let raw: string;
     try {
-      const raw = await fs.readFile(this.filePath, 'utf8');
-      return raw
-        .split('\n')
-        .filter((line) => line.trim())
-        .map((line) => this.enrichEvent(JSON.parse(line) as AuditEvent))
-        .sort(
-          (left, right) =>
-            new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime(),
-        );
-    } catch {
+      raw = await fs.readFile(this.filePath, 'utf8');
+    } catch (error: unknown) {
+      // 파일이 없으면 빈 상태 반환 (정상), 다른 오류면 경고 기록
+      const code = (error as NodeJS.ErrnoException).code;
+      if (code !== 'ENOENT') {
+        this.logger.warn(`감사 로그 파일 읽기 실패: ${(error as Error).message}`);
+      }
       return [];
     }
+
+    const events: AuditEvent[] = [];
+    for (const line of raw.split('\n')) {
+      if (!line.trim()) continue;
+      try {
+        events.push(this.enrichEvent(JSON.parse(line) as AuditEvent));
+      } catch {
+        this.logger.warn(`잘못된 감사 로그 라인 무시: ${line.slice(0, 80)}`);
+      }
+    }
+
+    return events.sort(
+      (left, right) =>
+        new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime(),
+    );
   }
 
   private filterEvents(

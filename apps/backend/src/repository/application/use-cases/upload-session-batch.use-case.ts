@@ -2,6 +2,7 @@ import {
   BadRequestException,
   Inject,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import {
@@ -38,6 +39,8 @@ export interface UploadSessionBatchResult {
 
 @Injectable()
 export class UploadSessionBatchUseCase {
+  private readonly logger = new Logger(UploadSessionBatchUseCase.name);
+
   constructor(
     @Inject(PROJECT_REPOSITORY)
     private readonly projectRepository: IProjectRepository,
@@ -159,6 +162,16 @@ export class UploadSessionBatchUseCase {
       fileCount: stats.fileCount,
       totalSize: stats.totalSize,
     });
+
+    // 세션이 완료되면 스냅샷 생성 (비동기, 실패해도 응답에 영향 없음)
+    if (persistedSession.status === 'completed') {
+      this.fileStorage.createSnapshot(project.name).catch((err: Error) => {
+        this.logger.error(
+          `스냅샷 생성 실패 — project: ${project.name}, reason: ${err.message}`,
+          err.stack,
+        );
+      });
+    }
 
     return {
       project: updatedProject,
