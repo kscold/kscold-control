@@ -137,3 +137,10 @@ export interface FileContentResult {
   content: string;
   truncated: boolean;
 }
+
+export interface ProjectVersion {
+  id: string;
+  createdAt: string;
+  compressedSize: number;
+  filename: string;
+}

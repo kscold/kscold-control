@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from 'react';
 import {
   Download,
   History,
+  Link2,
+  Pin,
   RefreshCw,
   Search,
   ShieldCheck,
@@ -10,6 +12,12 @@ import {
 } from 'lucide-react';
 import { auditService } from '../../../services/api/audit.service';
 import { useAuditTimeline } from '../hooks/useAuditTimeline';
+import {
+  buildDiffEntries,
+  buildDiffPreview,
+  isRecord,
+} from '../lib/audit-diff';
+import { formatAuditTimestamp, formatExportFilename } from '../../../lib/date-format';
 import type { AuditDomain, AuditEvent } from '../lib/audit.types';
 
 const DOMAIN_OPTIONS: Array<{ value: AuditDomain; label: string }> = [
@@ -20,32 +28,6 @@ const DOMAIN_OPTIONS: Array<{ value: AuditDomain; label: string }> = [
   { value: 'rbac', label: 'RBAC' },
 ];
 
-function formatTimestamp(value: string) {
-  const parsed = new Date(value);
-  if (Number.isNaN(parsed.getTime())) {
-    return value;
-  }
-
-  return parsed.toLocaleString('ko-KR', {
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-  });
-}
-
-function formatExportFilename(value: string) {
-  const parsed = new Date(value);
-  if (Number.isNaN(parsed.getTime())) {
-    return 'audit-export.json';
-  }
-
-  return `audit-export-${parsed
-    .toISOString()
-    .replace(/:/g, '-')
-    .replace(/\.\d{3}Z$/, 'Z')}.json`;
-}
 
 function getDomainTone(domain: AuditEvent['domain']) {
   switch (domain) {
@@ -70,10 +52,6 @@ function getTargetLabel(item: { targetType: string | null; targetId: string | nu
   return `${item.targetType || 'unknown'} / ${item.targetId || '-'}`;
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
-}
-
 function formatValue(value: unknown) {
   if (value === null || value === undefined) {
     return '-';
@@ -90,25 +68,6 @@ function formatValue(value: unknown) {
   return JSON.stringify(value);
 }
 
-function flattenRecord(
-  value: Record<string, unknown>,
-  prefix = '',
-  output = new Map<string, unknown>(),
-) {
-  Object.entries(value).forEach(([key, nestedValue]) => {
-    const nextPath = prefix ? `${prefix}.${key}` : key;
-
-    if (isRecord(nestedValue) && Object.keys(nestedValue).length > 0) {
-      flattenRecord(nestedValue, nextPath, output);
-      return;
-    }
-
-    output.set(nextPath, nestedValue);
-  });
-
-  return output;
-}
-
 function getChangeTone(changeType: 'added' | 'removed' | 'changed') {
   switch (changeType) {
     case 'added':
@@ -118,66 +77,6 @@ function getChangeTone(changeType: 'added' | 'removed' | 'changed') {
     default:
       return 'border-amber-400/20 bg-amber-500/10 text-amber-100';
   }
-}
-
-function buildDiffEntries(metadata: Record<string, unknown>) {
-  const before = isRecord(metadata.before) ? metadata.before : null;
-  const after = isRecord(metadata.after) ? metadata.after : null;
-
-  if (!before && !after) {
-    return [];
-  }
-
-  const beforeMap = before ? flattenRecord(before) : new Map<string, unknown>();
-  const afterMap = after ? flattenRecord(after) : new Map<string, unknown>();
-  const paths = Array.from(
-    new Set([...beforeMap.keys(), ...afterMap.keys()]),
-  ).sort((left, right) => left.localeCompare(right));
-
-  return paths
-    .map((path) => {
-      const beforeExists = beforeMap.has(path);
-      const afterExists = afterMap.has(path);
-      const beforeValue = beforeMap.get(path);
-      const afterValue = afterMap.get(path);
-
-      if (JSON.stringify(beforeValue) === JSON.stringify(afterValue)) {
-        return null;
-      }
-
-      return {
-        changeType: !beforeExists ? 'added' : !afterExists ? 'removed' : 'changed',
-        path,
-        beforeValue,
-        afterValue,
-      };
-    })
-    .filter(
-      (
-        entry,
-      ): entry is {
-        changeType: 'added' | 'removed' | 'changed';
-        path: string;
-        beforeValue: unknown;
-        afterValue: unknown;
-      } => Boolean(entry),
-    );
-}
-
-function buildDiffPreview(metadata: Record<string, unknown>) {
-  const entries = buildDiffEntries(metadata);
-
-  if (entries.length === 0) {
-    return null;
-  }
-
-  const preview = entries
-    .slice(0, 3)
-    .map((entry) => entry.path)
-    .join(', ');
-  const remainder = entries.length > 3 ? ` +${entries.length - 3}` : '';
-
-  return `${entries.length} changed · ${preview}${remainder}`;
 }
 
 function escapeCsvCell(value: unknown) {
@@ -191,6 +90,7 @@ export function AuditTimeline() {
     applyPreset,
     applyTimePreset,
     clearFilters,
+    copyShareUrl,
     setActor,
     domain,
     setDomain,
@@ -212,10 +112,12 @@ export function AuditTimeline() {
     setTarget,
     summary,
     target,
+    togglePresetPin,
     to,
     setTo,
   } = useAuditTimeline();
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [isCopyingUrl, setIsCopyingUrl] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
 
   useEffect(() => {
@@ -240,10 +142,13 @@ export function AuditTimeline() {
     { domain: 'nginx', label: 'Nginx', value: summary.byDomain.nginx },
     { domain: 'rbac', label: 'RBAC', value: summary.byDomain.rbac },
   ];
-  const selectedItem = items.find((item) => item.id === selectedId) ?? null;
+  const selectedItem = useMemo(
+    () => items.find((item) => item.id === selectedId) ?? null,
+    [items, selectedId],
+  );
   const diffEntries = useMemo(
     () => buildDiffEntries(selectedItem?.metadata ?? {}),
-    [selectedItem],
+    [selectedItem?.metadata],
   );
 
   const handleExport = async (format: 'json' | 'csv') => {
@@ -316,12 +221,26 @@ export function AuditTimeline() {
       link.href = url;
       link.download =
         format === 'json'
-          ? formatExportFilename(payload.exportedAt)
-          : formatExportFilename(payload.exportedAt).replace(/\.json$/, '.csv');
+          ? formatExportFilename(payload.exportedAt, 'json')
+          : formatExportFilename(payload.exportedAt, 'csv');
       link.click();
       window.URL.revokeObjectURL(url);
     } finally {
       setIsExporting(false);
+    }
+  };
+
+  const handleCopyUrl = async () => {
+    try {
+      const copied = await copyShareUrl();
+      if (!copied) {
+        return;
+      }
+
+      setIsCopyingUrl(true);
+      window.setTimeout(() => setIsCopyingUrl(false), 900);
+    } catch {
+      setIsCopyingUrl(false);
     }
   };
 
@@ -369,6 +288,16 @@ export function AuditTimeline() {
           >
             <RefreshCw size={14} className={isLoading ? 'animate-spin' : ''} />
             새로고침
+          </button>
+
+          <button
+            type="button"
+            onClick={() => void handleCopyUrl()}
+            data-testid="audit-copy-url-button"
+            className="inline-flex items-center gap-2 rounded-xl border border-violet-400/20 bg-violet-500/10 px-4 py-2 text-sm text-violet-100 transition hover:border-violet-300/30 hover:text-white"
+          >
+            <Link2 size={14} />
+            {isCopyingUrl ? 'URL 복사됨' : '필터 URL 복사'}
           </button>
         </div>
       </div>
@@ -489,9 +418,23 @@ export function AuditTimeline() {
                   <button
                     type="button"
                     onClick={() => applyPreset(preset)}
-                    className="transition hover:text-white"
+                    className={`transition hover:text-white ${
+                      preset.pinned ? 'font-medium text-white' : ''
+                    }`}
                   >
                     {preset.label}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => togglePresetPin(preset.id)}
+                    aria-label={`${preset.label} preset 고정`}
+                    className={`rounded-full border px-2 py-0.5 text-xs transition ${
+                      preset.pinned
+                        ? 'border-amber-300/30 bg-amber-500/10 text-amber-100'
+                        : 'border-white/10 text-gray-400 hover:border-white/20 hover:text-white'
+                    }`}
+                  >
+                    <Pin size={11} />
                   </button>
                   <button
                     type="button"
@@ -715,7 +658,7 @@ export function AuditTimeline() {
                         <span>
                           target {item.targetType || 'unknown'} / {item.targetId || '-'}
                         </span>
-                        <span>{formatTimestamp(item.createdAt)}</span>
+                        <span>{formatAuditTimestamp(item.createdAt)}</span>
                       </div>
                       {diffPreview && (
                         <div className="mt-2 text-xs text-cyan-200/90">
@@ -763,7 +706,7 @@ export function AuditTimeline() {
                     target: {selectedItem.targetType || 'unknown'} /{' '}
                     {selectedItem.targetId || '-'}
                   </div>
-                  <div>time: {formatTimestamp(selectedItem.createdAt)}</div>
+                  <div>time: {formatAuditTimestamp(selectedItem.createdAt)}</div>
                 </div>
               </div>
 

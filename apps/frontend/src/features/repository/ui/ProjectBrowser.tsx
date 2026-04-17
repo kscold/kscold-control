@@ -6,12 +6,14 @@ import {
   Code2,
   AlertTriangle,
   X,
+  History,
 } from 'lucide-react';
 import { useProjectTree } from '../hooks/useProjectTree';
 import { formatBytes } from '../lib/file-filter';
 import { FileTreeView } from './FileTreeView';
 import { CodeViewer } from './CodeViewer';
 import { UploadDropzone } from './UploadDropzone';
+import { VersionList } from './VersionList';
 import type {
   RepositoryProject,
   RepositoryUploadActivity,
@@ -22,7 +24,7 @@ interface ProjectBrowserProps {
   onUploaded: () => void;
 }
 
-type Tab = 'browse' | 'upload';
+type Tab = 'browse' | 'upload' | 'versions';
 
 export function ProjectBrowser({ project, onUploaded }: ProjectBrowserProps) {
   const [tab, setTab] = useState<Tab>('browse');
@@ -87,6 +89,18 @@ export function ProjectBrowser({ project, onUploaded }: ProjectBrowserProps) {
             >
               <Upload size={13} />
               업로드
+            </button>
+            <button
+              onClick={() => setTab('versions')}
+              disabled={isUploading}
+              className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
+                tab === 'versions'
+                  ? 'bg-gray-800 text-white'
+                  : 'text-gray-500 hover:text-gray-300'
+              } ${isUploading ? 'cursor-not-allowed opacity-50' : ''}`}
+            >
+              <History size={13} />
+              버전
             </button>
           </div>
         </div>
@@ -205,7 +219,7 @@ export function ProjectBrowser({ project, onUploaded }: ProjectBrowserProps) {
             <CodeViewer projectId={project.id} selectedPath={selectedPath} />
           </div>
         </div>
-      ) : (
+      ) : tab === 'upload' ? (
         <div className="flex-1 overflow-auto p-5">
           <UploadDropzone
             project={project}
@@ -216,6 +230,10 @@ export function ProjectBrowser({ project, onUploaded }: ProjectBrowserProps) {
               setTab('browse');
             }}
           />
+        </div>
+      ) : (
+        <div className="flex-1 overflow-auto p-5">
+          <VersionList projectId={project.id} />
         </div>
       )}
     </div>

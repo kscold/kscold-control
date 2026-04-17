@@ -67,6 +67,7 @@ export interface AuditExportPayload {
 export interface AuditFilterPreset {
   id: string;
   label: string;
+  pinned: boolean;
   actor: string;
   domain: AuditDomain;
   from: string;
