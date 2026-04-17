@@ -12,9 +12,9 @@ import {
 import { AuthGuard } from '@nestjs/passport';
 import { PermissionsGuard } from '../../../common/guards';
 import { RequirePermissions } from '../../../common/decorators';
+import { Audit } from '../../../common/decorators/audit.decorator';
 import { PERMISSIONS } from '../../../common/constants/permissions';
 import type { JwtRequest } from '../../../common/types/jwt-request.type';
-import { AuditLogService } from '../../../audit/application/services/audit-log.service';
 
 // Application Layer
 import {
@@ -35,33 +35,56 @@ import {
 // Presentation Layer
 import { AssignRolesRequestDto, SetTerminalLimitRequestDto } from '../dto';
 
+/** 감사 로그용 사용자 스냅샷 — 모듈 레벨 순수 함수로 분리 (데코레이터 팩토리에서 공유) */
+function toUserSnapshot(
+  user:
+    | {
+        id: string;
+        email: string;
+        roles?: Array<{ name: string }>;
+        terminalCommandCount: number;
+        terminalCommandLimit: number;
+      }
+    | undefined,
+) {
+  if (!user) return null;
+  return {
+    id: user.id,
+    email: user.email,
+    roles: (user.roles ?? []).map((r) => r.name),
+    terminalCommandCount: user.terminalCommandCount,
+    terminalCommandLimit: user.terminalCommandLimit,
+  };
+}
+
+/** req 에 주입하는 before 스냅샷 타입 */
+interface RbacRequest extends JwtRequest {
+  _auditExtra?: { before: ReturnType<typeof toUserSnapshot> };
+}
+
 /**
  * RBAC Controller
- * Presentation layer - handles HTTP concerns only
- * Delegates business logic to Use Cases
+ * Presentation layer — handles HTTP concerns only.
+ * Cross-cutting audit logging is handled via @Audit() + AuditInterceptor (AOP).
+ *
+ * before 스냅샷이 필요한 핸들러에서는 req._auditExtra = { before } 를 설정합니다.
+ * AuditInterceptor 가 이를 ctx.extra 로 전달하므로 metadata 팩토리에서 접근 가능합니다.
  */
 @Controller('rbac')
 @UseGuards(AuthGuard('jwt'), PermissionsGuard)
 export class RbacController {
   constructor(
-    // User Use Cases
     private readonly createUserUseCase: CreateUserUseCase,
     private readonly updateUserUseCase: UpdateUserUseCase,
     private readonly deleteUserUseCase: DeleteUserUseCase,
     private readonly listUsersUseCase: ListUsersUseCase,
     private readonly assignRolesUseCase: AssignRolesUseCase,
-    // Role Use Cases
     private readonly listRolesUseCase: ListRolesUseCase,
-    // Terminal Limit Use Case
     private readonly manageTerminalLimitUseCase: ManageTerminalLimitUseCase,
-    private readonly auditLogService: AuditLogService,
   ) {}
 
   // ==================== Role Endpoints ====================
 
-  /**
-   * Get all roles with permissions
-   */
   @Get('roles')
   @RequirePermissions(PERMISSIONS.RBAC_MANAGE)
   async getRoles() {
@@ -70,219 +93,148 @@ export class RbacController {
 
   // ==================== User Endpoints ====================
 
-  /**
-   * Get all users with roles
-   */
   @Get('users')
   @RequirePermissions(PERMISSIONS.RBAC_MANAGE)
   async getUsersWithRoles() {
     return this.listUsersUseCase.execute();
   }
 
-  /**
-   * Create a new user
-   */
   @Post('users')
   @RequirePermissions(PERMISSIONS.RBAC_MANAGE)
-  async createUser(@Body() dto: CreateUserDto, @Request() req: JwtRequest) {
-    const result = await this.createUserUseCase.execute(dto);
-    await this.auditLogService.record({
-      domain: 'rbac',
-      action: 'user.create',
-      summary: `사용자 ${dto.email}을 생성했습니다.`,
-      actorId: req.user?.id ?? req.user?.sub ?? null,
-      actorEmail: req.user?.email ?? null,
-      targetType: 'user',
-      targetId: result.id,
-      metadata: {
-        after: this.toUserSnapshot(result),
-      },
-    });
-    return result;
+  @Audit({
+    domain: 'rbac',
+    action: 'user.create',
+    summary: (ctx) =>
+      `사용자 ${(ctx.response as { email: string }).email}을 생성했습니다.`,
+    targetType: 'user',
+    targetId: (ctx) => (ctx.response as { id: string }).id,
+    metadata: (ctx) => ({ after: toUserSnapshot(ctx.response as Parameters<typeof toUserSnapshot>[0]) }),
+  })
+  async createUser(@Body() dto: CreateUserDto) {
+    return this.createUserUseCase.execute(dto);
   }
 
-  /**
-   * Update user information
-   */
   @Put('users/:id')
   @RequirePermissions(PERMISSIONS.RBAC_MANAGE)
+  @Audit({
+    domain: 'rbac',
+    action: 'user.update',
+    summary: (ctx) => `사용자 ${ctx.params.id} 정보를 수정했습니다.`,
+    targetType: 'user',
+    targetId: (ctx) => ctx.params.id,
+    metadata: (ctx) => ({
+      before: (ctx.extra as { before?: unknown }).before ?? null,
+      after: toUserSnapshot(ctx.response as Parameters<typeof toUserSnapshot>[0]),
+      passwordChanged: Boolean((ctx.body as { password?: string }).password),
+    }),
+  })
   async updateUser(
     @Param('id') id: string,
     @Body() dto: UpdateUserDto,
-    @Request() req: JwtRequest,
+    @Request() req: RbacRequest,
   ) {
-    const beforeUser = await this.getUserSnapshot(id);
-    const result = await this.updateUserUseCase.execute(id, dto);
-    await this.auditLogService.record({
-      domain: 'rbac',
-      action: 'user.update',
-      summary: `사용자 ${id} 정보를 수정했습니다.`,
-      actorId: req.user?.id ?? req.user?.sub ?? null,
-      actorEmail: req.user?.email ?? null,
-      targetType: 'user',
-      targetId: id,
-      metadata: {
-        before: beforeUser,
-        after: this.toUserSnapshot(result),
-        passwordChanged: Boolean(dto.password),
-      },
-    });
-    return result;
+    req._auditExtra = { before: await this.getUserSnapshot(id) };
+    return this.updateUserUseCase.execute(id, dto);
   }
 
-  /**
-   * Delete a user
-   */
   @Delete('users/:id')
   @RequirePermissions(PERMISSIONS.RBAC_MANAGE)
-  async deleteUser(@Param('id') id: string, @Request() req: JwtRequest) {
-    const beforeUser = await this.getUserSnapshot(id);
+  @Audit({
+    domain: 'rbac',
+    action: 'user.delete',
+    summary: (ctx) => `사용자 ${ctx.params.id}를 삭제했습니다.`,
+    targetType: 'user',
+    targetId: (ctx) => ctx.params.id,
+    metadata: (ctx) => ({ before: (ctx.extra as { before?: unknown }).before ?? null }),
+  })
+  async deleteUser(@Param('id') id: string, @Request() req: RbacRequest) {
+    req._auditExtra = { before: await this.getUserSnapshot(id) };
     await this.deleteUserUseCase.execute(id);
-    await this.auditLogService.record({
-      domain: 'rbac',
-      action: 'user.delete',
-      summary: `사용자 ${id}를 삭제했습니다.`,
-      actorId: req.user?.id ?? req.user?.sub ?? null,
-      actorEmail: req.user?.email ?? null,
-      targetType: 'user',
-      targetId: id,
-      metadata: {
-        before: beforeUser,
-      },
-    });
     return { success: true };
   }
 
-  /**
-   * Assign roles to a user
-   */
   @Post('users/:userId/roles')
   @RequirePermissions(PERMISSIONS.RBAC_MANAGE)
+  @Audit({
+    domain: 'rbac',
+    action: 'user.assign-roles',
+    summary: (ctx) => `사용자 ${ctx.params.userId}의 역할을 변경했습니다.`,
+    targetType: 'user',
+    targetId: (ctx) => ctx.params.userId,
+    metadata: (ctx) => ({
+      before: (ctx.extra as { before?: unknown }).before ?? null,
+      after: toUserSnapshot(ctx.response as Parameters<typeof toUserSnapshot>[0]),
+    }),
+  })
   async assignRoles(
     @Param('userId') userId: string,
     @Body() requestDto: AssignRolesRequestDto,
-    @Request() req: JwtRequest,
+    @Request() req: RbacRequest,
   ) {
-    const beforeUser = await this.getUserSnapshot(userId);
-    const dto: AssignRolesDto = {
-      userId,
-      roleIds: requestDto.roleIds,
-    };
-    const result = await this.assignRolesUseCase.execute(dto);
-    await this.auditLogService.record({
-      domain: 'rbac',
-      action: 'user.assign-roles',
-      summary: `사용자 ${userId}의 역할을 변경했습니다.`,
-      actorId: req.user?.id ?? req.user?.sub ?? null,
-      actorEmail: req.user?.email ?? null,
-      targetType: 'user',
-      targetId: userId,
-      metadata: {
-        before: beforeUser,
-        after: this.toUserSnapshot(result),
-      },
-    });
-    return result;
+    req._auditExtra = { before: await this.getUserSnapshot(userId) };
+    const dto: AssignRolesDto = { userId, roleIds: requestDto.roleIds };
+    return this.assignRolesUseCase.execute(dto);
   }
 
   // ==================== Terminal Limit Endpoints ====================
 
-  /**
-   * Reset terminal command count to 0
-   */
   @Post('users/:id/reset-terminal-limit')
   @RequirePermissions(PERMISSIONS.RBAC_MANAGE)
-  async resetTerminalLimit(@Param('id') id: string, @Request() req: JwtRequest) {
-    const beforeUser = await this.getUserSnapshot(id);
-    const result = await this.manageTerminalLimitUseCase.resetCommandCount(id);
-    await this.auditLogService.record({
-      domain: 'rbac',
-      action: 'user.reset-terminal-limit',
-      summary: `사용자 ${id}의 터미널 카운트를 초기화했습니다.`,
-      actorId: req.user?.id ?? req.user?.sub ?? null,
-      actorEmail: req.user?.email ?? null,
-      targetType: 'user',
-      targetId: id,
-      metadata: {
-        before: beforeUser,
-        after: beforeUser
-          ? {
-              ...beforeUser,
-              terminalCommandCount: result.terminalCommandCount,
-            }
-          : {
-              terminalCommandCount: result.terminalCommandCount,
-              terminalCommandLimit: result.terminalCommandLimit,
-            },
-      },
-    });
-    return result;
+  @Audit({
+    domain: 'rbac',
+    action: 'user.reset-terminal-limit',
+    summary: (ctx) => `사용자 ${ctx.params.id}의 터미널 카운트를 초기화했습니다.`,
+    targetType: 'user',
+    targetId: (ctx) => ctx.params.id,
+    metadata: (ctx) => {
+      const before = (ctx.extra as { before?: Record<string, unknown> | null }).before;
+      const r = ctx.response as { terminalCommandCount: number; terminalCommandLimit: number };
+      return {
+        before,
+        after: before
+          ? { ...before, terminalCommandCount: r.terminalCommandCount }
+          : { terminalCommandCount: r.terminalCommandCount, terminalCommandLimit: r.terminalCommandLimit },
+      };
+    },
+  })
+  async resetTerminalLimit(@Param('id') id: string, @Request() req: RbacRequest) {
+    req._auditExtra = { before: await this.getUserSnapshot(id) };
+    return this.manageTerminalLimitUseCase.resetCommandCount(id);
   }
 
-  /**
-   * Set terminal command limit
-   */
   @Put('users/:id/terminal-limit')
   @RequirePermissions(PERMISSIONS.RBAC_MANAGE)
+  @Audit({
+    domain: 'rbac',
+    action: 'user.set-terminal-limit',
+    summary: (ctx) =>
+      `사용자 ${ctx.params.id}의 터미널 제한을 ${(ctx.body as { limit: number }).limit}로 변경했습니다.`,
+    targetType: 'user',
+    targetId: (ctx) => ctx.params.id,
+    metadata: (ctx) => {
+      const before = (ctx.extra as { before?: Record<string, unknown> | null }).before;
+      const r = ctx.response as { terminalCommandLimit: number };
+      return {
+        before,
+        after: before
+          ? { ...before, terminalCommandLimit: r.terminalCommandLimit }
+          : { terminalCommandLimit: r.terminalCommandLimit },
+      };
+    },
+  })
   async setTerminalLimit(
     @Param('id') id: string,
     @Body() requestDto: SetTerminalLimitRequestDto,
-    @Request() req: JwtRequest,
+    @Request() req: RbacRequest,
   ) {
-    const beforeUser = await this.getUserSnapshot(id);
-    const result = await this.manageTerminalLimitUseCase.setCommandLimit(
-      id,
-      requestDto.limit,
-    );
-    await this.auditLogService.record({
-      domain: 'rbac',
-      action: 'user.set-terminal-limit',
-      summary: `사용자 ${id}의 터미널 제한을 ${requestDto.limit}로 변경했습니다.`,
-      actorId: req.user?.id ?? req.user?.sub ?? null,
-      actorEmail: req.user?.email ?? null,
-      targetType: 'user',
-      targetId: id,
-      metadata: {
-        before: beforeUser,
-        after: beforeUser
-          ? {
-              ...beforeUser,
-              terminalCommandLimit: result.terminalCommandLimit,
-            }
-          : {
-              terminalCommandLimit: result.terminalCommandLimit,
-            },
-      },
-    });
-    return result;
+    req._auditExtra = { before: await this.getUserSnapshot(id) };
+    return this.manageTerminalLimitUseCase.setCommandLimit(id, requestDto.limit);
   }
+
+  // ==================== Private helpers ====================
 
   private async getUserSnapshot(id: string) {
     const users = await this.listUsersUseCase.execute();
-    return this.toUserSnapshot(users.find((user) => user.id === id));
-  }
-
-  private toUserSnapshot(
-    user:
-      | {
-          id: string;
-          email: string;
-          roles?: Array<{ name: string }>;
-          terminalCommandCount: number;
-          terminalCommandLimit: number;
-        }
-      | undefined,
-  ) {
-    if (!user) {
-      return null;
-    }
-
-    return {
-      id: user.id,
-      email: user.email,
-      roles: (user.roles ?? []).map((role) => role.name),
-      terminalCommandCount: user.terminalCommandCount,
-      terminalCommandLimit: user.terminalCommandLimit,
-    };
+    return toUserSnapshot(users.find((user) => user.id === id));
   }
 }
