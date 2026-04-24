@@ -8,5 +8,6 @@ export { UploadSessionBatchUseCase } from './upload-session-batch.use-case';
 export { DownloadArchiveUseCase } from './download-archive.use-case';
 export { BrowseTreeUseCase } from './browse-tree.use-case';
 export { ReadFileUseCase } from './read-file.use-case';
+export { ReadFileAtVersionUseCase } from './read-file-at-version.use-case';
 export { ListVersionsUseCase } from './list-versions.use-case';
 export { CleanupVersionsUseCase } from './cleanup-versions.use-case';

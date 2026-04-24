@@ -32,6 +32,7 @@ import {
   DownloadArchiveUseCase,
   BrowseTreeUseCase,
   ReadFileUseCase,
+  ReadFileAtVersionUseCase,
   ListVersionsUseCase,
   CleanupVersionsUseCase,
 } from '../../application/use-cases';
@@ -70,6 +71,7 @@ export class RepositoryController {
     private readonly downloadArchiveUseCase: DownloadArchiveUseCase,
     private readonly browseTreeUseCase: BrowseTreeUseCase,
     private readonly readFileUseCase: ReadFileUseCase,
+    private readonly readFileAtVersionUseCase: ReadFileAtVersionUseCase,
     private readonly listVersionsUseCase: ListVersionsUseCase,
     private readonly cleanupVersionsUseCase: CleanupVersionsUseCase,
   ) {}
@@ -260,6 +262,16 @@ export class RepositoryController {
   @RequirePermissions(PERMISSIONS.REPOSITORY_READ)
   async readFile(@Param('id') id: string, @Query('path') path: string) {
     return this.readFileUseCase.execute(id, path);
+  }
+
+  @Get('projects/:id/file-at-version')
+  @RequirePermissions(PERMISSIONS.REPOSITORY_READ)
+  async readFileAtVersion(
+    @Param('id') id: string,
+    @Query('path') path: string,
+    @Query('versionId') versionId: string,
+  ) {
+    return this.readFileAtVersionUseCase.execute(id, versionId, path);
   }
 
   @Get('projects/:id/versions')

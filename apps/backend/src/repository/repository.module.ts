@@ -17,6 +17,7 @@ import {
   DownloadArchiveUseCase,
   BrowseTreeUseCase,
   ReadFileUseCase,
+  ReadFileAtVersionUseCase,
   ListVersionsUseCase,
   CleanupVersionsUseCase,
 } from './application/use-cases';
@@ -43,6 +44,7 @@ import { AuthModule } from '../auth/auth.module';
     DownloadArchiveUseCase,
     BrowseTreeUseCase,
     ReadFileUseCase,
+    ReadFileAtVersionUseCase,
     ListVersionsUseCase,
     CleanupVersionsUseCase,
     {

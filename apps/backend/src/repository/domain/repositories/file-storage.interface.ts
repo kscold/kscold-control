@@ -38,6 +38,13 @@ export interface IFileStorage {
   /** 단일 파일 읽기 */
   readFile(projectName: string, relativePath: string): Promise<Buffer>;
 
+  /** 특정 버전 아카이브에서 단일 파일 읽기 */
+  readFileAtVersion(
+    projectName: string,
+    versionId: string,
+    relativePath: string,
+  ): Promise<Buffer | null>;
+
   /** 프로젝트를 tar.gz 스트림으로 압축 */
   archiveProject(projectName: string): Promise<Readable>;
 
