@@ -15,6 +15,7 @@ import { UpnpModule } from './upnp/upnp.module';
 import { ClaudeChatModule } from './claude-chat/claude-chat.module';
 import { RepositoryModule } from './repository/repository.module';
 import { AuditModule } from './audit/audit.module';
+import { SecurityModule } from './security/security.module';
 
 // Domain Entities (Clean Architecture)
 import { User } from './rbac/domain/entities/user.entity';
@@ -24,6 +25,7 @@ import { Session } from './terminal/domain/entities/session.entity';
 import { Message } from './terminal/domain/entities/message.entity';
 import { Container } from './docker/domain/entities/container.entity';
 import { Project } from './repository/domain/entities/project.entity';
+import { IpBan } from './security/domain/entities/ip-ban.entity';
 
 import { HttpLoggerMiddleware } from './common/middleware/http-logger.middleware';
 import { AuditInterceptor } from './common/interceptors';
@@ -44,7 +46,7 @@ import { AuditInterceptor } from './common/interceptors';
     TypeOrmModule.forRoot({
       type: 'postgres',
       url: process.env.DATABASE_URL,
-      entities: [User, Role, Permission, Session, Message, Container, Project],
+      entities: [User, Role, Permission, Session, Message, Container, Project, IpBan],
       synchronize: process.env.NODE_ENV !== 'production',
       logging: process.env.NODE_ENV !== 'production',
     }),
@@ -61,6 +63,7 @@ import { AuditInterceptor } from './common/interceptors';
     UpnpModule,
     ClaudeChatModule,
     RepositoryModule,
+    SecurityModule,
   ],
   providers: [
     {

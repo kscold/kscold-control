@@ -35,6 +35,10 @@ export const PERMISSIONS = {
   REPOSITORY_READ: 'repository:read',
   REPOSITORY_WRITE: 'repository:write',
   REPOSITORY_DELETE: 'repository:delete',
+
+  // Security (IP 차단)
+  SECURITY_READ: 'security:read',
+  SECURITY_MANAGE: 'security:manage',
 } as const;
 
 export type Permission = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];

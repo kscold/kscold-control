@@ -19,5 +19,6 @@ import { DockerModule } from '../docker/docker.module';
     { provide: NGINX_CONFIG_REPOSITORY, useClass: NginxConfigRepositoryImpl },
     { provide: NGINX_RUNTIME_REPOSITORY, useClass: NginxRuntimeRepositoryImpl },
   ],
+  exports: [NGINX_RUNTIME_REPOSITORY],
 })
 export class NginxModule {}
