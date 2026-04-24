@@ -115,10 +115,6 @@ export function useTerminalSocket({
           timestamp: string;
         }>;
       }) => {
-        console.log(
-          `[Terminal] Restoring ${data.messages.length} messages from history`,
-        );
-
         // Clear terminal first
         xterm.clear();
 
