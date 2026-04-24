@@ -243,6 +243,65 @@ export class LocalFileStorageService implements IFileStorage {
     return deleted;
   }
 
+  async readFileAtVersion(
+    projectName: string,
+    versionId: string,
+    relativePath: string,
+  ): Promise<Buffer | null> {
+    const dir = this.projectPath(projectName);
+    const versionsDir = path.join(dir, VERSIONS_DIR);
+    const safeVersion = path.basename(versionId);
+    const src = path.join(versionsDir, `${safeVersion}.tar.gz`);
+
+    try {
+      await fs.access(src);
+    } catch {
+      throw new Error(`version archive not found: ${safeVersion}`);
+    }
+
+    // tar stores entries as ./path. Try both ./path and path.
+    const normalized = relativePath.replace(/^\.\//, '').replace(/^\/+/, '');
+    const candidates = [`./${normalized}`, normalized];
+
+    for (const target of candidates) {
+      const buffer = await this.extractSingleFileFromTar(src, target);
+      if (buffer !== null) return buffer;
+    }
+    return null;
+  }
+
+  private extractSingleFileFromTar(
+    archivePath: string,
+    entryPath: string,
+  ): Promise<Buffer | null> {
+    return new Promise((resolve) => {
+      const tar = spawn('tar', ['-xOzf', archivePath, entryPath], {
+        stdio: ['ignore', 'pipe', 'pipe'],
+      });
+
+      const chunks: Buffer[] = [];
+      let stderrOutput = '';
+
+      tar.stdout.on('data', (chunk: Buffer) => chunks.push(chunk));
+      tar.stderr.on('data', (chunk: Buffer) => {
+        stderrOutput += chunk.toString();
+      });
+      tar.on('error', () => resolve(null));
+      tar.on('exit', (code) => {
+        if (code === 0 && chunks.length > 0) {
+          resolve(Buffer.concat(chunks));
+        } else {
+          if (stderrOutput && !stderrOutput.includes('Not found in archive')) {
+            this.logger.warn(
+              `extractSingleFileFromTar: ${entryPath} — ${stderrOutput.trim()}`,
+            );
+          }
+          resolve(null);
+        }
+      });
+    });
+  }
+
   async restoreVersion(projectName: string, versionId: string): Promise<void> {
     const dir = this.projectPath(projectName);
     const versionsDir = path.join(dir, VERSIONS_DIR);
