@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { FolderGit2, Plus, Loader2 } from 'lucide-react';
+import { FolderGit2, Plus, Loader2, ArrowLeft } from 'lucide-react';
 import { useProjects } from '../hooks/useProjects';
 import { ProjectCard } from './ProjectCard';
 import { CreateProjectModal } from './CreateProjectModal';
@@ -14,10 +14,10 @@ export function RepositoryView() {
 
   return (
     <div className="h-full overflow-auto bg-gray-950 p-4 sm:p-6">
-      <div className="mb-6 flex items-center justify-between">
-        <div>
-          <h1 className="flex items-center gap-3 text-2xl font-bold text-white">
-            <FolderGit2 size={28} className="text-blue-400" />
+      <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="min-w-0">
+          <h1 className="flex items-center gap-3 text-xl font-bold text-white sm:text-2xl">
+            <FolderGit2 size={24} className="shrink-0 text-blue-400 sm:h-7 sm:w-7" />
             소스 저장소
           </h1>
           <p className="mt-1 text-sm text-gray-500">
@@ -26,7 +26,7 @@ export function RepositoryView() {
         </div>
         <button
           onClick={() => setCreateOpen(true)}
-          className="flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+          className="inline-flex shrink-0 items-center justify-center gap-2 self-start whitespace-nowrap rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 sm:self-auto"
         >
           <Plus size={16} />새 프로젝트
         </button>
@@ -39,8 +39,10 @@ export function RepositoryView() {
       )}
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        {/* 좌측: 프로젝트 목록 */}
-        <div className="space-y-3 lg:col-span-1">
+        {/* 좌측: 프로젝트 목록 — 모바일에선 프로젝트 선택 시 숨김 */}
+        <div
+          className={`space-y-3 lg:col-span-1 ${active ? 'hidden lg:block' : ''}`}
+        >
           <h2 className="text-xs font-bold uppercase tracking-wider text-gray-500">
             프로젝트 ({projects.length})
           </h2>
@@ -77,10 +79,19 @@ export function RepositoryView() {
           )}
         </div>
 
-        {/* 우측: 프로젝트 브라우저 (트리 + 코드 뷰어 + 업로드) */}
-        <div className="lg:col-span-2">
+        {/* 우측: 프로젝트 브라우저 (트리 + 코드 뷰어 + 업로드) — 모바일에선 프로젝트 선택 시에만 노출 */}
+        <div className={`lg:col-span-2 ${active ? '' : 'hidden lg:block'}`}>
           {active ? (
-            <ProjectBrowser project={active} onUploaded={reload} />
+            <div className="space-y-3">
+              <button
+                onClick={() => setActiveId(null)}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-gray-800 bg-gray-900 px-3 py-1.5 text-xs text-gray-300 hover:border-gray-700 hover:text-white lg:hidden"
+              >
+                <ArrowLeft size={13} />
+                프로젝트 목록
+              </button>
+              <ProjectBrowser project={active} onUploaded={reload} />
+            </div>
           ) : (
             <div className="flex h-full min-h-[400px] items-center justify-center rounded-xl border border-dashed border-gray-800 bg-gray-900/30">
               <div className="text-center">

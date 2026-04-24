@@ -91,40 +91,42 @@ export function NginxDashboard() {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 mb-4 bg-gray-900 p-1 rounded-lg w-fit">
-        <button
-          onClick={() => setTab('proxy')}
-          className={`px-4 py-2 rounded-md text-sm font-medium transition ${
-            tab === 'proxy'
-              ? 'bg-gray-700 text-white'
-              : 'text-gray-400 hover:text-white'
-          }`}
-        >
-          <Globe size={14} className="inline mr-1.5" />
-          프록시 ({sitesHook.sites.length})
-        </button>
-        <button
-          onClick={() => setTab('ssl')}
-          className={`px-4 py-2 rounded-md text-sm font-medium transition ${
-            tab === 'ssl'
-              ? 'bg-gray-700 text-white'
-              : 'text-gray-400 hover:text-white'
-          }`}
-        >
-          <Lock size={14} className="inline mr-1.5" />
-          SSL 인증서 ({certsHook.certs.length})
-        </button>
-        <button
-          onClick={() => setTab('dns')}
-          className={`px-4 py-2 rounded-md text-sm font-medium transition ${
-            tab === 'dns'
-              ? 'bg-gray-700 text-white'
-              : 'text-gray-400 hover:text-white'
-          }`}
-        >
-          <Wifi size={14} className="inline mr-1.5" />
-          DNS 관리
-        </button>
+      <div className="mb-4 -mx-4 overflow-x-auto px-4 sm:mx-0 sm:overflow-visible sm:px-0">
+        <div className="inline-flex gap-1 bg-gray-900 p-1 rounded-lg">
+          <button
+            onClick={() => setTab('proxy')}
+            className={`whitespace-nowrap px-3 sm:px-4 py-2 rounded-md text-sm font-medium transition ${
+              tab === 'proxy'
+                ? 'bg-gray-700 text-white'
+                : 'text-gray-400 hover:text-white'
+            }`}
+          >
+            <Globe size={14} className="inline mr-1.5" />
+            프록시 ({sitesHook.sites.length})
+          </button>
+          <button
+            onClick={() => setTab('ssl')}
+            className={`whitespace-nowrap px-3 sm:px-4 py-2 rounded-md text-sm font-medium transition ${
+              tab === 'ssl'
+                ? 'bg-gray-700 text-white'
+                : 'text-gray-400 hover:text-white'
+            }`}
+          >
+            <Lock size={14} className="inline mr-1.5" />
+            SSL 인증서 ({certsHook.certs.length})
+          </button>
+          <button
+            onClick={() => setTab('dns')}
+            className={`whitespace-nowrap px-3 sm:px-4 py-2 rounded-md text-sm font-medium transition ${
+              tab === 'dns'
+                ? 'bg-gray-700 text-white'
+                : 'text-gray-400 hover:text-white'
+            }`}
+          >
+            <Wifi size={14} className="inline mr-1.5" />
+            DNS 관리
+          </button>
+        </div>
       </div>
 
       {/* Test output */}
