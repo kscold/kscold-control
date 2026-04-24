@@ -7,6 +7,7 @@ import type {
   CreateProjectInput,
   ClientFile,
   FileContentResult,
+  VersionedFileContentResult,
   CreateUploadSessionInput,
   RepositoryUploadSession,
   UploadSessionBatchResult,
@@ -220,6 +221,23 @@ export class RepositoryService extends BaseApiService {
     }
   }
 
+  async readFileAtVersion(
+    projectId: string,
+    path: string,
+    versionId: string,
+  ): Promise<VersionedFileContentResult> {
+    try {
+      const { data } = await api.get<VersionedFileContentResult>(
+        `${this.basePath}/projects/${projectId}/file-at-version`,
+        { params: { path, versionId } },
+      );
+      return data;
+    } catch (error) {
+      this.logError('RepositoryService', 'readFileAtVersion', error);
+      this.handleError(error, '이전 버전 파일 조회 실패');
+    }
+  }
+
   async listVersions(projectId: string): Promise<ProjectVersion[]> {
     try {
       const { data } = await api.get<{ items: ProjectVersion[] }>(
@@ -244,9 +262,32 @@ export class RepositoryService extends BaseApiService {
     }
   }
 
-  /** 다운로드 URL — `<a href>` 또는 `window.location` 으로 사용 */
-  getDownloadUrl(projectId: string): string {
-    return `${api.defaults.baseURL ?? ''}${this.basePath}/projects/${projectId}/download`;
+  async downloadArchive(projectId: string, filename?: string): Promise<void> {
+    try {
+      const { data, headers } = await api.get<Blob>(
+        `${this.basePath}/projects/${projectId}/download`,
+        { responseType: 'blob' },
+      );
+
+      const disposition = headers['content-disposition'] as string | undefined;
+      let name = filename ?? 'archive.tar.gz';
+      if (disposition) {
+        const match = /filename="?([^"]+)"?/.exec(disposition);
+        if (match) name = match[1];
+      }
+
+      const url = URL.createObjectURL(data);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = name;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      this.logError('RepositoryService', 'downloadArchive', error);
+      this.handleError(error, '다운로드 실패');
+    }
   }
 }
 

@@ -138,6 +138,10 @@ export interface FileContentResult {
   truncated: boolean;
 }
 
+export interface VersionedFileContentResult extends FileContentResult {
+  found: boolean;
+}
+
 export interface ProjectVersion {
   id: string;
   createdAt: string;
