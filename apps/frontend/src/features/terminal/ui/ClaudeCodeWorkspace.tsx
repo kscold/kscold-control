@@ -2,6 +2,9 @@ import { useCallback, useEffect, useRef, useState, KeyboardEvent } from 'react';
 import {
   AlertTriangle,
   ArrowLeft,
+  ChevronDown,
+  ChevronUp,
+  CornerDownLeft,
   FileCode2,
   Loader2,
   Play,
@@ -91,6 +94,8 @@ export function ClaudeCodeWorkspace({
   const storageKey = getTerminalSessionStorageKey(terminalId);
   const [composer, setComposer] = useState('');
   const [activePanel, setActivePanel] = useState<WorkspacePanel | null>(null);
+  // 모바일에서 헤더가 너무 높아 터미널 가시 영역을 잡아먹어서 기본 접힘
+  const [headerExpanded, setHeaderExpanded] = useState(false);
   const [resumeHint, setResumeHint] = useState<string | null>(null);
   const [claudeState, setClaudeState] = useState<
     'idle' | 'starting' | 'running'
@@ -126,8 +131,8 @@ export function ClaudeCodeWorkspace({
   });
 
   const runTerminalCommand = useCallback((command: string) => {
-    const normalized = command.endsWith('\n') ? command : `${command}\n`;
-    socket.sendInput(normalized);
+    const stripped = command.replace(/[\r\n]+$/, '');
+    socket.sendInput(`${stripped}\r`);
   }, []);
 
   const bootClaude = useCallback(() => {
@@ -383,24 +388,46 @@ export function ClaudeCodeWorkspace({
                 </button>
               )}
 
-              <div className="min-w-0">
+              <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-3">
-                  <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-orange-300/20 bg-orange-500/15 text-orange-200">
+                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-orange-300/20 bg-orange-500/15 text-orange-200">
                     <Sparkles size={18} />
                   </div>
-                  <div>
-                    <h2 className="text-lg font-semibold text-white">
-                      Claude Code Workspace
-                    </h2>
-                    <p className="text-sm text-slate-400">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <h2 className="truncate text-lg font-semibold text-white">
+                        Claude Code Workspace
+                      </h2>
+                      <span className="shrink-0 rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-[10px] uppercase tracking-[0.18em] text-slate-300 sm:hidden">
+                        {statusLabel}
+                      </span>
+                    </div>
+                    <p className="hidden text-sm text-slate-400 sm:block">
                       VSCode 확장처럼 터미널을 메인으로 쓰고, 필요한 도구만
                       옆에서 꺼내 쓰는 화면입니다.
                     </p>
                   </div>
+                  <button
+                    type="button"
+                    onClick={() => setHeaderExpanded((prev) => !prev)}
+                    aria-label={headerExpanded ? '헤더 접기' : '헤더 펼치기'}
+                    aria-expanded={headerExpanded}
+                    className="ml-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-white/10 bg-white/5 text-slate-300 transition hover:border-white/20 hover:text-white sm:hidden"
+                  >
+                    {headerExpanded ? (
+                      <ChevronUp size={16} />
+                    ) : (
+                      <ChevronDown size={16} />
+                    )}
+                  </button>
                 </div>
 
-                <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
-                  <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 uppercase tracking-[0.22em] text-slate-300">
+                <div
+                  className={`mt-2 flex-wrap items-center gap-2 text-xs sm:flex ${
+                    headerExpanded ? 'flex' : 'hidden'
+                  }`}
+                >
+                  <span className="hidden rounded-full border border-white/10 bg-white/5 px-3 py-1 uppercase tracking-[0.22em] text-slate-300 sm:inline">
                     {statusLabel}
                   </span>
                   <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 font-mono text-[11px] text-slate-400">
@@ -421,7 +448,11 @@ export function ClaudeCodeWorkspace({
               </div>
             </div>
 
-            <div className="flex flex-col gap-2.5 2xl:items-end">
+            <div
+              className={`flex-col gap-2.5 sm:flex 2xl:items-end ${
+                headerExpanded ? 'flex' : 'hidden'
+              }`}
+            >
               <div className="flex flex-wrap items-center gap-2">
                 <button
                   onClick={bootClaude}
@@ -512,19 +543,19 @@ export function ClaudeCodeWorkspace({
         <div className="relative flex min-h-0 flex-1">
           <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
             {startupIssue && (
-              <div className="mx-4 mt-4 rounded-2xl border border-amber-400/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
+              <div className="mx-2 mt-2 rounded-xl border border-amber-400/30 bg-amber-500/10 px-3 py-2 text-xs leading-5 text-amber-100 sm:mx-4 sm:mt-4 sm:rounded-2xl sm:px-4 sm:py-3 sm:text-sm">
                 {startupIssue}
               </div>
             )}
             {resumeHint && (
-              <div className="mx-4 mt-4 rounded-2xl border border-cyan-400/30 bg-cyan-500/10 px-4 py-3 text-sm text-cyan-100">
+              <div className="mx-2 mt-2 rounded-xl border border-cyan-400/30 bg-cyan-500/10 px-3 py-2 text-xs leading-5 text-cyan-100 sm:mx-4 sm:mt-4 sm:rounded-2xl sm:px-4 sm:py-3 sm:text-sm">
                 {resumeHint}
               </div>
             )}
 
-            <div className="min-h-[420px] flex-1 px-4 pb-4 pt-4">
-              <div className="flex h-full min-h-[420px] flex-col overflow-hidden rounded-[26px] border border-white/10 bg-[#0b1120] shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]">
-                <div className="flex items-center justify-between border-b border-white/8 bg-slate-950/70 px-4 py-2">
+            <div className="min-h-[420px] flex-1 px-2 pb-2 pt-2 sm:px-4 sm:pb-4 sm:pt-4">
+              <div className="flex h-full min-h-[420px] flex-col overflow-hidden rounded-2xl border border-white/10 bg-[#0b1120] shadow-[inset_0_1px_0_rgba(255,255,255,0.05)] sm:rounded-[26px]">
+                <div className="hidden items-center justify-between border-b border-white/8 bg-slate-950/70 px-4 py-2 sm:flex">
                   <div className="flex items-center gap-3 text-xs uppercase tracking-[0.24em] text-slate-500">
                     <span>Claude Terminal</span>
                     <span className="rounded-full border border-white/10 bg-white/5 px-2 py-1 font-mono text-[10px] tracking-[0.2em] text-slate-400">
@@ -540,48 +571,55 @@ export function ClaudeCodeWorkspace({
 
                 <div
                   ref={terminalRef}
-                  className="min-h-[340px] flex-1 px-2 py-3 sm:px-4"
+                  className="min-h-[340px] flex-1 overflow-x-auto px-2 py-2 sm:px-4 sm:py-3"
                   data-testid="claude-code-terminal"
                 />
               </div>
             </div>
 
-            <div className="border-t border-white/8 bg-slate-950/85 px-4 py-3">
-              <div className="rounded-[26px] border border-white/10 bg-[linear-gradient(180deg,rgba(15,23,42,0.9),rgba(2,6,23,0.9))] p-3">
-                <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
-                  <div className="min-w-0 flex-1">
-                    <div className="mb-3 flex items-center gap-2 text-xs uppercase tracking-[0.22em] text-slate-500">
-                      <Wand2 size={14} />
-                      <span>Composer</span>
-                    </div>
-                    <textarea
-                      value={composer}
-                      onChange={(event) => setComposer(event.target.value)}
-                      onKeyDown={handleComposerKeyDown}
-                      rows={2}
-                      placeholder="Claude에게 보낼 요청을 입력하세요. Enter 전송, Shift+Enter 줄바꿈."
-                      className="w-full resize-none rounded-2xl border border-white/8 bg-slate-950/80 px-4 py-3 text-sm leading-6 text-white placeholder:text-slate-500 focus:border-orange-300/35 focus:outline-none"
-                    />
-                  </div>
-
-                  <div className="xl:w-[210px] xl:self-stretch">
-                    <button
-                      onClick={handleSendPrompt}
-                      disabled={!composer.trim()}
-                      className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-orange-500 px-4 py-3 text-sm font-medium text-white transition hover:bg-orange-400 disabled:cursor-not-allowed disabled:bg-slate-800 disabled:text-slate-500 xl:h-full"
-                    >
-                      <Sparkles size={15} />
-                      <span>Claude로 보내기</span>
-                    </button>
-                  </div>
+            <div className="border-t border-white/8 bg-slate-950/85 px-2 py-2 sm:px-4 sm:py-3">
+              <div className="rounded-2xl border border-white/10 bg-[linear-gradient(180deg,rgba(15,23,42,0.9),rgba(2,6,23,0.9))] p-2 sm:rounded-[26px] sm:p-3">
+                <div className="hidden items-center gap-2 pb-2 text-xs uppercase tracking-[0.22em] text-slate-500 sm:flex">
+                  <Wand2 size={14} />
+                  <span>Composer</span>
+                </div>
+                <div className="flex items-stretch gap-2 sm:gap-3 xl:items-center">
+                  <textarea
+                    value={composer}
+                    onChange={(event) => setComposer(event.target.value)}
+                    onKeyDown={handleComposerKeyDown}
+                    rows={2}
+                    placeholder="Claude에게 요청 입력 — Enter 전송, Shift+Enter 줄바꿈"
+                    className="min-w-0 flex-1 resize-none rounded-xl border border-white/8 bg-slate-950/80 px-3 py-2 text-sm leading-5 text-white placeholder:text-slate-500 focus:border-orange-300/35 focus:outline-none sm:rounded-2xl sm:px-4 sm:py-3 sm:leading-6"
+                  />
+                  <button
+                    onClick={handleSendPrompt}
+                    disabled={!composer.trim()}
+                    aria-label="Claude로 보내기"
+                    title="Claude로 보내기"
+                    className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-orange-500 px-3 text-sm font-medium text-white transition hover:bg-orange-400 disabled:cursor-not-allowed disabled:bg-slate-800 disabled:text-slate-500 sm:rounded-2xl sm:px-4 sm:py-3 xl:w-[210px]"
+                  >
+                    <Sparkles size={16} />
+                    <span className="hidden sm:inline">Claude로 보내기</span>
+                  </button>
                 </div>
 
                 <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
-                  <p className="text-xs leading-5 text-slate-500">
+                  <p className="hidden text-xs leading-5 text-slate-500 sm:block">
                     quick prompts는 도우미 패널에서 열고, 여기서는 터미널 공간을
                     더 넓게 유지합니다.
                   </p>
                   <div className="flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={() => socket.sendInput('\r')}
+                      title="터미널에 Enter 키 전송"
+                      aria-label="터미널에 Enter 전송"
+                      className="inline-flex items-center gap-1.5 rounded-full border border-orange-300/30 bg-orange-500/10 px-3 py-2 font-mono text-xs text-orange-100 transition hover:border-orange-300/50 hover:bg-orange-500/20"
+                    >
+                      <CornerDownLeft size={13} />
+                      <span>Enter</span>
+                    </button>
                     {CLAUDE_SHORTCUTS.map((command) => (
                       <button
                         key={command}

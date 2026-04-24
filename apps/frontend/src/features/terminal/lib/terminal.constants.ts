@@ -16,13 +16,14 @@ export const TERMINAL_THEME = {
 
 /**
  * Terminal Font Settings
- * 한글 지원을 위해 D2Coding, Noto Sans Mono 추가
+ * `Apple SD Gothic Neo` 같은 proportional 폰트가 fallback 으로 잡히면 셀 너비가 어긋나
+ * 모바일 Safari 에서 글자 간격이 벌어진 것처럼 깨진다 — 반드시 monospace 만 나열한다.
  */
 export const TERMINAL_FONT = {
   desktop: 14,
   mobile: 12,
   family:
-    '"D2Coding", "Noto Sans Mono", "Apple SD Gothic Neo", Menlo, Monaco, "Courier New", monospace',
+    '"D2Coding", "JetBrains Mono", ui-monospace, Menlo, Monaco, Consolas, "Courier New", monospace',
 };
 
 /**

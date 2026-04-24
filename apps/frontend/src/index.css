@@ -1,5 +1,23 @@
 @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap');
 
+/* D2Coding — 한글 글리프가 정확히 2셀 폭이라 xterm Unicode11 (CJK = 2cells) 와 정렬이 맞는다 */
+@font-face {
+  font-family: 'D2Coding';
+  font-style: normal;
+  font-weight: 400;
+  src: url('https://cdn.jsdelivr.net/gh/Joungkyun/font-d2coding/D2Coding.woff2') format('woff2'),
+       url('https://cdn.jsdelivr.net/gh/Joungkyun/font-d2coding/D2Coding.woff') format('woff');
+  font-display: swap;
+}
+@font-face {
+  font-family: 'D2Coding';
+  font-style: normal;
+  font-weight: 700;
+  src: url('https://cdn.jsdelivr.net/gh/Joungkyun/font-d2coding/D2CodingBold.woff2') format('woff2'),
+       url('https://cdn.jsdelivr.net/gh/Joungkyun/font-d2coding/D2CodingBold.woff') format('woff');
+  font-display: swap;
+}
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -40,6 +58,9 @@ pre,
 /* xterm.js 컨테이너 */
 .xterm {
   padding: 8px;
+  /* iOS Safari 가 셀 안 글자를 자동 확대하면 셀 너비와 어긋나 깨져 보인다 */
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
 }
 
 /* 스크롤바 커스텀 */
