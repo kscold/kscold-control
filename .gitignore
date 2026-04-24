@@ -21,6 +21,9 @@ nginx/conf.d/*.private.conf
 docs/
 CLAUDE.md
 
+# Serena MCP 메타데이터
+.serena/
+
 # SSL certificates & private keys
 ssl/
 *.pem
