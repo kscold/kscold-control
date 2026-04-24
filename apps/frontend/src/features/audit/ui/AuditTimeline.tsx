@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
+  ChevronDown,
+  ChevronUp,
   Download,
   History,
   Link2,
@@ -7,6 +9,7 @@ import {
   RefreshCw,
   Search,
   ShieldCheck,
+  SlidersHorizontal,
   Table2,
   Users,
 } from 'lucide-react';
@@ -118,6 +121,7 @@ export function AuditTimeline() {
   } = useAuditTimeline();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [isCopyingUrl, setIsCopyingUrl] = useState(false);
+  const [toolsOpen, setToolsOpen] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
 
   useEffect(() => {
@@ -246,28 +250,38 @@ export function AuditTimeline() {
 
   return (
     <div className="h-full overflow-auto bg-gray-950 p-4 sm:p-6">
-      <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <h1 className="flex items-center gap-2 text-2xl font-bold text-white">
-            <ShieldCheck size={28} />
+      <div className="mb-4 flex flex-col gap-3 sm:mb-6 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between sm:gap-4">
+        <div className="min-w-0">
+          <h1 className="flex items-center gap-2 text-xl font-bold text-white sm:text-2xl">
+            <ShieldCheck size={22} className="shrink-0 sm:h-7 sm:w-7" />
             운영 감사
           </h1>
-          <p className="mt-1 text-sm text-gray-400">
-            누가 업로드, Docker 제어, Nginx 리로드, 권한 변경을 실행했는지 타임라인으로
-            추적합니다.
+          <p className="mt-1 text-xs text-gray-400 sm:text-sm">
+            누가 무엇을 실행했는지 타임라인으로 추적합니다.
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex shrink-0 flex-wrap items-center gap-2">
+          <button
+            onClick={() => void reload()}
+            disabled={isLoading}
+            className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-gray-900 px-3 py-2 text-xs text-gray-200 transition hover:border-white/20 hover:text-white disabled:opacity-50 sm:px-4 sm:text-sm"
+            aria-label="새로고침"
+          >
+            <RefreshCw size={14} className={isLoading ? 'animate-spin' : ''} />
+            <span className="hidden sm:inline">새로고침</span>
+          </button>
+
           <button
             type="button"
             onClick={() => void handleExport('json')}
             disabled={isExporting}
             data-testid="audit-export-button"
-            className="inline-flex items-center gap-2 rounded-xl border border-cyan-400/20 bg-cyan-500/10 px-4 py-2 text-sm text-cyan-100 transition hover:border-cyan-300/30 hover:text-white disabled:opacity-50"
+            className="inline-flex items-center gap-2 rounded-xl border border-cyan-400/20 bg-cyan-500/10 px-3 py-2 text-xs text-cyan-100 transition hover:border-cyan-300/30 hover:text-white disabled:opacity-50 sm:px-4 sm:text-sm"
+            aria-label="JSON 내보내기"
           >
             <Download size={14} className={isExporting ? 'animate-bounce' : ''} />
-            {isExporting ? '내보내는 중' : 'JSON 내보내기'}
+            <span className="hidden sm:inline">{isExporting ? '내보내는 중' : 'JSON'}</span>
           </button>
 
           <button
@@ -275,32 +289,44 @@ export function AuditTimeline() {
             onClick={() => void handleExport('csv')}
             disabled={isExporting}
             data-testid="audit-export-csv-button"
-            className="inline-flex items-center gap-2 rounded-xl border border-emerald-400/20 bg-emerald-500/10 px-4 py-2 text-sm text-emerald-100 transition hover:border-emerald-300/30 hover:text-white disabled:opacity-50"
+            className="inline-flex items-center gap-2 rounded-xl border border-emerald-400/20 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-100 transition hover:border-emerald-300/30 hover:text-white disabled:opacity-50 sm:px-4 sm:text-sm"
+            aria-label="CSV 내보내기"
           >
             <Table2 size={14} className={isExporting ? 'animate-pulse' : ''} />
-            {isExporting ? '내보내는 중' : 'CSV 내보내기'}
-          </button>
-
-          <button
-            onClick={() => void reload()}
-            disabled={isLoading}
-            className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-gray-900 px-4 py-2 text-sm text-gray-200 transition hover:border-white/20 hover:text-white disabled:opacity-50"
-          >
-            <RefreshCw size={14} className={isLoading ? 'animate-spin' : ''} />
-            새로고침
+            <span className="hidden sm:inline">{isExporting ? '내보내는 중' : 'CSV'}</span>
           </button>
 
           <button
             type="button"
             onClick={() => void handleCopyUrl()}
             data-testid="audit-copy-url-button"
-            className="inline-flex items-center gap-2 rounded-xl border border-violet-400/20 bg-violet-500/10 px-4 py-2 text-sm text-violet-100 transition hover:border-violet-300/30 hover:text-white"
+            className="inline-flex items-center gap-2 rounded-xl border border-violet-400/20 bg-violet-500/10 px-3 py-2 text-xs text-violet-100 transition hover:border-violet-300/30 hover:text-white sm:px-4 sm:text-sm"
+            aria-label="필터 URL 복사"
           >
             <Link2 size={14} />
-            {isCopyingUrl ? 'URL 복사됨' : '필터 URL 복사'}
+            <span className="hidden sm:inline">
+              {isCopyingUrl ? 'URL 복사됨' : '필터 URL'}
+            </span>
           </button>
         </div>
       </div>
+
+      {/* 모바일 전용: 고급 도구 토글 (필터/프리셋/Top Actors/Targets를 한번에 접고 펼침) */}
+      <div className="mb-3 lg:hidden">
+        <button
+          type="button"
+          onClick={() => setToolsOpen((open) => !open)}
+          className="flex w-full items-center justify-between rounded-xl border border-white/10 bg-gray-900/70 px-4 py-2.5 text-sm text-gray-300 transition hover:border-white/20 hover:text-white"
+        >
+          <span className="inline-flex items-center gap-2">
+            <SlidersHorizontal size={14} />
+            필터 / 통계 도구
+          </span>
+          {toolsOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+        </button>
+      </div>
+
+      <div className={toolsOpen ? 'contents' : 'hidden lg:contents'}>
 
       <div className="mb-4 grid gap-3 lg:grid-cols-[220px_180px_minmax(0,1fr)]">
         <select
@@ -453,23 +479,25 @@ export function AuditTimeline() {
         </section>
       </div>
 
-      <div className="mb-4 grid gap-3 xl:grid-cols-[repeat(5,140px)_minmax(0,1fr)]">
+      <div className="mb-4 grid grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-3 xl:grid-cols-[repeat(5,140px)_minmax(0,1fr)]">
         {summaryCards.map((card) => {
           const active = domain === card.domain;
           return (
             <button
               key={card.domain}
               onClick={() => setDomain(card.domain)}
-              className={`rounded-xl border px-3 py-3 text-left transition ${
+              className={`rounded-xl border px-3 py-2 text-left transition sm:py-3 ${
                 active
                   ? 'border-blue-500 bg-blue-500/15 text-blue-50'
                   : 'border-white/10 bg-gray-900/70 text-gray-300 hover:border-white/20 hover:text-white'
               }`}
             >
-              <div className="text-[11px] uppercase tracking-[0.22em] text-gray-500">
+              <div className="truncate text-[10px] uppercase tracking-[0.18em] text-gray-500 sm:text-[11px] sm:tracking-[0.22em]">
                 {card.label}
               </div>
-              <div className="mt-2 text-xl font-semibold">{card.value}</div>
+              <div className="mt-1 text-lg font-semibold sm:mt-2 sm:text-xl">
+                {card.value}
+              </div>
             </button>
           );
         })}
@@ -534,7 +562,7 @@ export function AuditTimeline() {
                             클릭해서 actor 필터 적용
                           </div>
                         </div>
-                        <div className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-xs text-gray-300">
+                        <div className="shrink-0 whitespace-nowrap rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-xs text-gray-300">
                           {actorEntry.count}건
                         </div>
                       </div>
@@ -585,7 +613,7 @@ export function AuditTimeline() {
                             클릭해서 target 필터 적용
                           </div>
                         </div>
-                        <div className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-xs text-gray-300">
+                        <div className="shrink-0 whitespace-nowrap rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-xs text-gray-300">
                           {targetEntry.count}건
                         </div>
                       </div>
@@ -608,14 +636,16 @@ export function AuditTimeline() {
         </div>
       </section>
 
+      </div>
+
       {error && (
         <div className="mb-4 rounded-xl border border-rose-400/20 bg-rose-500/10 px-4 py-3 text-sm text-rose-100">
           {error}
         </div>
       )}
 
-      <div className="grid gap-4 2xl:grid-cols-[minmax(0,1.15fr)_420px]">
-        <div className="space-y-3" data-testid="audit-timeline">
+      <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-4 2xl:grid-cols-[minmax(0,1.15fr)_420px]">
+        <div className="min-w-0 space-y-3" data-testid="audit-timeline">
           {items.length === 0 && !isLoading ? (
             <div className="rounded-2xl border border-dashed border-white/10 bg-gray-900/50 px-6 py-10 text-center text-sm text-gray-500">
               검색 조건에 맞는 감사 이벤트가 없습니다.
@@ -630,14 +660,14 @@ export function AuditTimeline() {
                   key={item.id}
                   type="button"
                   onClick={() => setSelectedId(item.id)}
-                  className={`block w-full rounded-2xl border p-4 text-left transition ${
+                  className={`block w-full overflow-hidden rounded-2xl border p-4 text-left transition ${
                     active
                       ? 'border-blue-500/60 bg-blue-500/10'
                       : 'border-white/10 bg-gray-900/70 hover:border-white/20'
                   }`}
                 >
-                  <div className="flex flex-wrap items-start justify-between gap-3">
-                    <div className="min-w-0">
+                  <div className="flex min-w-0 items-start justify-between gap-3">
+                    <div className="flex min-w-0 flex-1 flex-col">
                       <div className="flex flex-wrap items-center gap-2">
                         <span
                           className={`rounded-full border px-2.5 py-1 text-[11px] font-medium ${getDomainTone(
@@ -650,26 +680,35 @@ export function AuditTimeline() {
                           {item.action}
                         </span>
                       </div>
-                      <h2 className="mt-3 text-base font-semibold text-white">
+                      <h2 className="mt-3 break-words text-sm font-semibold text-white sm:text-base">
                         {item.summary}
                       </h2>
-                      <div className="mt-2 flex flex-wrap gap-4 text-xs text-gray-400">
-                        <span>actor {getActorLabel(item)}</span>
-                        <span>
-                          target {item.targetType || 'unknown'} / {item.targetId || '-'}
-                        </span>
-                        <span>{formatAuditTimestamp(item.createdAt)}</span>
+                      <div className="mt-2 flex flex-col gap-1 text-xs text-gray-400 sm:flex-row sm:flex-wrap sm:gap-x-4">
+                        <div className="flex min-w-0 items-baseline gap-1.5">
+                          <span className="shrink-0 text-gray-500">actor</span>
+                          <span className="min-w-0 break-all text-gray-300">{getActorLabel(item)}</span>
+                        </div>
+                        <div className="flex min-w-0 items-baseline gap-1.5">
+                          <span className="shrink-0 text-gray-500">target</span>
+                          <span className="min-w-0 break-all text-gray-300">
+                            {item.targetType || 'unknown'} / {item.targetId || '-'}
+                          </span>
+                        </div>
+                        <div className="flex min-w-0 items-baseline gap-1.5">
+                          <span className="shrink-0 text-gray-500">time</span>
+                          <span className="min-w-0 text-gray-300">{formatAuditTimestamp(item.createdAt)}</span>
+                        </div>
                       </div>
                       {diffPreview && (
-                        <div className="mt-2 text-xs text-cyan-200/90">
+                        <div className="mt-2 break-words text-xs text-cyan-200/90">
                           {diffPreview}
                         </div>
                       )}
                     </div>
 
-                    <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-gray-950/80 px-3 py-1.5 text-[11px] text-gray-400">
+                    <div className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-white/10 bg-gray-950/80 px-2.5 py-1 text-[11px] text-gray-400">
                       <History size={12} />
-                      detail
+                      <span className="hidden sm:inline">detail</span>
                     </div>
                   </div>
                 </button>
@@ -679,7 +718,7 @@ export function AuditTimeline() {
         </div>
 
         <aside
-          className="rounded-2xl border border-white/10 bg-gray-900/70 p-4"
+          className="min-w-0 overflow-hidden rounded-2xl border border-white/10 bg-gray-900/70 p-4"
           data-testid="audit-detail"
         >
           {selectedItem ? (
@@ -697,16 +736,24 @@ export function AuditTimeline() {
                     {selectedItem.action}
                   </span>
                 </div>
-                <h2 className="mt-3 text-lg font-semibold text-white">
+                <h2 className="mt-3 break-words text-base font-semibold text-white sm:text-lg">
                   {selectedItem.summary}
                 </h2>
-                <div className="mt-3 grid gap-2 text-sm text-gray-300">
-                  <div>actor: {getActorLabel(selectedItem)}</div>
-                  <div>
-                    target: {selectedItem.targetType || 'unknown'} /{' '}
-                    {selectedItem.targetId || '-'}
+                <div className="mt-3 grid gap-1.5 text-sm">
+                  <div className="flex min-w-0 items-baseline gap-2">
+                    <span className="shrink-0 text-xs uppercase tracking-[0.18em] text-gray-500">actor</span>
+                    <span className="min-w-0 break-all text-gray-200">{getActorLabel(selectedItem)}</span>
                   </div>
-                  <div>time: {formatAuditTimestamp(selectedItem.createdAt)}</div>
+                  <div className="flex min-w-0 items-baseline gap-2">
+                    <span className="shrink-0 text-xs uppercase tracking-[0.18em] text-gray-500">target</span>
+                    <span className="min-w-0 break-all text-gray-200">
+                      {selectedItem.targetType || 'unknown'} / {selectedItem.targetId || '-'}
+                    </span>
+                  </div>
+                  <div className="flex min-w-0 items-baseline gap-2">
+                    <span className="shrink-0 text-xs uppercase tracking-[0.18em] text-gray-500">time</span>
+                    <span className="min-w-0 text-gray-200">{formatAuditTimestamp(selectedItem.createdAt)}</span>
+                  </div>
                 </div>
               </div>
 

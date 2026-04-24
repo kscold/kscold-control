@@ -786,7 +786,7 @@ export function UploadDropzone({
 
       <button
         onClick={() => {
-          window.location.href = repositoryService.getDownloadUrl(project.id);
+          repositoryService.downloadArchive(project.id);
         }}
         className="flex w-full items-center justify-center gap-2 rounded-lg border border-gray-700 bg-gray-900 px-4 py-2 text-sm text-white hover:bg-gray-800"
       >

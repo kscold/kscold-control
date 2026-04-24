@@ -7,6 +7,8 @@ import {
   AlertTriangle,
   X,
   History,
+  FolderTree,
+  FileCode2,
 } from 'lucide-react';
 import { useProjectTree } from '../hooks/useProjectTree';
 import { formatBytes } from '../lib/file-filter';
@@ -29,6 +31,7 @@ type Tab = 'browse' | 'upload' | 'versions';
 export function ProjectBrowser({ project, onUploaded }: ProjectBrowserProps) {
   const [tab, setTab] = useState<Tab>('browse');
   const [selectedPath, setSelectedPath] = useState<string | null>(null);
+  const [mobileTreeOpen, setMobileTreeOpen] = useState(true);
   const [uploadActivity, setUploadActivity] =
     useState<RepositoryUploadActivity | null>(null);
   const { tree, loading, reload } = useProjectTree(project.id);
@@ -39,8 +42,20 @@ export function ProjectBrowser({ project, onUploaded }: ProjectBrowserProps) {
   useEffect(() => {
     setTab('browse');
     setSelectedPath(null);
+    setMobileTreeOpen(true);
     setUploadActivity(null);
   }, [project.id]);
+
+  const handleSelectFile = (path: string | null) => {
+    setSelectedPath(path);
+    if (path && typeof window !== 'undefined' && window.innerWidth < 1024) {
+      setMobileTreeOpen(false);
+    }
+  };
+
+  const selectedFileName = selectedPath
+    ? selectedPath.split('/').filter(Boolean).pop() ?? null
+    : null;
 
   const statusTone =
     uploadActivity?.phase === 'success'
@@ -54,8 +69,8 @@ export function ProjectBrowser({ project, onUploaded }: ProjectBrowserProps) {
   return (
     <div className="flex h-full min-h-[600px] flex-col rounded-xl border border-gray-800 bg-gray-900/50 overflow-hidden">
       {/* 헤더 */}
-      <div className="border-b border-gray-800 bg-gray-900/80 px-5 py-3">
-        <div className="flex items-center justify-between">
+      <div className="border-b border-gray-800 bg-gray-900/80 px-4 py-3 sm:px-5">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="min-w-0">
             <h2 className="truncate text-base font-semibold text-white">
               {project.name}
@@ -66,7 +81,7 @@ export function ProjectBrowser({ project, onUploaded }: ProjectBrowserProps) {
               </p>
             )}
           </div>
-          <div className="flex items-center gap-1 rounded-lg border border-gray-800 bg-gray-950 p-0.5">
+          <div className="flex shrink-0 items-center gap-1 self-start rounded-lg border border-gray-800 bg-gray-950 p-0.5 sm:self-auto">
             <button
               onClick={() => setTab('browse')}
               disabled={isUploading}
@@ -199,9 +214,45 @@ export function ProjectBrowser({ project, onUploaded }: ProjectBrowserProps) {
 
       {/* 본문 */}
       {tab === 'browse' ? (
-        <div className="flex flex-1 min-h-0">
-          {/* 좌측 트리 */}
-          <div className="w-72 shrink-0 overflow-y-auto border-r border-gray-800 bg-gray-900/30">
+        <div className="flex flex-1 min-h-0 flex-col lg:flex-row">
+          {/* 모바일 전환 바 — 파일 선택 후 어느 뷰를 볼지 전환 */}
+          <div className="flex items-center justify-between gap-2 border-b border-gray-800 bg-gray-900/50 px-3 py-2 lg:hidden">
+            <div className="flex gap-1 rounded-lg border border-gray-800 bg-gray-950 p-0.5">
+              <button
+                onClick={() => setMobileTreeOpen(true)}
+                className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
+                  mobileTreeOpen
+                    ? 'bg-gray-800 text-white'
+                    : 'text-gray-500 hover:text-gray-300'
+                }`}
+              >
+                <FolderTree size={13} />
+                파일 트리
+              </button>
+              <button
+                onClick={() => setMobileTreeOpen(false)}
+                disabled={!selectedPath}
+                className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
+                  !mobileTreeOpen
+                    ? 'bg-gray-800 text-white'
+                    : 'text-gray-500 hover:text-gray-300'
+                } disabled:cursor-not-allowed disabled:opacity-40`}
+              >
+                <FileCode2 size={13} />
+                소스 보기
+              </button>
+            </div>
+            {selectedFileName && (
+              <span className="truncate text-xs text-gray-400" title={selectedPath ?? ''}>
+                {selectedFileName}
+              </span>
+            )}
+          </div>
+
+          {/* 좌측 트리 — 데스크톱 고정 폭, 모바일 토글 전체 폭 */}
+          <div
+            className={`${mobileTreeOpen ? 'flex' : 'hidden'} lg:flex w-full lg:w-72 shrink-0 flex-col overflow-y-auto border-b border-gray-800 bg-gray-900/30 lg:border-b-0 lg:border-r`}
+          >
             {loading ? (
               <div className="flex items-center justify-center py-12">
                 <Loader2 size={20} className="animate-spin text-gray-600" />
@@ -210,12 +261,14 @@ export function ProjectBrowser({ project, onUploaded }: ProjectBrowserProps) {
               <FileTreeView
                 tree={tree}
                 selectedPath={selectedPath}
-                onSelect={setSelectedPath}
+                onSelect={handleSelectFile}
               />
             )}
           </div>
-          {/* 우측 코드 뷰어 */}
-          <div className="flex-1 min-w-0 overflow-hidden">
+          {/* 우측 코드 뷰어 — 모바일은 트리가 닫혔을 때만 노출 */}
+          <div
+            className={`${mobileTreeOpen ? 'hidden' : 'flex'} lg:flex flex-1 min-w-0 flex-col overflow-hidden`}
+          >
             <CodeViewer projectId={project.id} selectedPath={selectedPath} />
           </div>
         </div>

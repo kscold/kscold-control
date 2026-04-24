@@ -29,14 +29,16 @@ export function ProjectCard({ project, isActive, onSelect, onDelete }: ProjectCa
           <h3 className="truncate text-sm font-semibold text-white">{project.name}</h3>
         </div>
         <div className="flex gap-1 ml-2">
-          <a
-            href={repositoryService.getDownloadUrl(project.id)}
-            onClick={(e) => e.stopPropagation()}
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              repositoryService.downloadArchive(project.id);
+            }}
             className="rounded p-1 text-gray-500 hover:bg-gray-800 hover:text-white"
             title="다운로드"
           >
             <Download size={14} />
-          </a>
+          </button>
           <button
             onClick={(e) => {
               e.stopPropagation();
