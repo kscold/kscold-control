@@ -42,6 +42,9 @@ const RepositoryPage = lazy(() =>
 const AuditPage = lazy(() =>
   import('./pages/AuditPage').then((m) => ({ default: m.AuditPage })),
 );
+const SecurityPage = lazy(() =>
+  import('./pages/SecurityPage').then((m) => ({ default: m.SecurityPage })),
+);
 
 function AuthPageLoader() {
   return (
@@ -207,6 +210,16 @@ export default function App() {
               <ErrorBoundary>
                 <Suspense fallback={<RoutePageSkeleton />}>
                   <AuditPage />
+                </Suspense>
+              </ErrorBoundary>
+            }
+          />
+          <Route
+            path="security"
+            element={
+              <ErrorBoundary>
+                <Suspense fallback={<RoutePageSkeleton />}>
+                  <SecurityPage />
                 </Suspense>
               </ErrorBoundary>
             }

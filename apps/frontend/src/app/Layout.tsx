@@ -8,6 +8,7 @@ import {
   Menu,
   X,
   Shield,
+  ShieldAlert,
   FileText,
   Globe,
   Network,
@@ -172,6 +173,21 @@ export function Layout() {
       >
         <History size={18} />
         운영 감사
+      </NavLink>
+
+      <NavLink
+        to="/security"
+        onClick={() => setIsMobileMenuOpen(false)}
+        className={({ isActive }) =>
+          `flex items-center gap-3 px-3 py-2 rounded-lg text-sm ${
+            isActive
+              ? 'bg-blue-600 text-white'
+              : 'text-gray-400 hover:bg-gray-800 hover:text-white'
+          }`
+        }
+      >
+        <ShieldAlert size={18} />
+        IP 차단
       </NavLink>
     </>
   );
