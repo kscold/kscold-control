@@ -31,6 +31,7 @@ export function NginxDashboard() {
 
   useEffect(() => {
     sitesHook.loadSites();
+    certsHook.loadCerts();
   }, []);
 
   useEffect(() => {
