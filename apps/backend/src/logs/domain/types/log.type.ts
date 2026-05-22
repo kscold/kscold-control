@@ -3,7 +3,12 @@ export type LogType =
   | 'nginx-access'
   | 'nginx-error'
   | 'docker'
-  | 'pm2';
+  | 'pm2'
+  | 'blog-backend'
+  | 'blog-backend-err'
+  | 'blog-access'
+  | 'blog-frontend'
+  | 'blog-frontend-err';
 
 export type DockerLogFilter =
   | 'all'

@@ -1,4 +1,16 @@
 import { Inject, Injectable } from '@nestjs/common';
+import { exec } from 'child_process';
+import { promisify } from 'util';
+
+const execAsync = promisify(exec);
+
+const BLOG_LOG_MAP: Record<string, string> = {
+  'blog-backend': '/var/log/kscold-blog-backend.log',
+  'blog-backend-err': '/var/log/kscold-blog-backend-err.log',
+  'blog-access': '/var/log/kscold-blog/access.log',
+  'blog-frontend': '/var/log/kscold-blog-frontend.log',
+  'blog-frontend-err': '/var/log/kscold-blog-frontend-err.log',
+};
 import {
   FILE_LOG_READER,
   DOCKER_LOG_READER,
@@ -56,6 +68,12 @@ export class LogsService {
       case 'nginx-access':
       case 'nginx-error':
         return this.fileLogReader.readLogs(lines, logType);
+      case 'blog-backend':
+      case 'blog-backend-err':
+      case 'blog-access':
+      case 'blog-frontend':
+      case 'blog-frontend-err':
+        return this.readBlogContainerLog(logType, lines);
       default:
         return [`Unknown log type: ${logType}`];
     }
@@ -100,5 +118,25 @@ export class LogsService {
 
   async getSystemInfo(): Promise<SystemInfo | null> {
     return this.systemStatusReader.getSystemInfo();
+  }
+
+  private async readBlogContainerLog(
+    logType: string,
+    lines: number,
+  ): Promise<string[]> {
+    const filePath = BLOG_LOG_MAP[logType];
+    if (!filePath) return [`Unknown blog log type: ${logType}`];
+
+    const dockerHost =
+      process.env.DOCKER_HOST || 'unix:///var/run/docker.sock';
+    const tail = lines > 0 ? lines : 200;
+    const cmd = `DOCKER_HOST=${dockerHost} docker exec ubuntu-blog tail -n ${tail} ${filePath}`;
+
+    try {
+      const { stdout } = await execAsync(cmd, { maxBuffer: 10 * 1024 * 1024 });
+      return stdout.split('\n').filter((line) => line.trim());
+    } catch (error: any) {
+      return [`Error reading blog log (${logType}): ${error.message}`];
+    }
   }
 }
