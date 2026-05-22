@@ -221,26 +221,20 @@ export class CertService {
       fs.mkdirSync(domainDir, { recursive: true });
     }
 
-    const liveDirCandidates = [
-      path.join(LETSENCRYPT_DIR, 'live', domain),
-      path.join(LETSENCRYPT_DIR, 'live', 'temp-cert'),
-    ];
-    const sourceDir = liveDirCandidates.find((candidate) =>
-      fs.existsSync(path.join(candidate, 'fullchain.pem')),
-    );
+    // Docker certbot runs as root, so it can read /etc/letsencrypt even when
+    // macOS file permissions would block the Node process. Pipe via stdout
+    // so write happens in the Node process (which owns the ssl/ files).
+    const liveDir = path.join(LETSENCRYPT_DIR, 'live', domain);
+    const dockerHost = process.env.DOCKER_HOST || 'unix:///var/run/docker.sock';
 
-    if (!sourceDir) {
-      throw new Error(`발급된 인증서 디렉터리를 찾지 못했습니다: ${domain}`);
+    for (const file of ['fullchain.pem', 'privkey.pem']) {
+      const src = path.join(liveDir, file);
+      const dest = path.join(domainDir, file);
+      const cmd = `DOCKER_HOST=${dockerHost} docker run --rm -v "${LETSENCRYPT_DIR}:${LETSENCRYPT_DIR}" --entrypoint cat certbot/certbot "${src}"`;
+      const { stdout } = await execAsync(cmd);
+      if (!stdout) throw new Error(`빈 인증서 출력: ${domain}/${file}`);
+      fs.writeFileSync(dest, stdout, { mode: 0o644 });
     }
-
-    fs.copyFileSync(
-      path.join(sourceDir, 'fullchain.pem'),
-      path.join(domainDir, 'fullchain.pem'),
-    );
-    fs.copyFileSync(
-      path.join(sourceDir, 'privkey.pem'),
-      path.join(domainDir, 'privkey.pem'),
-    );
   }
 
   /**
