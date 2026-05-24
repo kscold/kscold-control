@@ -36,7 +36,7 @@ import { JwtStrategy } from './infrastructure/strategies/jwt.strategy';
         }
         return {
           secret,
-          signOptions: { expiresIn: '1d' },
+          signOptions: { expiresIn: '7d' },
         };
       },
     }),

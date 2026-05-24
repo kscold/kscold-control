@@ -43,7 +43,7 @@ import { RbacModule } from '../rbac/rbac.module';
         }
         return {
           secret,
-          signOptions: { expiresIn: '1d' },
+          signOptions: { expiresIn: '7d' },
         };
       },
     }),
