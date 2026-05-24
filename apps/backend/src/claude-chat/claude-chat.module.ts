@@ -24,7 +24,7 @@ import { ClaudeChatGateway } from './presentation/gateways/claude-chat.gateway';
         }
         return {
           secret,
-          signOptions: { expiresIn: '1d' },
+          signOptions: { expiresIn: '7d' },
         };
       },
     }),
