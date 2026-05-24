@@ -81,13 +81,16 @@ function RoutePageSkeleton() {
   );
 }
 
+const TOKEN_REVALIDATE_INTERVAL = 60 * 60 * 1000; // 1시간
+
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { token, validateToken } = useAuthStore();
 
   useEffect(() => {
-    if (token) {
-      validateToken();
-    }
+    if (!token) return;
+    validateToken();
+    const id = setInterval(validateToken, TOKEN_REVALIDATE_INTERVAL);
+    return () => clearInterval(id);
   }, []);
 
   if (!token) return <Navigate to="/login" replace />;

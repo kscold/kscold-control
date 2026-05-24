@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { AlertTriangle, RefreshCw } from 'lucide-react';
 
 interface ErrorFallbackProps {
@@ -5,14 +6,56 @@ interface ErrorFallbackProps {
   resetErrorBoundary: () => void;
 }
 
-/**
- * ErrorFallback Component
- * Displays error UI when a component crashes
- */
+function isChunkLoadError(error: Error): boolean {
+  return (
+    error.message.includes('Failed to fetch dynamically imported module') ||
+    error.message.includes('Importing a module script failed') ||
+    error.message.includes('error loading dynamically imported module') ||
+    (error.name === 'TypeError' && error.message.includes('Failed to fetch'))
+  );
+}
+
 export function ErrorFallback({
   error,
   resetErrorBoundary,
 }: ErrorFallbackProps) {
+  const chunkError = isChunkLoadError(error);
+  const [countdown, setCountdown] = useState(3);
+
+  useEffect(() => {
+    if (!chunkError) return;
+    if (countdown <= 0) {
+      window.location.reload();
+      return;
+    }
+    const timer = setTimeout(() => setCountdown((c) => c - 1), 1000);
+    return () => clearTimeout(timer);
+  }, [chunkError, countdown]);
+
+  if (chunkError) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-950 p-4">
+        <div className="w-full max-w-md">
+          <div className="bg-gray-900 border border-gray-800 rounded-xl p-6 sm:p-8 text-center">
+            <RefreshCw className="text-blue-400 mx-auto mb-4 animate-spin" size={36} />
+            <h1 className="text-xl font-bold text-white mb-2">새 버전이 배포되었습니다</h1>
+            <p className="text-gray-400 text-sm mb-4">
+              {countdown > 0
+                ? `${countdown}초 후 자동으로 새로고침됩니다.`
+                : '새로고침 중...'}
+            </p>
+            <button
+              onClick={() => window.location.reload()}
+              className="w-full py-2.5 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors"
+            >
+              지금 새로고침
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-950 p-4">
       <div className="w-full max-w-md">
