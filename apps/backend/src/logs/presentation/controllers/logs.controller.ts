@@ -1,4 +1,4 @@
-import { Controller, Get, Query, Request, Res, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Post, Query, Request, Res, UseGuards } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import type { Request as ExpressRequest, Response } from 'express';
 import { PermissionsGuard } from '../../../common/guards/permissions.guard';
@@ -13,9 +13,20 @@ import { LogType, type DockerLogFilter } from '../../domain/types/log.type';
 export class LogsController {
   constructor(private readonly logsService: LogsService) {}
 
-  /**
-   * 로그 조회
-   */
+  @Post('frontend-error')
+  reportFrontendError(
+    @Body()
+    body: {
+      message: string;
+      stack?: string;
+      componentStack?: string;
+      url?: string;
+    },
+  ) {
+    this.logsService.logFrontendError(body);
+    return { ok: true };
+  }
+
   @Get()
   @RequirePermissions(PERMISSIONS.SYSTEM_READ)
   async getLogs(

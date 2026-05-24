@@ -1,4 +1,4 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import { exec } from 'child_process';
 import { promisify } from 'util';
 
@@ -34,6 +34,8 @@ import type { ChildProcessWithoutNullStreams } from 'child_process';
 
 @Injectable()
 export class LogsService {
+  private readonly logger = new Logger(LogsService.name);
+
   constructor(
     @Inject(FILE_LOG_READER)
     private readonly fileLogReader: ILogReader,
@@ -118,6 +120,21 @@ export class LogsService {
 
   async getSystemInfo(): Promise<SystemInfo | null> {
     return this.systemStatusReader.getSystemInfo();
+  }
+
+  logFrontendError(info: {
+    message: string;
+    stack?: string;
+    componentStack?: string;
+    url?: string;
+  }): void {
+    this.logger.error(
+      `[FrontendError] ${info.message} url=${info.url ?? '-'}`,
+      info.stack,
+    );
+    if (info.componentStack) {
+      this.logger.debug(`[FrontendError] componentStack: ${info.componentStack}`);
+    }
   }
 
   private async readBlogContainerLog(
