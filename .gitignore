@@ -30,13 +30,16 @@ certbot-config/
 *.pem
 *.key
 
-# Logs
-logs/
+# Logs (런타임 로그 출력 디렉토리만 무시)
+/logs/
+apps/*/logs/
 *.log
 apps/backend/data/
-# 소스 코드 내 logs 폴더는 추적
+# 소스 코드 내 logs 폴더는 추적 (backend logs 모듈, frontend logs feature 등)
 !**/src/logs/
 !**/src/logs/**
+!**/src/features/logs/
+!**/src/features/logs/**
 apps/backend/src/seed.ts
 
 # Keep tracked examples for local setup
