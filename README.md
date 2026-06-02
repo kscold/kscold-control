@@ -1,103 +1,187 @@
 # kscold-control
 
-맥 미니 인프라 컨트롤 타워 - Claude Code CLI와 Docker 컨테이너 환경을 웹 인터페이스로 통합 관리하는 시스템
+A self-hosted infrastructure governance panel for managing Docker containers, Nginx, SSL certificates, AI coding assistants (Claude Code · OpenAI Chat API · Codex CLI), source repositories, and system monitoring — all from a single web interface.
 
-## 개요
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Node.js](https://img.shields.io/badge/Node.js-20%2B-green)](https://nodejs.org)
+[![pnpm](https://img.shields.io/badge/pnpm-workspace-orange)](https://pnpm.io)
+[![NestJS](https://img.shields.io/badge/NestJS-10-red)](https://nestjs.com)
+[![React](https://img.shields.io/badge/React-18-61DAFB)](https://react.dev)
+[![v1.0.0](https://img.shields.io/badge/release-v1.0.0-brightgreen)](https://github.com/kscold/kscold-control/releases/tag/v1.0.0)
 
-kscold-control은 Claude Code 터미널 세션과 Docker 컨테이너 오케스트레이션을 중앙에서 제어할 수 있는 풀스택 인프라 관리 플랫폼입니다. 역할 기반 접근 제어와 실시간 WebSocket 통신을 기반으로 구축되었습니다.
+---
 
-## 핵심 기능
+## Features
 
-### Claude Code 웹 터미널
+| Category | Capabilities |
+|---|---|
+| **AI Terminal** | Claude Code workspace · Claude Chat · OpenAI Chat API (GPT-4o) · OpenAI Codex CLI — multi-tab |
+| **Docker** | Container lifecycle, real-time log streaming, archive log viewer |
+| **Nginx** | Virtual host management, SSL issuance & renewal (Let's Encrypt) |
+| **Repository** | Source upload, version history snapshots, diff viewer, file browser |
+| **Audit** | AOP-based automatic audit log, CSV export, actor/target insights |
+| **Security** | IP ban management, JWT RBAC, permission guards |
+| **Logs** | Unified viewer — backend · PM2 · Nginx · Docker · blog container logs |
+| **Network** | Topology graph (React Flow), UPnP port management |
+| **System** | Real-time CPU / memory / disk, Nginx status, host info |
 
-- 브라우저를 통한 실시간 Claude Code CLI 제어
-- 네이티브 슬래시 명령어 지원 (`/help`, `/clear`, `/cd`)
-- 영구 세션 히스토리 저장 및 복원 기능
-- WebSocket 기반 양방향 통신
+---
 
-### Docker 인프라 관리
-
-- 원클릭 우분투 컨테이너 프로비저닝
-- 실시간 리소스 모니터링 (CPU, 메모리, 네트워크, I/O)
-- 컨테이너 라이프사이클 관리 (시작, 중지, 삭제)
-- 실시간 로그 스트리밍 및 통계
-
-### 보안 및 접근 제어
-
-- 리프레시 토큰 로테이션을 포함한 JWT 기반 인증
-- 3단계 권한을 가진 역할 기반 접근 제어 (RBAC)
-- 사용자 역할: Admin, Developer, Viewer
-- 세밀한 권한 시스템
-
-## 기술 스택
-
-- **프론트엔드**: React 18 + Vite + TypeScript + Tailwind CSS + xterm.js
-- **백엔드**: NestJS + TypeORM + Socket.io + Passport JWT
-- **데이터베이스**: PostgreSQL 15
-- **인프라**: Docker + Dockerode
-- **프로세스 관리**: pm2
-
-## 아키텍처
-
-- **모노레포**: Turborepo + Yarn workspaces
-- **배포 모델**: 호스트 기반 실행 (Docker 소켓 접근을 위해 백엔드/프론트엔드는 호스트에서 실행)
-- **데이터베이스**: 컨테이너화된 PostgreSQL
-- **포트 전략**: 단일 포트 배포 (4000번 포트에서 API와 정적 프론트엔드 모두 서빙)
-
-## 설치 및 배포
-
-```bash
-# 1. 의존성 설치
-cd ~/Desktop/kscold-control
-yarn install
-
-# 2. PostgreSQL 데이터베이스 시작
-docker compose up -d
-
-# 3. 초기 역할 및 권한으로 데이터베이스 시드
-cd apps/backend && yarn seed
-
-# 4. 프론트엔드 빌드
-cd ../frontend && yarn build
-
-# 5. 백엔드 빌드
-cd ../backend && yarn build
-
-# 6. pm2로 배포
-cd ~/Desktop/kscold-control
-pm2 start ecosystem.config.js
-pm2 save && pm2 startup
-```
-
-## 개발
-
-```bash
-# 모든 워크스페이스를 개발 모드로 실행
-yarn dev
-
-# 코드 포맷팅
-yarn format
-
-# 린터 실행
-yarn lint
-```
-
-## 프로젝트 구조
+## Architecture
 
 ```
 kscold-control/
 ├── apps/
-│   ├── backend/          # NestJS API 서버
-│   └── frontend/         # React 웹 인터페이스
-├── packages/             # 공유 패키지
-├── docker-compose.yml    # PostgreSQL 컨테이너
-└── ecosystem.config.js   # pm2 설정
+│   ├── backend/              # NestJS (Clean Architecture)
+│   │   └── src/
+│   │       ├── auth/             # JWT authentication & RBAC
+│   │       ├── claude-chat/      # Claude Code & Chat WebSocket gateway
+│   │       ├── openai-chat/      # OpenAI Chat API & Codex CLI gateway
+│   │       ├── terminal/         # PTY sessions (node-pty + Socket.io)
+│   │       ├── docker/           # Dockerode integration
+│   │       ├── nginx/            # Nginx config & SSL (certbot)
+│   │       ├── logs/             # Unified log reader
+│   │       ├── repository/       # Source version management
+│   │       ├── audit/            # AOP audit interceptor
+│   │       └── security/         # IP ban
+│   └── frontend/             # React 18 + Vite + Tailwind CSS
+│       └── src/
+│           ├── features/         # Feature-Sliced Design (FSD)
+│           │   ├── claude-chat/
+│           │   ├── openai-chat/
+│           │   ├── terminal/
+│           │   ├── docker/
+│           │   └── ...
+│           └── pages/
+├── nginx/                    # Nginx config templates
+├── scripts/                  # Utility shell scripts
+└── .env.example              # Environment variable reference
 ```
 
-## 라이선스
-
-MIT
+**Backend** — Domain → Application → Presentation (Clean Architecture)  
+**Frontend** — Feature-Sliced Design (FSD): entities / features / pages  
+**Realtime** — Socket.io namespaces: `/terminal` · `/claude-chat` · `/openai-chat`  
+**Package manager** — pnpm workspaces + Turborepo
 
 ---
 
-**kscold**
+## Quick Start
+
+### Prerequisites
+
+| Tool | Min version |
+|------|-------------|
+| Node.js | 20 |
+| pnpm | 9 |
+| PostgreSQL | 14 |
+| Docker | 24 (optional) |
+
+### One-command setup
+
+```bash
+git clone https://github.com/kscold/kscold-control.git
+cd kscold-control
+pnpm install          # install all workspace dependencies
+cp .env.example .env  # fill in DATABASE_URL and JWT_SECRET at minimum
+pnpm dev              # starts backend :4000 + frontend :3000 in parallel
+```
+
+Open [http://localhost:3000](http://localhost:3000).
+
+### Seed admin account
+
+```bash
+cd apps/backend && npx ts-node src/seed.ts
+```
+
+---
+
+## AI Provider Setup
+
+### Claude Code / Claude Chat
+
+Install the official CLI:
+
+```bash
+npm install -g @anthropic-ai/claude-code
+```
+
+Authenticate once (`claude login`) or set `ANTHROPIC_API_KEY` in your environment.  
+Set `CLAUDE_WORKING_DIR` in `.env` to point to your project root.
+
+### OpenAI Chat API (GPT-4o)
+
+```env
+OPENAI_API_KEY=sk-...
+OPENAI_MODEL=gpt-4o    # optional, default: gpt-4o
+```
+
+### OpenAI Codex CLI
+
+```bash
+npm install -g @openai/codex
+```
+
+`OPENAI_API_KEY` is shared with the Chat API. Optionally set `CODEX_BIN` to override the binary path.
+
+---
+
+## Environment Variables
+
+| Variable | Default | Description |
+|---|---|---|
+| `DATABASE_URL` | — | PostgreSQL connection string (required) |
+| `JWT_SECRET` | — | JWT signing secret (required) |
+| `PORT` | `4000` | Backend HTTP/WS port |
+| `FRONTEND_URL` | `http://localhost:3000` | CORS allowed origin |
+| `NODE_ENV` | `development` | `production` disables TypeORM auto-sync |
+| `CLAUDE_WORKING_DIR` | `$HOME` | Working directory for AI coding sessions |
+| `OPENAI_API_KEY` | — | OpenAI API key (Chat API + Codex CLI) |
+| `OPENAI_MODEL` | `gpt-4o` | OpenAI model for Chat API |
+| `CODEX_BIN` | `codex` | Path to Codex binary |
+| `LOG_LEVEL` | `info` | Winston log level |
+
+---
+
+## Production Deployment
+
+```bash
+# 1. Build everything
+pnpm build
+
+# 2. Start with PM2
+pm2 start ecosystem.config.js --update-env
+pm2 save
+```
+
+The backend serves the built frontend under `/` and all API routes under `/api`.  
+A sample Nginx reverse-proxy config is at [`nginx/conf.d/app-stack.conf.example`](nginx/conf.d/app-stack.conf.example).
+
+SSL certificates can be issued and renewed directly from the **Nginx → SSL** panel.
+
+---
+
+## Contributing
+
+Contributions are welcome — bug reports, feature requests, and pull requests.
+
+1. Fork the repository
+2. Create a branch: `git checkout -b feat/your-feature`
+3. Commit using conventional commits:
+
+   ```
+   feat(frontend): add feature
+   fix(backend): fix bug
+   refactor(infra): refactor
+   chore(deps): update dependencies
+   ```
+
+4. Push and open a Pull Request against `main`
+
+Please update relevant documentation and ensure the build passes (`pnpm build`) before submitting.
+
+---
+
+## License
+
+[MIT](LICENSE)

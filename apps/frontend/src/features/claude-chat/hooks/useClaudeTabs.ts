@@ -2,8 +2,9 @@ import { useState } from 'react';
 import { useModalStore } from '../../../shared/model/modal.store';
 import { getClaudeSessionStorageKey } from '../lib/claude-chat.constants';
 import { getTerminalSessionStorageKey } from '../../terminal/lib/terminal.constants';
+import { getOpenAISessionStorageKey } from '../../openai-chat/lib/openai-chat.constants';
 
-export type TabType = 'terminal' | 'claude-chat' | 'claude-code';
+export type TabType = 'terminal' | 'claude-chat' | 'claude-code' | 'openai-chat';
 
 export interface Tab {
   id: string;
@@ -32,7 +33,9 @@ export function useClaudeTabs() {
         ? `Claude Code ${count}`
         : type === 'claude-chat'
           ? `Claude Chat ${count}`
-          : `Terminal ${count}`;
+          : type === 'openai-chat'
+            ? `OpenAI ${count}`
+            : `Terminal ${count}`;
     setTabs((prev) => [...prev, { id: newId, title, type }]);
     setActiveTabId(newId);
   };
@@ -45,6 +48,8 @@ export function useClaudeTabs() {
 
     localStorage.removeItem(getClaudeSessionStorageKey(id));
     localStorage.removeItem(getTerminalSessionStorageKey(id));
+    localStorage.removeItem(getOpenAISessionStorageKey(`${id}-api`));
+    localStorage.removeItem(getOpenAISessionStorageKey(`${id}-codex`));
 
     const newTabs = tabs.filter((t) => t.id !== id);
     setTabs(newTabs);
