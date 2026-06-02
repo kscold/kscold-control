@@ -32,6 +32,8 @@ jobs:
             revert
           # Scopes are optional but recommended, e.g. feat(frontend):
           requireScope: false
-          subjectPattern: ^(?![A-Z]).+$
+          # Subject may start with an uppercase acronym (FSD, JWT, SSL) or Korean,
+          # so we only require a non-empty subject — no leading-case restriction.
+          subjectPattern: .+
           subjectPatternError: |
-            The subject "{subject}" should start with a lowercase letter.
+            The subject "{subject}" must not be empty.
