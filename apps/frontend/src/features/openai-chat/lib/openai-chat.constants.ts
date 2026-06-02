@@ -1,6 +1,7 @@
-export const API_URL = import.meta.env.VITE_API_URL || '';
-export const OPENAI_SESSION_STORAGE_KEY = 'openai_chat_session_id';
+// Session storage keys live in the shared layer (cross-cutting concern).
+export {
+  OPENAI_SESSION_STORAGE_KEY,
+  getOpenAISessionStorageKey,
+} from '../../../shared/lib/session-storage';
 
-export function getOpenAISessionStorageKey(tabId: string): string {
-  return `${OPENAI_SESSION_STORAGE_KEY}:${tabId}`;
-}
+export const API_URL = import.meta.env.VITE_API_URL || '';

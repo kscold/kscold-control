@@ -4,3 +4,4 @@ export * from './Card';
 export * from './Badge';
 export * from './Spinner';
 export * from './Modal';
+export * from './MarkdownRenderer';

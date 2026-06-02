@@ -1,6 +1,7 @@
-export const API_URL = import.meta.env.VITE_API_URL || '';
-export const CLAUDE_SESSION_STORAGE_KEY = 'claude_chat_session_id';
+// Session storage keys live in the shared layer (cross-cutting concern).
+export {
+  CLAUDE_SESSION_STORAGE_KEY,
+  getClaudeSessionStorageKey,
+} from '../../../shared/lib/session-storage';
 
-export function getClaudeSessionStorageKey(tabId: string) {
-  return `${CLAUDE_SESSION_STORAGE_KEY}:${tabId}`;
-}
+export const API_URL = import.meta.env.VITE_API_URL || '';

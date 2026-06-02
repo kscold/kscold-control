@@ -1,10 +1,12 @@
-export const API_URL = import.meta.env.VITE_API_URL || '';
-export const SESSION_STORAGE_KEY = 'terminal_session_id';
-export const AUTO_REFRESH_INTERVAL = 5000;
+// Session storage keys live in the shared layer (cross-cutting concern).
+// Re-exported under the legacy name `SESSION_STORAGE_KEY` for backward compat.
+export {
+  TERMINAL_SESSION_STORAGE_KEY as SESSION_STORAGE_KEY,
+  getTerminalSessionStorageKey,
+} from '../../../shared/lib/session-storage';
 
-export function getTerminalSessionStorageKey(tabId: string) {
-  return `${SESSION_STORAGE_KEY}:${tabId}`;
-}
+export const API_URL = import.meta.env.VITE_API_URL || '';
+export const AUTO_REFRESH_INTERVAL = 5000;
 
 /**
  * Terminal Theme
