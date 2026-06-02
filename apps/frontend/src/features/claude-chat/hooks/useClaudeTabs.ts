@@ -1,8 +1,10 @@
 import { useState } from 'react';
 import { useModalStore } from '../../../shared/model/modal.store';
-import { getClaudeSessionStorageKey } from '../lib/claude-chat.constants';
-import { getTerminalSessionStorageKey } from '../../terminal/lib/terminal.constants';
-import { getOpenAISessionStorageKey } from '../../openai-chat/lib/openai-chat.constants';
+import {
+  getClaudeSessionStorageKey,
+  getTerminalSessionStorageKey,
+  getOpenAISessionStorageKey,
+} from '../../../shared/lib/session-storage';
 
 export type TabType = 'terminal' | 'claude-chat' | 'claude-code' | 'openai-chat';
 
