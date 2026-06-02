@@ -13,6 +13,7 @@ import { LogsModule } from './logs/logs.module';
 import { NginxModule } from './nginx/nginx.module';
 import { UpnpModule } from './upnp/upnp.module';
 import { ClaudeChatModule } from './claude-chat/claude-chat.module';
+import { OpenAIChatModule } from './openai-chat/openai-chat.module';
 import { RepositoryModule } from './repository/repository.module';
 import { AuditModule } from './audit/audit.module';
 import { SecurityModule } from './security/security.module';
@@ -62,6 +63,7 @@ import { AuditInterceptor } from './common/interceptors';
     NginxModule,
     UpnpModule,
     ClaudeChatModule,
+    OpenAIChatModule,
     RepositoryModule,
     SecurityModule,
   ],
