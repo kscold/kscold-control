@@ -19,11 +19,15 @@ export class OpenAIApiService {
   private readonly logger = new Logger(OpenAIApiService.name);
   private readonly histories = new Map<string, ConversationMessage[]>();
   private readonly abortControllers = new Map<string, AbortController>();
+  private client: OpenAI | null = null;
 
   private getClient(): OpenAI {
-    const apiKey = process.env.OPENAI_API_KEY;
-    if (!apiKey) throw new Error('OPENAI_API_KEY is not configured');
-    return new OpenAI({ apiKey });
+    if (!this.client) {
+      const apiKey = process.env.OPENAI_API_KEY;
+      if (!apiKey) throw new Error('OPENAI_API_KEY is not configured');
+      this.client = new OpenAI({ apiKey });
+    }
+    return this.client;
   }
 
   getModel(): string {
@@ -54,6 +58,8 @@ export class OpenAIApiService {
     const controller = new AbortController();
     this.abortControllers.set(sessionId, controller);
 
+    let fullContent = '';
+
     try {
       const client = this.getClient();
       const model = this.getModel();
@@ -66,8 +72,6 @@ export class OpenAIApiService {
         },
         { signal: controller.signal },
       );
-
-      let fullContent = '';
 
       for await (const chunk of stream) {
         if (controller.signal.aborted) break;
@@ -83,8 +87,14 @@ export class OpenAIApiService {
 
       onEvent({ type: 'message-end', content: fullContent, model });
     } catch (err: any) {
-      if (err.name === 'AbortError') {
-        onEvent({ type: 'message-end', content: '', model: this.getModel() });
+      // openai SDK는 AbortError 대신 APIUserAbortError를 던지므로 메시지로 감지
+      const isAbort =
+        err.name === 'AbortError' ||
+        err.constructor?.name === 'APIUserAbortError' ||
+        controller.signal.aborted;
+
+      if (isAbort) {
+        onEvent({ type: 'message-end', content: fullContent, model: this.getModel() });
       } else {
         this.logger.error(`[OpenAI API] ${err.message}`);
         onEvent({ type: 'error', message: err.message });

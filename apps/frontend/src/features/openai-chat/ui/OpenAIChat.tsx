@@ -1,4 +1,4 @@
-import { useCallback, useState, useRef, useEffect, KeyboardEvent } from 'react';
+import { useCallback, useState, useMemo, useRef, useEffect, KeyboardEvent } from 'react';
 import { BotMessageSquare, Zap, AlertTriangle, Send, Square } from 'lucide-react';
 import { useAuthStore } from '../../../shared/model/auth.store';
 import { MarkdownRenderer } from '../../claude-chat/ui/MarkdownRenderer';
@@ -32,16 +32,22 @@ export function OpenAIChat({ tabId = 'default', initialProvider = 'api' }: OpenA
   const bottomRef = useRef<HTMLDivElement>(null);
 
   const storageKey = getOpenAISessionStorageKey(`${tabId}-${provider}`);
-  const { session, getSavedSessionId, handleSessionReady, setConnected, setError, clearSession } =
+  const { session, handleSessionReady, setConnected, setError, clearSession } =
     useOpenAIChatSession(storageKey, provider);
-  const [initialSessionId] = useState(() => getSavedSessionId());
+
+  // provider 전환 시마다 해당 provider의 저장된 세션 ID를 읽어옴
+  const savedSessionId = useMemo(
+    () => localStorage.getItem(storageKey),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [storageKey],
+  );
   const { messages, isStreaming, addUserMessage, startStreaming, appendDelta, endStreaming, loadHistory, clear: clearMessages } =
     useOpenAIChatMessages();
 
   const { sendMessage, abort, closeSession } = useOpenAIChatSocket({
     token,
     provider,
-    savedSessionId: initialSessionId,
+    savedSessionId,
     onSessionReady: handleSessionReady,
     onHistory: useCallback((data: { messages: any[] }) => loadHistory(data.messages), [loadHistory]),
     onMessageStart: startStreaming,
@@ -52,7 +58,13 @@ export function OpenAIChat({ tabId = 'default', initialProvider = 'api' }: OpenA
       },
       [endStreaming],
     ),
-    onError: useCallback((data: { message: string }) => setError(data.message), [setError]),
+    onError: useCallback(
+      (data: { message: string }) => {
+        setError(data.message);
+        endStreaming('', {});  // isStreaming 초기화 — 에러 시 입력창 먹통 방지
+      },
+      [setError, endStreaming],
+    ),
     onConnect: useCallback(() => setConnected(true), [setConnected]),
     onDisconnect: useCallback(() => setConnected(false), [setConnected]),
     onSessionClosed: useCallback(() => { clearSession(); clearMessages(); }, [clearSession, clearMessages]),

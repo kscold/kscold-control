@@ -189,6 +189,12 @@ export class OpenAIChatGateway
       this.sessionRepo.updateActivity(sessionId).catch(() => {});
     };
 
+    const safeHandleEnd = (content: string, meta?: Record<string, any>) => {
+      handleEnd(content, meta).catch((e) =>
+        this.logger.error('[OpenAIChat] handleEnd failed', e),
+      );
+    };
+
     if (provider === 'codex') {
       this.codexManager.sendPrompt(sessionId, data.message, (event) => {
         switch (event.type) {
@@ -197,13 +203,13 @@ export class OpenAIChatGateway
             this.emit(sessionId, 'openai:text-delta', { text: event.text });
             break;
           case 'message-end':
-            handleEnd(event.content ?? fullContent);
+            safeHandleEnd(event.content ?? fullContent);
             break;
           case 'error':
             this.emit(sessionId, 'openai:error', { message: event.message });
             break;
           case 'process-exit':
-            if (!messageEnded) handleEnd(fullContent);
+            if (!messageEnded) safeHandleEnd(fullContent);
             break;
         }
       });
@@ -215,13 +221,13 @@ export class OpenAIChatGateway
             this.emit(sessionId, 'openai:text-delta', { text: event.text });
             break;
           case 'message-end':
-            handleEnd(event.content ?? fullContent, { model: event.model });
+            safeHandleEnd(event.content ?? fullContent, { model: event.model });
             break;
           case 'error':
             this.emit(sessionId, 'openai:error', { message: event.message });
             break;
           case 'done':
-            if (!messageEnded) handleEnd(fullContent);
+            if (!messageEnded) safeHandleEnd(fullContent);
             break;
         }
       });
