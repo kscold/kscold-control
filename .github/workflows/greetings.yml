@@ -1,0 +1,31 @@
+name: Greetings
+
+on:
+  pull_request_target:
+    types: [opened]
+  issues:
+    types: [opened]
+
+permissions:
+  issues: write
+  pull-requests: write
+
+jobs:
+  greeting:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/first-interaction@v1
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          issue-message: |
+            👋 Thanks for opening your first issue in **kscold-control**!
+            A maintainer will triage it soon. Make sure you followed the issue template so we can help faster.
+            (English is preferred, but Korean is welcome — 한국어도 괜찮습니다.)
+          pr-message: |
+            🎉 Thanks for your first pull request to **kscold-control**!
+            Please make sure:
+            - The PR title follows [Conventional Commits](https://www.conventionalcommits.org/) (e.g. `feat(frontend): ...`)
+            - `pnpm build` passes locally
+            - You linked a related issue
+
+            A maintainer will review it shortly. 🙌
