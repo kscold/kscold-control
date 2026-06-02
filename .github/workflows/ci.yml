@@ -15,7 +15,7 @@ jobs:
     name: Build & Lint
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       # pnpm 버전은 package.json의 "packageManager" 필드를 따른다.
       # version을 명시하면 ERR_PNPM_BAD_PM_VERSION(중복 지정) 오류가 발생한다.
