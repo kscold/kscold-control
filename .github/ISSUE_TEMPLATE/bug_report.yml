@@ -1,0 +1,58 @@
+name: 🐛 Bug report
+description: Report a problem so we can fix it
+title: "fix: "
+labels: ["bug", "needs-review"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to file a bug! English is preferred, but Korean is welcome.
+        영어 작성을 권장하지만 한국어도 괜찮습니다.
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: A clear description of the bug and what you expected instead.
+      placeholder: When I click X, Y happens instead of Z.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce
+      description: How can we reproduce the issue?
+      value: |
+        1. Go to '...'
+        2. Click on '...'
+        3. See error
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Affected area
+      options:
+        - Frontend (web UI)
+        - Backend (API / WebSocket)
+        - AI Terminal (Claude / OpenAI / Codex)
+        - Docker / Nginx / SSL
+        - Auth / RBAC
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: OS, Node version, browser, deployment (dev / PM2 / Docker).
+      placeholder: macOS 14, Node 20, Chrome 120, PM2
+    validations:
+      required: false
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant logs
+      description: Paste any console / server logs. They will be formatted automatically.
+      render: shell
+    validations:
+      required: false
