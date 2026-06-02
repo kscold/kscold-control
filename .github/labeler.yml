@@ -1,0 +1,31 @@
+frontend:
+  - changed-files:
+      - any-glob-to-any-file: "apps/frontend/**"
+
+backend:
+  - changed-files:
+      - any-glob-to-any-file: "apps/backend/**"
+
+documentation:
+  - changed-files:
+      - any-glob-to-any-file:
+          - "**/*.md"
+          - "docs/**"
+
+ci:
+  - changed-files:
+      - any-glob-to-any-file: ".github/**"
+
+dependencies:
+  - changed-files:
+      - any-glob-to-any-file:
+          - "**/package.json"
+          - "pnpm-lock.yaml"
+
+infra:
+  - changed-files:
+      - any-glob-to-any-file:
+          - "nginx/**"
+          - "docker-compose*.yml"
+          - "ecosystem.config.js"
+          - "scripts/**"

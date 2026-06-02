@@ -1,0 +1,44 @@
+name: ✨ Feature request
+description: Suggest an idea or enhancement
+title: "feat: "
+labels: ["feature", "needs-review"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the suggestion! English is preferred, but Korean is welcome.
+        영어 작성을 권장하지만 한국어도 괜찮습니다.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem / motivation
+      description: What problem does this solve? Why is it needed?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: Describe what you'd like to happen.
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Affected area
+      options:
+        - Frontend (web UI)
+        - Backend (API / WebSocket)
+        - AI Terminal (Claude / OpenAI / Codex)
+        - Docker / Nginx / SSL
+        - Auth / RBAC
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Any alternative solutions or workarounds you considered.
+    validations:
+      required: false

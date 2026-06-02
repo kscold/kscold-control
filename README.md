@@ -164,10 +164,16 @@ SSL certificates can be issued and renewed directly from the **Nginx → SSL** p
 ## Contributing
 
 Contributions are welcome — bug reports, feature requests, and pull requests.
+Please read the **[Contributing guide](CONTRIBUTING.md)** before you start.
 
-1. Fork the repository
+> **Language:** English is preferred for issues, pull requests, and commit messages so the project stays accessible to everyone, but **Korean is welcome too**.
+> 이슈·PR·커밋 메시지는 **영어 작성을 권장**하지만 **한국어도 괜찮습니다**.
+
+**Quick start:**
+
+1. Open or pick an issue (look for [`good first issue`](https://github.com/kscold/kscold-control/labels/good%20first%20issue))
 2. Create a branch: `git checkout -b feat/your-feature`
-3. Commit using conventional commits:
+3. Commit using [Conventional Commits](https://www.conventionalcommits.org/) with a scope:
 
    ```
    feat(frontend): add feature
@@ -176,9 +182,10 @@ Contributions are welcome — bug reports, feature requests, and pull requests.
    chore(deps): update dependencies
    ```
 
-4. Push and open a Pull Request against `main`
+4. Push and open a Pull Request against `main` — the PR template fills in automatically
 
-Please update relevant documentation and ensure the build passes (`pnpm build`) before submitting.
+Every PR runs CI (build + lint), Conventional-Commit title validation, and auto-labeling.
+Make sure `pnpm build` passes and relevant docs are updated before submitting.
 
 ---
 
