@@ -1,8 +1,10 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import axios from 'axios';
-import { CLAUDE_SESSION_STORAGE_KEY } from '../../features/claude-chat/lib/claude-chat.constants';
-import { SESSION_STORAGE_KEY } from '../../features/terminal/lib/terminal.constants';
+import {
+  CLAUDE_SESSION_STORAGE_KEY,
+  TERMINAL_SESSION_STORAGE_KEY,
+} from '../lib/session-storage';
 
 const API_URL = import.meta.env.VITE_API_URL || '';
 
@@ -53,7 +55,7 @@ export const useAuthStore = create<AuthState>()(
 
       logout: () => {
         // 터미널 세션도 함께 정리
-        clearSessionStorageByPrefix(SESSION_STORAGE_KEY);
+        clearSessionStorageByPrefix(TERMINAL_SESSION_STORAGE_KEY);
         clearSessionStorageByPrefix(CLAUDE_SESSION_STORAGE_KEY);
         set({ token: null, user: null });
       },

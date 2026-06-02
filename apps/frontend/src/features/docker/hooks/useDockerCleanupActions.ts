@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { dockerService } from '../../../services/api/docker.service';
 import { useModalStore } from '../../../shared/model/modal.store';
-import { formatBytes } from '../../dashboard/lib/dashboard.utils';
+import { formatBytes } from '../../../shared/lib';
 import type { DockerCleanupResult } from '../lib/docker-cleanup.types';
 
 export type DockerCleanupActionKey =

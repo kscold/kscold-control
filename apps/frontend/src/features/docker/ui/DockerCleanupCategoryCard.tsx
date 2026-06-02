@@ -1,5 +1,5 @@
 import { Eye, PlayCircle } from 'lucide-react';
-import { formatBytes } from '../../dashboard/lib/dashboard.utils';
+import { formatBytes } from '../../../shared/lib';
 import type {
   DockerCleanupCategory,
   DockerCleanupResult,
