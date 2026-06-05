@@ -16,8 +16,8 @@ import {
   Wand2,
   X,
 } from 'lucide-react';
-import { useAuthStore } from '../../../shared/model/auth.store';
-import { useModalStore } from '../../../shared/model/modal.store';
+import { useAuthStore } from '../../../shared/model';
+import { useModalStore } from '../../../shared/model';
 import { useClaudeRuntimeDiagnostics } from '../hooks/useClaudeRuntimeDiagnostics';
 import { useTerminalSession } from '../hooks/useTerminalSession';
 import { useTerminalSetup } from '../hooks/useTerminalSetup';

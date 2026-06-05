@@ -3,7 +3,7 @@
 export {
   TERMINAL_SESSION_STORAGE_KEY as SESSION_STORAGE_KEY,
   getTerminalSessionStorageKey,
-} from '../../../shared/lib/session-storage';
+} from '../../../shared/lib';
 
 export const API_URL = import.meta.env.VITE_API_URL || '';
 export const AUTO_REFRESH_INTERVAL = 5000;

@@ -5,3 +5,4 @@ export * from './Badge';
 export * from './Spinner';
 export * from './Modal';
 export * from './MarkdownRenderer';
+export * from './SkeletonBlock';
