@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { API_URL, api } from '../../../lib/api';
-import { useAuthStore } from '../../../shared/model/auth.store';
+import { useAuthStore } from '../../../shared/model';
 import type {
   DockerLogArchiveSource,
   DockerLogFilter,

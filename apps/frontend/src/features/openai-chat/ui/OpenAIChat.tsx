@@ -1,6 +1,6 @@
 import { useCallback, useState, useMemo, useRef, useEffect, KeyboardEvent } from 'react';
 import { BotMessageSquare, Zap, AlertTriangle, Send, Square } from 'lucide-react';
-import { useAuthStore } from '../../../shared/model/auth.store';
+import { useAuthStore } from '../../../shared/model';
 import { MarkdownRenderer } from '../../../shared/ui';
 import type { OpenAIProvider } from '../lib/openai-chat.types';
 import { getOpenAISessionStorageKey } from '../lib/openai-chat.constants';

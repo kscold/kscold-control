@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { dockerService } from '../../../services/api/docker.service';
-import { useModalStore } from '../../../shared/model/modal.store';
+import { useModalStore } from '../../../shared/model';
 import type { Container } from '../../../types/domain.types';
 
 /**

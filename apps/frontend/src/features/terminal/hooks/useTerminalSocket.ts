@@ -2,7 +2,7 @@ import { useRef, useEffect } from 'react';
 import { io, Socket } from 'socket.io-client';
 import type { Terminal } from '@xterm/xterm';
 import { API_URL, TERMINAL_COLORS } from '../lib/terminal.constants';
-import { useModalStore } from '../../../shared/model/modal.store';
+import { useModalStore } from '../../../shared/model';
 
 interface UseTerminalSocketProps {
   token: string | null;

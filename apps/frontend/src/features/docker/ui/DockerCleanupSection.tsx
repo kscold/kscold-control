@@ -4,7 +4,7 @@ import { PERMISSIONS } from '../../../constants/permissions';
 import { useDockerCleanupActions } from '../hooks';
 import { DockerCleanupCategoryCard } from './DockerCleanupCategoryCard';
 import { DockerCleanupSummaryCard } from './DockerCleanupSummaryCard';
-import { SkeletonBlock } from '../../../shared/ui/SkeletonBlock';
+import { SkeletonBlock } from '../../../shared/ui';
 import type { DockerCleanupCandidates } from '../lib/docker-cleanup.types';
 
 interface DockerCleanupSectionProps {

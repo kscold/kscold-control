@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuthStore } from '../../../shared/model/auth.store';
+import { useAuthStore } from '../../../shared/model';
 
 /**
  * useAuth Hook

@@ -2,6 +2,6 @@
 export {
   OPENAI_SESSION_STORAGE_KEY,
   getOpenAISessionStorageKey,
-} from '../../../shared/lib/session-storage';
+} from '../../../shared/lib';
 
 export const API_URL = import.meta.env.VITE_API_URL || '';

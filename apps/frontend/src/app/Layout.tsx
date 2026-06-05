@@ -16,7 +16,7 @@ import {
   FolderGit2,
   History,
 } from 'lucide-react';
-import { useAuthStore } from '../shared/model/auth.store';
+import { useAuthStore } from '../shared/model';
 
 export function Layout() {
   const { user, logout } = useAuthStore();
