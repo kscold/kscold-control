@@ -30,10 +30,15 @@ certbot-config/
 *.pem
 *.key
 
-# Logs (런타임 로그 출력 디렉토리만 무시)
+# Logs (런타임 로그 출력 디렉토리·파일 무시)
 /logs/
 apps/*/logs/
+# 잘못된 cwd로 중첩 생성된 로그 경로 방어
+apps/*/apps/
 *.log
+*.log.gz
+*.log.*
+*-audit.json
 apps/backend/data/
 # 소스 코드 내 logs 폴더는 추적 (backend logs 모듈, frontend logs feature 등)
 !**/src/logs/
