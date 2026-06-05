@@ -20,7 +20,7 @@ jobs:
       # pnpm 버전은 package.json의 "packageManager" 필드를 따른다.
       # version을 명시하면 ERR_PNPM_BAD_PM_VERSION(중복 지정) 오류가 발생한다.
       - name: Setup pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@v6
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
