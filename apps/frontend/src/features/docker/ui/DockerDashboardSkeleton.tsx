@@ -1,4 +1,4 @@
-import { SkeletonBlock } from '../../../shared/ui/SkeletonBlock';
+import { SkeletonBlock } from '../../../shared/ui';
 
 function CleanupSkeletonCard() {
   return (
