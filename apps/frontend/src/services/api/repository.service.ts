@@ -250,6 +250,21 @@ export class RepositoryService extends BaseApiService {
     }
   }
 
+  async restoreVersion(
+    projectId: string,
+    versionId: string,
+  ): Promise<RepositoryProject> {
+    try {
+      const { data } = await api.post<RepositoryProject>(
+        `${this.basePath}/projects/${projectId}/versions/${encodeURIComponent(versionId)}/restore`,
+      );
+      return data;
+    } catch (error) {
+      this.logError('RepositoryService', 'restoreVersion', error);
+      this.handleError(error, '이전 버전 복원 실패');
+    }
+  }
+
   async cleanupVersions(projectId: string): Promise<{ deleted: number }> {
     try {
       const { data } = await api.delete<{ deleted: number }>(

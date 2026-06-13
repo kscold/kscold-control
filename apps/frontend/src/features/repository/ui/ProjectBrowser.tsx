@@ -286,7 +286,13 @@ export function ProjectBrowser({ project, onUploaded }: ProjectBrowserProps) {
         </div>
       ) : (
         <div className="flex-1 overflow-auto p-5">
-          <VersionList projectId={project.id} />
+          <VersionList
+            projectId={project.id}
+            onRestored={() => {
+              reload();
+              setTab('browse');
+            }}
+          />
         </div>
       )}
     </div>
