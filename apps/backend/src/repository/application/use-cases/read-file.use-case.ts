@@ -46,7 +46,16 @@ export class ReadFileUseCase {
       throw new BadRequestException('잘못된 경로');
     }
 
-    const buffer = await this.fileStorage.readFile(project.name, relativePath);
+    let buffer: Buffer;
+    try {
+      buffer = await this.fileStorage.readFile(project.name, relativePath);
+    } catch (err) {
+      const code = (err as NodeJS.ErrnoException).code;
+      if (code === 'ENOENT') {
+        throw new NotFoundException(`파일을 찾을 수 없습니다: ${relativePath}`);
+      }
+      throw err;
+    }
 
     // 텍스트 판별: 확장자 + 첫 8KB 안에 NULL 바이트가 있으면 바이너리
     const fileName = relativePath.split('/').pop() ?? '';

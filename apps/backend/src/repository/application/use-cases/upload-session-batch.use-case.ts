@@ -103,6 +103,10 @@ export class UploadSessionBatchUseCase {
         await this.fileStorage.removeProject(project.name);
         await this.fileStorage.ensureProject(project.name);
         session.replaceApplied = true;
+        // 프로젝트 전체 삭제는 세션당 한 번만 일어나야 한다.
+        // 플래그를 즉시 영속화하지 않으면, 배치 쓰기 도중 전송이 끊겼을 때
+        // 재시도 시 replaceApplied=false 상태로 남아 이미 올린 파일까지 다시 삭제된다.
+        await this.uploadSessionRepository.save(session);
       }
     } else {
       await this.fileStorage.ensureProject(project.name);
