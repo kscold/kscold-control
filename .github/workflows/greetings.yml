@@ -16,12 +16,12 @@ jobs:
     steps:
       - uses: actions/first-interaction@v3
         with:
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
-          issue-message: |
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          issue_message: |
             👋 Thanks for opening your first issue in **kscold-control**!
             A maintainer will triage it soon. Make sure you followed the issue template so we can help faster.
             (English is preferred, but Korean is welcome — 한국어도 괜찮습니다.)
-          pr-message: |
+          pr_message: |
             🎉 Thanks for your first pull request to **kscold-control**!
             Please make sure:
             - The PR title follows [Conventional Commits](https://www.conventionalcommits.org/) (e.g. `feat(frontend): ...`)
