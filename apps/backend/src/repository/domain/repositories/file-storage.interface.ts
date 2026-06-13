@@ -29,8 +29,11 @@ export interface IFileStorage {
   /** 단일 파일 쓰기 (상대경로 보존) */
   writeFile(projectName: string, relativePath: string, buffer: Buffer): Promise<void>;
 
-  /** 프로젝트 전체 삭제 */
+  /** 프로젝트 전체 삭제 (.versions 히스토리 포함) */
   removeProject(projectName: string): Promise<void>;
+
+  /** 프로젝트 콘텐츠만 비우기 — .versions 버전 히스토리는 보존 (replace 업로드용) */
+  clearProjectFiles(projectName: string): Promise<void>;
 
   /** 파일 트리 조회 */
   listTree(projectName: string): Promise<FileTreeNode>;

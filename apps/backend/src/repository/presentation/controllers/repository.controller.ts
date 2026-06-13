@@ -35,6 +35,7 @@ import {
   ReadFileAtVersionUseCase,
   ListVersionsUseCase,
   CleanupVersionsUseCase,
+  RestoreVersionUseCase,
 } from '../../application/use-cases';
 import { CreateProjectDto } from '../../application/dto/create-project.dto';
 import type { UploadFile } from '../../application/use-cases/upload-files.use-case';
@@ -74,6 +75,7 @@ export class RepositoryController {
     private readonly readFileAtVersionUseCase: ReadFileAtVersionUseCase,
     private readonly listVersionsUseCase: ListVersionsUseCase,
     private readonly cleanupVersionsUseCase: CleanupVersionsUseCase,
+    private readonly restoreVersionUseCase: RestoreVersionUseCase,
   ) {}
 
   @Get('projects')
@@ -298,5 +300,23 @@ export class RepositoryController {
     const { projectName, deleted } = await this.cleanupVersionsUseCase.execute(id, 1);
     // projectName 을 응답에 포함시켜 @Audit summary 팩토리에서 사용
     return { projectName, deleted };
+  }
+
+  @Post('projects/:id/versions/:versionId/restore')
+  @RequirePermissions(PERMISSIONS.REPOSITORY_WRITE)
+  @Audit({
+    domain: 'repository',
+    action: 'versions.restore',
+    summary: (ctx) =>
+      `프로젝트를 버전 ${ctx.params.versionId}(으)로 복원했습니다.`,
+    targetType: 'project',
+    targetId: (ctx) => ctx.params.id,
+    metadata: (ctx) => ({ versionId: ctx.params.versionId }),
+  })
+  async restoreVersion(
+    @Param('id') id: string,
+    @Param('versionId') versionId: string,
+  ) {
+    return this.restoreVersionUseCase.execute(id, versionId);
   }
 }

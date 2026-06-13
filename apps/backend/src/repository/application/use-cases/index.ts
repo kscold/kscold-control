@@ -11,3 +11,4 @@ export { ReadFileUseCase } from './read-file.use-case';
 export { ReadFileAtVersionUseCase } from './read-file-at-version.use-case';
 export { ListVersionsUseCase } from './list-versions.use-case';
 export { CleanupVersionsUseCase } from './cleanup-versions.use-case';
+export { RestoreVersionUseCase } from './restore-version.use-case';
