@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
-import { History, Trash2, Loader2, PackageOpen } from 'lucide-react';
+import { History, Trash2, Loader2, PackageOpen, RotateCcw } from 'lucide-react';
 import { repositoryService } from '../../../services/api/repository.service';
 import { formatBytes } from '../lib/file-filter';
 import { formatFullDateTime } from '../../../lib/date-format';
@@ -7,12 +7,15 @@ import type { ProjectVersion } from '../lib/repository.types';
 
 interface VersionListProps {
   projectId: string;
+  /** 복원 완료 후 호출 — 파일 트리 등 상위 상태를 갱신한다 */
+  onRestored?: () => void;
 }
 
-export function VersionList({ projectId }: VersionListProps) {
+export function VersionList({ projectId, onRestored }: VersionListProps) {
   const [versions, setVersions] = useState<ProjectVersion[]>([]);
   const [loading, setLoading] = useState(true);
   const [cleaning, setCleaning] = useState(false);
+  const [restoringId, setRestoringId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -27,6 +30,25 @@ export function VersionList({ projectId }: VersionListProps) {
   useEffect(() => {
     load();
   }, [load]);
+
+  const handleRestore = async (version: ProjectVersion) => {
+    const ok = window.confirm(
+      `이 프로젝트를 ${formatFullDateTime(version.createdAt)} 버전으로 되돌립니다.\n` +
+        '현재 상태는 복원 직전 자동으로 스냅샷에 백업됩니다. 계속하시겠습니까?',
+    );
+    if (!ok) return;
+    setRestoringId(version.id);
+    try {
+      await repositoryService.restoreVersion(projectId, version.id);
+      await load();
+      onRestored?.();
+      alert('이전 버전으로 복원되었습니다.');
+    } catch {
+      alert('버전 복원에 실패했습니다.');
+    } finally {
+      setRestoringId(null);
+    }
+  };
 
   const handleCleanup = async () => {
     if (versions.length <= 1) return;
@@ -116,9 +138,25 @@ export function VersionList({ projectId }: VersionListProps) {
                   <p className="text-xs text-gray-600">{v.filename}</p>
                 </div>
               </div>
-              <span className="text-xs text-gray-500">
-                {formatBytes(v.compressedSize)}
-              </span>
+              <div className="flex items-center gap-3">
+                <span className="text-xs text-gray-500">
+                  {formatBytes(v.compressedSize)}
+                </span>
+                {idx !== 0 && (
+                  <button
+                    onClick={() => handleRestore(v)}
+                    disabled={restoringId !== null}
+                    className="flex items-center gap-1.5 rounded-lg border border-blue-500/30 bg-blue-500/10 px-2.5 py-1.5 text-xs font-medium text-blue-300 transition hover:bg-blue-500/20 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {restoringId === v.id ? (
+                      <Loader2 size={12} className="animate-spin" />
+                    ) : (
+                      <RotateCcw size={12} />
+                    )}
+                    이 버전으로 되돌리기
+                  </button>
+                )}
+              </div>
             </div>
           ))}
         </div>
