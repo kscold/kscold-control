@@ -13,6 +13,7 @@ docker-compose.local.yml
 
 # Local-only infra overrides
 nginx/conf.d/*.conf
+nginx/conf.d/*.conf.disabled
 nginx/conf.d/local/
 nginx/conf.d/*.local.conf
 nginx/conf.d/*.private.conf
