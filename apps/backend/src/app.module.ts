@@ -76,6 +76,7 @@ import { AuditInterceptor } from './common/interceptors';
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
-    consumer.apply(HttpLoggerMiddleware).forRoutes('*');
+    // Express 5: 이름 없는 '*' 대신 named 와일드카드('{*splat}')를 사용한다.
+    consumer.apply(HttpLoggerMiddleware).forRoutes('{*splat}');
   }
 }
