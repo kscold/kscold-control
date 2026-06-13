@@ -58,6 +58,29 @@ export class LocalFileStorageService implements IFileStorage {
     await fs.rm(dir, { recursive: true, force: true });
   }
 
+  /**
+   * 프로젝트 콘텐츠만 비우고 .versions 버전 히스토리는 보존한다.
+   * replace 업로드 시 이 메서드를 사용해야 이전 버전 스냅샷이 누적된다.
+   * (removeProject는 .versions 포함 전체를 삭제하므로 버전 히스토리가 사라진다.)
+   */
+  async clearProjectFiles(projectName: string): Promise<void> {
+    const dir = this.projectPath(projectName);
+
+    let entries;
+    try {
+      entries = await fs.readdir(dir, { withFileTypes: true });
+    } catch (err) {
+      // 프로젝트 디렉토리가 아직 없으면 비울 것도 없음
+      if ((err as NodeJS.ErrnoException).code === 'ENOENT') return;
+      throw err;
+    }
+
+    for (const entry of entries) {
+      if (entry.name === VERSIONS_DIR) continue; // 버전 히스토리 보존
+      await fs.rm(path.join(dir, entry.name), { recursive: true, force: true });
+    }
+  }
+
   async readFile(projectName: string, relativePath: string): Promise<Buffer> {
     const dir = this.projectPath(projectName);
     const target = path.join(dir, relativePath);

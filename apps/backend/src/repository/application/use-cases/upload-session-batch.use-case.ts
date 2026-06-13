@@ -100,7 +100,10 @@ export class UploadSessionBatchUseCase {
 
     if (session.replace) {
       if (!session.replaceApplied) {
-        await this.fileStorage.removeProject(project.name);
+        // 콘텐츠만 비우고 .versions 히스토리는 보존한다.
+        // (removeProject로 전체 삭제하면 이전 버전 스냅샷이 매번 사라져
+        //  버전 관리가 동작하지 않고 항상 최신본만 남는다.)
+        await this.fileStorage.clearProjectFiles(project.name);
         await this.fileStorage.ensureProject(project.name);
         session.replaceApplied = true;
         // 프로젝트 전체 삭제는 세션당 한 번만 일어나야 한다.

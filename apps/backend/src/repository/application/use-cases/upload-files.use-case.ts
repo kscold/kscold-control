@@ -38,7 +38,10 @@ export class UploadFilesUseCase {
     }
 
     if (replace) {
-      await this.fileStorage.removeProject(project.name);
+      // 콘텐츠만 비우고 .versions 히스토리는 보존 (버전 누적 유지)
+      await this.fileStorage.clearProjectFiles(project.name);
+      await this.fileStorage.ensureProject(project.name);
+    } else {
       await this.fileStorage.ensureProject(project.name);
     }
 
@@ -54,6 +57,9 @@ export class UploadFilesUseCase {
       fileCount: stats.fileCount,
       totalSize: stats.totalSize,
     });
+
+    // 업로드 완료 시점을 하나의 버전으로 스냅샷 (실패해도 업로드 결과엔 영향 없음)
+    this.fileStorage.createSnapshot(project.name).catch(() => undefined);
 
     return {
       project: updated,
