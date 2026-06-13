@@ -20,6 +20,7 @@ import {
   ReadFileAtVersionUseCase,
   ListVersionsUseCase,
   CleanupVersionsUseCase,
+  RestoreVersionUseCase,
 } from './application/use-cases';
 
 import { TypeOrmProjectRepository } from './infrastructure/repositories/typeorm-project.repository';
@@ -47,6 +48,7 @@ import { AuthModule } from '../auth/auth.module';
     ReadFileAtVersionUseCase,
     ListVersionsUseCase,
     CleanupVersionsUseCase,
+    RestoreVersionUseCase,
     {
       provide: PROJECT_REPOSITORY,
       useClass: TypeOrmProjectRepository,
