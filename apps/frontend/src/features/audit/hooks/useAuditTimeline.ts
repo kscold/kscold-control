@@ -1,4 +1,10 @@
-import { useCallback, useDeferredValue, useEffect, useMemo, useState } from 'react';
+import {
+  useCallback,
+  useDeferredValue,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
 import { auditService } from '../../../services/api/audit.service';
 import type {
   AuditDomain,
@@ -119,7 +125,9 @@ function readSavedPresets(): AuditFilterPreset[] {
         )
         .map((item) => ({
           actor: item.actor ?? '',
-          domain: isAuditDomain(item.domain ?? null) ? (item.domain as AuditDomain) : 'all',
+          domain: isAuditDomain(item.domain ?? null)
+            ? (item.domain as AuditDomain)
+            : 'all',
           from: item.from ?? '',
           id: item.id!,
           label: item.label!,
@@ -179,7 +187,9 @@ export function useAuditTimeline() {
     () => ({ ...readStoredFilter(), ...readUrlFilter() }),
     [],
   );
-  const [domain, setDomain] = useState<AuditDomain>(initialFilter.domain ?? 'all');
+  const [domain, setDomain] = useState<AuditDomain>(
+    initialFilter.domain ?? 'all',
+  );
   const [limit, setLimit] = useState(initialFilter.limit ?? 120);
   const [actor, setActor] = useState(initialFilter.actor ?? '');
   const [search, setSearch] = useState(initialFilter.search ?? '');
@@ -310,9 +320,10 @@ export function useAuditTimeline() {
         to,
       };
 
-      return sortPresets(
-        [nextPreset, ...previous.filter((item) => item.id !== nextPreset.id)],
-      ).slice(0, 8);
+      return sortPresets([
+        nextPreset,
+        ...previous.filter((item) => item.id !== nextPreset.id),
+      ]).slice(0, 8);
     });
 
     setPresetLabel('');

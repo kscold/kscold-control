@@ -1,5 +1,12 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { Upload, FolderUp, Loader2, RefreshCw, RotateCcw, Filter } from 'lucide-react';
+import {
+  Upload,
+  FolderUp,
+  Loader2,
+  RefreshCw,
+  RotateCcw,
+  Filter,
+} from 'lucide-react';
 import { repositoryService } from '../../../services/api/repository.service';
 import {
   filterFiles,
@@ -96,7 +103,9 @@ function isSessionCompatible(
   );
 }
 
-function createSessionPayload(pendingUpload: PendingUpload): CreateUploadSessionInput {
+function createSessionPayload(
+  pendingUpload: PendingUpload,
+): CreateUploadSessionInput {
   return {
     replace: true,
     totalFiles: pendingUpload.kept.length,
@@ -168,7 +177,9 @@ function buildActivityFromSession(
   const progress =
     phase === 'uploading'
       ? getOptimisticProgress(session, currentBatchIndex, transportProgress)
-      : Math.floor((session.uploadedCount / Math.max(session.totalFiles, 1)) * 100);
+      : Math.floor(
+          (session.uploadedCount / Math.max(session.totalFiles, 1)) * 100,
+        );
 
   const defaultMessage =
     session.status === 'completed'
@@ -280,55 +291,58 @@ export function UploadDropzone({
     void loadLatestSession();
   }, [project.id]);
 
-  const handleFiles = useCallback(async (fileList: FileList) => {
-    const allFiles: ClientFile[] = Array.from(fileList).map((f) => ({
-      relativePath: stripTopFolder(
-        (f as File & { webkitRelativePath?: string }).webkitRelativePath ||
-          f.name,
-      ),
-      file: f,
-    }));
+  const handleFiles = useCallback(
+    async (fileList: FileList) => {
+      const allFiles: ClientFile[] = Array.from(fileList).map((f) => ({
+        relativePath: stripTopFolder(
+          (f as File & { webkitRelativePath?: string }).webkitRelativePath ||
+            f.name,
+        ),
+        file: f,
+      }));
 
-    setScanCount(allFiles.length);
-    const { kept, stats } = filterFiles(allFiles);
-    setScanning(false);
-    setLastStats(stats);
-    setError(null);
+      setScanCount(allFiles.length);
+      const { kept, stats } = filterFiles(allFiles);
+      setScanning(false);
+      setLastStats(stats);
+      setError(null);
 
-    if (kept.length === 0) {
-      setPendingUpload(null);
-      setProgress(0);
-      setError('업로드할 파일이 없습니다 (전부 필터링됨)');
+      if (kept.length === 0) {
+        setPendingUpload(null);
+        setProgress(0);
+        setError('업로드할 파일이 없습니다 (전부 필터링됨)');
+        if (inputRef.current) {
+          inputRef.current.value = '';
+        }
+        return;
+      }
+
+      const nextPendingUpload = buildPendingUpload(kept, stats);
+      setPendingUpload(nextPendingUpload);
+
+      if (
+        serverSession &&
+        isSessionCompatible(serverSession, nextPendingUpload) &&
+        serverSession.status !== 'completed'
+      ) {
+        const activity = buildActivityFromSession(project, serverSession, {
+          phase: 'paused',
+          message:
+            '같은 폴더가 다시 선택되었습니다. 남은 배치만 이어서 업로드할 수 있습니다.',
+        });
+        publishActivity(activity);
+        setProgress(activity.progress);
+      } else {
+        publishActivity(null);
+        setProgress(0);
+      }
+
       if (inputRef.current) {
         inputRef.current.value = '';
       }
-      return;
-    }
-
-    const nextPendingUpload = buildPendingUpload(kept, stats);
-    setPendingUpload(nextPendingUpload);
-
-    if (
-      serverSession &&
-      isSessionCompatible(serverSession, nextPendingUpload) &&
-      serverSession.status !== 'completed'
-    ) {
-      const activity = buildActivityFromSession(project, serverSession, {
-        phase: 'paused',
-        message:
-          '같은 폴더가 다시 선택되었습니다. 남은 배치만 이어서 업로드할 수 있습니다.',
-      });
-      publishActivity(activity);
-      setProgress(activity.progress);
-    } else {
-      publishActivity(null);
-      setProgress(0);
-    }
-
-    if (inputRef.current) {
-      inputRef.current.value = '';
-    }
-  }, [serverSession, project]);
+    },
+    [serverSession, project],
+  );
 
   const startUpload = async () => {
     if (!pendingUpload) {
@@ -378,9 +392,13 @@ export function UploadDropzone({
       );
 
       if (remainingBatches.length === 0) {
-        const successActivity = buildActivityFromSession(project, activeSession, {
-          phase: 'success',
-        });
+        const successActivity = buildActivityFromSession(
+          project,
+          activeSession,
+          {
+            phase: 'success',
+          },
+        );
         setProgress(100);
         publishActivity(successActivity);
         setPendingUpload(null);
@@ -396,17 +414,24 @@ export function UploadDropzone({
           );
         }
 
-        setBatchInfo({ current: batch.index + 1, total: activeSession.batchTotal });
-
-        const syncingActivity = buildActivityFromSession(project, activeSession, {
-          phase: 'uploading',
-          batchIndex: batch.index,
-          transportProgress: 0,
-          message:
-            batch.status === 'failed'
-              ? `실패한 배치 ${batch.index + 1}/${activeSession.batchTotal} 재시도 중입니다.`
-              : `배치 ${batch.index + 1}/${activeSession.batchTotal} 업로드 중입니다.`,
+        setBatchInfo({
+          current: batch.index + 1,
+          total: activeSession.batchTotal,
         });
+
+        const syncingActivity = buildActivityFromSession(
+          project,
+          activeSession,
+          {
+            phase: 'uploading',
+            batchIndex: batch.index,
+            transportProgress: 0,
+            message:
+              batch.status === 'failed'
+                ? `실패한 배치 ${batch.index + 1}/${activeSession.batchTotal} 재시도 중입니다.`
+                : `배치 ${batch.index + 1}/${activeSession.batchTotal} 업로드 중입니다.`,
+          },
+        );
         setProgress(syncingActivity.progress);
         publishActivity(syncingActivity);
 
@@ -494,7 +519,10 @@ export function UploadDropzone({
             publishActivity(pausedActivity);
           }
         } catch (sessionError) {
-          console.error('Failed to refresh upload session after error:', sessionError);
+          console.error(
+            'Failed to refresh upload session after error:',
+            sessionError,
+          );
           publishActivity({
             phase: 'error',
             progress,
@@ -544,8 +572,9 @@ export function UploadDropzone({
     isSessionCompatible(serverSession, pendingUpload) &&
     serverSession.status !== 'completed';
   const remainingBatchCount = resumableSelection
-    ? serverSession.batches.filter((batch) => batch.status !== 'completed').length
-    : pendingUpload?.batches.length ?? 0;
+    ? serverSession.batches.filter((batch) => batch.status !== 'completed')
+        .length
+    : (pendingUpload?.batches.length ?? 0);
 
   return (
     <div className="space-y-3">
@@ -583,7 +612,8 @@ export function UploadDropzone({
               )}
             </p>
             <p className="mt-1 text-xs text-gray-400">
-              서버에 반영된 배치 기준 진행률과 현재 전송 중인 배치가 함께 표시됩니다.
+              서버에 반영된 배치 기준 진행률과 현재 전송 중인 배치가 함께
+              표시됩니다.
             </p>
             <div className="mx-auto mt-3 h-1.5 max-w-xs rounded-full bg-gray-800">
               <div
@@ -594,12 +624,21 @@ export function UploadDropzone({
           </>
         ) : scanning ? (
           <>
-            <Loader2 size={40} className="mx-auto animate-spin text-violet-400" />
-            <p className="mt-4 text-sm font-semibold text-white">파일 분석 중...</p>
+            <Loader2
+              size={40}
+              className="mx-auto animate-spin text-violet-400"
+            />
+            <p className="mt-4 text-sm font-semibold text-white">
+              파일 분석 중...
+            </p>
             {scanCount > 0 && (
-              <p className="mt-1 text-xs text-gray-400">{scanCount.toLocaleString()}개 파일 발견</p>
+              <p className="mt-1 text-xs text-gray-400">
+                {scanCount.toLocaleString()}개 파일 발견
+              </p>
             )}
-            <p className="mt-1 text-xs text-gray-500">불필요한 파일 자동 제외 처리 중</p>
+            <p className="mt-1 text-xs text-gray-500">
+              불필요한 파일 자동 제외 처리 중
+            </p>
           </>
         ) : (
           <>
@@ -631,45 +670,54 @@ export function UploadDropzone({
         />
       </div>
 
-      {serverSession && serverSession.status !== 'completed' && !pendingUpload && !uploading && (
-        <div className="rounded-xl border border-blue-500/20 bg-blue-950/20 p-4 text-sm text-blue-50">
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div>
-              <p className="font-semibold">재개 가능한 업로드 세션이 남아 있습니다</p>
-              <p className="mt-1 text-xs text-blue-100/80">
-                서버 반영 {serverSession.uploadedCount}/{serverSession.totalFiles}개 ·
-                실패 {serverSession.failedCount}개 · 마지막 활동{' '}
-                {new Date(serverSession.lastActivityAt).toLocaleString('ko-KR')}
-              </p>
-              <p className="mt-2 text-xs text-blue-100/80">
-                같은 폴더를 다시 선택하면 실패/미완료 배치만 이어서 업로드합니다.
-              </p>
+      {serverSession &&
+        serverSession.status !== 'completed' &&
+        !pendingUpload &&
+        !uploading && (
+          <div className="rounded-xl border border-blue-500/20 bg-blue-950/20 p-4 text-sm text-blue-50">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <p className="font-semibold">
+                  재개 가능한 업로드 세션이 남아 있습니다
+                </p>
+                <p className="mt-1 text-xs text-blue-100/80">
+                  서버 반영 {serverSession.uploadedCount}/
+                  {serverSession.totalFiles}개 · 실패{' '}
+                  {serverSession.failedCount}개 · 마지막 활동{' '}
+                  {new Date(serverSession.lastActivityAt).toLocaleString(
+                    'ko-KR',
+                  )}
+                </p>
+                <p className="mt-2 text-xs text-blue-100/80">
+                  같은 폴더를 다시 선택하면 실패/미완료 배치만 이어서
+                  업로드합니다.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => void loadLatestSession()}
+                disabled={loadingSession}
+                className="inline-flex items-center gap-2 rounded-lg border border-blue-200/20 px-3 py-2 text-xs font-medium text-blue-50 transition hover:bg-white/5 disabled:opacity-50"
+              >
+                <RefreshCw
+                  size={14}
+                  className={loadingSession ? 'animate-spin' : ''}
+                />
+                세션 새로고침
+              </button>
             </div>
 
-            <button
-              type="button"
-              onClick={() => void loadLatestSession()}
-              disabled={loadingSession}
-              className="inline-flex items-center gap-2 rounded-lg border border-blue-200/20 px-3 py-2 text-xs font-medium text-blue-50 transition hover:bg-white/5 disabled:opacity-50"
-            >
-              <RefreshCw
-                size={14}
-                className={loadingSession ? 'animate-spin' : ''}
-              />
-              세션 새로고침
-            </button>
+            {serverSession.failedFiles.length > 0 && (
+              <div className="mt-3 rounded-lg border border-white/10 bg-black/10 p-3 text-xs text-blue-100/85">
+                실패 파일: {serverSession.failedFiles.slice(0, 8).join(', ')}
+                {serverSession.failedFiles.length > 8 && (
+                  <span> 외 {serverSession.failedFiles.length - 8}개</span>
+                )}
+              </div>
+            )}
           </div>
-
-          {serverSession.failedFiles.length > 0 && (
-            <div className="mt-3 rounded-lg border border-white/10 bg-black/10 p-3 text-xs text-blue-100/85">
-              실패 파일: {serverSession.failedFiles.slice(0, 8).join(', ')}
-              {serverSession.failedFiles.length > 8 && (
-                <span> 외 {serverSession.failedFiles.length - 8}개</span>
-              )}
-            </div>
-          )}
-        </div>
-      )}
+        )}
 
       {pendingUpload && !uploading && (
         <div
@@ -679,7 +727,9 @@ export function UploadDropzone({
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div className="min-w-0">
               <p className="font-semibold">
-                {resumableSelection ? '이어올리기 준비 완료' : '업로드 준비 완료'}
+                {resumableSelection
+                  ? '이어올리기 준비 완료'
+                  : '업로드 준비 완료'}
               </p>
               <p className="mt-1 text-xs text-amber-100/80">
                 보존 {pendingUpload.stats.kept}개 · 제외{' '}
@@ -732,40 +782,61 @@ export function UploadDropzone({
           </div>
           <div className="grid grid-cols-3 gap-2 text-center">
             <div className="rounded bg-gray-800/60 p-1.5">
-              <div className="text-green-400 font-semibold">{lastStats.kept.toLocaleString()}</div>
+              <div className="text-green-400 font-semibold">
+                {lastStats.kept.toLocaleString()}
+              </div>
               <div className="text-gray-500 mt-0.5">업로드</div>
             </div>
             <div className="rounded bg-gray-800/60 p-1.5">
-              <div className="text-red-400 font-semibold">{lastStats.filtered.toLocaleString()}</div>
+              <div className="text-red-400 font-semibold">
+                {lastStats.filtered.toLocaleString()}
+              </div>
               <div className="text-gray-500 mt-0.5">제외</div>
             </div>
             <div className="rounded bg-gray-800/60 p-1.5">
-              <div className="text-blue-400 font-semibold">{formatBytes(lastStats.totalSize)}</div>
+              <div className="text-blue-400 font-semibold">
+                {formatBytes(lastStats.totalSize)}
+              </div>
               <div className="text-gray-500 mt-0.5">총 크기</div>
             </div>
           </div>
           {lastStats.filtered > 0 && (
             <div className="mt-2 space-y-0.5 text-gray-500">
               {lastStats.filteredByDir > 0 && (
-                <div>· 제외 폴더({lastStats.filteredByDir.toLocaleString()}개): {Array.from(lastStats.filteredDirs).slice(0, 5).join(', ')}{lastStats.filteredDirs.size > 5 ? ` 외 ${lastStats.filteredDirs.size - 5}개` : ''}</div>
+                <div>
+                  · 제외 폴더({lastStats.filteredByDir.toLocaleString()}개):{' '}
+                  {Array.from(lastStats.filteredDirs).slice(0, 5).join(', ')}
+                  {lastStats.filteredDirs.size > 5
+                    ? ` 외 ${lastStats.filteredDirs.size - 5}개`
+                    : ''}
+                </div>
               )}
               {lastStats.filteredByExt > 0 && (
-                <div>· 빌드산출물·바이너리·이미지({lastStats.filteredByExt.toLocaleString()}개) 제외</div>
+                <div>
+                  · 빌드산출물·바이너리·이미지(
+                  {lastStats.filteredByExt.toLocaleString()}개) 제외
+                </div>
               )}
               {lastStats.filteredBySize > 0 && (
-                <div>· 1MB 초과 대용량 파일({lastStats.filteredBySize.toLocaleString()}개) 제외</div>
+                <div>
+                  · 1MB 초과 대용량 파일(
+                  {lastStats.filteredBySize.toLocaleString()}개) 제외
+                </div>
               )}
             </div>
           )}
         </div>
       )}
 
-      {serverSession && serverSession.status !== 'completed' && pendingUpload && !resumableSelection && (
-        <div className="rounded-lg border border-violet-500/20 bg-violet-950/20 px-3 py-2 text-xs text-violet-100">
-          현재 선택한 폴더는 서버에 남아 있는 미완료 업로드 세션과 다릅니다.
-          업로드를 시작하면 새 세션으로 처리합니다.
-        </div>
-      )}
+      {serverSession &&
+        serverSession.status !== 'completed' &&
+        pendingUpload &&
+        !resumableSelection && (
+          <div className="rounded-lg border border-violet-500/20 bg-violet-950/20 px-3 py-2 text-xs text-violet-100">
+            현재 선택한 폴더는 서버에 남아 있는 미완료 업로드 세션과 다릅니다.
+            업로드를 시작하면 새 세션으로 처리합니다.
+          </div>
+        )}
 
       {error && (
         <div className="rounded-lg border border-red-900/50 bg-red-950/30 px-3 py-2 text-xs text-red-400">
@@ -773,7 +844,8 @@ export function UploadDropzone({
         </div>
       )}
 
-      {serverSession?.status !== 'completed' && serverSession?.failedFiles.length ? (
+      {serverSession?.status !== 'completed' &&
+      serverSession?.failedFiles.length ? (
         <button
           type="button"
           onClick={() => inputRef.current?.click()}

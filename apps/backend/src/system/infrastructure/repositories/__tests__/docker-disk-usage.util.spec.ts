@@ -12,7 +12,10 @@ describe('docker-disk-usage.util', () => {
   });
 
   it('재사용 가능 문자열에서 용량만 추출한다', () => {
-    expect(parseDockerReclaimableToBytes('37.82GB (87%)')).toBeCloseTo(40608915784, -2);
+    expect(parseDockerReclaimableToBytes('37.82GB (87%)')).toBeCloseTo(
+      40608915784,
+      -2,
+    );
     expect(parseDockerReclaimableToBytes('0B (0%)')).toBe(0);
   });
 

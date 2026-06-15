@@ -101,10 +101,11 @@ export function useLogs({
   const [dockerStartAt, setDockerStartAt] = useState('');
   const [dockerEndAt, setDockerEndAt] = useState('');
   const [dockerFilter, setDockerFilter] = useState<DockerLogFilter>('all');
-  const [archiveSources, setArchiveSources] = useState<DockerLogArchiveSource[]>(
-    [],
-  );
-  const [selectedSourceId, setSelectedSourceId] = useState<string>(LIVE_SOURCE_ID);
+  const [archiveSources, setArchiveSources] = useState<
+    DockerLogArchiveSource[]
+  >([]);
+  const [selectedSourceId, setSelectedSourceId] =
+    useState<string>(LIVE_SOURCE_ID);
   const [streamStatus, setStreamStatus] = useState<StreamStatus>('idle');
   const [streamError, setStreamError] = useState<string | null>(null);
   const [streamReconnectAttempt, setStreamReconnectAttempt] = useState(0);
@@ -423,8 +424,7 @@ export function useLogs({
         );
 
         const cursorSince =
-          lastSeenAtRef.current ??
-          new Date(Date.now() - 30_000).toISOString();
+          lastSeenAtRef.current ?? new Date(Date.now() - 30_000).toISOString();
 
         reconnectTimerRef.current = setTimeout(() => {
           reconnectTimerRef.current = null;
@@ -501,7 +501,11 @@ export function useLogs({
   }, [autoRefresh, dockerSince, logType]);
 
   useEffect(() => {
-    if (!isNginxContainer && dockerFilter !== 'all' && dockerFilter !== 'errors') {
+    if (
+      !isNginxContainer &&
+      dockerFilter !== 'all' &&
+      dockerFilter !== 'errors'
+    ) {
       setDockerFilter('all');
     }
   }, [dockerFilter, isNginxContainer]);
@@ -512,7 +516,9 @@ export function useLogs({
     }
 
     if (!dockerStartAt) {
-      setDockerStartAt(formatDateTimeLocal(new Date(Date.now() - 60 * 60 * 1000)));
+      setDockerStartAt(
+        formatDateTimeLocal(new Date(Date.now() - 60 * 60 * 1000)),
+      );
     }
 
     if (!dockerEndAt) {
@@ -566,7 +572,9 @@ export function useLogs({
 
   const loadOlderLogs = () => {
     setLineCount((current) => {
-      const currentIndex = DOCKER_TAIL_STEPS.findIndex((step) => step === current);
+      const currentIndex = DOCKER_TAIL_STEPS.findIndex(
+        (step) => step === current,
+      );
       if (currentIndex === -1) {
         return DOCKER_TAIL_STEPS[0];
       }

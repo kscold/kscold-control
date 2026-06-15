@@ -2,9 +2,15 @@ import { Injectable, Logger } from '@nestjs/common';
 import * as fs from 'fs';
 import * as path from 'path';
 import type { INginxConfigRepository } from '../../domain/interfaces/nginx-config.repository';
-import type { NginxSite, CreateNginxSiteDto } from '../../domain/types/nginx-site.type';
+import type {
+  NginxSite,
+  CreateNginxSiteDto,
+} from '../../domain/types/nginx-site.type';
 
-const NGINX_CONF_DIR = path.resolve(__dirname, '../../../../../../nginx/conf.d');
+const NGINX_CONF_DIR = path.resolve(
+  __dirname,
+  '../../../../../../nginx/conf.d',
+);
 
 @Injectable()
 export class NginxConfigRepositoryImpl implements INginxConfigRepository {

@@ -3,7 +3,11 @@ import {
   getCpuProgressTone,
   getMemoryProgressTone,
 } from '../lib/dashboard.colors';
-import type { ContainerInfo, LiveStats, SystemInfo } from '../lib/dashboard.types';
+import type {
+  ContainerInfo,
+  LiveStats,
+  SystemInfo,
+} from '../lib/dashboard.types';
 import { formatBytes } from '../lib/dashboard.utils';
 import { DiskUsageCard } from './DiskUsageCard';
 import { MetricCard } from './MetricCard';
@@ -33,13 +37,23 @@ export function SystemStatsCard({
         <MetricCard
           icon={<Container size={18} className="text-blue-400" />}
           label="Containers"
-          value={<p className="text-2xl sm:text-3xl font-bold text-white">{containers.length}</p>}
-          footer={<p className="text-xs text-green-400">{runningCount} running</p>}
+          value={
+            <p className="text-2xl sm:text-3xl font-bold text-white">
+              {containers.length}
+            </p>
+          }
+          footer={
+            <p className="text-xs text-green-400">{runningCount} running</p>
+          }
         />
         <MetricCard
           icon={<Cpu size={18} className={cpuTone.iconClassName} />}
           label="CPU"
-          value={<p className="text-2xl sm:text-3xl font-bold text-white">{cpuUsage.toFixed(1)}%</p>}
+          value={
+            <p className="text-2xl sm:text-3xl font-bold text-white">
+              {cpuUsage.toFixed(1)}%
+            </p>
+          }
           footer={
             <p className="text-xs text-gray-500">
               {systemInfo ? `${systemInfo.cpu.count} cores` : '...'}
@@ -53,7 +67,11 @@ export function SystemStatsCard({
         <MetricCard
           icon={<Activity size={18} className={memoryTone.iconClassName} />}
           label="Memory"
-          value={<p className="text-2xl sm:text-3xl font-bold text-white">{memUsage.toFixed(1)}%</p>}
+          value={
+            <p className="text-2xl sm:text-3xl font-bold text-white">
+              {memUsage.toFixed(1)}%
+            </p>
+          }
           footer={
             <p className="text-xs text-gray-500">
               {liveStats

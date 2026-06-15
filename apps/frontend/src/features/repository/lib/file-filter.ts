@@ -51,25 +51,106 @@ const EXCLUDED_DIRS = new Set([
 
 const EXCLUDED_EXTENSIONS = new Set([
   // 빌드 산출물
-  'pyc', 'pyo', 'class', 'jar', 'war', 'ear', 'dll', 'exe', 'so', 'dylib', 'a', 'lib', 'o', 'obj',
+  'pyc',
+  'pyo',
+  'class',
+  'jar',
+  'war',
+  'ear',
+  'dll',
+  'exe',
+  'so',
+  'dylib',
+  'a',
+  'lib',
+  'o',
+  'obj',
   // 이미지/미디어 (코드 저장소면 일반적으로 큼)
-  'png', 'jpg', 'jpeg', 'gif', 'bmp', 'tiff', 'tif', 'ico', 'webp', 'psd', 'ai', 'eps',
-  'mp3', 'mp4', 'avi', 'mov', 'mkv', 'wmv', 'flv', 'webm', 'wav', 'flac', 'ogg', 'm4a',
+  'png',
+  'jpg',
+  'jpeg',
+  'gif',
+  'bmp',
+  'tiff',
+  'tif',
+  'ico',
+  'webp',
+  'psd',
+  'ai',
+  'eps',
+  'mp3',
+  'mp4',
+  'avi',
+  'mov',
+  'mkv',
+  'wmv',
+  'flv',
+  'webm',
+  'wav',
+  'flac',
+  'ogg',
+  'm4a',
   // 폰트
-  'ttf', 'otf', 'woff', 'woff2', 'eot',
+  'ttf',
+  'otf',
+  'woff',
+  'woff2',
+  'eot',
   // 문서/오피스
-  'pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'odt', 'ods', 'odp', 'rtf',
+  'pdf',
+  'doc',
+  'docx',
+  'xls',
+  'xlsx',
+  'ppt',
+  'pptx',
+  'odt',
+  'ods',
+  'odp',
+  'rtf',
   // 압축
-  'zip', 'tar', 'gz', 'bz2', '7z', 'rar', 'iso', 'dmg', 'pkg',
+  'zip',
+  'tar',
+  'gz',
+  'bz2',
+  '7z',
+  'rar',
+  'iso',
+  'dmg',
+  'pkg',
   // 데이터 (대용량 가능)
-  'sqlite', 'db', 'mdb', 'bak',
+  'sqlite',
+  'db',
+  'mdb',
+  'bak',
   // ML/바이너리 데이터
-  'bin', 'pkl', 'pickle', 'npy', 'npz', 'h5', 'hdf5', 'feather', 'parquet',
-  'safetensors', 'ckpt', 'pt', 'pth', 'onnx', 'pb', 'tflite',
+  'bin',
+  'pkl',
+  'pickle',
+  'npy',
+  'npz',
+  'h5',
+  'hdf5',
+  'feather',
+  'parquet',
+  'safetensors',
+  'ckpt',
+  'pt',
+  'pth',
+  'onnx',
+  'pb',
+  'tflite',
   // 대용량 데이터/지도 (보통 빌드 산출물 또는 외부 데이터)
-  'geojson', 'shp', 'shx', 'dbf',
+  'geojson',
+  'shp',
+  'shx',
+  'dbf',
   // 임시
-  'log', 'tmp', 'swp', 'swo', 'lock',
+  'log',
+  'tmp',
+  'swp',
+  'swo',
+  'lock',
 ]);
 
 /** minified 산출물 패턴 — 확장자 검사로 못 잡는 패턴 */
@@ -99,7 +180,10 @@ export interface FilterStats {
 
 export type ExcludeReason = 'dir' | 'ext' | 'size' | 'name' | null;
 
-export function getExcludeReason(relativePath: string, size: number): ExcludeReason {
+export function getExcludeReason(
+  relativePath: string,
+  size: number,
+): ExcludeReason {
   const parts = relativePath.split('/');
   // 디렉토리 필터
   for (const part of parts.slice(0, -1)) {
@@ -128,9 +212,9 @@ export function shouldExcludePath(relativePath: string, size = 0): boolean {
   return getExcludeReason(relativePath, size) !== null;
 }
 
-export function filterFiles<T extends { relativePath: string; file: { size: number } }>(
-  files: T[],
-): { kept: T[]; stats: FilterStats } {
+export function filterFiles<
+  T extends { relativePath: string; file: { size: number } },
+>(files: T[]): { kept: T[]; stats: FilterStats } {
   const kept: T[] = [];
   const filteredDirs = new Set<string>();
   let totalSize = 0;

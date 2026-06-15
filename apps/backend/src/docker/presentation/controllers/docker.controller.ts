@@ -123,7 +123,9 @@ export class DockerController {
   @Post('cleanup/containers/prune-exited')
   @RequirePermissions(PERMISSIONS.DOCKER_DELETE)
   async pruneExitedContainers(@Body() body?: { dryRun?: boolean }) {
-    return this.dockerCleanupService.pruneExitedContainers(body?.dryRun ?? true);
+    return this.dockerCleanupService.pruneExitedContainers(
+      body?.dryRun ?? true,
+    );
   }
 
   @Post('cleanup/volumes/prune-dangling')
@@ -141,7 +143,8 @@ export class DockerController {
   @Audit({
     domain: 'docker',
     action: 'container.create',
-    summary: (ctx) => `컨테이너 ${(ctx.body as { name: string }).name}을 생성했습니다.`,
+    summary: (ctx) =>
+      `컨테이너 ${(ctx.body as { name: string }).name}을 생성했습니다.`,
     targetType: 'container',
     targetId: (ctx) => {
       const r = ctx.response as { id?: string };
@@ -152,7 +155,10 @@ export class DockerController {
       return { name: b.name, image: b.image, ports: b.ports };
     },
   })
-  async createContainer(@Body() dto: CreateContainerDto, @Request() req: JwtRequest) {
+  async createContainer(
+    @Body() dto: CreateContainerDto,
+    @Request() req: JwtRequest,
+  ) {
     dto.userId = req.user.id;
     return this.createContainerUseCase.execute(dto);
   }
@@ -273,7 +279,8 @@ export class DockerController {
   @Audit({
     domain: 'docker',
     action: 'compose.create-service',
-    summary: (ctx) => `Compose 서비스 ${(ctx.body as { name: string }).name}을 생성했습니다.`,
+    summary: (ctx) =>
+      `Compose 서비스 ${(ctx.body as { name: string }).name}을 생성했습니다.`,
     targetType: 'compose-service',
     targetId: (ctx) => (ctx.body as { name: string }).name,
     metadata: (ctx) => {
@@ -293,7 +300,10 @@ export class DockerController {
     },
     @Request() req: JwtRequest,
   ) {
-    const result = await this.createComposeServiceUseCase.execute(body, req.user.id);
+    const result = await this.createComposeServiceUseCase.execute(
+      body,
+      req.user.id,
+    );
     return {
       success: true,
       message: `Service "${body.name}" created`,

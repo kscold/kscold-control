@@ -17,9 +17,7 @@ export function useDockerCleanupCandidates() {
       setCandidates(data);
     } catch (err) {
       setError(
-        err instanceof Error
-          ? err.message
-          : '정리 후보를 불러오지 못했습니다.',
+        err instanceof Error ? err.message : '정리 후보를 불러오지 못했습니다.',
       );
     } finally {
       setLoading(false);

@@ -28,7 +28,9 @@ export function ContainerCard({
 }: ContainerCardProps) {
   const { checkPermission } = usePermissions();
   const navigate = useNavigate();
-  const [backupState, setBackupState] = useState<'idle' | 'loading' | 'done' | 'error'>('idle');
+  const [backupState, setBackupState] = useState<
+    'idle' | 'loading' | 'done' | 'error'
+  >('idle');
   const [backupMsg, setBackupMsg] = useState('');
 
   const hasMongo = MONGO_CONTAINERS.includes(container.name);
@@ -187,7 +189,9 @@ export function ContainerCard({
         {container.liveStatus === 'running' ? (
           <button
             onClick={() =>
-              checkPermission(PERMISSIONS.DOCKER_UPDATE, () => onStop(container.id))
+              checkPermission(PERMISSIONS.DOCKER_UPDATE, () =>
+                onStop(container.id),
+              )
             }
             className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-yellow-600 text-white rounded hover:bg-yellow-700 transition-colors"
             title="중지"
@@ -198,7 +202,9 @@ export function ContainerCard({
         ) : (
           <button
             onClick={() =>
-              checkPermission(PERMISSIONS.DOCKER_UPDATE, () => onStart(container.id))
+              checkPermission(PERMISSIONS.DOCKER_UPDATE, () =>
+                onStart(container.id),
+              )
             }
             className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-green-600 text-white rounded hover:bg-green-700 transition-colors"
             title="시작"
@@ -241,12 +247,14 @@ export function ContainerCard({
             </span>
           </button>
         )}
-          <button
-            onClick={() =>
-              checkPermission(PERMISSIONS.DOCKER_DELETE, () => onDelete(container))
-            }
-            className="px-3 py-2 bg-red-600 text-white rounded hover:bg-red-700 transition-colors"
-            title="삭제"
+        <button
+          onClick={() =>
+            checkPermission(PERMISSIONS.DOCKER_DELETE, () =>
+              onDelete(container),
+            )
+          }
+          className="px-3 py-2 bg-red-600 text-white rounded hover:bg-red-700 transition-colors"
+          title="삭제"
         >
           <Trash2 size={16} />
         </button>

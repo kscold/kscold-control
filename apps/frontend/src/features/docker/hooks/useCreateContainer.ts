@@ -24,9 +24,7 @@ const DEFAULT_CONFIG: ContainerConfig = {
  * useCreateContainer Hook
  * Manages container creation via docker-compose integration
  */
-export function useCreateContainer(
-  onSuccess?: () => void,
-) {
+export function useCreateContainer(onSuccess?: () => void) {
   const [isCreating, setIsCreating] = useState(false);
   const [isPreparingTemplate, setIsPreparingTemplate] = useState(false);
   const [showModal, setShowModal] = useState(false);

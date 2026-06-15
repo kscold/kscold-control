@@ -34,7 +34,9 @@ export class LocalFileStorageService implements IFileStorage {
    */
   private assertSafeFilePath(projectDir: string, target: string): void {
     if (!path.resolve(target).startsWith(path.resolve(projectDir))) {
-      throw new Error(`Path traversal blocked: ${path.relative(projectDir, target)}`);
+      throw new Error(
+        `Path traversal blocked: ${path.relative(projectDir, target)}`,
+      );
     }
   }
 
@@ -45,7 +47,11 @@ export class LocalFileStorageService implements IFileStorage {
     await fs.mkdir(dir, { recursive: true });
   }
 
-  async writeFile(projectName: string, relativePath: string, buffer: Buffer): Promise<void> {
+  async writeFile(
+    projectName: string,
+    relativePath: string,
+    buffer: Buffer,
+  ): Promise<void> {
     const dir = this.projectPath(projectName);
     const target = path.join(dir, relativePath);
     this.assertSafeFilePath(dir, target);
@@ -88,7 +94,10 @@ export class LocalFileStorageService implements IFileStorage {
     return fs.readFile(target);
   }
 
-  async createReadStream(projectName: string, relativePath: string): Promise<Readable> {
+  async createReadStream(
+    projectName: string,
+    relativePath: string,
+  ): Promise<Readable> {
     const dir = this.projectPath(projectName);
     const target = path.join(dir, relativePath);
     this.assertSafeFilePath(dir, target);
@@ -102,7 +111,11 @@ export class LocalFileStorageService implements IFileStorage {
     return this.walk(root, root, projectName);
   }
 
-  private async walk(currentPath: string, root: string, name: string): Promise<FileTreeNode> {
+  private async walk(
+    currentPath: string,
+    root: string,
+    name: string,
+  ): Promise<FileTreeNode> {
     const stats = await fs.stat(currentPath);
     const relPath = path.relative(root, currentPath) || '';
 
@@ -116,10 +129,15 @@ export class LocalFileStorageService implements IFileStorage {
     for (const entry of entries
       .filter((e) => e.name !== VERSIONS_DIR) // .versions 숨김
       .sort((a, b) => {
-        if (a.isDirectory() !== b.isDirectory()) return a.isDirectory() ? -1 : 1;
+        if (a.isDirectory() !== b.isDirectory())
+          return a.isDirectory() ? -1 : 1;
         return a.name.localeCompare(b.name);
       })) {
-      const child = await this.walk(path.join(currentPath, entry.name), root, entry.name);
+      const child = await this.walk(
+        path.join(currentPath, entry.name),
+        root,
+        entry.name,
+      );
       children.push(child);
     }
 
@@ -140,7 +158,10 @@ export class LocalFileStorageService implements IFileStorage {
       try {
         entries = await fs.readdir(cur, { withFileTypes: true });
       } catch (err) {
-        this.logger.warn(`getStats: readdir 실패 — ${cur}`, (err as Error).message);
+        this.logger.warn(
+          `getStats: readdir 실패 — ${cur}`,
+          (err as Error).message,
+        );
         continue;
       }
       for (const entry of entries) {
@@ -154,7 +175,10 @@ export class LocalFileStorageService implements IFileStorage {
             const st = await fs.stat(full);
             totalSize += st.size;
           } catch (err) {
-            this.logger.warn(`getStats: stat 실패 — ${full}`, (err as Error).message);
+            this.logger.warn(
+              `getStats: stat 실패 — ${full}`,
+              (err as Error).message,
+            );
           }
         }
       }
@@ -224,7 +248,10 @@ export class LocalFileStorageService implements IFileStorage {
     } catch (err) {
       const code = (err as NodeJS.ErrnoException).code;
       if (code !== 'ENOENT') {
-        this.logger.warn(`listVersions: readdir 실패 — ${versionsDir}`, (err as Error).message);
+        this.logger.warn(
+          `listVersions: readdir 실패 — ${versionsDir}`,
+          (err as Error).message,
+        );
       }
       return [];
     }
@@ -236,14 +263,24 @@ export class LocalFileStorageService implements IFileStorage {
       const fullPath = path.join(versionsDir, filename);
       try {
         const stat = await fs.stat(fullPath);
-        versions.push({ id, createdAt: stat.mtime, compressedSize: stat.size, filename });
+        versions.push({
+          id,
+          createdAt: stat.mtime,
+          compressedSize: stat.size,
+          filename,
+        });
       } catch (err) {
-        this.logger.warn(`listVersions: stat 실패 — ${fullPath}`, (err as Error).message);
+        this.logger.warn(
+          `listVersions: stat 실패 — ${fullPath}`,
+          (err as Error).message,
+        );
       }
     }
 
     // 최신순 정렬
-    return versions.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+    return versions.sort(
+      (a, b) => b.createdAt.getTime() - a.createdAt.getTime(),
+    );
   }
 
   async cleanupVersions(projectName: string, keepCount = 1): Promise<number> {
@@ -260,7 +297,10 @@ export class LocalFileStorageService implements IFileStorage {
         await fs.unlink(path.join(versionsDir, v.filename));
         deleted++;
       } catch (err) {
-        this.logger.warn(`cleanupVersions: unlink 실패 — ${v.filename}`, (err as Error).message);
+        this.logger.warn(
+          `cleanupVersions: unlink 실패 — ${v.filename}`,
+          (err as Error).message,
+        );
       }
     }
     return deleted;

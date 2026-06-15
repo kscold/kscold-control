@@ -17,7 +17,10 @@ export function RepositoryView() {
       <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0">
           <h1 className="flex items-center gap-3 text-xl font-bold text-white sm:text-2xl">
-            <FolderGit2 size={24} className="shrink-0 text-blue-400 sm:h-7 sm:w-7" />
+            <FolderGit2
+              size={24}
+              className="shrink-0 text-blue-400 sm:h-7 sm:w-7"
+            />
             소스 저장소
           </h1>
           <p className="mt-1 text-sm text-gray-500">

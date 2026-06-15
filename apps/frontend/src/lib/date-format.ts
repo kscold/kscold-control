@@ -37,9 +37,15 @@ export function formatFullDateTime(value: string | Date): string {
  * export 파일명용: "audit-export-2026-04-17T11-09-22Z.json"
  * ISO 파싱 실패 시 fallback 파일명 반환
  */
-export function formatExportFilename(value: string, extension = 'json'): string {
+export function formatExportFilename(
+  value: string,
+  extension = 'json',
+): string {
   const parsed = new Date(value);
   if (Number.isNaN(parsed.getTime())) return `audit-export.${extension}`;
-  const ts = parsed.toISOString().replace(/:/g, '-').replace(/\.\d{3}Z$/, 'Z');
+  const ts = parsed
+    .toISOString()
+    .replace(/:/g, '-')
+    .replace(/\.\d{3}Z$/, 'Z');
   return `audit-export-${ts}.${extension}`;
 }

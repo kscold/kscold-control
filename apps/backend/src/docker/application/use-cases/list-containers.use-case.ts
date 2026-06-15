@@ -109,6 +109,8 @@ export class ListContainersUseCase {
       }),
     );
 
-    return results.filter((item): item is ContainerResponseDto => item !== null);
+    return results.filter(
+      (item): item is ContainerResponseDto => item !== null,
+    );
   }
 }

@@ -54,7 +54,7 @@ export function ProjectBrowser({ project, onUploaded }: ProjectBrowserProps) {
   };
 
   const selectedFileName = selectedPath
-    ? selectedPath.split('/').filter(Boolean).pop() ?? null
+    ? (selectedPath.split('/').filter(Boolean).pop() ?? null)
     : null;
 
   const statusTone =
@@ -64,7 +64,7 @@ export function ProjectBrowser({ project, onUploaded }: ProjectBrowserProps) {
         ? 'border-rose-400/25 bg-rose-500/10 text-rose-100'
         : uploadActivity?.phase === 'paused'
           ? 'border-amber-400/25 bg-amber-500/10 text-amber-100'
-        : 'border-blue-400/25 bg-blue-500/10 text-blue-100';
+          : 'border-blue-400/25 bg-blue-500/10 text-blue-100';
 
   return (
     <div className="flex h-full min-h-[600px] flex-col rounded-xl border border-gray-800 bg-gray-900/50 overflow-hidden">
@@ -168,18 +168,20 @@ export function ProjectBrowser({ project, onUploaded }: ProjectBrowserProps) {
                 )}
                 {uploadActivity.failedFiles.length > 0 && (
                   <p className="mt-2 text-xs text-amber-100/90">
-                    실패 파일: {uploadActivity.failedFiles.slice(0, 5).join(', ')}
+                    실패 파일:{' '}
+                    {uploadActivity.failedFiles.slice(0, 5).join(', ')}
                     {uploadActivity.failedFiles.length > 5 && (
                       <span> 외 {uploadActivity.failedFiles.length - 5}개</span>
                     )}
                   </p>
                 )}
-                {uploadActivity.resumable && uploadActivity.phase === 'paused' && (
-                  <p className="mt-2 text-xs text-amber-100/80">
-                    업로드 탭에서 같은 폴더를 다시 선택하면 실패/미완료 배치만
-                    이어서 업로드할 수 있습니다.
-                  </p>
-                )}
+                {uploadActivity.resumable &&
+                  uploadActivity.phase === 'paused' && (
+                    <p className="mt-2 text-xs text-amber-100/80">
+                      업로드 탭에서 같은 폴더를 다시 선택하면 실패/미완료 배치만
+                      이어서 업로드할 수 있습니다.
+                    </p>
+                  )}
               </div>
 
               <div className="flex items-center gap-2">
@@ -243,7 +245,10 @@ export function ProjectBrowser({ project, onUploaded }: ProjectBrowserProps) {
               </button>
             </div>
             {selectedFileName && (
-              <span className="truncate text-xs text-gray-400" title={selectedPath ?? ''}>
+              <span
+                className="truncate text-xs text-gray-400"
+                title={selectedPath ?? ''}
+              >
                 {selectedFileName}
               </span>
             )}

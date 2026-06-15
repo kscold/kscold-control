@@ -37,8 +37,13 @@ export function ErrorFallback({
       <div className="min-h-screen flex items-center justify-center bg-gray-950 p-4">
         <div className="w-full max-w-md">
           <div className="bg-gray-900 border border-gray-800 rounded-xl p-6 sm:p-8 text-center">
-            <RefreshCw className="text-blue-400 mx-auto mb-4 animate-spin" size={36} />
-            <h1 className="text-xl font-bold text-white mb-2">새 버전이 배포되었습니다</h1>
+            <RefreshCw
+              className="text-blue-400 mx-auto mb-4 animate-spin"
+              size={36}
+            />
+            <h1 className="text-xl font-bold text-white mb-2">
+              새 버전이 배포되었습니다
+            </h1>
             <p className="text-gray-400 text-sm mb-4">
               {countdown > 0
                 ? `${countdown}초 후 자동으로 새로고침됩니다.`

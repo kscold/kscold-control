@@ -17,7 +17,11 @@ interface UseOpenAIChatSocketOptions {
   onHistory: (data: { messages: any[] }) => void;
   onMessageStart: () => void;
   onTextDelta: (data: { text: string }) => void;
-  onMessageEnd: (data: { content: string; provider: OpenAIProvider; model?: string }) => void;
+  onMessageEnd: (data: {
+    content: string;
+    provider: OpenAIProvider;
+    model?: string;
+  }) => void;
   onError: (data: { message: string }) => void;
   onConnect: () => void;
   onDisconnect: () => void;
@@ -45,16 +49,28 @@ export function useOpenAIChatSocket(options: UseOpenAIChatSocketOptions) {
 
     socket.on('connect', () => optionsRef.current.onConnect());
     socket.on('connect_error', (err) =>
-      optionsRef.current.onError({ message: err.message || 'OpenAI 서버에 연결할 수 없습니다' }),
+      optionsRef.current.onError({
+        message: err.message || 'OpenAI 서버에 연결할 수 없습니다',
+      }),
     );
     socket.on('disconnect', () => optionsRef.current.onDisconnect());
-    socket.on('openai:session-ready', (data) => optionsRef.current.onSessionReady(data));
+    socket.on('openai:session-ready', (data) =>
+      optionsRef.current.onSessionReady(data),
+    );
     socket.on('openai:history', (data) => optionsRef.current.onHistory(data));
-    socket.on('openai:message-start', () => optionsRef.current.onMessageStart());
-    socket.on('openai:text-delta', (data) => optionsRef.current.onTextDelta(data));
-    socket.on('openai:message-end', (data) => optionsRef.current.onMessageEnd(data));
+    socket.on('openai:message-start', () =>
+      optionsRef.current.onMessageStart(),
+    );
+    socket.on('openai:text-delta', (data) =>
+      optionsRef.current.onTextDelta(data),
+    );
+    socket.on('openai:message-end', (data) =>
+      optionsRef.current.onMessageEnd(data),
+    );
     socket.on('openai:error', (data) => optionsRef.current.onError(data));
-    socket.on('openai:session-closed', () => optionsRef.current.onSessionClosed?.());
+    socket.on('openai:session-closed', () =>
+      optionsRef.current.onSessionClosed?.(),
+    );
 
     return () => {
       socket.disconnect();
@@ -65,7 +81,10 @@ export function useOpenAIChatSocket(options: UseOpenAIChatSocketOptions) {
   const sendMessage = useCallback(
     (message: string) => {
       if (!socketRef.current?.connected) return false;
-      socketRef.current.emit('openai:send-message', { message, provider: options.provider });
+      socketRef.current.emit('openai:send-message', {
+        message,
+        provider: options.provider,
+      });
       return true;
     },
     [options.provider],

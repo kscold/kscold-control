@@ -54,7 +54,9 @@ function parseRelativePaths(raw: string | string[] | undefined): string[] {
   try {
     return JSON.parse(raw) as string[];
   } catch {
-    throw new BadRequestException('relativePaths 값이 올바른 JSON 배열이 아닙니다.');
+    throw new BadRequestException(
+      'relativePaths 값이 올바른 JSON 배열이 아닙니다.',
+    );
   }
 }
 
@@ -90,7 +92,8 @@ export class RepositoryController {
   @Audit({
     domain: 'repository',
     action: 'project.create',
-    summary: (ctx) => `프로젝트 ${(ctx.response as { name: string }).name}를 생성했습니다.`,
+    summary: (ctx) =>
+      `프로젝트 ${(ctx.response as { name: string }).name}를 생성했습니다.`,
     targetType: 'project',
     targetId: (ctx) => (ctx.response as { id: string }).id,
     metadata: (ctx) => {
@@ -98,7 +101,10 @@ export class RepositoryController {
       return { name: r.name, description: r.description ?? null };
     },
   })
-  async createProject(@Body() dto: CreateProjectDto, @Request() req: JwtRequest) {
+  async createProject(
+    @Body() dto: CreateProjectDto,
+    @Request() req: JwtRequest,
+  ) {
     return this.createProjectUseCase.execute(dto, req.user?.sub ?? null);
   }
 
@@ -242,7 +248,12 @@ export class RepositoryController {
       size: file.size,
     }));
 
-    return this.uploadSessionBatchUseCase.execute(id, sessionId, batchIndex, uploadFiles);
+    return this.uploadSessionBatchUseCase.execute(
+      id,
+      sessionId,
+      batchIndex,
+      uploadFiles,
+    );
   }
 
   @Get('projects/:id/download')
@@ -294,10 +305,15 @@ export class RepositoryController {
     },
     targetType: 'project',
     targetId: (ctx) => ctx.params.id,
-    metadata: (ctx) => ({ deleted: (ctx.response as { deleted: number }).deleted }),
+    metadata: (ctx) => ({
+      deleted: (ctx.response as { deleted: number }).deleted,
+    }),
   })
   async cleanupVersions(@Param('id') id: string) {
-    const { projectName, deleted } = await this.cleanupVersionsUseCase.execute(id, 1);
+    const { projectName, deleted } = await this.cleanupVersionsUseCase.execute(
+      id,
+      1,
+    );
     // projectName 을 응답에 포함시켜 @Audit summary 팩토리에서 사용
     return { projectName, deleted };
   }

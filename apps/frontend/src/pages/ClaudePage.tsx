@@ -1,11 +1,19 @@
-import { BotMessageSquare, MessageCircle, Plus, Sparkles, TerminalSquare, X } from 'lucide-react';
+import {
+  BotMessageSquare,
+  MessageCircle,
+  Plus,
+  Sparkles,
+  TerminalSquare,
+  X,
+} from 'lucide-react';
 import { ClaudeCodeWorkspace, Terminal } from '../features/terminal/ui';
 import { ClaudeChat } from '../features/claude-chat/ui';
 import { OpenAIChat } from '../features/openai-chat/ui';
 import { useClaudeTabs } from '../features/claude-chat/hooks';
 
 function tabIcon(type: string, mode?: string, active?: boolean) {
-  if (type === 'claude-code' || mode === 'claude') return <Sparkles size={14} />;
+  if (type === 'claude-code' || mode === 'claude')
+    return <Sparkles size={14} />;
   if (type === 'claude-chat') return <MessageCircle size={14} />;
   if (type === 'openai-chat') return <BotMessageSquare size={14} />;
   return <TerminalSquare size={14} />;
@@ -13,7 +21,8 @@ function tabIcon(type: string, mode?: string, active?: boolean) {
 
 function tabAccentClass(type: string, mode?: string) {
   if (type === 'openai-chat') return 'border-green-500 text-white bg-gray-800';
-  if (type === 'claude-code' || mode === 'claude') return 'border-amber-400 text-white bg-gray-800';
+  if (type === 'claude-code' || mode === 'claude')
+    return 'border-amber-400 text-white bg-gray-800';
   if (type === 'claude-chat') return 'border-orange-500 text-white bg-gray-800';
   return 'border-blue-500 text-white bg-gray-800';
 }
