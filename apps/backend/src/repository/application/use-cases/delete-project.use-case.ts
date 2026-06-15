@@ -3,7 +3,10 @@ import {
   IProjectRepository,
   PROJECT_REPOSITORY,
 } from '../../domain/repositories/project.repository.interface';
-import { FILE_STORAGE, IFileStorage } from '../../domain/repositories/file-storage.interface';
+import {
+  FILE_STORAGE,
+  IFileStorage,
+} from '../../domain/repositories/file-storage.interface';
 
 @Injectable()
 export class DeleteProjectUseCase {

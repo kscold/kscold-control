@@ -74,7 +74,11 @@ export class UpnpGatewayRepositoryImpl implements IUpnpGatewayRepository {
       );
       setTimeout(() => {
         if (!found) {
-          try { socket.close(); } catch { /* ignore */ }
+          try {
+            socket.close();
+          } catch {
+            /* ignore */
+          }
           reject(new Error(`SSDP timeout for ${st}`));
         }
       }, 4000);
@@ -166,7 +170,9 @@ export class UpnpGatewayRepositoryImpl implements IUpnpGatewayRepository {
 
     try {
       const descXml = await this.httpGet(host, port, url.pathname);
-      this.logger.debug(`Description XML from ${locationUrl}:\n${descXml.slice(0, 500)}`);
+      this.logger.debug(
+        `Description XML from ${locationUrl}:\n${descXml.slice(0, 500)}`,
+      );
 
       // Find WANIPConnection or WANPPPConnection service block
       const serviceBlockRegex = /<service>([\s\S]*?)<\/service>/gi;
@@ -195,9 +201,14 @@ export class UpnpGatewayRepositoryImpl implements IUpnpGatewayRepository {
         }
       }
 
-      this.logger.warn('No WANIPConnection service found in description XML, trying fallback paths');
+      this.logger.warn(
+        'No WANIPConnection service found in description XML, trying fallback paths',
+      );
     } catch (err) {
-      this.logger.warn('Failed to fetch/parse gateway description XML', err instanceof Error ? err.message : err);
+      this.logger.warn(
+        'Failed to fetch/parse gateway description XML',
+        err instanceof Error ? err.message : err,
+      );
     }
 
     // Fallback: try common iptime / general router paths
@@ -210,26 +221,35 @@ export class UpnpGatewayRepositoryImpl implements IUpnpGatewayRepository {
     for (const controlUrl of fallbackPaths) {
       try {
         const testXml = await this.soapCall(
-          host, port, controlUrl,
+          host,
+          port,
+          controlUrl,
           'urn:schemas-upnp-org:service:WANIPConnection:1#GetExternalIPAddress',
           '<u:GetExternalIPAddress xmlns:u="urn:schemas-upnp-org:service:WANIPConnection:1"></u:GetExternalIPAddress>',
         );
         if (!testXml.includes('Fault') && !testXml.includes('404')) {
           const info: GatewayInfo = {
-            host, port, controlUrl,
+            host,
+            port,
+            controlUrl,
             serviceType: 'urn:schemas-upnp-org:service:WANIPConnection:1',
           };
           this.gatewayCache = info;
           this.gatewayCacheTime = Date.now();
-          this.logger.log(`UPnP gateway fallback: ${host}:${port}${controlUrl}`);
+          this.logger.log(
+            `UPnP gateway fallback: ${host}:${port}${controlUrl}`,
+          );
           return info;
         }
-      } catch { /* try next */ }
+      } catch {
+        /* try next */
+      }
     }
 
     // Last resort fallback
     const info: GatewayInfo = {
-      host, port,
+      host,
+      port,
       controlUrl: '/UpnP/Control/WANIPConn1',
       serviceType: 'urn:schemas-upnp-org:service:WANIPConnection:1',
     };
@@ -261,7 +281,9 @@ export class UpnpGatewayRepositoryImpl implements IUpnpGatewayRepository {
         results.push({
           publicPort: pubPort,
           privatePort: parseInt(get('NewInternalPort'), 10),
-          protocol: (get('NewProtocol') || 'TCP').toUpperCase() as 'TCP' | 'UDP',
+          protocol: (get('NewProtocol') || 'TCP').toUpperCase() as
+            | 'TCP'
+            | 'UDP',
           description: get('NewPortMappingDescription'),
           enabled: get('NewEnabled') !== '0',
           ttl: parseInt(get('NewLeaseDuration') || '0', 10),

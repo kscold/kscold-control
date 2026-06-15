@@ -133,7 +133,9 @@ export class LogsService {
       info.stack,
     );
     if (info.componentStack) {
-      this.logger.debug(`[FrontendError] componentStack: ${info.componentStack}`);
+      this.logger.debug(
+        `[FrontendError] componentStack: ${info.componentStack}`,
+      );
     }
   }
 
@@ -144,8 +146,7 @@ export class LogsService {
     const filePath = BLOG_LOG_MAP[logType];
     if (!filePath) return [`Unknown blog log type: ${logType}`];
 
-    const dockerHost =
-      process.env.DOCKER_HOST || 'unix:///var/run/docker.sock';
+    const dockerHost = process.env.DOCKER_HOST || 'unix:///var/run/docker.sock';
     const tail = lines > 0 ? lines : 200;
     const cmd = `DOCKER_HOST=${dockerHost} docker exec ubuntu-blog tail -n ${tail} ${filePath}`;
 

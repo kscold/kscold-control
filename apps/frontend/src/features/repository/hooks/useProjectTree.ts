@@ -54,7 +54,8 @@ export function useFileContent(projectId: string | null, path: string | null) {
         if (!cancelled) setContent(data);
       })
       .catch((e) => {
-        if (!cancelled) setError(e instanceof Error ? e.message : '파일 조회 실패');
+        if (!cancelled)
+          setError(e instanceof Error ? e.message : '파일 조회 실패');
       })
       .finally(() => {
         if (!cancelled) setLoading(false);

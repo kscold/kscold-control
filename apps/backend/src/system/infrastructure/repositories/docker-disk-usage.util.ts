@@ -1,4 +1,7 @@
-import type { DockerStorageMetric, DockerStorageUsage } from '../../domain/types/system-info.type';
+import type {
+  DockerStorageMetric,
+  DockerStorageUsage,
+} from '../../domain/types/system-info.type';
 
 const EMPTY_METRIC: DockerStorageMetric = {
   size: 0,
@@ -72,7 +75,10 @@ export function parseDockerSystemDfOutput(stdout: string): DockerStorageUsage {
     buildCache: { ...EMPTY_METRIC },
   };
 
-  for (const line of stdout.split('\n').map((entry) => entry.trim()).filter(Boolean)) {
+  for (const line of stdout
+    .split('\n')
+    .map((entry) => entry.trim())
+    .filter(Boolean)) {
     try {
       const row = JSON.parse(line) as DockerDfRow;
       const metric: DockerStorageMetric = {

@@ -78,7 +78,9 @@ export function DockerCleanupCategoryCard({
 
       <ul className="mt-4 space-y-2">
         {previewItems.length ? (
-          previewItems.map((item) => <DockerCleanupItemRow key={item.id} item={item} />)
+          previewItems.map((item) => (
+            <DockerCleanupItemRow key={item.id} item={item} />
+          ))
         ) : (
           <li className="rounded-lg border border-dashed border-gray-800 px-3 py-4 text-sm text-gray-500">
             현재 후보가 없습니다.

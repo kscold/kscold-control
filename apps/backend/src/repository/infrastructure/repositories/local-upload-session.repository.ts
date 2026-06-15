@@ -1,9 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { promises as fs } from 'fs';
 import * as path from 'path';
-import {
-  IUploadSessionRepository,
-} from '../../domain/repositories/upload-session.repository.interface';
+import { IUploadSessionRepository } from '../../domain/repositories/upload-session.repository.interface';
 import { RepositoryUploadSession } from '../../domain/types/upload-session.type';
 
 @Injectable()

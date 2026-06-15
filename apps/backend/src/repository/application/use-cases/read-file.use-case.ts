@@ -1,9 +1,17 @@
-import { Inject, Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import {
+  Inject,
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import {
   IProjectRepository,
   PROJECT_REPOSITORY,
 } from '../../domain/repositories/project.repository.interface';
-import { FILE_STORAGE, IFileStorage } from '../../domain/repositories/file-storage.interface';
+import {
+  FILE_STORAGE,
+  IFileStorage,
+} from '../../domain/repositories/file-storage.interface';
 
 export interface FileContentResult {
   path: string;
@@ -15,17 +23,86 @@ export interface FileContentResult {
 
 const MAX_PREVIEW_BYTES = 512 * 1024; // 512KB 미리보기 한도
 const TEXT_EXTENSIONS = new Set([
-  'txt', 'md', 'rst', 'json', 'yml', 'yaml', 'toml', 'ini', 'conf', 'cfg',
-  'xml', 'html', 'htm', 'css', 'scss', 'sass', 'less', 'styl',
-  'js', 'jsx', 'ts', 'tsx', 'mjs', 'cjs', 'vue', 'svelte',
-  'py', 'pyi', 'rb', 'php', 'java', 'kt', 'kts', 'scala', 'groovy',
-  'c', 'cpp', 'cc', 'h', 'hpp', 'cs', 'go', 'rs', 'swift',
-  'sh', 'bash', 'zsh', 'fish', 'ps1', 'bat', 'cmd',
-  'sql', 'graphql', 'gql', 'proto', 'thrift',
-  'lua', 'r', 'jl', 'ex', 'exs', 'erl', 'hs', 'ml', 'fs',
-  'dart', 'nim', 'zig', 'v', 'clj', 'el', 'svg',
-  'env', 'gitignore', 'editorconfig', 'dockerfile', 'makefile', 'properties',
-  'csv', 'tsv',
+  'txt',
+  'md',
+  'rst',
+  'json',
+  'yml',
+  'yaml',
+  'toml',
+  'ini',
+  'conf',
+  'cfg',
+  'xml',
+  'html',
+  'htm',
+  'css',
+  'scss',
+  'sass',
+  'less',
+  'styl',
+  'js',
+  'jsx',
+  'ts',
+  'tsx',
+  'mjs',
+  'cjs',
+  'vue',
+  'svelte',
+  'py',
+  'pyi',
+  'rb',
+  'php',
+  'java',
+  'kt',
+  'kts',
+  'scala',
+  'groovy',
+  'c',
+  'cpp',
+  'cc',
+  'h',
+  'hpp',
+  'cs',
+  'go',
+  'rs',
+  'swift',
+  'sh',
+  'bash',
+  'zsh',
+  'fish',
+  'ps1',
+  'bat',
+  'cmd',
+  'sql',
+  'graphql',
+  'gql',
+  'proto',
+  'thrift',
+  'lua',
+  'r',
+  'jl',
+  'ex',
+  'exs',
+  'erl',
+  'hs',
+  'ml',
+  'fs',
+  'dart',
+  'nim',
+  'zig',
+  'v',
+  'clj',
+  'el',
+  'svg',
+  'env',
+  'gitignore',
+  'editorconfig',
+  'dockerfile',
+  'makefile',
+  'properties',
+  'csv',
+  'tsv',
 ]);
 
 @Injectable()
@@ -37,7 +114,10 @@ export class ReadFileUseCase {
     private readonly fileStorage: IFileStorage,
   ) {}
 
-  async execute(projectId: string, relativePath: string): Promise<FileContentResult> {
+  async execute(
+    projectId: string,
+    relativePath: string,
+  ): Promise<FileContentResult> {
     const project = await this.projectRepository.findById(projectId);
     if (!project) {
       throw new NotFoundException(`프로젝트를 찾을 수 없습니다: ${projectId}`);
@@ -60,7 +140,10 @@ export class ReadFileUseCase {
     // 텍스트 판별: 확장자 + 첫 8KB 안에 NULL 바이트가 있으면 바이너리
     const fileName = relativePath.split('/').pop() ?? '';
     const dotIdx = fileName.lastIndexOf('.');
-    const ext = dotIdx > 0 ? fileName.slice(dotIdx + 1).toLowerCase() : fileName.toLowerCase();
+    const ext =
+      dotIdx > 0
+        ? fileName.slice(dotIdx + 1).toLowerCase()
+        : fileName.toLowerCase();
     const isTextByExt = TEXT_EXTENSIONS.has(ext);
     const probe = buffer.subarray(0, Math.min(8192, buffer.length));
     const hasNull = probe.includes(0);

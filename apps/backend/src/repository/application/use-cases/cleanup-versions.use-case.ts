@@ -17,12 +17,18 @@ export class CleanupVersionsUseCase {
     private readonly fileStorage: IFileStorage,
   ) {}
 
-  async execute(projectId: string, keepCount = 1): Promise<{ projectName: string; deleted: number }> {
+  async execute(
+    projectId: string,
+    keepCount = 1,
+  ): Promise<{ projectName: string; deleted: number }> {
     const project = await this.projectRepository.findById(projectId);
     if (!project) {
       throw new NotFoundException(`프로젝트를 찾을 수 없습니다: ${projectId}`);
     }
-    const deleted = await this.fileStorage.cleanupVersions(project.name, keepCount);
+    const deleted = await this.fileStorage.cleanupVersions(
+      project.name,
+      keepCount,
+    );
     return { projectName: project.name, deleted };
   }
 }

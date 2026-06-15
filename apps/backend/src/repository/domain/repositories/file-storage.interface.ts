@@ -16,9 +16,9 @@ export interface ProjectStats {
 }
 
 export interface ProjectVersion {
-  id: string;          // 파일명(타임스탬프) 기반 ID
+  id: string; // 파일명(타임스탬프) 기반 ID
   createdAt: Date;
-  compressedSize: number;  // tar.gz 파일 크기 (bytes)
+  compressedSize: number; // tar.gz 파일 크기 (bytes)
   filename: string;
 }
 
@@ -27,7 +27,11 @@ export interface IFileStorage {
   ensureProject(projectName: string): Promise<void>;
 
   /** 단일 파일 쓰기 (상대경로 보존) */
-  writeFile(projectName: string, relativePath: string, buffer: Buffer): Promise<void>;
+  writeFile(
+    projectName: string,
+    relativePath: string,
+    buffer: Buffer,
+  ): Promise<void>;
 
   /** 프로젝트 전체 삭제 (.versions 히스토리 포함) */
   removeProject(projectName: string): Promise<void>;

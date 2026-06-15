@@ -108,7 +108,11 @@ export class RbacController {
       `사용자 ${(ctx.response as { email: string }).email}을 생성했습니다.`,
     targetType: 'user',
     targetId: (ctx) => (ctx.response as { id: string }).id,
-    metadata: (ctx) => ({ after: toUserSnapshot(ctx.response as Parameters<typeof toUserSnapshot>[0]) }),
+    metadata: (ctx) => ({
+      after: toUserSnapshot(
+        ctx.response as Parameters<typeof toUserSnapshot>[0],
+      ),
+    }),
   })
   async createUser(@Body() dto: CreateUserDto) {
     return this.createUserUseCase.execute(dto);
@@ -124,7 +128,9 @@ export class RbacController {
     targetId: (ctx) => ctx.params.id,
     metadata: (ctx) => ({
       before: (ctx.extra as { before?: unknown }).before ?? null,
-      after: toUserSnapshot(ctx.response as Parameters<typeof toUserSnapshot>[0]),
+      after: toUserSnapshot(
+        ctx.response as Parameters<typeof toUserSnapshot>[0],
+      ),
       passwordChanged: Boolean((ctx.body as { password?: string }).password),
     }),
   })
@@ -145,7 +151,9 @@ export class RbacController {
     summary: (ctx) => `사용자 ${ctx.params.id}를 삭제했습니다.`,
     targetType: 'user',
     targetId: (ctx) => ctx.params.id,
-    metadata: (ctx) => ({ before: (ctx.extra as { before?: unknown }).before ?? null }),
+    metadata: (ctx) => ({
+      before: (ctx.extra as { before?: unknown }).before ?? null,
+    }),
   })
   async deleteUser(@Param('id') id: string, @Request() req: RbacRequest) {
     req._auditExtra = { before: await this.getUserSnapshot(id) };
@@ -163,7 +171,9 @@ export class RbacController {
     targetId: (ctx) => ctx.params.userId,
     metadata: (ctx) => ({
       before: (ctx.extra as { before?: unknown }).before ?? null,
-      after: toUserSnapshot(ctx.response as Parameters<typeof toUserSnapshot>[0]),
+      after: toUserSnapshot(
+        ctx.response as Parameters<typeof toUserSnapshot>[0],
+      ),
     }),
   })
   async assignRoles(
@@ -183,21 +193,32 @@ export class RbacController {
   @Audit({
     domain: 'rbac',
     action: 'user.reset-terminal-limit',
-    summary: (ctx) => `사용자 ${ctx.params.id}의 터미널 카운트를 초기화했습니다.`,
+    summary: (ctx) =>
+      `사용자 ${ctx.params.id}의 터미널 카운트를 초기화했습니다.`,
     targetType: 'user',
     targetId: (ctx) => ctx.params.id,
     metadata: (ctx) => {
-      const before = (ctx.extra as { before?: Record<string, unknown> | null }).before;
-      const r = ctx.response as { terminalCommandCount: number; terminalCommandLimit: number };
+      const before = (ctx.extra as { before?: Record<string, unknown> | null })
+        .before;
+      const r = ctx.response as {
+        terminalCommandCount: number;
+        terminalCommandLimit: number;
+      };
       return {
         before,
         after: before
           ? { ...before, terminalCommandCount: r.terminalCommandCount }
-          : { terminalCommandCount: r.terminalCommandCount, terminalCommandLimit: r.terminalCommandLimit },
+          : {
+              terminalCommandCount: r.terminalCommandCount,
+              terminalCommandLimit: r.terminalCommandLimit,
+            },
       };
     },
   })
-  async resetTerminalLimit(@Param('id') id: string, @Request() req: RbacRequest) {
+  async resetTerminalLimit(
+    @Param('id') id: string,
+    @Request() req: RbacRequest,
+  ) {
     req._auditExtra = { before: await this.getUserSnapshot(id) };
     return this.manageTerminalLimitUseCase.resetCommandCount(id);
   }
@@ -212,7 +233,8 @@ export class RbacController {
     targetType: 'user',
     targetId: (ctx) => ctx.params.id,
     metadata: (ctx) => {
-      const before = (ctx.extra as { before?: Record<string, unknown> | null }).before;
+      const before = (ctx.extra as { before?: Record<string, unknown> | null })
+        .before;
       const r = ctx.response as { terminalCommandLimit: number };
       return {
         before,
@@ -228,7 +250,10 @@ export class RbacController {
     @Request() req: RbacRequest,
   ) {
     req._auditExtra = { before: await this.getUserSnapshot(id) };
-    return this.manageTerminalLimitUseCase.setCommandLimit(id, requestDto.limit);
+    return this.manageTerminalLimitUseCase.setCommandLimit(
+      id,
+      requestDto.limit,
+    );
   }
 
   // ==================== Private helpers ====================

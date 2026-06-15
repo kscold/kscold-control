@@ -60,8 +60,7 @@ export function DockerDashboard() {
   };
 
   const showSkeleton =
-    (loading && containers.length === 0) ||
-    (cleanupLoading && !candidates);
+    (loading && containers.length === 0) || (cleanupLoading && !candidates);
 
   if (showSkeleton) {
     return <DockerDashboardSkeleton />;

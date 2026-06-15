@@ -121,7 +121,9 @@ export class DockerLogReaderRepository implements IDockerLogReader {
       const timeFiltered =
         windowRange === null
           ? formatted
-          : formatted.filter((line) => this.isWithinTimeRange(line, windowRange));
+          : formatted.filter((line) =>
+              this.isWithinTimeRange(line, windowRange),
+            );
 
       return this.applyFilters(timeFiltered, options);
     } catch (error) {
@@ -168,8 +170,9 @@ export class DockerLogReaderRepository implements IDockerLogReader {
             type: isCurrent ? 'current' : 'rotated',
             path: fullPath,
             size: parseInt(size, 10) || 0,
-            modifiedAt: new Date((parseInt(modifiedAt, 10) || 0) * 1000)
-              .toISOString(),
+            modifiedAt: new Date(
+              (parseInt(modifiedAt, 10) || 0) * 1000,
+            ).toISOString(),
             compressed: name.endsWith('.gz'),
           } satisfies DockerLogArchiveSource;
         })
@@ -183,12 +186,17 @@ export class DockerLogReaderRepository implements IDockerLogReader {
           );
         });
     } catch (error) {
-      this.logger.error('Failed to list docker archive sources:', error.message);
+      this.logger.error(
+        'Failed to list docker archive sources:',
+        error.message,
+      );
       return [];
     }
   }
 
-  createLogStream(options: DockerLogReadOptions): ChildProcessWithoutNullStreams {
+  createLogStream(
+    options: DockerLogReadOptions,
+  ): ChildProcessWithoutNullStreams {
     if (!options.containerId) {
       throw new Error('Container ID is required for docker stream');
     }
@@ -305,9 +313,12 @@ export class DockerLogReaderRepository implements IDockerLogReader {
     localPath?: string,
   ): Promise<string> {
     if (localPath && fs.existsSync(localPath)) {
-      const { stdout } = await execAsync(`/bin/sh -lc ${this.quoteShell(command)}`, {
-        maxBuffer,
-      });
+      const { stdout } = await execAsync(
+        `/bin/sh -lc ${this.quoteShell(command)}`,
+        {
+          maxBuffer,
+        },
+      );
       return stdout;
     }
 

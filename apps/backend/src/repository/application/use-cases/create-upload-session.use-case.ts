@@ -54,7 +54,9 @@ export class CreateUploadSessionUseCase {
     }
 
     if (!input.batches?.length || input.totalFiles <= 0) {
-      throw new BadRequestException('업로드 세션 메타데이터가 올바르지 않습니다.');
+      throw new BadRequestException(
+        '업로드 세션 메타데이터가 올바르지 않습니다.',
+      );
     }
 
     const normalizedBatches = [...input.batches]
@@ -112,13 +114,13 @@ export class CreateUploadSessionUseCase {
     expectedIndex: number,
   ): RepositoryUploadBatch {
     if (batch.index !== expectedIndex) {
-      throw new BadRequestException(
-        '업로드 배치 인덱스가 올바르지 않습니다.',
-      );
+      throw new BadRequestException('업로드 배치 인덱스가 올바르지 않습니다.');
     }
 
     if (!batch.files?.length || batch.totalFiles <= 0 || batch.totalBytes < 0) {
-      throw new BadRequestException('업로드 배치 메타데이터가 올바르지 않습니다.');
+      throw new BadRequestException(
+        '업로드 배치 메타데이터가 올바르지 않습니다.',
+      );
     }
 
     const computedTotalFiles = batch.files.length;

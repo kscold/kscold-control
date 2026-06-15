@@ -3,12 +3,8 @@ import type { Session } from '../../domain/entities/session.entity';
 import type { Message } from '../../domain/entities/message.entity';
 import type { ISessionRepository } from '../../domain/interfaces/session.repository.interface';
 import type { IMessageRepository } from '../../domain/interfaces/message.repository.interface';
-import {
-  SESSION_REPOSITORY,
-} from '../../domain/interfaces/session.repository.interface';
-import {
-  MESSAGE_REPOSITORY,
-} from '../../domain/interfaces/message.repository.interface';
+import { SESSION_REPOSITORY } from '../../domain/interfaces/session.repository.interface';
+import { MESSAGE_REPOSITORY } from '../../domain/interfaces/message.repository.interface';
 
 @Injectable()
 export class TerminalSessionService {
@@ -104,9 +100,7 @@ export class TerminalSessionService {
     return this.sessionRepo.save(session);
   }
 
-  async loadSessionWithMessages(
-    sessionId: string,
-  ): Promise<Session | null> {
+  async loadSessionWithMessages(sessionId: string): Promise<Session | null> {
     return this.sessionRepo.findWithMessages(sessionId);
   }
 

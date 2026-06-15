@@ -16,13 +16,19 @@ export class WsPermissionService {
     private readonly userRepository: IUserRepository,
   ) {}
 
-  async checkPermission(userId: string, requiredPermission: string): Promise<boolean> {
+  async checkPermission(
+    userId: string,
+    requiredPermission: string,
+  ): Promise<boolean> {
     if (!userId) return false;
 
-    const userWithPermissions = await this.userRepository.findByIdWithRoles(userId);
+    const userWithPermissions =
+      await this.userRepository.findByIdWithRoles(userId);
     if (!userWithPermissions) return false;
 
-    const permissions = PermissionExtractor.extractFromRoles(userWithPermissions.roles);
+    const permissions = PermissionExtractor.extractFromRoles(
+      userWithPermissions.roles,
+    );
     return permissions.includes(requiredPermission);
   }
 }

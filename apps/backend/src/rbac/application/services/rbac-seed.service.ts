@@ -39,12 +39,21 @@ export class RbacSeedService {
     const permissionData = [
       { name: PERMISSIONS.DOCKER_READ, description: 'Docker 컨테이너 조회' },
       { name: PERMISSIONS.DOCKER_CREATE, description: 'Docker 컨테이너 생성' },
-      { name: PERMISSIONS.DOCKER_UPDATE, description: 'Docker 컨테이너 수정 (시작/중지)' },
+      {
+        name: PERMISSIONS.DOCKER_UPDATE,
+        description: 'Docker 컨테이너 수정 (시작/중지)',
+      },
       { name: PERMISSIONS.DOCKER_DELETE, description: 'Docker 컨테이너 삭제' },
       { name: PERMISSIONS.TERMINAL_ACCESS, description: '터미널 접근' },
       { name: PERMISSIONS.RBAC_MANAGE, description: 'RBAC 관리' },
-      { name: PERMISSIONS.SYSTEM_READ, description: '시스템 정보 및 로그 조회' },
-      { name: PERMISSIONS.REPOSITORY_READ, description: '소스 저장소 조회/다운로드' },
+      {
+        name: PERMISSIONS.SYSTEM_READ,
+        description: '시스템 정보 및 로그 조회',
+      },
+      {
+        name: PERMISSIONS.REPOSITORY_READ,
+        description: '소스 저장소 조회/다운로드',
+      },
       { name: PERMISSIONS.REPOSITORY_WRITE, description: '소스 저장소 업로드' },
       { name: PERMISSIONS.REPOSITORY_DELETE, description: '소스 저장소 삭제' },
     ];
@@ -60,8 +69,9 @@ export class RbacSeedService {
     const allPermissions = await this.permissionRepo.findAll();
 
     // Create Super Admin role - all permissions
-    let superAdminRole =
-      await this.roleRepository.findByNameWithPermissions(ROLES.SUPER_ADMIN);
+    let superAdminRole = await this.roleRepository.findByNameWithPermissions(
+      ROLES.SUPER_ADMIN,
+    );
     if (!superAdminRole) {
       superAdminRole = this.roleRepository.create({
         name: ROLES.SUPER_ADMIN,
@@ -91,7 +101,9 @@ export class RbacSeedService {
 
     // Create Operator role
     const operatorPerms = allPermissions.filter(
-      (p) => p.name === PERMISSIONS.DOCKER_READ || p.name === PERMISSIONS.DOCKER_UPDATE,
+      (p) =>
+        p.name === PERMISSIONS.DOCKER_READ ||
+        p.name === PERMISSIONS.DOCKER_UPDATE,
     );
     const operatorRole = await this.roleRepository.findByName(ROLES.OPERATOR);
     if (!operatorRole) {
@@ -107,7 +119,9 @@ export class RbacSeedService {
     const terminalPerms = allPermissions.filter(
       (p) => p.name === PERMISSIONS.TERMINAL_ACCESS,
     );
-    const terminalRole = await this.roleRepository.findByName(ROLES.TERMINAL_ONLY);
+    const terminalRole = await this.roleRepository.findByName(
+      ROLES.TERMINAL_ONLY,
+    );
     if (!terminalRole) {
       const role = this.roleRepository.create({
         name: ROLES.TERMINAL_ONLY,
@@ -139,7 +153,9 @@ export class RbacSeedService {
     const adminUser =
       await this.userRepository.findByEmailWithRoles(adminEmail);
     if (adminUser) {
-      const superAdmin = await this.roleRepository.findByName(ROLES.SUPER_ADMIN);
+      const superAdmin = await this.roleRepository.findByName(
+        ROLES.SUPER_ADMIN,
+      );
       if (superAdmin && !adminUser.roles.find((r) => r.id === superAdmin.id)) {
         adminUser.roles.push(superAdmin);
         await this.userRepository.save(adminUser);

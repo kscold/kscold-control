@@ -19,11 +19,7 @@ export type DockerLogSince =
   | '24h'
   | '168h'
   | 'custom';
-export type DockerLogFilter =
-  | 'all'
-  | 'errors'
-  | 'nginx-access'
-  | 'nginx-error';
+export type DockerLogFilter = 'all' | 'errors' | 'nginx-access' | 'nginx-error';
 
 export interface DockerContainer {
   id: string;

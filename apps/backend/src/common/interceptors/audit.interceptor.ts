@@ -8,7 +8,11 @@ import {
 import { Reflector } from '@nestjs/core';
 import { Observable, tap } from 'rxjs';
 import { AuditLogService } from '../../audit/application/services/audit-log.service';
-import { AUDIT_KEY, type AuditCtx, type AuditMeta } from '../decorators/audit.decorator';
+import {
+  AUDIT_KEY,
+  type AuditCtx,
+  type AuditMeta,
+} from '../decorators/audit.decorator';
 import type { JwtRequest } from '../types/jwt-request.type';
 
 /** req 에 컨트롤러가 주입할 수 있는 before 스냅샷 등 추가 데이터 */
@@ -39,7 +43,10 @@ export class AuditInterceptor implements NestInterceptor {
   ) {}
 
   intercept(context: ExecutionContext, next: CallHandler): Observable<unknown> {
-    const meta = this.reflector.get<AuditMeta | undefined>(AUDIT_KEY, context.getHandler());
+    const meta = this.reflector.get<AuditMeta | undefined>(
+      AUDIT_KEY,
+      context.getHandler(),
+    );
     if (!meta) return next.handle();
 
     const req = context.switchToHttp().getRequest<AuditRequest>();
@@ -58,7 +65,8 @@ export class AuditInterceptor implements NestInterceptor {
           extra: req._auditExtra ?? {},
         };
 
-        const summary = typeof meta.summary === 'function' ? meta.summary(ctx) : meta.summary;
+        const summary =
+          typeof meta.summary === 'function' ? meta.summary(ctx) : meta.summary;
         const targetId =
           typeof meta.targetId === 'function'
             ? meta.targetId(ctx)

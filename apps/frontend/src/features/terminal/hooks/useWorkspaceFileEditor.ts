@@ -120,7 +120,9 @@ export function useWorkspaceFileEditor(workspaceScope: string | null) {
     }
 
     restoredRecentRef.current = false;
-    setRecentPaths(parseStoredPaths(window.localStorage.getItem(recentStorageKey)));
+    setRecentPaths(
+      parseStoredPaths(window.localStorage.getItem(recentStorageKey)),
+    );
   }, [recentStorageKey]);
 
   useEffect(() => {

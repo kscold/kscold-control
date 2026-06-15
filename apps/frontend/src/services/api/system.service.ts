@@ -27,7 +27,6 @@ export class SystemService extends BaseApiService {
       this.handleError(error, 'Failed to load system information');
     }
   }
-
 }
 
 // Export singleton instance

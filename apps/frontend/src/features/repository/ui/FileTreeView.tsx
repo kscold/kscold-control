@@ -15,7 +15,11 @@ interface FileTreeViewProps {
   onSelect: (path: string) => void;
 }
 
-export function FileTreeView({ tree, selectedPath, onSelect }: FileTreeViewProps) {
+export function FileTreeView({
+  tree,
+  selectedPath,
+  onSelect,
+}: FileTreeViewProps) {
   if (!tree || !tree.children || tree.children.length === 0) {
     return (
       <div className="px-4 py-8 text-center text-xs text-gray-500">
@@ -120,12 +124,44 @@ function TreeNode({
 function getFileIcon(name: string) {
   const ext = name.split('.').pop()?.toLowerCase() ?? '';
   const codeExts = new Set([
-    'ts', 'tsx', 'js', 'jsx', 'mjs', 'cjs', 'vue', 'svelte',
-    'py', 'java', 'kt', 'go', 'rs', 'rb', 'php', 'swift', 'c', 'cpp', 'h', 'cs',
-    'sh', 'bash', 'zsh', 'ps1', 'bat',
-    'sql', 'graphql', 'proto',
-    'html', 'css', 'scss', 'sass', 'less',
-    'json', 'yml', 'yaml', 'toml', 'xml',
+    'ts',
+    'tsx',
+    'js',
+    'jsx',
+    'mjs',
+    'cjs',
+    'vue',
+    'svelte',
+    'py',
+    'java',
+    'kt',
+    'go',
+    'rs',
+    'rb',
+    'php',
+    'swift',
+    'c',
+    'cpp',
+    'h',
+    'cs',
+    'sh',
+    'bash',
+    'zsh',
+    'ps1',
+    'bat',
+    'sql',
+    'graphql',
+    'proto',
+    'html',
+    'css',
+    'scss',
+    'sass',
+    'less',
+    'json',
+    'yml',
+    'yaml',
+    'toml',
+    'xml',
   ]);
   return codeExts.has(ext) ? FileCode : File;
 }

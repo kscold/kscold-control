@@ -1,5 +1,18 @@
-import { useCallback, useState, useMemo, useRef, useEffect, KeyboardEvent } from 'react';
-import { BotMessageSquare, Zap, AlertTriangle, Send, Square } from 'lucide-react';
+import {
+  useCallback,
+  useState,
+  useMemo,
+  useRef,
+  useEffect,
+  KeyboardEvent,
+} from 'react';
+import {
+  BotMessageSquare,
+  Zap,
+  AlertTriangle,
+  Send,
+  Square,
+} from 'lucide-react';
 import { useAuthStore } from '../../../shared/model';
 import { MarkdownRenderer } from '../../../shared/ui';
 import type { OpenAIProvider } from '../lib/openai-chat.types';
@@ -13,9 +26,17 @@ interface OpenAIChatProps {
   initialProvider?: OpenAIProvider;
 }
 
-const PROVIDER_OPTIONS: { value: OpenAIProvider; label: string; description: string }[] = [
+const PROVIDER_OPTIONS: {
+  value: OpenAIProvider;
+  label: string;
+  description: string;
+}[] = [
   { value: 'api', label: 'Chat API', description: 'GPT-4o · OpenAI REST API' },
-  { value: 'codex', label: 'Codex CLI', description: '@openai/codex · 에이전트 코딩' },
+  {
+    value: 'codex',
+    label: 'Codex CLI',
+    description: '@openai/codex · 에이전트 코딩',
+  },
 ];
 
 const STARTER_PROMPTS = [
@@ -24,7 +45,10 @@ const STARTER_PROMPTS = [
   'Docker 컨테이너 상태를 점검해줘',
 ];
 
-export function OpenAIChat({ tabId = 'default', initialProvider = 'api' }: OpenAIChatProps) {
+export function OpenAIChat({
+  tabId = 'default',
+  initialProvider = 'api',
+}: OpenAIChatProps) {
   const { token } = useAuthStore();
   const [provider, setProvider] = useState<OpenAIProvider>(initialProvider);
   const [input, setInput] = useState('');
@@ -41,33 +65,53 @@ export function OpenAIChat({ tabId = 'default', initialProvider = 'api' }: OpenA
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [storageKey],
   );
-  const { messages, isStreaming, addUserMessage, startStreaming, appendDelta, endStreaming, loadHistory, clear: clearMessages } =
-    useOpenAIChatMessages();
+  const {
+    messages,
+    isStreaming,
+    addUserMessage,
+    startStreaming,
+    appendDelta,
+    endStreaming,
+    loadHistory,
+    clear: clearMessages,
+  } = useOpenAIChatMessages();
 
   const { sendMessage, abort, closeSession } = useOpenAIChatSocket({
     token,
     provider,
     savedSessionId,
     onSessionReady: handleSessionReady,
-    onHistory: useCallback((data: { messages: any[] }) => loadHistory(data.messages), [loadHistory]),
+    onHistory: useCallback(
+      (data: { messages: any[] }) => loadHistory(data.messages),
+      [loadHistory],
+    ),
     onMessageStart: startStreaming,
-    onTextDelta: useCallback((data: { text: string }) => appendDelta(data.text), [appendDelta]),
+    onTextDelta: useCallback(
+      (data: { text: string }) => appendDelta(data.text),
+      [appendDelta],
+    ),
     onMessageEnd: useCallback(
       (data: { content: string; provider: OpenAIProvider; model?: string }) => {
-        endStreaming(data.content, { provider: data.provider, model: data.model });
+        endStreaming(data.content, {
+          provider: data.provider,
+          model: data.model,
+        });
       },
       [endStreaming],
     ),
     onError: useCallback(
       (data: { message: string }) => {
         setError(data.message);
-        endStreaming('', {});  // isStreaming 초기화 — 에러 시 입력창 먹통 방지
+        endStreaming('', {}); // isStreaming 초기화 — 에러 시 입력창 먹통 방지
       },
       [setError, endStreaming],
     ),
     onConnect: useCallback(() => setConnected(true), [setConnected]),
     onDisconnect: useCallback(() => setConnected(false), [setConnected]),
-    onSessionClosed: useCallback(() => { clearSession(); clearMessages(); }, [clearSession, clearMessages]),
+    onSessionClosed: useCallback(() => {
+      clearSession();
+      clearMessages();
+    }, [clearSession, clearMessages]),
   });
 
   useEffect(() => {
@@ -101,19 +145,30 @@ export function OpenAIChat({ tabId = 'default', initialProvider = 'api' }: OpenA
               {provider === 'api' ? session.model : 'Codex CLI'}
             </span>
           )}
-          <span className={`h-1.5 w-1.5 rounded-full ${session.isConnected ? 'bg-green-500' : 'bg-gray-600'}`} />
+          <span
+            className={`h-1.5 w-1.5 rounded-full ${session.isConnected ? 'bg-green-500' : 'bg-gray-600'}`}
+          />
         </div>
         <div className="flex items-center gap-1 bg-gray-800 rounded-lg p-0.5">
           {PROVIDER_OPTIONS.map((opt) => (
             <button
               key={opt.value}
-              onClick={() => { setProvider(opt.value); clearMessages(); }}
+              onClick={() => {
+                setProvider(opt.value);
+                clearMessages();
+              }}
               title={opt.description}
               className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${
-                provider === opt.value ? 'bg-green-600 text-white' : 'text-gray-400 hover:text-gray-200'
+                provider === opt.value
+                  ? 'bg-green-600 text-white'
+                  : 'text-gray-400 hover:text-gray-200'
               }`}
             >
-              {opt.value === 'api' ? <BotMessageSquare size={12} /> : <Zap size={12} />}
+              {opt.value === 'api' ? (
+                <BotMessageSquare size={12} />
+              ) : (
+                <Zap size={12} />
+              )}
               {opt.label}
             </button>
           ))}
@@ -124,7 +179,11 @@ export function OpenAIChat({ tabId = 'default', initialProvider = 'api' }: OpenA
       {session.isReady && provider === 'api' && !session.apiConfigured && (
         <div className="mx-4 mt-3 shrink-0 flex items-center gap-2 rounded-lg border border-yellow-700/50 bg-yellow-900/20 px-3 py-2 text-xs text-yellow-400">
           <AlertTriangle size={13} />
-          <span>OPENAI_API_KEY가 설정되지 않았습니다. <code className="font-mono">.env</code>에 키를 추가하고 서버를 재시작하세요.</span>
+          <span>
+            OPENAI_API_KEY가 설정되지 않았습니다.{' '}
+            <code className="font-mono">.env</code>에 키를 추가하고 서버를
+            재시작하세요.
+          </span>
         </div>
       )}
       {session.lastError && (
@@ -140,13 +199,18 @@ export function OpenAIChat({ tabId = 'default', initialProvider = 'api' }: OpenA
           <div className="flex flex-col items-center justify-center h-full gap-4">
             <BotMessageSquare size={32} className="text-gray-700" />
             <p className="text-sm text-gray-500">
-              {provider === 'codex' ? 'Codex CLI로 에이전트 코딩을 시작하세요' : `${session.model}과 대화를 시작하세요`}
+              {provider === 'codex'
+                ? 'Codex CLI로 에이전트 코딩을 시작하세요'
+                : `${session.model}과 대화를 시작하세요`}
             </p>
             <div className="flex flex-col gap-2 w-full max-w-sm">
               {STARTER_PROMPTS.map((prompt) => (
                 <button
                   key={prompt}
-                  onClick={() => { addUserMessage(prompt); sendMessage(prompt); }}
+                  onClick={() => {
+                    addUserMessage(prompt);
+                    sendMessage(prompt);
+                  }}
                   className="px-3 py-2 text-xs text-gray-400 border border-gray-800 rounded-lg hover:border-gray-600 hover:text-gray-200 transition-colors text-left"
                 >
                   {prompt}
@@ -156,7 +220,10 @@ export function OpenAIChat({ tabId = 'default', initialProvider = 'api' }: OpenA
           </div>
         ) : (
           messages.map((msg) => (
-            <div key={msg.id} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+            <div
+              key={msg.id}
+              className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
+            >
               <div
                 className={`max-w-[85%] rounded-2xl px-4 py-3 text-sm ${
                   msg.role === 'user'
@@ -173,7 +240,9 @@ export function OpenAIChat({ tabId = 'default', initialProvider = 'api' }: OpenA
                   <span className="inline-block ml-1 h-3 w-0.5 bg-green-400 animate-pulse" />
                 )}
                 {msg.role === 'assistant' && msg.model && !msg.isStreaming && (
-                  <div className="mt-1.5 text-xs text-gray-500">{msg.model}</div>
+                  <div className="mt-1.5 text-xs text-gray-500">
+                    {msg.model}
+                  </div>
                 )}
               </div>
             </div>

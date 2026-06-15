@@ -32,9 +32,7 @@ export class SecurityService extends BaseApiService {
 
   async removeBan(id: string): Promise<IpBan> {
     try {
-      const { data } = await api.delete<IpBan>(
-        `${this.basePath}/bans/${id}`,
-      );
+      const { data } = await api.delete<IpBan>(`${this.basePath}/bans/${id}`);
       return data;
     } catch (error) {
       this.logError('SecurityService', 'removeBan', error);

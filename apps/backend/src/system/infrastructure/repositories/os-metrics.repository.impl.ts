@@ -22,8 +22,10 @@ export class OsMetricsRepositoryImpl implements IOsMetricsRepository {
   private readonly STATS_CACHE_TTL = 3 * 1000; // 3초
   private readonly DISK_CACHE_TTL = 60 * 1000; // 1분
 
-  private statsCache: { data: { cpu: CpuStats; memory: MemoryStats }; timestamp: number } | null =
-    null;
+  private statsCache: {
+    data: { cpu: CpuStats; memory: MemoryStats };
+    timestamp: number;
+  } | null = null;
   private diskCache: {
     data: { diskInfo: DiskInfo; diskBreakdown: DiskBreakdown };
     timestamp: number;
@@ -43,7 +45,10 @@ export class OsMetricsRepositoryImpl implements IOsMetricsRepository {
   async getDiskInfo(): Promise<DiskInfo & { breakdown: DiskBreakdown }> {
     const now = Date.now();
 
-    if (this.diskCache && now - this.diskCache.timestamp < this.DISK_CACHE_TTL) {
+    if (
+      this.diskCache &&
+      now - this.diskCache.timestamp < this.DISK_CACHE_TTL
+    ) {
       const { diskInfo, diskBreakdown } = this.diskCache.data;
       return {
         ...diskInfo,
@@ -59,7 +64,12 @@ export class OsMetricsRepositoryImpl implements IOsMetricsRepository {
       };
     }
 
-    let diskInfo: DiskInfo = { total: 0, used: 0, available: 0, usedPercent: 0 };
+    let diskInfo: DiskInfo = {
+      total: 0,
+      used: 0,
+      available: 0,
+      usedPercent: 0,
+    };
     let diskBreakdown: DiskBreakdown = {
       docker: 0,
       applications: 0,
@@ -151,10 +161,16 @@ export class OsMetricsRepositoryImpl implements IOsMetricsRepository {
     };
   }
 
-  private async getStatsFromCache(): Promise<{ cpu: CpuStats; memory: MemoryStats }> {
+  private async getStatsFromCache(): Promise<{
+    cpu: CpuStats;
+    memory: MemoryStats;
+  }> {
     const now = Date.now();
 
-    if (this.statsCache && now - this.statsCache.timestamp < this.STATS_CACHE_TTL) {
+    if (
+      this.statsCache &&
+      now - this.statsCache.timestamp < this.STATS_CACHE_TTL
+    ) {
       return this.statsCache.data;
     }
 
@@ -174,14 +190,19 @@ export class OsMetricsRepositoryImpl implements IOsMetricsRepository {
     for (const cpu of cpus) {
       idle += cpu.times.idle;
       total +=
-        cpu.times.user + cpu.times.nice + cpu.times.sys + cpu.times.irq + cpu.times.idle;
+        cpu.times.user +
+        cpu.times.nice +
+        cpu.times.sys +
+        cpu.times.irq +
+        cpu.times.idle;
     }
 
     let cpuUsage = 0;
     if (this.prevCpuTimes) {
       const idleDelta = idle - this.prevCpuTimes.idle;
       const totalDelta = total - this.prevCpuTimes.total;
-      cpuUsage = totalDelta > 0 ? ((totalDelta - idleDelta) / totalDelta) * 100 : 0;
+      cpuUsage =
+        totalDelta > 0 ? ((totalDelta - idleDelta) / totalDelta) * 100 : 0;
     }
     this.prevCpuTimes = { idle, total };
 
@@ -241,7 +262,9 @@ export class OsMetricsRepositoryImpl implements IOsMetricsRepository {
     };
   }
 
-  private async getDockerStorageUsage(home: string): Promise<DockerStorageUsage> {
+  private async getDockerStorageUsage(
+    home: string,
+  ): Promise<DockerStorageUsage> {
     const dockerUsage = this.createEmptyDockerUsage();
     const dockerHost = process.env.DOCKER_HOST || DEFAULT_DOCKER_HOST;
 
@@ -251,12 +274,17 @@ export class OsMetricsRepositoryImpl implements IOsMetricsRepository {
       );
       Object.assign(dockerUsage, parseDockerSystemDfOutput(stdout));
     } catch (error) {
-      this.logger.warn(`Failed to read docker system df: ${error instanceof Error ? error.message : String(error)}`);
+      this.logger.warn(
+        `Failed to read docker system df: ${error instanceof Error ? error.message : String(error)}`,
+      );
     }
 
     const candidates = [
       { label: 'Colima VM', path: `${home}/.colima` },
-      { label: 'Docker Desktop', path: `${home}/Library/Containers/com.docker.docker` },
+      {
+        label: 'Docker Desktop',
+        path: `${home}/Library/Containers/com.docker.docker`,
+      },
     ];
 
     const sizes = await Promise.all(

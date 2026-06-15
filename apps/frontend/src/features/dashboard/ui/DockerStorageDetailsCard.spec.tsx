@@ -27,9 +27,19 @@ describe('DockerStorageDetailsCard', () => {
                 collectionState: 'fresh',
                 warning: null,
                 images: { size: 2, reclaimable: 1, active: 1, totalCount: 3 },
-                containers: { size: 3, reclaimable: 0, active: 2, totalCount: 2 },
+                containers: {
+                  size: 3,
+                  reclaimable: 0,
+                  active: 2,
+                  totalCount: 2,
+                },
                 volumes: { size: 4, reclaimable: 1, active: 4, totalCount: 5 },
-                buildCache: { size: 5, reclaimable: 2, active: 0, totalCount: 6 },
+                buildCache: {
+                  size: 5,
+                  reclaimable: 2,
+                  active: 0,
+                  totalCount: 6,
+                },
               },
             },
           },
@@ -46,6 +56,10 @@ describe('DockerStorageDetailsCard', () => {
     expect(screen.getByText('Volumes')).toBeInTheDocument();
     expect(screen.getByText('Build Cache')).toBeInTheDocument();
     expect(screen.getByText(/마지막 수집/i)).toBeInTheDocument();
-    expect(screen.getByText(/엔진 내부 사용량과 실제 저장 경로 사용량은 다를 수 있습니다/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        /엔진 내부 사용량과 실제 저장 경로 사용량은 다를 수 있습니다/i,
+      ),
+    ).toBeInTheDocument();
   });
 });

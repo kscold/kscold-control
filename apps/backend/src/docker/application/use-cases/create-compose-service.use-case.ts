@@ -13,7 +13,10 @@ import {
   DOCKER_CLIENT,
 } from '../../domain/repositories/docker-client.interface';
 import { ImportContainerUseCase } from './import-container.use-case';
-import { ComposeService, ComposeServiceConfig } from '../services/compose.service';
+import {
+  ComposeService,
+  ComposeServiceConfig,
+} from '../services/compose.service';
 import { ContainerResponseDto } from '../dto/container-response.dto';
 
 /**
@@ -92,8 +95,6 @@ export class CreateComposeServiceUseCase {
       await new Promise((resolve) => setTimeout(resolve, 500));
     }
 
-    throw new BadRequestException(
-      `생성한 컨테이너를 찾지 못했습니다: ${name}`,
-    );
+    throw new BadRequestException(`생성한 컨테이너를 찾지 못했습니다: ${name}`);
   }
 }

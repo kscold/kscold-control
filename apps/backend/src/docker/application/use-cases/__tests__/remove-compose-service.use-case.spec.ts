@@ -57,9 +57,9 @@ describe('RemoveComposeServiceUseCase', () => {
 
     expect(composeService.downService).toHaveBeenCalledWith('ubuntu-e2e');
     expect(composeService.removeService).toHaveBeenCalledWith('ubuntu-e2e');
-    expect(portForwardingService.removePortForwardingRules).toHaveBeenCalledWith(
-      'ubuntu-e2e',
-    );
+    expect(
+      portForwardingService.removePortForwardingRules,
+    ).toHaveBeenCalledWith('ubuntu-e2e');
     expect(containerRepo.delete).toHaveBeenCalledWith('db-1');
     expect(result.output).toBe('removed');
   });

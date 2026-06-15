@@ -20,7 +20,10 @@ import {
   buildDiffPreview,
   isRecord,
 } from '../lib/audit-diff';
-import { formatAuditTimestamp, formatExportFilename } from '../../../lib/date-format';
+import {
+  formatAuditTimestamp,
+  formatExportFilename,
+} from '../../../lib/date-format';
 import type { AuditDomain, AuditEvent } from '../lib/audit.types';
 
 const DOMAIN_OPTIONS: Array<{ value: AuditDomain; label: string }> = [
@@ -30,7 +33,6 @@ const DOMAIN_OPTIONS: Array<{ value: AuditDomain; label: string }> = [
   { value: 'nginx', label: 'Nginx' },
   { value: 'rbac', label: 'RBAC' },
 ];
-
 
 function getDomainTone(domain: AuditEvent['domain']) {
   switch (domain) {
@@ -47,11 +49,17 @@ function getDomainTone(domain: AuditEvent['domain']) {
   }
 }
 
-function getActorLabel(item: { actorEmail: string | null; actorId: string | null }) {
+function getActorLabel(item: {
+  actorEmail: string | null;
+  actorId: string | null;
+}) {
   return item.actorEmail || item.actorId || 'system';
 }
 
-function getTargetLabel(item: { targetType: string | null; targetId: string | null }) {
+function getTargetLabel(item: {
+  targetType: string | null;
+  targetId: string | null;
+}) {
   return `${item.targetType || 'unknown'} / ${item.targetId || '-'}`;
 }
 
@@ -83,7 +91,8 @@ function getChangeTone(changeType: 'added' | 'removed' | 'changed') {
 }
 
 function escapeCsvCell(value: unknown) {
-  const normalized = typeof value === 'string' ? value : JSON.stringify(value ?? '');
+  const normalized =
+    typeof value === 'string' ? value : JSON.stringify(value ?? '');
   return `"${normalized.replace(/"/g, '""')}"`;
 }
 
@@ -141,7 +150,11 @@ export function AuditTimeline() {
     value: number;
   }> = [
     { domain: 'all', label: '전체 이벤트', value: summary.total },
-    { domain: 'repository', label: 'Repository', value: summary.byDomain.repository },
+    {
+      domain: 'repository',
+      label: 'Repository',
+      value: summary.byDomain.repository,
+    },
     { domain: 'docker', label: 'Docker', value: summary.byDomain.docker },
     { domain: 'nginx', label: 'Nginx', value: summary.byDomain.nginx },
     { domain: 'rbac', label: 'RBAC', value: summary.byDomain.rbac },
@@ -173,50 +186,55 @@ export function AuditTimeline() {
               type: 'application/json',
             })
           : new Blob(
-              [[
+              [
                 [
-                  ['exportedAt', payload.exportedAt],
-                  ['domain', payload.filters.domain ?? 'all'],
-                  ['search', payload.filters.search ?? ''],
-                  ['actor', payload.filters.actor ?? ''],
-                  ['target', payload.filters.target ?? ''],
-                  ['from', payload.filters.from ?? ''],
-                  ['to', payload.filters.to ?? ''],
-                ]
-                  .map(([key, value]) => `${escapeCsvCell(key)},${escapeCsvCell(value)}`)
-                  .join('\n'),
-                '',
-                [
-                  'id',
-                  'domain',
-                  'action',
-                  'summary',
-                  'actorEmail',
-                  'actorId',
-                  'targetType',
-                  'targetId',
-                  'createdAt',
-                  'metadata',
-                ]
-                  .map((value) => escapeCsvCell(value))
-                  .join(','),
-                ...payload.items.map((item) =>
                   [
-                    item.id,
-                    item.domain,
-                    item.action,
-                    item.summary,
-                    item.actorEmail ?? '',
-                    item.actorId ?? '',
-                    item.targetType ?? '',
-                    item.targetId ?? '',
-                    item.createdAt,
-                    JSON.stringify(item.metadata),
+                    ['exportedAt', payload.exportedAt],
+                    ['domain', payload.filters.domain ?? 'all'],
+                    ['search', payload.filters.search ?? ''],
+                    ['actor', payload.filters.actor ?? ''],
+                    ['target', payload.filters.target ?? ''],
+                    ['from', payload.filters.from ?? ''],
+                    ['to', payload.filters.to ?? ''],
+                  ]
+                    .map(
+                      ([key, value]) =>
+                        `${escapeCsvCell(key)},${escapeCsvCell(value)}`,
+                    )
+                    .join('\n'),
+                  '',
+                  [
+                    'id',
+                    'domain',
+                    'action',
+                    'summary',
+                    'actorEmail',
+                    'actorId',
+                    'targetType',
+                    'targetId',
+                    'createdAt',
+                    'metadata',
                   ]
                     .map((value) => escapeCsvCell(value))
                     .join(','),
-                ),
-              ].join('\n')],
+                  ...payload.items.map((item) =>
+                    [
+                      item.id,
+                      item.domain,
+                      item.action,
+                      item.summary,
+                      item.actorEmail ?? '',
+                      item.actorId ?? '',
+                      item.targetType ?? '',
+                      item.targetId ?? '',
+                      item.createdAt,
+                      JSON.stringify(item.metadata),
+                    ]
+                      .map((value) => escapeCsvCell(value))
+                      .join(','),
+                  ),
+                ].join('\n'),
+              ],
               { type: 'text/csv;charset=utf-8' },
             );
       const url = window.URL.createObjectURL(blob);
@@ -280,8 +298,13 @@ export function AuditTimeline() {
             className="inline-flex items-center gap-2 rounded-xl border border-cyan-400/20 bg-cyan-500/10 px-3 py-2 text-xs text-cyan-100 transition hover:border-cyan-300/30 hover:text-white disabled:opacity-50 sm:px-4 sm:text-sm"
             aria-label="JSON 내보내기"
           >
-            <Download size={14} className={isExporting ? 'animate-bounce' : ''} />
-            <span className="hidden sm:inline">{isExporting ? '내보내는 중' : 'JSON'}</span>
+            <Download
+              size={14}
+              className={isExporting ? 'animate-bounce' : ''}
+            />
+            <span className="hidden sm:inline">
+              {isExporting ? '내보내는 중' : 'JSON'}
+            </span>
           </button>
 
           <button
@@ -293,7 +316,9 @@ export function AuditTimeline() {
             aria-label="CSV 내보내기"
           >
             <Table2 size={14} className={isExporting ? 'animate-pulse' : ''} />
-            <span className="hidden sm:inline">{isExporting ? '내보내는 중' : 'CSV'}</span>
+            <span className="hidden sm:inline">
+              {isExporting ? '내보내는 중' : 'CSV'}
+            </span>
           </button>
 
           <button
@@ -327,315 +352,322 @@ export function AuditTimeline() {
       </div>
 
       <div className={toolsOpen ? 'contents' : 'hidden lg:contents'}>
-
-      <div className="mb-4 grid gap-3 lg:grid-cols-[220px_180px_minmax(0,1fr)]">
-        <select
-          value={domain}
-          onChange={(event) => setDomain(event.target.value as AuditDomain)}
-          className="rounded-xl border border-gray-800 bg-gray-900 px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-        >
-          {DOMAIN_OPTIONS.map((option) => (
-            <option key={option.value} value={option.value}>
-              {option.label}
-            </option>
-          ))}
-        </select>
-
-        <select
-          value={String(limit)}
-          onChange={(event) => setLimit(parseInt(event.target.value, 10))}
-          className="rounded-xl border border-gray-800 bg-gray-900 px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-        >
-          {[50, 120, 200, 300].map((value) => (
-            <option key={value} value={value}>
-              최근 {value}건
-            </option>
-          ))}
-        </select>
-
-        <div className="rounded-xl border border-white/10 bg-gray-900/70 px-4 py-3 text-sm text-gray-300">
-          최근 24시간 {summary.last24Hours}건, 전체 {summary.total}건이 잡혀 있습니다.
-        </div>
-      </div>
-
-      <div className="mb-4 grid gap-3 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_repeat(2,220px)]">
-        <label className="relative">
-          <Search
-            size={16}
-            className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-500"
-          />
-          <input
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-            placeholder="이벤트, metadata, action 검색"
-            className="w-full rounded-xl border border-gray-800 bg-gray-900 py-2 pl-10 pr-3 text-sm text-white placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
-        </label>
-
-        <input
-          value={actor}
-          onChange={(event) => setActor(event.target.value)}
-          placeholder="actor email 또는 id"
-          className="w-full rounded-xl border border-gray-800 bg-gray-900 px-3 py-2 text-sm text-white placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
-        />
-
-        <input
-          value={target}
-          onChange={(event) => setTarget(event.target.value)}
-          placeholder="target type 또는 id"
-          className="w-full rounded-xl border border-gray-800 bg-gray-900 px-3 py-2 text-sm text-white placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
-        />
-
-        <button
-          type="button"
-          onClick={clearFilters}
-          className="rounded-xl border border-white/10 bg-gray-900/70 px-4 py-2 text-sm text-gray-300 transition hover:border-white/20 hover:text-white"
-        >
-          필터 초기화
-        </button>
-      </div>
-
-      <div className="mb-4 grid gap-3 xl:grid-cols-[1.05fr_0.95fr]">
-        <section className="rounded-2xl border border-white/10 bg-gray-900/70 p-4">
-          <div className="text-sm font-medium text-white">시간 프리셋</div>
-          <div className="mt-3 flex flex-wrap gap-2" data-testid="audit-time-presets">
-            {[
-              { label: '최근 1시간', hours: 1 },
-              { label: '최근 6시간', hours: 6 },
-              { label: '최근 24시간', hours: 24 },
-              { label: '최근 7일', hours: 24 * 7 },
-            ].map((preset) => (
-              <button
-                key={preset.label}
-                type="button"
-                onClick={() => applyTimePreset(preset.hours)}
-                className="rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-sm text-gray-300 transition hover:border-white/20 hover:text-white"
-              >
-                {preset.label}
-              </button>
+        <div className="mb-4 grid gap-3 lg:grid-cols-[220px_180px_minmax(0,1fr)]">
+          <select
+            value={domain}
+            onChange={(event) => setDomain(event.target.value as AuditDomain)}
+            className="rounded-xl border border-gray-800 bg-gray-900 px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            {DOMAIN_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
             ))}
-          </div>
-        </section>
+          </select>
 
-        <section className="rounded-2xl border border-white/10 bg-gray-900/70 p-4">
-          <div className="text-sm font-medium text-white">저장 필터</div>
-          <div className="mt-3 flex gap-2">
-            <input
-              value={presetLabel}
-              onChange={(event) => setPresetLabel(event.target.value)}
-              placeholder="예: 야간 docker 점검"
-              className="min-w-0 flex-1 rounded-xl border border-gray-800 bg-gray-950 px-3 py-2 text-sm text-white placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-            <button
-              type="button"
-              onClick={saveCurrentPreset}
-              className="rounded-xl border border-cyan-400/20 bg-cyan-500/10 px-4 py-2 text-sm text-cyan-100 transition hover:border-cyan-300/30 hover:text-white"
-            >
-              저장
-            </button>
+          <select
+            value={String(limit)}
+            onChange={(event) => setLimit(parseInt(event.target.value, 10))}
+            className="rounded-xl border border-gray-800 bg-gray-900 px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            {[50, 120, 200, 300].map((value) => (
+              <option key={value} value={value}>
+                최근 {value}건
+              </option>
+            ))}
+          </select>
+
+          <div className="rounded-xl border border-white/10 bg-gray-900/70 px-4 py-3 text-sm text-gray-300">
+            최근 24시간 {summary.last24Hours}건, 전체 {summary.total}건이 잡혀
+            있습니다.
           </div>
-          <div className="mt-3 flex flex-wrap gap-2" data-testid="audit-saved-presets">
-            {savedPresets.length > 0 ? (
-              savedPresets.map((preset) => (
-                <div
-                  key={preset.id}
-                  className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-black/20 pl-3 pr-2 py-2 text-sm text-gray-200"
+        </div>
+
+        <div className="mb-4 grid gap-3 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_repeat(2,220px)]">
+          <label className="relative">
+            <Search
+              size={16}
+              className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-500"
+            />
+            <input
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder="이벤트, metadata, action 검색"
+              className="w-full rounded-xl border border-gray-800 bg-gray-900 py-2 pl-10 pr-3 text-sm text-white placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </label>
+
+          <input
+            value={actor}
+            onChange={(event) => setActor(event.target.value)}
+            placeholder="actor email 또는 id"
+            className="w-full rounded-xl border border-gray-800 bg-gray-900 px-3 py-2 text-sm text-white placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+
+          <input
+            value={target}
+            onChange={(event) => setTarget(event.target.value)}
+            placeholder="target type 또는 id"
+            className="w-full rounded-xl border border-gray-800 bg-gray-900 px-3 py-2 text-sm text-white placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+
+          <button
+            type="button"
+            onClick={clearFilters}
+            className="rounded-xl border border-white/10 bg-gray-900/70 px-4 py-2 text-sm text-gray-300 transition hover:border-white/20 hover:text-white"
+          >
+            필터 초기화
+          </button>
+        </div>
+
+        <div className="mb-4 grid gap-3 xl:grid-cols-[1.05fr_0.95fr]">
+          <section className="rounded-2xl border border-white/10 bg-gray-900/70 p-4">
+            <div className="text-sm font-medium text-white">시간 프리셋</div>
+            <div
+              className="mt-3 flex flex-wrap gap-2"
+              data-testid="audit-time-presets"
+            >
+              {[
+                { label: '최근 1시간', hours: 1 },
+                { label: '최근 6시간', hours: 6 },
+                { label: '최근 24시간', hours: 24 },
+                { label: '최근 7일', hours: 24 * 7 },
+              ].map((preset) => (
+                <button
+                  key={preset.label}
+                  type="button"
+                  onClick={() => applyTimePreset(preset.hours)}
+                  className="rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-sm text-gray-300 transition hover:border-white/20 hover:text-white"
                 >
-                  <button
-                    type="button"
-                    onClick={() => applyPreset(preset)}
-                    className={`transition hover:text-white ${
-                      preset.pinned ? 'font-medium text-white' : ''
-                    }`}
+                  {preset.label}
+                </button>
+              ))}
+            </div>
+          </section>
+
+          <section className="rounded-2xl border border-white/10 bg-gray-900/70 p-4">
+            <div className="text-sm font-medium text-white">저장 필터</div>
+            <div className="mt-3 flex gap-2">
+              <input
+                value={presetLabel}
+                onChange={(event) => setPresetLabel(event.target.value)}
+                placeholder="예: 야간 docker 점검"
+                className="min-w-0 flex-1 rounded-xl border border-gray-800 bg-gray-950 px-3 py-2 text-sm text-white placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              <button
+                type="button"
+                onClick={saveCurrentPreset}
+                className="rounded-xl border border-cyan-400/20 bg-cyan-500/10 px-4 py-2 text-sm text-cyan-100 transition hover:border-cyan-300/30 hover:text-white"
+              >
+                저장
+              </button>
+            </div>
+            <div
+              className="mt-3 flex flex-wrap gap-2"
+              data-testid="audit-saved-presets"
+            >
+              {savedPresets.length > 0 ? (
+                savedPresets.map((preset) => (
+                  <div
+                    key={preset.id}
+                    className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-black/20 pl-3 pr-2 py-2 text-sm text-gray-200"
                   >
-                    {preset.label}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => togglePresetPin(preset.id)}
-                    aria-label={`${preset.label} preset 고정`}
-                    className={`rounded-full border px-2 py-0.5 text-xs transition ${
-                      preset.pinned
-                        ? 'border-amber-300/30 bg-amber-500/10 text-amber-100'
-                        : 'border-white/10 text-gray-400 hover:border-white/20 hover:text-white'
-                    }`}
-                  >
-                    <Pin size={11} />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => removePreset(preset.id)}
-                    aria-label={`${preset.label} preset 삭제`}
-                    className="rounded-full border border-white/10 px-2 py-0.5 text-xs text-gray-400 transition hover:border-rose-300/30 hover:text-rose-100"
-                  >
-                    삭제
-                  </button>
+                    <button
+                      type="button"
+                      onClick={() => applyPreset(preset)}
+                      className={`transition hover:text-white ${
+                        preset.pinned ? 'font-medium text-white' : ''
+                      }`}
+                    >
+                      {preset.label}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => togglePresetPin(preset.id)}
+                      aria-label={`${preset.label} preset 고정`}
+                      className={`rounded-full border px-2 py-0.5 text-xs transition ${
+                        preset.pinned
+                          ? 'border-amber-300/30 bg-amber-500/10 text-amber-100'
+                          : 'border-white/10 text-gray-400 hover:border-white/20 hover:text-white'
+                      }`}
+                    >
+                      <Pin size={11} />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => removePreset(preset.id)}
+                      aria-label={`${preset.label} preset 삭제`}
+                      className="rounded-full border border-white/10 px-2 py-0.5 text-xs text-gray-400 transition hover:border-rose-300/30 hover:text-rose-100"
+                    >
+                      삭제
+                    </button>
+                  </div>
+                ))
+              ) : (
+                <div className="text-sm text-gray-500">
+                  아직 저장된 필터가 없습니다.
                 </div>
-              ))
-            ) : (
-              <div className="text-sm text-gray-500">아직 저장된 필터가 없습니다.</div>
-            )}
+              )}
+            </div>
+          </section>
+        </div>
+
+        <div className="mb-4 grid grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-3 xl:grid-cols-[repeat(5,140px)_minmax(0,1fr)]">
+          {summaryCards.map((card) => {
+            const active = domain === card.domain;
+            return (
+              <button
+                key={card.domain}
+                onClick={() => setDomain(card.domain)}
+                className={`rounded-xl border px-3 py-2 text-left transition sm:py-3 ${
+                  active
+                    ? 'border-blue-500 bg-blue-500/15 text-blue-50'
+                    : 'border-white/10 bg-gray-900/70 text-gray-300 hover:border-white/20 hover:text-white'
+                }`}
+              >
+                <div className="truncate text-[10px] uppercase tracking-[0.18em] text-gray-500 sm:text-[11px] sm:tracking-[0.22em]">
+                  {card.label}
+                </div>
+                <div className="mt-1 text-lg font-semibold sm:mt-2 sm:text-xl">
+                  {card.value}
+                </div>
+              </button>
+            );
+          })}
+
+          <div className="grid gap-3 sm:grid-cols-2">
+            <label className="rounded-xl border border-white/10 bg-gray-900/70 px-3 py-2 text-xs text-gray-400">
+              시작 시각
+              <input
+                aria-label="감사 시작 시각"
+                type="datetime-local"
+                value={from}
+                onChange={(event) => setFrom(event.target.value)}
+                className="mt-2 w-full rounded-lg border border-gray-800 bg-gray-950 px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </label>
+
+            <label className="rounded-xl border border-white/10 bg-gray-900/70 px-3 py-2 text-xs text-gray-400">
+              끝 시각
+              <input
+                aria-label="감사 끝 시각"
+                type="datetime-local"
+                value={to}
+                onChange={(event) => setTo(event.target.value)}
+                className="mt-2 w-full rounded-lg border border-gray-800 bg-gray-950 px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </label>
+          </div>
+        </div>
+
+        <section
+          className="mb-4 rounded-2xl border border-white/10 bg-gray-900/70 p-4"
+          data-testid="audit-top-actors"
+        >
+          <div className="grid gap-4 xl:grid-cols-2">
+            <div>
+              <div className="flex items-center gap-2 text-sm font-medium text-white">
+                <Users size={16} />
+                Top Actors
+              </div>
+              <div className="mt-3 grid gap-3">
+                {summary.topActors.length > 0 ? (
+                  summary.topActors.map((actorEntry) => {
+                    const maxCount = summary.topActors[0]?.count ?? 1;
+                    const width = Math.max(
+                      12,
+                      Math.round((actorEntry.count / maxCount) * 100),
+                    );
+
+                    return (
+                      <button
+                        key={actorEntry.key}
+                        type="button"
+                        onClick={() => setActor(getActorLabel(actorEntry))}
+                        className="rounded-xl border border-white/10 bg-black/20 p-3 text-left transition hover:border-white/20"
+                      >
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="min-w-0 text-sm text-white">
+                            <div className="truncate font-medium">
+                              {getActorLabel(actorEntry)}
+                            </div>
+                            <div className="mt-1 text-xs text-gray-500">
+                              클릭해서 actor 필터 적용
+                            </div>
+                          </div>
+                          <div className="shrink-0 whitespace-nowrap rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-xs text-gray-300">
+                            {actorEntry.count}건
+                          </div>
+                        </div>
+                        <div className="mt-3 h-2 rounded-full bg-white/5">
+                          <div
+                            className="h-full rounded-full bg-cyan-400/80"
+                            style={{ width: `${width}%` }}
+                          />
+                        </div>
+                      </button>
+                    );
+                  })
+                ) : (
+                  <div className="rounded-xl border border-dashed border-white/10 bg-black/20 px-4 py-6 text-sm text-gray-500">
+                    아직 집계할 actor 이벤트가 없습니다.
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div data-testid="audit-top-targets">
+              <div className="flex items-center gap-2 text-sm font-medium text-white">
+                <History size={16} />
+                Top Targets
+              </div>
+              <div className="mt-3 grid gap-3">
+                {summary.topTargets.length > 0 ? (
+                  summary.topTargets.map((targetEntry) => {
+                    const maxCount = summary.topTargets[0]?.count ?? 1;
+                    const width = Math.max(
+                      12,
+                      Math.round((targetEntry.count / maxCount) * 100),
+                    );
+
+                    return (
+                      <button
+                        key={targetEntry.key}
+                        type="button"
+                        onClick={() => setTarget(getTargetLabel(targetEntry))}
+                        className="rounded-xl border border-white/10 bg-black/20 p-3 text-left transition hover:border-white/20"
+                      >
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="min-w-0 text-sm text-white">
+                            <div className="truncate font-medium">
+                              {getTargetLabel(targetEntry)}
+                            </div>
+                            <div className="mt-1 text-xs text-gray-500">
+                              클릭해서 target 필터 적용
+                            </div>
+                          </div>
+                          <div className="shrink-0 whitespace-nowrap rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-xs text-gray-300">
+                            {targetEntry.count}건
+                          </div>
+                        </div>
+                        <div className="mt-3 h-2 rounded-full bg-white/5">
+                          <div
+                            className="h-full rounded-full bg-amber-400/80"
+                            style={{ width: `${width}%` }}
+                          />
+                        </div>
+                      </button>
+                    );
+                  })
+                ) : (
+                  <div className="rounded-xl border border-dashed border-white/10 bg-black/20 px-4 py-6 text-sm text-gray-500">
+                    아직 집계할 target 이벤트가 없습니다.
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
         </section>
-      </div>
-
-      <div className="mb-4 grid grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-3 xl:grid-cols-[repeat(5,140px)_minmax(0,1fr)]">
-        {summaryCards.map((card) => {
-          const active = domain === card.domain;
-          return (
-            <button
-              key={card.domain}
-              onClick={() => setDomain(card.domain)}
-              className={`rounded-xl border px-3 py-2 text-left transition sm:py-3 ${
-                active
-                  ? 'border-blue-500 bg-blue-500/15 text-blue-50'
-                  : 'border-white/10 bg-gray-900/70 text-gray-300 hover:border-white/20 hover:text-white'
-              }`}
-            >
-              <div className="truncate text-[10px] uppercase tracking-[0.18em] text-gray-500 sm:text-[11px] sm:tracking-[0.22em]">
-                {card.label}
-              </div>
-              <div className="mt-1 text-lg font-semibold sm:mt-2 sm:text-xl">
-                {card.value}
-              </div>
-            </button>
-          );
-        })}
-
-        <div className="grid gap-3 sm:grid-cols-2">
-          <label className="rounded-xl border border-white/10 bg-gray-900/70 px-3 py-2 text-xs text-gray-400">
-            시작 시각
-            <input
-              aria-label="감사 시작 시각"
-              type="datetime-local"
-              value={from}
-              onChange={(event) => setFrom(event.target.value)}
-              className="mt-2 w-full rounded-lg border border-gray-800 bg-gray-950 px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </label>
-
-          <label className="rounded-xl border border-white/10 bg-gray-900/70 px-3 py-2 text-xs text-gray-400">
-            끝 시각
-            <input
-              aria-label="감사 끝 시각"
-              type="datetime-local"
-              value={to}
-              onChange={(event) => setTo(event.target.value)}
-              className="mt-2 w-full rounded-lg border border-gray-800 bg-gray-950 px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </label>
-        </div>
-      </div>
-
-      <section
-        className="mb-4 rounded-2xl border border-white/10 bg-gray-900/70 p-4"
-        data-testid="audit-top-actors"
-      >
-        <div className="grid gap-4 xl:grid-cols-2">
-          <div>
-            <div className="flex items-center gap-2 text-sm font-medium text-white">
-              <Users size={16} />
-              Top Actors
-            </div>
-            <div className="mt-3 grid gap-3">
-              {summary.topActors.length > 0 ? (
-                summary.topActors.map((actorEntry) => {
-                  const maxCount = summary.topActors[0]?.count ?? 1;
-                  const width = Math.max(
-                    12,
-                    Math.round((actorEntry.count / maxCount) * 100),
-                  );
-
-                  return (
-                    <button
-                      key={actorEntry.key}
-                      type="button"
-                      onClick={() => setActor(getActorLabel(actorEntry))}
-                      className="rounded-xl border border-white/10 bg-black/20 p-3 text-left transition hover:border-white/20"
-                    >
-                      <div className="flex items-center justify-between gap-3">
-                        <div className="min-w-0 text-sm text-white">
-                          <div className="truncate font-medium">
-                            {getActorLabel(actorEntry)}
-                          </div>
-                          <div className="mt-1 text-xs text-gray-500">
-                            클릭해서 actor 필터 적용
-                          </div>
-                        </div>
-                        <div className="shrink-0 whitespace-nowrap rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-xs text-gray-300">
-                          {actorEntry.count}건
-                        </div>
-                      </div>
-                      <div className="mt-3 h-2 rounded-full bg-white/5">
-                        <div
-                          className="h-full rounded-full bg-cyan-400/80"
-                          style={{ width: `${width}%` }}
-                        />
-                      </div>
-                    </button>
-                  );
-                })
-              ) : (
-                <div className="rounded-xl border border-dashed border-white/10 bg-black/20 px-4 py-6 text-sm text-gray-500">
-                  아직 집계할 actor 이벤트가 없습니다.
-                </div>
-              )}
-            </div>
-          </div>
-
-          <div data-testid="audit-top-targets">
-            <div className="flex items-center gap-2 text-sm font-medium text-white">
-              <History size={16} />
-              Top Targets
-            </div>
-            <div className="mt-3 grid gap-3">
-              {summary.topTargets.length > 0 ? (
-                summary.topTargets.map((targetEntry) => {
-                  const maxCount = summary.topTargets[0]?.count ?? 1;
-                  const width = Math.max(
-                    12,
-                    Math.round((targetEntry.count / maxCount) * 100),
-                  );
-
-                  return (
-                    <button
-                      key={targetEntry.key}
-                      type="button"
-                      onClick={() => setTarget(getTargetLabel(targetEntry))}
-                      className="rounded-xl border border-white/10 bg-black/20 p-3 text-left transition hover:border-white/20"
-                    >
-                      <div className="flex items-center justify-between gap-3">
-                        <div className="min-w-0 text-sm text-white">
-                          <div className="truncate font-medium">
-                            {getTargetLabel(targetEntry)}
-                          </div>
-                          <div className="mt-1 text-xs text-gray-500">
-                            클릭해서 target 필터 적용
-                          </div>
-                        </div>
-                        <div className="shrink-0 whitespace-nowrap rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-xs text-gray-300">
-                          {targetEntry.count}건
-                        </div>
-                      </div>
-                      <div className="mt-3 h-2 rounded-full bg-white/5">
-                        <div
-                          className="h-full rounded-full bg-amber-400/80"
-                          style={{ width: `${width}%` }}
-                        />
-                      </div>
-                    </button>
-                  );
-                })
-              ) : (
-                <div className="rounded-xl border border-dashed border-white/10 bg-black/20 px-4 py-6 text-sm text-gray-500">
-                  아직 집계할 target 이벤트가 없습니다.
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      </section>
-
       </div>
 
       {error && (
@@ -653,7 +685,8 @@ export function AuditTimeline() {
           ) : (
             items.map((item) => {
               const active = item.id === selectedId;
-              const diffPreview = item.diffSummary?.preview ?? buildDiffPreview(item.metadata);
+              const diffPreview =
+                item.diffSummary?.preview ?? buildDiffPreview(item.metadata);
 
               return (
                 <button
@@ -686,17 +719,22 @@ export function AuditTimeline() {
                       <div className="mt-2 flex flex-col gap-1 text-xs text-gray-400 sm:flex-row sm:flex-wrap sm:gap-x-4">
                         <div className="flex min-w-0 items-baseline gap-1.5">
                           <span className="shrink-0 text-gray-500">actor</span>
-                          <span className="min-w-0 break-all text-gray-300">{getActorLabel(item)}</span>
+                          <span className="min-w-0 break-all text-gray-300">
+                            {getActorLabel(item)}
+                          </span>
                         </div>
                         <div className="flex min-w-0 items-baseline gap-1.5">
                           <span className="shrink-0 text-gray-500">target</span>
                           <span className="min-w-0 break-all text-gray-300">
-                            {item.targetType || 'unknown'} / {item.targetId || '-'}
+                            {item.targetType || 'unknown'} /{' '}
+                            {item.targetId || '-'}
                           </span>
                         </div>
                         <div className="flex min-w-0 items-baseline gap-1.5">
                           <span className="shrink-0 text-gray-500">time</span>
-                          <span className="min-w-0 text-gray-300">{formatAuditTimestamp(item.createdAt)}</span>
+                          <span className="min-w-0 text-gray-300">
+                            {formatAuditTimestamp(item.createdAt)}
+                          </span>
                         </div>
                       </div>
                       {diffPreview && (
@@ -741,18 +779,29 @@ export function AuditTimeline() {
                 </h2>
                 <div className="mt-3 grid gap-1.5 text-sm">
                   <div className="flex min-w-0 items-baseline gap-2">
-                    <span className="shrink-0 text-xs uppercase tracking-[0.18em] text-gray-500">actor</span>
-                    <span className="min-w-0 break-all text-gray-200">{getActorLabel(selectedItem)}</span>
-                  </div>
-                  <div className="flex min-w-0 items-baseline gap-2">
-                    <span className="shrink-0 text-xs uppercase tracking-[0.18em] text-gray-500">target</span>
+                    <span className="shrink-0 text-xs uppercase tracking-[0.18em] text-gray-500">
+                      actor
+                    </span>
                     <span className="min-w-0 break-all text-gray-200">
-                      {selectedItem.targetType || 'unknown'} / {selectedItem.targetId || '-'}
+                      {getActorLabel(selectedItem)}
                     </span>
                   </div>
                   <div className="flex min-w-0 items-baseline gap-2">
-                    <span className="shrink-0 text-xs uppercase tracking-[0.18em] text-gray-500">time</span>
-                    <span className="min-w-0 text-gray-200">{formatAuditTimestamp(selectedItem.createdAt)}</span>
+                    <span className="shrink-0 text-xs uppercase tracking-[0.18em] text-gray-500">
+                      target
+                    </span>
+                    <span className="min-w-0 break-all text-gray-200">
+                      {selectedItem.targetType || 'unknown'} /{' '}
+                      {selectedItem.targetId || '-'}
+                    </span>
+                  </div>
+                  <div className="flex min-w-0 items-baseline gap-2">
+                    <span className="shrink-0 text-xs uppercase tracking-[0.18em] text-gray-500">
+                      time
+                    </span>
+                    <span className="min-w-0 text-gray-200">
+                      {formatAuditTimestamp(selectedItem.createdAt)}
+                    </span>
                   </div>
                 </div>
               </div>
@@ -770,7 +819,9 @@ export function AuditTimeline() {
                         className="rounded-xl border border-white/8 bg-black/20 p-3"
                       >
                         <div className="flex flex-wrap items-center justify-between gap-2">
-                          <div className="text-xs font-medium text-cyan-100">{entry.path}</div>
+                          <div className="text-xs font-medium text-cyan-100">
+                            {entry.path}
+                          </div>
                           <span
                             className={`rounded-full border px-2 py-0.5 text-[10px] uppercase tracking-[0.18em] ${getChangeTone(
                               entry.changeType,
@@ -820,7 +871,8 @@ export function AuditTimeline() {
             </div>
           ) : (
             <div className="flex h-full min-h-[320px] items-center justify-center rounded-xl border border-dashed border-white/10 bg-black/20 p-6 text-center text-sm text-gray-500">
-              왼쪽 타임라인에서 이벤트를 선택하면 상세 diff와 메타데이터를 확인할 수 있습니다.
+              왼쪽 타임라인에서 이벤트를 선택하면 상세 diff와 메타데이터를
+              확인할 수 있습니다.
             </div>
           )}
         </aside>

@@ -6,7 +6,11 @@ import {
   getOpenAISessionStorageKey,
 } from '../../../shared/lib';
 
-export type TabType = 'terminal' | 'claude-chat' | 'claude-code' | 'openai-chat';
+export type TabType =
+  | 'terminal'
+  | 'claude-chat'
+  | 'claude-code'
+  | 'openai-chat';
 
 export interface Tab {
   id: string;

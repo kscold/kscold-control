@@ -8,6 +8,8 @@ export interface IUploadSessionRepository {
     projectId: string,
     sessionId: string,
   ): Promise<RepositoryUploadSession | null>;
-  findLatestByProject(projectId: string): Promise<RepositoryUploadSession | null>;
+  findLatestByProject(
+    projectId: string,
+  ): Promise<RepositoryUploadSession | null>;
   save(session: RepositoryUploadSession): Promise<RepositoryUploadSession>;
 }

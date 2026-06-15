@@ -6,7 +6,10 @@ import {
   CreateContainerRequest,
   ContainerStatsResponse,
 } from '../../types';
-import type { DockerCleanupCandidates, DockerCleanupResult } from '../../features/docker/lib/docker-cleanup.types';
+import type {
+  DockerCleanupCandidates,
+  DockerCleanupResult,
+} from '../../features/docker/lib/docker-cleanup.types';
 import type { TopologySnapshot } from '../../features/topology/lib/topology.types';
 
 /**
@@ -221,7 +224,9 @@ export class DockerService extends BaseApiService {
     }
   }
 
-  async pruneDanglingImages(dryRun: boolean = true): Promise<DockerCleanupResult> {
+  async pruneDanglingImages(
+    dryRun: boolean = true,
+  ): Promise<DockerCleanupResult> {
     return this.runCleanupAction('/cleanup/images/prune', dryRun);
   }
 
@@ -229,11 +234,15 @@ export class DockerService extends BaseApiService {
     return this.runCleanupAction('/cleanup/build-cache/prune', dryRun);
   }
 
-  async pruneExitedContainers(dryRun: boolean = true): Promise<DockerCleanupResult> {
+  async pruneExitedContainers(
+    dryRun: boolean = true,
+  ): Promise<DockerCleanupResult> {
     return this.runCleanupAction('/cleanup/containers/prune-exited', dryRun);
   }
 
-  async pruneDanglingVolumes(dryRun: boolean = true): Promise<DockerCleanupResult> {
+  async pruneDanglingVolumes(
+    dryRun: boolean = true,
+  ): Promise<DockerCleanupResult> {
     return this.runCleanupAction('/cleanup/volumes/prune-dangling', dryRun);
   }
 

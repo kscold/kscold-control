@@ -41,7 +41,7 @@ describe('DockerCleanupService', () => {
     dockerCommandService = module.get(DockerCommandService);
 
     dockerCommandService.run.mockImplementation(async (command: string) => {
-      if (command.includes("docker system df --format")) {
+      if (command.includes('docker system df --format')) {
         return [
           '{"Active":"1","Reclaimable":"1.5GB (100%)","Size":"1.5GB","TotalCount":"1","Type":"Images"}',
           '{"Active":"1","Reclaimable":"120MB (100%)","Size":"120MB","TotalCount":"1","Type":"Containers"}',
@@ -82,28 +82,34 @@ describe('DockerCleanupService', () => {
     });
 
     (
-      jest.spyOn(service as never, 'collectComposeOrphans' as never) as unknown as jest.Mock
+      jest.spyOn(
+        service as never,
+        'collectComposeOrphans' as never,
+      ) as unknown as jest.Mock
     ).mockResolvedValue([
-        {
-          id: 'orphan-1',
-          label: 'old-nginx',
-          detail: 'kscold-control · old-nginx',
-          size: 0,
-          readOnly: true,
-        },
-      ]);
+      {
+        id: 'orphan-1',
+        label: 'old-nginx',
+        detail: 'kscold-control · old-nginx',
+        size: 0,
+        readOnly: true,
+      },
+    ]);
 
     (
-      jest.spyOn(service as never, 'collectArtifactFiles' as never) as unknown as jest.Mock
+      jest.spyOn(
+        service as never,
+        'collectArtifactFiles' as never,
+      ) as unknown as jest.Mock
     ).mockResolvedValue([
-        {
-          id: 'apps/frontend/dist',
-          label: 'apps/frontend/dist',
-          detail: '배포 부산물',
-          size: 1024,
-          readOnly: true,
-        },
-      ]);
+      {
+        id: 'apps/frontend/dist',
+        label: 'apps/frontend/dist',
+        detail: '배포 부산물',
+        size: 1024,
+        readOnly: true,
+      },
+    ]);
   });
 
   it('정리 후보를 카테고리별로 분리한다', async () => {
@@ -122,7 +128,7 @@ describe('DockerCleanupService', () => {
 
   it('일부 수집에 실패해도 빈 카테고리와 경고를 반환한다', async () => {
     dockerCommandService.run.mockImplementation(async (command: string) => {
-      if (command.includes("docker system df --format")) {
+      if (command.includes('docker system df --format')) {
         return [
           '{"Active":"1","Reclaimable":"1.5GB (100%)","Size":"1.5GB","TotalCount":"1","Type":"Images"}',
           '{"Active":"1","Reclaimable":"120MB (100%)","Size":"120MB","TotalCount":"1","Type":"Containers"}',

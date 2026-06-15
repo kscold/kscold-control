@@ -27,9 +27,7 @@ export class RemoveComposeServiceUseCase {
 
   async execute(name: string): Promise<{ output: string }> {
     if (!this.composeService.hasService(name)) {
-      throw new BadRequestException(
-        `compose에 없는 서비스입니다: ${name}`,
-      );
+      throw new BadRequestException(`compose에 없는 서비스입니다: ${name}`);
     }
 
     const managedContainer = await this.containerRepo.findByName(name);

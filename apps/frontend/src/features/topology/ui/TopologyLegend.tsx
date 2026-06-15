@@ -23,7 +23,9 @@ export function TopologyLegend({
     <div className="absolute left-3 right-3 top-3 z-10 flex items-center gap-2">
       <div className="flex flex-shrink-0 items-center gap-2 rounded-xl border border-gray-700 bg-gray-900/90 px-4 py-2 backdrop-blur">
         <Server size={16} className="text-sky-400" />
-        <span className="text-sm font-bold text-white">Infrastructure Topology</span>
+        <span className="text-sm font-bold text-white">
+          Infrastructure Topology
+        </span>
       </div>
 
       <button
@@ -39,7 +41,9 @@ export function TopologyLegend({
       <div className="ml-auto flex flex-wrap items-center gap-x-2.5 gap-y-1 overflow-hidden rounded-xl border border-gray-700 bg-gray-900/90 px-3 py-2 text-[10px] backdrop-blur">
         {LEGEND_ITEMS.map((item) => (
           <span key={item.label} className="flex items-center gap-1">
-            <span className={`inline-block h-2 w-2 rounded-full ${item.color}`} />
+            <span
+              className={`inline-block h-2 w-2 rounded-full ${item.color}`}
+            />
             <span className="text-gray-400">{item.label}</span>
           </span>
         ))}

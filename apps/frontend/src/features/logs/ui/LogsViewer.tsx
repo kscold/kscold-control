@@ -140,8 +140,8 @@ function getWindowLabel(
 ) {
   if (dockerSince !== 'custom') {
     return (
-      DOCKER_SINCE_OPTIONS.find((option) => option.value === dockerSince)?.label ??
-      '전체 기간'
+      DOCKER_SINCE_OPTIONS.find((option) => option.value === dockerSince)
+        ?.label ?? '전체 기간'
     );
   }
 
@@ -234,8 +234,8 @@ export function LogsViewer() {
     ? NGINX_FILTER_OPTIONS
     : BASE_FILTER_OPTIONS;
   const activeFilterLabel =
-    activeFilterOptions.find((option) => option.value === dockerFilter)?.label ??
-    '전체';
+    activeFilterOptions.find((option) => option.value === dockerFilter)
+      ?.label ?? '전체';
 
   const streamStatusMeta = {
     idle: {
@@ -291,8 +291,8 @@ export function LogsViewer() {
           시스템 로그
         </h1>
         <p className="mt-1 text-sm text-gray-400">
-          Docker live stream, json-file archive, 날짜 범위 조회, 에러 중심 필터를 한
-          화면에서 바로 확인할 수 있습니다.
+          Docker live stream, json-file archive, 날짜 범위 조회, 에러 중심
+          필터를 한 화면에서 바로 확인할 수 있습니다.
         </p>
       </div>
 
@@ -338,9 +338,7 @@ export function LogsViewer() {
             value={String(lineCount)}
             onChange={(e) =>
               setLineCount(
-                e.target.value === 'all'
-                  ? 'all'
-                  : parseInt(e.target.value, 10),
+                e.target.value === 'all' ? 'all' : parseInt(e.target.value, 10),
               )
             }
             className="w-full rounded border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500 sm:w-36"
@@ -383,7 +381,8 @@ export function LogsViewer() {
                     Log Sources
                   </div>
                   <div className="mt-1 text-sm font-semibold text-white">
-                    live stream과 회전된 docker json-file을 전환해서 볼 수 있습니다.
+                    live stream과 회전된 docker json-file을 전환해서 볼 수
+                    있습니다.
                   </div>
                 </div>
 
@@ -442,7 +441,9 @@ export function LogsViewer() {
                   </div>
                   <div className="mt-2 flex flex-wrap gap-3 text-violet-100/80">
                     <span>{formatBytes(selectedArchiveSource.size)}</span>
-                    <span>{formatSourceTimestamp(selectedArchiveSource.modifiedAt)}</span>
+                    <span>
+                      {formatSourceTimestamp(selectedArchiveSource.modifiedAt)}
+                    </span>
                     <span>
                       {selectedArchiveSource.compressed
                         ? '압축된 회전 로그'
@@ -484,7 +485,10 @@ export function LogsViewer() {
               disabled={isLoading}
               className="flex items-center justify-center gap-2 rounded bg-blue-600 px-3 py-2 text-sm text-white hover:bg-blue-700 disabled:opacity-50"
             >
-              <RefreshCw size={16} className={isLoading ? 'animate-spin' : ''} />
+              <RefreshCw
+                size={16}
+                className={isLoading ? 'animate-spin' : ''}
+              />
               새로고침
             </button>
 
@@ -505,7 +509,9 @@ export function LogsViewer() {
             {isDockerLog && (
               <select
                 value={dockerSince}
-                onChange={(e) => setDockerSince(e.target.value as DockerLogSince)}
+                onChange={(e) =>
+                  setDockerSince(e.target.value as DockerLogSince)
+                }
                 className="rounded border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                 title="since"
               >
@@ -539,8 +545,7 @@ export function LogsViewer() {
                 className="flex items-center justify-center gap-1.5 rounded bg-gray-700 px-3 py-2 text-sm text-gray-200 hover:bg-gray-600 disabled:opacity-40"
                 title="더 이전 로그까지 확장"
               >
-                <History size={16} />
-                더 이전
+                <History size={16} />더 이전
               </button>
             )}
 
@@ -594,8 +599,8 @@ export function LogsViewer() {
             </label>
 
             <div className="sm:col-span-2 text-xs text-blue-100/80">
-              직접 범위 조회는 시점 고정 조회입니다. 이 모드에서는 Follow 대신 정적 조회와
-              메타 포함 다운로드를 사용합니다.
+              직접 범위 조회는 시점 고정 조회입니다. 이 모드에서는 Follow 대신
+              정적 조회와 메타 포함 다운로드를 사용합니다.
             </div>
           </div>
         )}

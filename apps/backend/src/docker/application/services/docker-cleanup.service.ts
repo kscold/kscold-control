@@ -51,7 +51,10 @@ export class DockerCleanupService {
       await Promise.all([
         this.collectSafely(
           'Docker 요약 사용량',
-          () => this.dockerCommandService.run(`docker system df --format '{{json .}}'`),
+          () =>
+            this.dockerCommandService.run(
+              `docker system df --format '{{json .}}'`,
+            ),
           '',
         ),
         this.collectSafely(
@@ -85,12 +88,17 @@ export class DockerCleanupService {
       sections.images.filter((item) => item.label === '<none>:<none>'),
     );
     const containers = this.toCategory(
-      sections.containers.filter((item) => item.state?.toLowerCase().startsWith('exited')),
+      sections.containers.filter((item) =>
+        item.state?.toLowerCase().startsWith('exited'),
+      ),
     );
     const volumes = this.toCategory(
       sections.volumes.filter((item) => item.detail === '0 links'),
     );
-    const buildCache = this.toCategory(sections.buildCache, usage.buildCache.reclaimable);
+    const buildCache = this.toCategory(
+      sections.buildCache,
+      usage.buildCache.reclaimable,
+    );
     const composeOrphans = this.toCategory(orphanCandidates.value, 0);
     const artifacts = this.toCategory(
       artifactFiles.value.map((item) => ({ ...item, readOnly: true })),
@@ -124,7 +132,9 @@ export class DockerCleanupService {
     };
   }
 
-  async pruneDanglingImages(dryRun: boolean = true): Promise<DockerCleanupResult> {
+  async pruneDanglingImages(
+    dryRun: boolean = true,
+  ): Promise<DockerCleanupResult> {
     const candidates = (await this.getCandidates()).images.items;
     if (dryRun) {
       return this.createDryRunResult(candidates);
@@ -134,23 +144,31 @@ export class DockerCleanupService {
     return this.createExecResult(candidates, output);
   }
 
-  async pruneExitedContainers(dryRun: boolean = true): Promise<DockerCleanupResult> {
+  async pruneExitedContainers(
+    dryRun: boolean = true,
+  ): Promise<DockerCleanupResult> {
     const candidates = (await this.getCandidates()).containers.items;
     if (dryRun) {
       return this.createDryRunResult(candidates);
     }
 
-    const output = await this.dockerCommandService.run('docker container prune -f');
+    const output = await this.dockerCommandService.run(
+      'docker container prune -f',
+    );
     return this.createExecResult(candidates, output);
   }
 
-  async pruneDanglingVolumes(dryRun: boolean = true): Promise<DockerCleanupResult> {
+  async pruneDanglingVolumes(
+    dryRun: boolean = true,
+  ): Promise<DockerCleanupResult> {
     const candidates = (await this.getCandidates()).volumes.items;
     if (dryRun) {
       return this.createDryRunResult(candidates);
     }
 
-    const output = await this.dockerCommandService.run('docker volume prune -f');
+    const output = await this.dockerCommandService.run(
+      'docker volume prune -f',
+    );
     return this.createExecResult(candidates, output);
   }
 
@@ -166,8 +184,14 @@ export class DockerCleanupService {
       };
     }
 
-    const output = await this.dockerCommandService.run('docker builder prune -f');
-    return this.createExecResult(category.items, output, category.reclaimableBytes);
+    const output = await this.dockerCommandService.run(
+      'docker builder prune -f',
+    );
+    return this.createExecResult(
+      category.items,
+      output,
+      category.reclaimableBytes,
+    );
   }
 
   private toCategory(
@@ -178,15 +202,21 @@ export class DockerCleanupService {
       items,
       totalBytes: items.reduce((sum, item) => sum + item.size, 0),
       reclaimableBytes:
-        reclaimableBytes ?? items.reduce((sum, item) => sum + (item.reclaimable ?? item.size), 0),
+        reclaimableBytes ??
+        items.reduce((sum, item) => sum + (item.reclaimable ?? item.size), 0),
     };
   }
 
-  private createDryRunResult(items: DockerCleanupCandidateItem[]): DockerCleanupResult {
+  private createDryRunResult(
+    items: DockerCleanupCandidateItem[],
+  ): DockerCleanupResult {
     return {
       success: true,
       dryRun: true,
-      reclaimedBytes: items.reduce((sum, item) => sum + (item.reclaimable ?? item.size), 0),
+      reclaimedBytes: items.reduce(
+        (sum, item) => sum + (item.reclaimable ?? item.size),
+        0,
+      ),
       removedCount: items.length,
       items,
     };
@@ -220,9 +250,9 @@ export class DockerCleanupService {
   }
 
   private extractReclaimedBytes(output: string): number | null {
-    const match = output.match(
-      /Total reclaimed space:\s*([0-9.]+\s*[A-Za-z]+)/i,
-    ) ?? output.match(/Total:\s*([0-9.]+\s*[A-Za-z]+)/i);
+    const match =
+      output.match(/Total reclaimed space:\s*([0-9.]+\s*[A-Za-z]+)/i) ??
+      output.match(/Total:\s*([0-9.]+\s*[A-Za-z]+)/i);
 
     if (!match?.[1]) {
       return null;
@@ -290,7 +320,8 @@ export class DockerCleanupService {
           label: `${columns[0]}:${columns[1]}`,
           detail: `${columns[6]} unique · ${columns[7]} containers`,
           size: parseDockerSizeToBytes(columns[4]),
-          reclaimable: columns[7] === '0' ? parseDockerSizeToBytes(columns[4]) : 0,
+          reclaimable:
+            columns[7] === '0' ? parseDockerSizeToBytes(columns[4]) : 0,
         });
       }
 
@@ -310,7 +341,8 @@ export class DockerCleanupService {
           label: columns[0],
           detail: `${columns[1]} links`,
           size: parseDockerSizeToBytes(columns[2]),
-          reclaimable: columns[1] === '0' ? parseDockerSizeToBytes(columns[2]) : 0,
+          reclaimable:
+            columns[1] === '0' ? parseDockerSizeToBytes(columns[2]) : 0,
         });
       }
 
@@ -422,7 +454,9 @@ export class DockerCleanupService {
       return { value: await collect() };
     } catch (error) {
       const message =
-        error instanceof Error ? error.message : '알 수 없는 오류가 발생했습니다.';
+        error instanceof Error
+          ? error.message
+          : '알 수 없는 오류가 발생했습니다.';
 
       this.logger.warn(`${label} 수집에 실패했습니다: ${message}`);
 

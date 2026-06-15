@@ -71,9 +71,7 @@ export function SiteList({
             <div
               key={site.name}
               className={`bg-gray-900 border rounded-xl p-4 flex items-center gap-4 ${
-                site.enabled
-                  ? 'border-gray-700'
-                  : 'border-gray-800 opacity-60'
+                site.enabled ? 'border-gray-700' : 'border-gray-800 opacity-60'
               }`}
             >
               <div
@@ -99,8 +97,8 @@ export function SiteList({
                       비활성
                     </span>
                   )}
-                  {proxyDnsStatus[site.domain] && (
-                    proxyDnsStatus[site.domain].allOk ? (
+                  {proxyDnsStatus[site.domain] &&
+                    (proxyDnsStatus[site.domain].allOk ? (
                       <span
                         className="flex items-center gap-1 text-xs text-green-400 bg-green-950 px-1.5 py-0.5 rounded"
                         title="DNS 전파 완료"
@@ -115,8 +113,7 @@ export function SiteList({
                       >
                         <AlertTriangle size={10} /> DNS 미전파
                       </span>
-                    )
-                  )}
+                    ))}
                 </div>
                 <div className="flex items-center gap-1 mt-0.5">
                   <Terminal size={11} className="text-gray-500" />

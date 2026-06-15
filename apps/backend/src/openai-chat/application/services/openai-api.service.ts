@@ -94,7 +94,11 @@ export class OpenAIApiService {
         controller.signal.aborted;
 
       if (isAbort) {
-        onEvent({ type: 'message-end', content: fullContent, model: this.getModel() });
+        onEvent({
+          type: 'message-end',
+          content: fullContent,
+          model: this.getModel(),
+        });
       } else {
         this.logger.error(`[OpenAI API] ${err.message}`);
         onEvent({ type: 'error', message: err.message });

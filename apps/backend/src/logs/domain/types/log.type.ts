@@ -10,11 +10,7 @@ export type LogType =
   | 'blog-frontend'
   | 'blog-frontend-err';
 
-export type DockerLogFilter =
-  | 'all'
-  | 'errors'
-  | 'nginx-access'
-  | 'nginx-error';
+export type DockerLogFilter = 'all' | 'errors' | 'nginx-access' | 'nginx-error';
 
 export interface Pm2LogResult {
   out: string[];

@@ -70,7 +70,9 @@ export class CreateContainerUseCase {
     // 5. Setup port forwarding (async, don't wait)
     this.portForwardingService
       .addPortForwardingRules(dto.name, dto.ports)
-      .catch((err) => this.logger.error('Failed to setup port forwarding:', err));
+      .catch((err) =>
+        this.logger.error('Failed to setup port forwarding:', err),
+      );
 
     // 6. Get external access info
     const externalAccess = this.portForwardingService.getExternalAccess(

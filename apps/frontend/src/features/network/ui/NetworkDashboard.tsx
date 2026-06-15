@@ -72,8 +72,9 @@ export function NetworkDashboard() {
           <div className="text-xs text-blue-300">
             <span className="font-semibold">UPnP 동적 매핑만 표시됩니다.</span>
             <span className="text-blue-400/80 ml-1">
-              iptime 관리자 페이지에서 수동 설정한 정적 포트포워딩은 UPnP 프로토콜로 조회되지 않습니다.
-              정적 규칙은 공유기 관리 페이지에서 확인하세요.
+              iptime 관리자 페이지에서 수동 설정한 정적 포트포워딩은 UPnP
+              프로토콜로 조회되지 않습니다. 정적 규칙은 공유기 관리 페이지에서
+              확인하세요.
             </span>
           </div>
         </div>

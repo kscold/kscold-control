@@ -1,11 +1,5 @@
 import { useMemo, useState } from 'react';
-import {
-  Copy,
-  FileText,
-  Loader2,
-  AlertCircle,
-  GitCompare,
-} from 'lucide-react';
+import { Copy, FileText, Loader2, AlertCircle, GitCompare } from 'lucide-react';
 import hljs from 'highlight.js/lib/common';
 import 'highlight.js/styles/github-dark.css';
 import {
@@ -48,7 +42,9 @@ export function CodeViewer({ projectId, selectedPath }: CodeViewerProps) {
       <div className="flex h-full items-center justify-center text-center">
         <div>
           <FileText size={48} className="mx-auto text-gray-700" />
-          <p className="mt-3 text-sm text-gray-500">왼쪽 트리에서 파일을 선택하세요</p>
+          <p className="mt-3 text-sm text-gray-500">
+            왼쪽 트리에서 파일을 선택하세요
+          </p>
         </div>
       </div>
     );
@@ -85,7 +81,9 @@ export function CodeViewer({ projectId, selectedPath }: CodeViewerProps) {
       <div className="flex items-center justify-between gap-2 border-b border-gray-800 bg-gray-900/60 px-4 py-2">
         <div className="flex min-w-0 items-center gap-2">
           <FileText size={14} className="shrink-0 text-gray-500" />
-          <span className="truncate font-mono text-xs text-gray-300">{selectedPath}</span>
+          <span className="truncate font-mono text-xs text-gray-300">
+            {selectedPath}
+          </span>
           {language && (
             <span className="shrink-0 rounded bg-gray-800 px-1.5 py-0.5 text-[10px] uppercase text-gray-500">
               {language}
@@ -160,8 +158,12 @@ export function CodeViewer({ projectId, selectedPath }: CodeViewerProps) {
         <div className="flex flex-1 items-center justify-center text-center">
           <div>
             <FileText size={48} className="mx-auto text-gray-700" />
-            <p className="mt-3 text-sm text-gray-500">바이너리 파일은 미리볼 수 없습니다</p>
-            <p className="mt-1 text-xs text-gray-600">{formatBytes(content.size)}</p>
+            <p className="mt-3 text-sm text-gray-500">
+              바이너리 파일은 미리볼 수 없습니다
+            </p>
+            <p className="mt-1 text-xs text-gray-600">
+              {formatBytes(content.size)}
+            </p>
           </div>
         </div>
       ) : (
@@ -239,7 +241,7 @@ function detectLanguage(path: string | null): string | null {
   const lower = file.toLowerCase();
   if (lower === 'dockerfile') return 'dockerfile';
   if (lower === 'makefile') return 'makefile';
-  const ext = lower.includes('.') ? lower.split('.').pop() ?? '' : '';
+  const ext = lower.includes('.') ? (lower.split('.').pop() ?? '') : '';
   return LANGUAGE_MAP[ext] ?? null;
 }
 

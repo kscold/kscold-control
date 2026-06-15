@@ -1,4 +1,13 @@
-import { Body, Controller, Get, Post, Query, Request, Res, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Post,
+  Query,
+  Request,
+  Res,
+  UseGuards,
+} from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import type { Request as ExpressRequest, Response } from 'express';
 import { PermissionsGuard } from '../../../common/guards/permissions.guard';
@@ -54,11 +63,11 @@ export class LogsController {
         type === 'docker' ? timestamps === 'true' || timestamps === '1' : false,
       since: type === 'docker' ? since : undefined,
       until: type === 'docker' ? until : undefined,
-      filter: type === 'docker' ? filter ?? 'all' : 'all',
+      filter: type === 'docker' ? (filter ?? 'all') : 'all',
     });
     return {
       type,
-      lines: type === 'docker' ? dockerTail ?? lineCount : lineCount,
+      lines: type === 'docker' ? (dockerTail ?? lineCount) : lineCount,
       logs,
       meta:
         type === 'docker'
@@ -122,8 +131,7 @@ export class LogsController {
       return { lines: 0, sourceId, logs: [] };
     }
 
-    const tail =
-      lines === 'all' ? 'all' : parseInt(lines ?? '', 10) || 200;
+    const tail = lines === 'all' ? 'all' : parseInt(lines ?? '', 10) || 200;
     const logs = await this.logsService.getDockerArchiveLogs({
       containerId,
       containerName,

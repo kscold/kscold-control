@@ -27,7 +27,10 @@ export interface ComposeServiceConfig {
 export class ComposeService {
   private readonly logger = new Logger(ComposeService.name);
   private readonly projectRoot = resolveDockerProjectRoot(__dirname);
-  private readonly composeFilePath = path.join(this.projectRoot, 'docker-compose.yml');
+  private readonly composeFilePath = path.join(
+    this.projectRoot,
+    'docker-compose.yml',
+  );
 
   /**
    * docker-compose.yml을 읽어 파싱합니다.
@@ -84,10 +87,9 @@ export class ComposeService {
     }
 
     try {
-      const { stdout } = await execAsync(
-        `docker ps -a --format "{{.Ports}}"`,
-        { cwd: this.projectRoot },
-      );
+      const { stdout } = await execAsync(`docker ps -a --format "{{.Ports}}"`, {
+        cwd: this.projectRoot,
+      });
 
       for (const line of stdout.split('\n')) {
         const matches = line.matchAll(/:(\d+)->/g);
@@ -99,7 +101,9 @@ export class ComposeService {
         }
       }
     } catch (error) {
-      this.logger.warn('Docker 포트 목록을 읽지 못해 compose 기준만 사용합니다.');
+      this.logger.warn(
+        'Docker 포트 목록을 읽지 못해 compose 기준만 사용합니다.',
+      );
     }
 
     return usedPorts;

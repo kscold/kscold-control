@@ -1,5 +1,8 @@
 import { useState, useCallback } from 'react';
-import type { OpenAIChatSession, OpenAIProvider } from '../lib/openai-chat.types';
+import type {
+  OpenAIChatSession,
+  OpenAIProvider,
+} from '../lib/openai-chat.types';
 
 export function useOpenAIChatSession(
   storageKey: string,
@@ -44,7 +47,11 @@ export function useOpenAIChatSession(
   );
 
   const setConnected = useCallback((connected: boolean) => {
-    setSession((prev) => ({ ...prev, isConnected: connected, isReady: connected ? prev.isReady : false }));
+    setSession((prev) => ({
+      ...prev,
+      isConnected: connected,
+      isReady: connected ? prev.isReady : false,
+    }));
   }, []);
 
   const setError = useCallback((message: string) => {
@@ -61,5 +68,12 @@ export function useOpenAIChatSession(
     }));
   }, [storageKey]);
 
-  return { session, getSavedSessionId, handleSessionReady, setConnected, setError, clearSession };
+  return {
+    session,
+    getSavedSessionId,
+    handleSessionReady,
+    setConnected,
+    setError,
+    clearSession,
+  };
 }

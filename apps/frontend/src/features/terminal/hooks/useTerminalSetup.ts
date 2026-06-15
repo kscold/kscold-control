@@ -110,7 +110,9 @@ export function useTerminalSetup({
     });
 
     xterm.onData((data) => handlersRef.current.onData(data));
-    xterm.onResize(({ cols, rows }) => handlersRef.current.onResize(cols, rows));
+    xterm.onResize(({ cols, rows }) =>
+      handlersRef.current.onResize(cols, rows),
+    );
 
     const handleResize = () => scheduleFit();
     window.addEventListener('resize', handleResize);

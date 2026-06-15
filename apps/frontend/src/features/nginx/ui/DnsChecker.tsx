@@ -31,7 +31,9 @@ interface DnsCheckerProps {
 function DnsStatusIcon({ status, size }: { status: string; size: number }) {
   const IconComponent = getDnsStatusIcon(status);
   if (!IconComponent) return null;
-  return <IconComponent size={size} className={getDnsStatusIconColor(status)} />;
+  return (
+    <IconComponent size={size} className={getDnsStatusIconColor(status)} />
+  );
 }
 
 export function DnsChecker({
@@ -75,10 +77,7 @@ export function DnsChecker({
           disabled={dnsLoading}
           className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-blue-600 hover:bg-blue-500 text-white rounded-lg transition disabled:opacity-50"
         >
-          <RefreshCw
-            size={15}
-            className={dnsLoading ? 'animate-spin' : ''}
-          />
+          <RefreshCw size={15} className={dnsLoading ? 'animate-spin' : ''} />
           전체 검증
         </button>
       </div>
@@ -126,12 +125,8 @@ export function DnsChecker({
                 className="flex items-center gap-3 text-sm py-1.5 border-t border-gray-800"
               >
                 <DnsStatusIcon status={rec.status} size={14} />
-                <span className="text-blue-400 font-mono w-14">
-                  {rec.type}
-                </span>
-                <span className="text-gray-400 font-mono w-24">
-                  {rec.host}
-                </span>
+                <span className="text-blue-400 font-mono w-14">{rec.type}</span>
+                <span className="text-gray-400 font-mono w-24">{rec.host}</span>
                 <span className="text-gray-300 font-mono flex-1">
                   {rec.value}
                 </span>
@@ -165,8 +160,7 @@ export function DnsChecker({
         <div className="text-gray-500 text-center py-12">검증 중...</div>
       ) : dnsResults.length === 0 ? (
         <div className="text-gray-500 text-center py-12">
-          등록된 프록시 사이트가 없습니다. 프록시 탭에서 사이트를
-          추가하세요.
+          등록된 프록시 사이트가 없습니다. 프록시 탭에서 사이트를 추가하세요.
         </div>
       ) : (
         <div className="grid gap-3">
@@ -240,14 +234,12 @@ export function DnsChecker({
               {/* Gabia guide for missing/mismatch records */}
               {!result.allOk && (
                 <div className="mt-3 bg-blue-950/30 border border-blue-900/50 rounded-lg p-3 text-xs text-blue-300">
-                  <p className="font-semibold mb-1">
-                    가비아 DNS 설정 안내:
-                  </p>
+                  <p className="font-semibold mb-1">가비아 DNS 설정 안내:</p>
                   <ol className="list-decimal list-inside space-y-0.5 text-blue-400">
                     <li>dns.gabia.com 접속 후 로그인</li>
                     <li>
-                      도메인 "{result.domain.split('.').slice(-2).join('.')}
-                      " 선택
+                      도메인 "{result.domain.split('.').slice(-2).join('.')}"
+                      선택
                     </li>
                     {result.records
                       .filter((r) => r.status !== 'ok')
