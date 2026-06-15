@@ -1,5 +1,8 @@
 import { useState, useCallback, useRef } from 'react';
-import type { OpenAIChatMessage, OpenAIProvider } from '../lib/openai-chat.types';
+import type {
+  OpenAIChatMessage,
+  OpenAIProvider,
+} from '../lib/openai-chat.types';
 
 export function useOpenAIChatMessages() {
   const [messages, setMessages] = useState<OpenAIChatMessage[]>([]);
@@ -22,7 +25,13 @@ export function useOpenAIChatMessages() {
     setIsStreaming(true);
     setMessages((prev) => [
       ...prev,
-      { id, role: 'assistant', content: '', timestamp: new Date().toISOString(), isStreaming: true },
+      {
+        id,
+        role: 'assistant',
+        content: '',
+        timestamp: new Date().toISOString(),
+        isStreaming: true,
+      },
     ]);
   }, []);
 
@@ -35,14 +44,22 @@ export function useOpenAIChatMessages() {
   }, []);
 
   const endStreaming = useCallback(
-    (finalContent: string, meta?: { provider?: OpenAIProvider; model?: string }) => {
+    (
+      finalContent: string,
+      meta?: { provider?: OpenAIProvider; model?: string },
+    ) => {
       const id = streamingIdRef.current;
       streamingIdRef.current = null;
       setIsStreaming(false);
       setMessages((prev) =>
         prev.map((m) =>
           m.id === id
-            ? { ...m, content: finalContent || m.content, isStreaming: false, ...meta }
+            ? {
+                ...m,
+                content: finalContent || m.content,
+                isStreaming: false,
+                ...meta,
+              }
             : m,
         ),
       );
@@ -69,5 +86,14 @@ export function useOpenAIChatMessages() {
     streamingIdRef.current = null;
   }, []);
 
-  return { messages, isStreaming, addUserMessage, startStreaming, appendDelta, endStreaming, loadHistory, clear };
+  return {
+    messages,
+    isStreaming,
+    addUserMessage,
+    startStreaming,
+    appendDelta,
+    endStreaming,
+    loadHistory,
+    clear,
+  };
 }

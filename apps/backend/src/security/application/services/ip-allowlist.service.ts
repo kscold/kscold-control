@@ -19,7 +19,10 @@ export class IpAllowlistService {
     'fe80::/10',
   ];
 
-  isProtected(ip: string, requesterIp: string | null): {
+  isProtected(
+    ip: string,
+    requesterIp: string | null,
+  ): {
     protected: boolean;
     reason?: string;
   } {

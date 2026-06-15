@@ -14,14 +14,15 @@ const BACKUP_ROOT = path.join(
 );
 
 const DOCKER_HOST =
-  process.env.DOCKER_HOST ||
-  'unix:///Users/kscold/.colima/default/docker.sock';
+  process.env.DOCKER_HOST || 'unix:///Users/kscold/.colima/default/docker.sock';
 
 @Injectable()
 export class BackupService {
   private readonly logger = new Logger(BackupService.name);
 
-  async backupMongodb(containerName: string): Promise<{ path: string; size: string }> {
+  async backupMongodb(
+    containerName: string,
+  ): Promise<{ path: string; size: string }> {
     const date = new Date()
       .toISOString()
       .replace(/T/, '_')
@@ -59,7 +60,9 @@ export class BackupService {
     return { path: backupDir, size };
   }
 
-  listBackups(containerName: string): { date: string; path: string; size: string }[] {
+  listBackups(
+    containerName: string,
+  ): { date: string; path: string; size: string }[] {
     const containerDir = path.join(BACKUP_ROOT, containerName);
     if (!fs.existsSync(containerDir)) return [];
 

@@ -70,12 +70,16 @@ export class UploadSessionBatchUseCase {
       sessionId,
     );
     if (!session) {
-      throw new NotFoundException(`업로드 세션을 찾을 수 없습니다: ${sessionId}`);
+      throw new NotFoundException(
+        `업로드 세션을 찾을 수 없습니다: ${sessionId}`,
+      );
     }
 
     const batch = session.batches.find((item) => item.index === batchIndex);
     if (!batch) {
-      throw new NotFoundException(`업로드 배치를 찾을 수 없습니다: ${batchIndex}`);
+      throw new NotFoundException(
+        `업로드 배치를 찾을 수 없습니다: ${batchIndex}`,
+      );
     }
 
     if (batch.status === 'completed' && session.status === 'completed') {
@@ -209,7 +213,9 @@ export class UploadSessionBatchUseCase {
     const anyFailed = session.batches.some(
       (batch) => batch.status === 'failed' || batch.failedFiles.length > 0,
     );
-    const anyUploaded = session.batches.some((batch) => batch.uploadedCount > 0);
+    const anyUploaded = session.batches.some(
+      (batch) => batch.uploadedCount > 0,
+    );
 
     if (allCompleted) {
       session.status = 'completed';

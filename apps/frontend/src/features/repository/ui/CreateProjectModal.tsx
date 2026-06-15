@@ -7,7 +7,11 @@ interface CreateProjectModalProps {
   onCreate: (input: { name: string; description?: string }) => Promise<void>;
 }
 
-export function CreateProjectModal({ open, onClose, onCreate }: CreateProjectModalProps) {
+export function CreateProjectModal({
+  open,
+  onClose,
+  onCreate,
+}: CreateProjectModalProps) {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -46,7 +50,9 @@ export function CreateProjectModal({ open, onClose, onCreate }: CreateProjectMod
 
         <div className="space-y-4">
           <div>
-            <label className="text-xs text-gray-400 mb-1 block">프로젝트명</label>
+            <label className="text-xs text-gray-400 mb-1 block">
+              프로젝트명
+            </label>
             <input
               type="text"
               value={name}
@@ -54,11 +60,15 @@ export function CreateProjectModal({ open, onClose, onCreate }: CreateProjectMod
               placeholder="bigzami2"
               className="w-full rounded-lg border border-gray-700 bg-gray-950 px-3 py-2 text-sm text-white placeholder:text-gray-600 focus:border-blue-500 focus:outline-none"
             />
-            <p className="mt-1 text-[10px] text-gray-600">소문자/숫자/하이픈/언더스코어</p>
+            <p className="mt-1 text-[10px] text-gray-600">
+              소문자/숫자/하이픈/언더스코어
+            </p>
           </div>
 
           <div>
-            <label className="text-xs text-gray-400 mb-1 block">설명 (선택)</label>
+            <label className="text-xs text-gray-400 mb-1 block">
+              설명 (선택)
+            </label>
             <input
               type="text"
               value={description}

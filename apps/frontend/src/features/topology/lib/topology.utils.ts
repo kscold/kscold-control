@@ -12,9 +12,21 @@ export function getStackMeta(image: string, containerName: string): StackMeta {
       shadowColor: 'shadow-blue-500/20',
       headerBg: 'bg-blue-950',
       stacks: [
-        { name: 'Spring Boot 3.4', badge: 'Java 21', color: 'bg-orange-900 text-orange-300' },
-        { name: 'Next.js 16', badge: 'Node 20', color: 'bg-green-900 text-green-300' },
-        { name: 'PM2', badge: 'Process Mgr', color: 'bg-indigo-900 text-indigo-300' },
+        {
+          name: 'Spring Boot 3.4',
+          badge: 'Java 21',
+          color: 'bg-orange-900 text-orange-300',
+        },
+        {
+          name: 'Next.js 16',
+          badge: 'Node 20',
+          color: 'bg-green-900 text-green-300',
+        },
+        {
+          name: 'PM2',
+          badge: 'Process Mgr',
+          color: 'bg-indigo-900 text-indigo-300',
+        },
       ],
       knownServices: [
         { name: 'PostgreSQL 16', port: 5432, icon: '🐘' },
@@ -32,16 +44,26 @@ export function getStackMeta(image: string, containerName: string): StackMeta {
       shadowColor: 'shadow-purple-500/20',
       headerBg: 'bg-purple-950',
       stacks: [
-        { name: 'Ubuntu 22.04', badge: 'Linux', color: 'bg-orange-900 text-orange-300' },
-        { name: 'OpenSSH', badge: ':22→2223', color: 'bg-gray-700 text-gray-300' },
+        {
+          name: 'Ubuntu 22.04',
+          badge: 'Linux',
+          color: 'bg-orange-900 text-orange-300',
+        },
+        {
+          name: 'OpenSSH',
+          badge: ':22→2223',
+          color: 'bg-gray-700 text-gray-300',
+        },
       ],
-      knownServices: [
-        { name: 'PostgreSQL', port: 5433, icon: '🐘' },
-      ],
+      knownServices: [{ name: 'PostgreSQL', port: 5433, icon: '🐘' }],
     };
   }
 
-  if (img.includes('postgres') || name.includes('infra-db') || name.includes('postgres')) {
+  if (
+    img.includes('postgres') ||
+    name.includes('infra-db') ||
+    name.includes('postgres')
+  ) {
     return {
       label: 'PostgreSQL',
       type: 'db',
@@ -49,11 +71,13 @@ export function getStackMeta(image: string, containerName: string): StackMeta {
       shadowColor: 'shadow-sky-500/20',
       headerBg: 'bg-sky-950',
       stacks: [
-        { name: 'PostgreSQL 15', badge: 'Alpine', color: 'bg-sky-900 text-sky-300' },
+        {
+          name: 'PostgreSQL 15',
+          badge: 'Alpine',
+          color: 'bg-sky-900 text-sky-300',
+        },
       ],
-      knownServices: [
-        { name: 'PostgreSQL', port: 5432, icon: '🐘' },
-      ],
+      knownServices: [{ name: 'PostgreSQL', port: 5432, icon: '🐘' }],
     };
   }
 
@@ -65,8 +89,16 @@ export function getStackMeta(image: string, containerName: string): StackMeta {
       shadowColor: 'shadow-amber-500/20',
       headerBg: 'bg-amber-950',
       stacks: [
-        { name: 'Nginx', badge: 'Reverse Proxy', color: 'bg-amber-900 text-amber-300' },
-        { name: 'SSL/TLS', badge: "Let's Encrypt", color: 'bg-green-900 text-green-300' },
+        {
+          name: 'Nginx',
+          badge: 'Reverse Proxy',
+          color: 'bg-amber-900 text-amber-300',
+        },
+        {
+          name: 'SSL/TLS',
+          badge: "Let's Encrypt",
+          color: 'bg-green-900 text-green-300',
+        },
       ],
       knownServices: [
         { name: 'HTTP', port: 80, icon: '🌐' },
@@ -82,7 +114,9 @@ export function getStackMeta(image: string, containerName: string): StackMeta {
       color: 'border-red-500',
       shadowColor: 'shadow-red-500/20',
       headerBg: 'bg-red-950',
-      stacks: [{ name: 'Redis', badge: 'Cache', color: 'bg-red-900 text-red-300' }],
+      stacks: [
+        { name: 'Redis', badge: 'Cache', color: 'bg-red-900 text-red-300' },
+      ],
       knownServices: [{ name: 'Redis', port: 6379, icon: '🟥' }],
     };
   }
@@ -94,7 +128,13 @@ export function getStackMeta(image: string, containerName: string): StackMeta {
       color: 'border-green-500',
       shadowColor: 'shadow-green-500/20',
       headerBg: 'bg-green-950',
-      stacks: [{ name: 'MongoDB', badge: 'NoSQL', color: 'bg-green-900 text-green-300' }],
+      stacks: [
+        {
+          name: 'MongoDB',
+          badge: 'NoSQL',
+          color: 'bg-green-900 text-green-300',
+        },
+      ],
       knownServices: [{ name: 'MongoDB', port: 27017, icon: '🍃' }],
     };
   }

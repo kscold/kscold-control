@@ -84,7 +84,10 @@ export function Terminal({ terminalId, onSwitchToClaude }: TerminalProps) {
         onClaudeCommand={handleClaudeCommand}
         onCloseSession={handleCloseSession}
       />
-      <div ref={terminalRef} className="flex-1 overflow-x-auto p-2 sm:p-4 bg-[#1e1e1e]" />
+      <div
+        ref={terminalRef}
+        className="flex-1 overflow-x-auto p-2 sm:p-4 bg-[#1e1e1e]"
+      />
     </div>
   );
 }

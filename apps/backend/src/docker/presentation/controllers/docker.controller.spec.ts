@@ -63,7 +63,11 @@ describe('DockerController', () => {
   });
 
   it('토폴로지 스냅샷을 그대로 반환한다', async () => {
-    const snapshot = { nodes: [{ id: 'host' }], edges: [], summary: { generatedAt: 1 } };
+    const snapshot = {
+      nodes: [{ id: 'host' }],
+      edges: [],
+      summary: { generatedAt: 1 },
+    };
     dockerTopologyService.getSnapshot.mockResolvedValueOnce(snapshot);
 
     await expect(controller.getTopologySnapshot()).resolves.toEqual(snapshot);
@@ -87,7 +91,9 @@ describe('DockerController', () => {
     };
     dockerCleanupService.getCandidates.mockResolvedValueOnce(candidates);
 
-    await expect(controller.getCleanupCandidates()).resolves.toEqual(candidates);
+    await expect(controller.getCleanupCandidates()).resolves.toEqual(
+      candidates,
+    );
   });
 
   it('이미지 정리는 body가 없으면 dryRun=true로 실행한다', async () => {
@@ -111,7 +117,9 @@ describe('DockerController', () => {
 
     await controller.pruneExitedContainers();
 
-    expect(dockerCleanupService.pruneExitedContainers).toHaveBeenCalledWith(true);
+    expect(dockerCleanupService.pruneExitedContainers).toHaveBeenCalledWith(
+      true,
+    );
   });
 
   it('dangling 볼륨 정리는 명시된 dryRun 값을 전달한다', async () => {
@@ -119,16 +127,21 @@ describe('DockerController', () => {
 
     await controller.pruneDanglingVolumes({ dryRun: false });
 
-    expect(dockerCleanupService.pruneDanglingVolumes).toHaveBeenCalledWith(false);
+    expect(dockerCleanupService.pruneDanglingVolumes).toHaveBeenCalledWith(
+      false,
+    );
   });
 
   it('컨테이너 생성 시 요청 사용자 id를 dto에 주입한다', async () => {
     const dto = { name: 'test' };
     createContainerUseCase.execute.mockResolvedValueOnce({ id: 'container-1' });
 
-    await controller.createContainer(dto as any, {
-      user: { id: 'user-42' },
-    } as any);
+    await controller.createContainer(
+      dto as any,
+      {
+        user: { id: 'user-42' },
+      } as any,
+    );
 
     expect(createContainerUseCase.execute).toHaveBeenCalledWith({
       ...dto,

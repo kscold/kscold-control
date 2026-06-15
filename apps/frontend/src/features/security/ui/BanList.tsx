@@ -21,11 +21,20 @@ function formatDate(iso: string | null): string {
 function sourceBadge(source: IpBan['source']) {
   switch (source) {
     case 'manual':
-      return { label: '수동', class: 'bg-blue-500/10 text-blue-300 border-blue-500/30' };
+      return {
+        label: '수동',
+        class: 'bg-blue-500/10 text-blue-300 border-blue-500/30',
+      };
     case 'auto-nginx':
-      return { label: '자동(nginx)', class: 'bg-amber-500/10 text-amber-300 border-amber-500/30' };
+      return {
+        label: '자동(nginx)',
+        class: 'bg-amber-500/10 text-amber-300 border-amber-500/30',
+      };
     case 'auto-ssh':
-      return { label: '자동(SSH)', class: 'bg-violet-500/10 text-violet-300 border-violet-500/30' };
+      return {
+        label: '자동(SSH)',
+        class: 'bg-violet-500/10 text-violet-300 border-violet-500/30',
+      };
   }
 }
 

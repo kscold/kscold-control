@@ -37,7 +37,10 @@ describe('OsMetricsRepositoryImpl', () => {
     };
 
     (
-      jest.spyOn(repository as never, 'getDockerStorageUsage' as never) as unknown as jest.Mock
+      jest.spyOn(
+        repository as never,
+        'getDockerStorageUsage' as never,
+      ) as unknown as jest.Mock
     ).mockRejectedValue(new Error('docker unavailable'));
 
     const result = await repository.getDiskInfo();

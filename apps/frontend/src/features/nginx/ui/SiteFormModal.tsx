@@ -44,9 +44,7 @@ export function SiteFormModal({
             />
           </div>
           <div>
-            <label className="block text-sm text-gray-400 mb-1">
-              도메인
-            </label>
+            <label className="block text-sm text-gray-400 mb-1">도메인</label>
             <input
               className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-blue-500"
               placeholder="예: app.kscold.com"
@@ -69,9 +67,7 @@ export function SiteFormModal({
                     <button
                       key={u.value}
                       type="button"
-                      onClick={() =>
-                        setForm({ ...form, upstream: u.value })
-                      }
+                      onClick={() => setForm({ ...form, upstream: u.value })}
                       className={`px-2.5 py-1 text-xs rounded-lg border transition ${
                         form.upstream === u.value
                           ? 'bg-blue-600 border-blue-500 text-white'
@@ -90,9 +86,7 @@ export function SiteFormModal({
                       })
                     }
                     className={`px-2.5 py-1 text-xs rounded-lg border transition ${
-                      form.upstream.startsWith(
-                        'http://host.docker.internal',
-                      )
+                      form.upstream.startsWith('http://host.docker.internal')
                         ? 'bg-purple-600 border-purple-500 text-white'
                         : 'bg-gray-800 border-gray-700 text-purple-300 hover:border-purple-500'
                     }`}
@@ -106,9 +100,7 @@ export function SiteFormModal({
               className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-blue-500"
               placeholder="예: http://ubuntu-galjido:8080"
               value={form.upstream}
-              onChange={(e) =>
-                setForm({ ...form, upstream: e.target.value })
-              }
+              onChange={(e) => setForm({ ...form, upstream: e.target.value })}
             />
           </div>
           <div className="flex gap-4">
@@ -116,9 +108,7 @@ export function SiteFormModal({
               <input
                 type="checkbox"
                 checked={form.ssl}
-                onChange={(e) =>
-                  setForm({ ...form, ssl: e.target.checked })
-                }
+                onChange={(e) => setForm({ ...form, ssl: e.target.checked })}
                 className="w-4 h-4 rounded"
               />
               <span className="text-sm text-gray-300">SSL (HTTPS)</span>
@@ -144,17 +134,13 @@ export function SiteFormModal({
                 className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-blue-500"
                 placeholder={`/etc/nginx/ssl/${form.domain || 'domain'}/fullchain.pem`}
                 value={form.sslCert}
-                onChange={(e) =>
-                  setForm({ ...form, sslCert: e.target.value })
-                }
+                onChange={(e) => setForm({ ...form, sslCert: e.target.value })}
               />
               <input
                 className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-blue-500"
                 placeholder={`/etc/nginx/ssl/${form.domain || 'domain'}/privkey.pem`}
                 value={form.sslKey}
-                onChange={(e) =>
-                  setForm({ ...form, sslKey: e.target.value })
-                }
+                onChange={(e) => setForm({ ...form, sslKey: e.target.value })}
               />
             </div>
           )}

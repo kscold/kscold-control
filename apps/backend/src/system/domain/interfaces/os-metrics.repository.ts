@@ -1,4 +1,9 @@
-import type { CpuStats, DiskBreakdown, DiskInfo, MemoryStats } from '../types/system-info.type';
+import type {
+  CpuStats,
+  DiskBreakdown,
+  DiskInfo,
+  MemoryStats,
+} from '../types/system-info.type';
 
 export interface IOsMetricsRepository {
   getCpuStats(): Promise<CpuStats>;

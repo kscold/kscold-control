@@ -1,9 +1,17 @@
-import { Inject, Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import {
+  Inject,
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import {
   IProjectRepository,
   PROJECT_REPOSITORY,
 } from '../../domain/repositories/project.repository.interface';
-import { FILE_STORAGE, IFileStorage } from '../../domain/repositories/file-storage.interface';
+import {
+  FILE_STORAGE,
+  IFileStorage,
+} from '../../domain/repositories/file-storage.interface';
 import { Project } from '../../domain/entities/project.entity';
 
 export interface UploadFile {
@@ -27,7 +35,11 @@ export class UploadFilesUseCase {
     private readonly fileStorage: IFileStorage,
   ) {}
 
-  async execute(projectId: string, files: UploadFile[], replace: boolean): Promise<UploadResult> {
+  async execute(
+    projectId: string,
+    files: UploadFile[],
+    replace: boolean,
+  ): Promise<UploadResult> {
     const project = await this.projectRepository.findById(projectId);
     if (!project) {
       throw new NotFoundException(`프로젝트를 찾을 수 없습니다: ${projectId}`);
@@ -48,7 +60,11 @@ export class UploadFilesUseCase {
     let totalBytes = 0;
     for (const file of files) {
       this.assertSafePath(file.relativePath);
-      await this.fileStorage.writeFile(project.name, file.relativePath, file.buffer);
+      await this.fileStorage.writeFile(
+        project.name,
+        file.relativePath,
+        file.buffer,
+      );
       totalBytes += file.size;
     }
 

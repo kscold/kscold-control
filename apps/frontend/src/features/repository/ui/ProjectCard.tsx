@@ -10,7 +10,12 @@ interface ProjectCardProps {
   onDelete: () => void;
 }
 
-export function ProjectCard({ project, isActive, onSelect, onDelete }: ProjectCardProps) {
+export function ProjectCard({
+  project,
+  isActive,
+  onSelect,
+  onDelete,
+}: ProjectCardProps) {
   return (
     <div
       onClick={onSelect}
@@ -26,7 +31,9 @@ export function ProjectCard({ project, isActive, onSelect, onDelete }: ProjectCa
             size={18}
             className={isActive ? 'text-blue-400' : 'text-gray-500'}
           />
-          <h3 className="truncate text-sm font-semibold text-white">{project.name}</h3>
+          <h3 className="truncate text-sm font-semibold text-white">
+            {project.name}
+          </h3>
         </div>
         <div className="flex gap-1 ml-2">
           <button
@@ -55,7 +62,9 @@ export function ProjectCard({ project, isActive, onSelect, onDelete }: ProjectCa
       </div>
 
       {project.description && (
-        <p className="mt-2 text-xs text-gray-500 line-clamp-2">{project.description}</p>
+        <p className="mt-2 text-xs text-gray-500 line-clamp-2">
+          {project.description}
+        </p>
       )}
 
       <div className="mt-3 flex items-center gap-3 text-[11px] text-gray-500">

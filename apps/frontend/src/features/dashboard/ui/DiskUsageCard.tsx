@@ -118,15 +118,21 @@ export function DiskUsageCard({ systemInfo }: DiskUsageCardProps) {
               }))}
             />
           </div>
-          <p className="text-xs text-gray-400">{disk.usedPercent.toFixed(1)}% used</p>
+          <p className="text-xs text-gray-400">
+            {disk.usedPercent.toFixed(1)}% used
+          </p>
           <div className="mt-2 grid grid-cols-1 gap-2 text-xs sm:grid-cols-2">
             {detailItems.map((item) => (
               <div
                 key={item.label}
                 className={`rounded-lg border px-2.5 py-2 ${item.tone.cardClassName}`}
               >
-                <p className={`text-[11px] ${item.tone.textClassName}`}>{item.label}</p>
-                <p className="mt-1 text-sm font-medium text-white">{item.value}</p>
+                <p className={`text-[11px] ${item.tone.textClassName}`}>
+                  {item.label}
+                </p>
+                <p className="mt-1 text-sm font-medium text-white">
+                  {item.value}
+                </p>
               </div>
             ))}
           </div>

@@ -57,9 +57,7 @@ export class ClaudeDiagnosticsService {
     const now = Date.now();
     const cachedReport = this.cachedReport;
     const shouldUseCache =
-      !forceRefresh &&
-      cachedReport &&
-      now - this.cachedAt < this.cacheTtlMs;
+      !forceRefresh && cachedReport && now - this.cachedAt < this.cacheTtlMs;
 
     if (shouldUseCache && cachedReport) {
       return {

@@ -16,10 +16,12 @@ export function getTopologyCanvasElements(
   );
 
   return {
-    nodes: (snapshot?.nodes ?? [])
-      .filter((node) => node.type !== 'service') as unknown as Node[],
+    nodes: (snapshot?.nodes ?? []).filter(
+      (node) => node.type !== 'service',
+    ) as unknown as Node[],
     edges: (snapshot?.edges ?? []).filter(
-      (edge) => !hiddenNodeIds.has(edge.source) && !hiddenNodeIds.has(edge.target),
+      (edge) =>
+        !hiddenNodeIds.has(edge.source) && !hiddenNodeIds.has(edge.target),
     ) as unknown as Edge[],
   };
 }

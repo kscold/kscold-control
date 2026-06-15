@@ -24,8 +24,9 @@ export class DockerodeClientAdapter implements IDockerClient, OnModuleInit {
 
   onModuleInit() {
     try {
-      const socketPath =
-        (process.env.DOCKER_HOST || DEFAULT_DOCKER_HOST).replace('unix://', '');
+      const socketPath = (
+        process.env.DOCKER_HOST || DEFAULT_DOCKER_HOST
+      ).replace('unix://', '');
       this.docker = new Docker({ socketPath });
     } catch (error) {
       throw new DockerConnectionException(error.message);
@@ -258,16 +259,9 @@ export class DockerodeClientAdapter implements IDockerClient, OnModuleInit {
         const data = chunk.length > 8 ? chunk.slice(8) : chunk;
         chunks.push(data);
       });
-      stream.on('end', () =>
-        resolve(Buffer.concat(chunks).toString('utf8')),
-      );
-      stream.on('error', () =>
-        resolve(Buffer.concat(chunks).toString('utf8')),
-      );
-      setTimeout(
-        () => resolve(Buffer.concat(chunks).toString('utf8')),
-        5000,
-      );
+      stream.on('end', () => resolve(Buffer.concat(chunks).toString('utf8')));
+      stream.on('error', () => resolve(Buffer.concat(chunks).toString('utf8')));
+      setTimeout(() => resolve(Buffer.concat(chunks).toString('utf8')), 5000);
     });
   }
 

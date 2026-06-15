@@ -59,7 +59,9 @@ function flattenRecord(
   return output;
 }
 
-function buildDiffSummary(metadata: Record<string, unknown>): AuditDiffSummary | null {
+function buildDiffSummary(
+  metadata: Record<string, unknown>,
+): AuditDiffSummary | null {
   const before = isRecord(metadata.before) ? metadata.before : null;
   const after = isRecord(metadata.after) ? metadata.after : null;
 
@@ -165,7 +167,9 @@ export class FileAuditLogRepository implements IAuditLogRepository {
       // 파일이 없으면 빈 상태 반환 (정상), 다른 오류면 경고 기록
       const code = (error as NodeJS.ErrnoException).code;
       if (code !== 'ENOENT') {
-        this.logger.warn(`감사 로그 파일 읽기 실패: ${(error as Error).message}`);
+        this.logger.warn(
+          `감사 로그 파일 읽기 실패: ${(error as Error).message}`,
+        );
       }
       return [];
     }
@@ -182,7 +186,8 @@ export class FileAuditLogRepository implements IAuditLogRepository {
 
     return events.sort(
       (left, right) =>
-        new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime(),
+        new Date(right.createdAt).getTime() -
+        new Date(left.createdAt).getTime(),
     );
   }
 
@@ -207,7 +212,11 @@ export class FileAuditLogRepository implements IAuditLogRepository {
         return false;
       }
 
-      if (input.domain && input.domain !== 'all' && event.domain !== input.domain) {
+      if (
+        input.domain &&
+        input.domain !== 'all' &&
+        event.domain !== input.domain
+      ) {
         return false;
       }
 

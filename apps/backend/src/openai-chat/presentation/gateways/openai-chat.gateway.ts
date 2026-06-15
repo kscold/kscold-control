@@ -66,7 +66,8 @@ export class OpenAIChatGateway
         payload.sub,
         PERMISSIONS.TERMINAL_ACCESS,
       );
-      if (!hasAccess) throw new ForbiddenException('터미널 접근 권한이 없습니다');
+      if (!hasAccess)
+        throw new ForbiddenException('터미널 접근 권한이 없습니다');
 
       const provider: OpenAIProvider =
         client.handshake.auth.provider === 'codex' ? 'codex' : 'api';
@@ -150,7 +151,8 @@ export class OpenAIChatGateway
 
     if (provider === 'api' && !this.openAIApi.isApiKeyConfigured()) {
       client.emit('openai:error', {
-        message: 'OPENAI_API_KEY가 설정되지 않았습니다. 환경 변수를 확인하세요.',
+        message:
+          'OPENAI_API_KEY가 설정되지 않았습니다. 환경 변수를 확인하세요.',
       });
       return;
     }
@@ -184,7 +186,11 @@ export class OpenAIChatGateway
         }),
       );
 
-      this.emit(sessionId, 'openai:message-end', { content, provider, ...meta });
+      this.emit(sessionId, 'openai:message-end', {
+        content,
+        provider,
+        ...meta,
+      });
       fullContent = '';
       this.sessionRepo.updateActivity(sessionId).catch(() => {});
     };

@@ -37,7 +37,11 @@ export function DiffViewer({
   if (beforeMissing) {
     return (
       <div className="flex h-full flex-col">
-        <DiffHeader added={stats.added} removed={0} note="이전 버전에 없던 새 파일" />
+        <DiffHeader
+          added={stats.added}
+          removed={0}
+          note="이전 버전에 없던 새 파일"
+        />
         <div className="flex-1 overflow-auto bg-[#0d1117]">
           <div className="flex font-mono text-xs leading-5">
             <LineGutter count={afterText.split('\n').length} tone="add" />
@@ -61,13 +65,20 @@ export function DiffViewer({
   if (afterMissing) {
     return (
       <div className="flex h-full flex-col">
-        <DiffHeader added={0} removed={stats.removed} note="현재 버전에서 삭제됨" />
+        <DiffHeader
+          added={0}
+          removed={stats.removed}
+          note="현재 버전에서 삭제됨"
+        />
         <div className="flex-1 overflow-auto bg-[#0d1117]">
           <div className="flex font-mono text-xs leading-5">
             <LineGutter count={beforeText.split('\n').length} tone="del" />
             <pre className="flex-1 overflow-x-auto py-3">
               {beforeText.split('\n').map((line, i) => (
-                <div key={i} className="block bg-rose-500/10 px-4 text-rose-200">
+                <div
+                  key={i}
+                  className="block bg-rose-500/10 px-4 text-rose-200"
+                >
                   <span className="select-none pr-2 text-rose-400">-</span>
                   {line || '​'}
                 </div>
@@ -126,13 +137,7 @@ function DiffHeader({
   );
 }
 
-function LineGutter({
-  count,
-  tone,
-}: {
-  count: number;
-  tone: 'add' | 'del';
-}) {
+function LineGutter({ count, tone }: { count: number; tone: 'add' | 'del' }) {
   const color = tone === 'add' ? 'text-emerald-400/80' : 'text-rose-400/80';
   return (
     <div

@@ -56,9 +56,7 @@ export function SslIssueModal({
                 <input
                   type="radio"
                   checked={certForm.mode === 'webroot'}
-                  onChange={() =>
-                    setCertForm({ ...certForm, mode: 'webroot' })
-                  }
+                  onChange={() => setCertForm({ ...certForm, mode: 'webroot' })}
                   className="w-4 h-4"
                 />
                 <span className="text-sm text-gray-300">Webroot</span>

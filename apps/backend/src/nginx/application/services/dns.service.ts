@@ -2,7 +2,10 @@ import { Injectable, Logger } from '@nestjs/common';
 import { exec } from 'child_process';
 import { promisify } from 'util';
 import * as dns from 'dns';
-import type { DnsRecord, DnsCheckResult } from '../../domain/types/nginx-site.type';
+import type {
+  DnsRecord,
+  DnsCheckResult,
+} from '../../domain/types/nginx-site.type';
 
 const execAsync = promisify(exec);
 const dnsResolve4 = promisify(dns.resolve4);

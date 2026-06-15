@@ -4,7 +4,10 @@ import {
   OS_METRICS_REPOSITORY,
   type IOsMetricsRepository,
 } from '../../domain/interfaces/os-metrics.repository';
-import type { LiveStats, SystemInfo } from '../../domain/types/system-info.type';
+import type {
+  LiveStats,
+  SystemInfo,
+} from '../../domain/types/system-info.type';
 
 @Injectable()
 export class SystemService {

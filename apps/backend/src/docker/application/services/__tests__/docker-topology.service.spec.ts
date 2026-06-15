@@ -239,10 +239,10 @@ describe('DockerTopologyService', () => {
     );
     expect(blogNode?.position.x).toBe(blogSiteNode?.position.x);
     expect(slacordNode?.position.x).toBe(slacordSiteNode?.position.x);
-    expect((slacordNode?.position.x ?? 0) - (blogNode?.position.x ?? 0)).toBeGreaterThan(350);
-    expect(controlNode?.position.x).toBeLessThan(
-      infraDbNode?.position.x ?? 0,
-    );
+    expect(
+      (slacordNode?.position.x ?? 0) - (blogNode?.position.x ?? 0),
+    ).toBeGreaterThan(350);
+    expect(controlNode?.position.x).toBeLessThan(infraDbNode?.position.x ?? 0);
     expect(
       (blogSiteNode?.position.y ?? 0) - (hostNode?.position.y ?? 0),
     ).toBeGreaterThan(500);

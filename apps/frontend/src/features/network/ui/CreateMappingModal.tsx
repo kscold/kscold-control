@@ -61,9 +61,7 @@ export function CreateMappingModal({
             </div>
           </div>
           <div>
-            <label className="block text-sm text-gray-400 mb-1">
-              프로토콜
-            </label>
+            <label className="block text-sm text-gray-400 mb-1">프로토콜</label>
             <div className="flex gap-3">
               <label className="flex items-center gap-2 cursor-pointer">
                 <input

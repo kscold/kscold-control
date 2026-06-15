@@ -1,6 +1,9 @@
 import { useCallback, useEffect, useState } from 'react';
 import { repositoryService } from '../../../services/api/repository.service';
-import type { RepositoryProject, CreateProjectInput } from '../lib/repository.types';
+import type {
+  RepositoryProject,
+  CreateProjectInput,
+} from '../lib/repository.types';
 
 export function useProjects() {
   const [projects, setProjects] = useState<RepositoryProject[]>([]);
