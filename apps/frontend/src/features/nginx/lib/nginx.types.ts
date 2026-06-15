@@ -25,6 +25,16 @@ export interface CertInfo {
   daysLeft?: number;
 }
 
+/** SSL 인증서 자동 갱신 스케줄 마지막 실행 상태 */
+export interface CertRenewalStatus {
+  lastRunAt: string | null;
+  trigger: 'schedule' | 'manual' | null;
+  success: boolean | null;
+  renewedDomains: string[];
+  message: string;
+  certs: Array<{ domain: string; daysLeft: number | null }>;
+}
+
 export interface DnsRecord {
   type: 'A' | 'CNAME' | 'TXT';
   host: string;

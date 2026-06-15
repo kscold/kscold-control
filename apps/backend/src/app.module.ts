@@ -2,6 +2,7 @@ import { APP_INTERCEPTOR } from '@nestjs/core';
 import { Module, NestModule, MiddlewareConsumer } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ConfigModule } from '@nestjs/config';
+import { ScheduleModule } from '@nestjs/schedule';
 import { ServeStaticModule } from '@nestjs/serve-static';
 import { join } from 'path';
 import { AuthModule } from './auth/auth.module';
@@ -36,6 +37,9 @@ import { AuditInterceptor } from './common/interceptors';
     // 환경 변수
     ConfigModule.forRoot({ isGlobal: true }),
 
+    // 스케줄러 (SSL 인증서 자동 갱신 등)
+    ScheduleModule.forRoot(),
+
     // React 빌드 파일 서빙 (프로덕션)
     ServeStaticModule.forRoot({
       rootPath: join(__dirname, '..', '..', 'frontend', 'dist'),
@@ -47,7 +51,16 @@ import { AuditInterceptor } from './common/interceptors';
     TypeOrmModule.forRoot({
       type: 'postgres',
       url: process.env.DATABASE_URL,
-      entities: [User, Role, Permission, Session, Message, Container, Project, IpBan],
+      entities: [
+        User,
+        Role,
+        Permission,
+        Session,
+        Message,
+        Container,
+        Project,
+        IpBan,
+      ],
       synchronize: process.env.NODE_ENV !== 'production',
       logging: process.env.NODE_ENV !== 'production',
     }),

@@ -3,8 +3,11 @@ import {
   RefreshCw,
   Lock,
   AlertTriangle,
+  CalendarClock,
+  CheckCircle2,
+  XCircle,
 } from 'lucide-react';
-import type { CertInfo } from '../lib/nginx.types';
+import type { CertInfo, CertRenewalStatus } from '../lib/nginx.types';
 import { SslIssueModal } from './SslIssueModal';
 
 const getDaysLeftColor = (days?: number) => {
@@ -14,9 +17,19 @@ const getDaysLeftColor = (days?: number) => {
   return 'text-green-400';
 };
 
+const formatRunAt = (iso: string | null) => {
+  if (!iso) return '실행 이력 없음';
+  try {
+    return new Date(iso).toLocaleString('ko-KR');
+  } catch {
+    return iso;
+  }
+};
+
 interface CertListProps {
   certs: CertInfo[];
   certsLoading: boolean;
+  renewalStatus: CertRenewalStatus | null;
   issuing: boolean;
   showCertModal: boolean;
   certForm: { domain: string; email: string; mode: string };
@@ -30,6 +43,7 @@ interface CertListProps {
 export function CertList({
   certs,
   certsLoading,
+  renewalStatus,
   issuing,
   showCertModal,
   certForm,
@@ -41,6 +55,44 @@ export function CertList({
 }: CertListProps) {
   return (
     <>
+      {/* 자동 갱신 스케줄 상태 */}
+      <div className="bg-gray-900 border border-gray-700 rounded-xl p-4 mb-4">
+        <div className="flex items-center gap-2 mb-2">
+          <CalendarClock size={16} className="text-blue-400" />
+          <span className="text-sm font-semibold text-white">
+            SSL 자동 갱신
+          </span>
+          <span className="text-xs text-gray-400">
+            매일 04:10(KST) · 만료 30일 이내 자동 갱신
+          </span>
+        </div>
+        {renewalStatus ? (
+          <div className="flex items-center gap-3 text-xs">
+            {renewalStatus.success === null ? (
+              <span className="text-gray-400">대기 중</span>
+            ) : renewalStatus.success ? (
+              <span className="flex items-center gap-1 text-green-400">
+                <CheckCircle2 size={12} /> 정상
+              </span>
+            ) : (
+              <span className="flex items-center gap-1 text-red-400">
+                <XCircle size={12} /> 실패
+              </span>
+            )}
+            <span className="text-gray-400">
+              마지막 실행: {formatRunAt(renewalStatus.lastRunAt)}
+              {renewalStatus.trigger &&
+                ` (${renewalStatus.trigger === 'schedule' ? '자동' : '수동'})`}
+            </span>
+            <span className="text-gray-500 truncate">
+              {renewalStatus.message}
+            </span>
+          </div>
+        ) : (
+          <p className="text-xs text-gray-500">상태를 불러오는 중...</p>
+        )}
+      </div>
+
       <div className="flex justify-end gap-2 mb-4">
         <button
           onClick={onRenewAll}

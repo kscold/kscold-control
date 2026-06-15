@@ -85,7 +85,10 @@ export function NginxDashboard() {
             disabled={configHook.reloading}
             className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-blue-600 hover:bg-blue-500 text-white rounded-lg transition disabled:opacity-50"
           >
-            <RefreshCw size={15} className={configHook.reloading ? 'animate-spin' : ''} />
+            <RefreshCw
+              size={15}
+              className={configHook.reloading ? 'animate-spin' : ''}
+            />
             리로드
           </button>
         </div>
@@ -146,7 +149,9 @@ export function NginxDashboard() {
               <XCircle size={14} className="text-red-400" />
             )}
             <span className="font-bold">
-              {configHook.testOutput.success ? 'nginx -t 성공' : 'nginx -t 실패'}
+              {configHook.testOutput.success
+                ? 'nginx -t 성공'
+                : 'nginx -t 실패'}
             </span>
             <button
               onClick={() => configHook.setTestOutput(null)}
@@ -181,6 +186,7 @@ export function NginxDashboard() {
         <CertList
           certs={certsHook.certs}
           certsLoading={certsHook.certsLoading}
+          renewalStatus={certsHook.renewalStatus}
           issuing={certsHook.issuing}
           showCertModal={certsHook.showCertModal}
           certForm={certsHook.certForm}

@@ -1,11 +1,14 @@
 import { useState } from 'react';
 import { useModalStore } from '../../../shared/model';
 import { nginxService } from '../../../services/api/nginx.service';
-import type { CertInfo } from '../lib/nginx.types';
+import type { CertInfo, CertRenewalStatus } from '../lib/nginx.types';
 
 export function useNginxCerts() {
   const [certs, setCerts] = useState<CertInfo[]>([]);
   const [certsLoading, setCertsLoading] = useState(false);
+  const [renewalStatus, setRenewalStatus] = useState<CertRenewalStatus | null>(
+    null,
+  );
   const [showCertModal, setShowCertModal] = useState(false);
   const [certForm, setCertForm] = useState({
     domain: '',
@@ -19,8 +22,12 @@ export function useNginxCerts() {
   const loadCerts = async () => {
     try {
       setCertsLoading(true);
-      const data = await nginxService.listCerts();
+      const [data, status] = await Promise.all([
+        nginxService.listCerts(),
+        nginxService.getRenewalStatus().catch(() => null),
+      ]);
       setCerts(data);
+      if (status) setRenewalStatus(status);
     } catch (e) {
       console.error(e);
     } finally {
@@ -81,6 +88,7 @@ export function useNginxCerts() {
   return {
     certs,
     certsLoading,
+    renewalStatus,
     showCertModal,
     setShowCertModal,
     certForm,

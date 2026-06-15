@@ -40,7 +40,10 @@ export class NginxController {
 
   @Post('sites')
   @RequirePermissions(PERMISSIONS.SYSTEM_WRITE)
-  async createSite(@Body() dto: CreateNginxSiteDto, @Request() req: JwtRequest) {
+  async createSite(
+    @Body() dto: CreateNginxSiteDto,
+    @Request() req: JwtRequest,
+  ) {
     const result = await this.nginxSiteService.createSite(dto);
     await this.auditLogService.record({
       domain: 'nginx',
@@ -234,7 +237,7 @@ export class NginxController {
   @Post('certs/renew')
   @RequirePermissions(PERMISSIONS.SYSTEM_WRITE)
   async renewCerts(@Request() req: JwtRequest) {
-    const result = await this.certService.renewAll();
+    const result = await this.certService.runRenewal('manual');
     await this.auditLogService.record({
       domain: 'nginx',
       action: 'cert.renew-all',
@@ -245,6 +248,16 @@ export class NginxController {
       targetId: 'all',
     });
     return result;
+  }
+
+  /**
+   * 인증서 자동 갱신 스케줄 상태 (마지막 실행 결과 + 만료 요약)
+   * GET /nginx/certs/renewal-status
+   */
+  @Get('certs/renewal-status')
+  @RequirePermissions(PERMISSIONS.SYSTEM_READ)
+  getRenewalStatus() {
+    return this.certService.getRenewalStatus();
   }
 
   // ===== DNS Management Endpoints =====
@@ -283,7 +296,9 @@ export class NginxController {
 
   private async getSiteSnapshot(name: string) {
     const items = await this.nginxSiteService.listSites();
-    return this.toSiteSnapshot(items.find((item) => item.name === name) ?? null);
+    return this.toSiteSnapshot(
+      items.find((item) => item.name === name) ?? null,
+    );
   }
 
   private toSiteSnapshot(
