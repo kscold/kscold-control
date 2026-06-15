@@ -123,7 +123,11 @@ export class DockerTopologyService {
       this.listContainersUseCase.execute(undefined),
       this.nginxConfigRepository.list(),
     ]);
-    const sites = this.mergeSites(configuredSites, containers);
+    // server_name(도메인)이 없는 설정(예: ip-blocklist.conf 같은 공용 include)은
+    // 토폴로지의 사이트 노드가 아니므로 제외한다. (이름 없는 빈 노드로 렌더되던 버그)
+    const sites = this.mergeSites(configuredSites, containers).filter(
+      (site) => site.domain && site.domain.trim().length > 0,
+    );
 
     const processMap = await this.fetchProcesses(containers);
     const composeServices = new Set(this.composeService.listServices());
