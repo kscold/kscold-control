@@ -4,6 +4,7 @@ import type {
   NginxSite,
   CreateNginxSiteDto,
   CertInfo,
+  CertRenewalStatus,
   DnsCheckResult,
   UpstreamOption,
 } from '../../features/nginx/lib/nginx.types';
@@ -131,11 +132,21 @@ export class NginxApiService extends BaseApiService {
     }
   }
 
+  async getRenewalStatus(): Promise<CertRenewalStatus> {
+    try {
+      const { data } = await api.get<CertRenewalStatus>(
+        `${this.basePath}/certs/renewal-status`,
+      );
+      return data;
+    } catch (error) {
+      this.logError('NginxApiService', 'getRenewalStatus', error);
+      this.handleError(error, '자동 갱신 상태를 불러오는데 실패했습니다.');
+    }
+  }
+
   async getPublicIp(): Promise<string> {
     try {
-      const { data } = await api.get<{ ip: string }>(
-        `${this.basePath}/dns/ip`,
-      );
+      const { data } = await api.get<{ ip: string }>(`${this.basePath}/dns/ip`);
       return data.ip;
     } catch (error) {
       this.logError('NginxApiService', 'getPublicIp', error);
