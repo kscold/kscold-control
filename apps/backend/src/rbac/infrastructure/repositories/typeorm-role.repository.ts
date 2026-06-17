@@ -26,7 +26,7 @@ export class TypeOrmRoleRepository implements IRoleRepository {
   async findByNameWithPermissions(name: string): Promise<Role | null> {
     return this.repository.findOne({
       where: { name },
-      relations: ['permissions'],
+      relations: { permissions: true },
     });
   }
 
@@ -36,7 +36,7 @@ export class TypeOrmRoleRepository implements IRoleRepository {
 
   async findAllWithPermissions(): Promise<Role[]> {
     return this.repository.find({
-      relations: ['permissions'],
+      relations: { permissions: true },
     });
   }
 
@@ -47,7 +47,7 @@ export class TypeOrmRoleRepository implements IRoleRepository {
   async findByIdsWithPermissions(ids: string[]): Promise<Role[]> {
     return this.repository.find({
       where: { id: In(ids) },
-      relations: ['permissions'],
+      relations: { permissions: true },
     });
   }
 
