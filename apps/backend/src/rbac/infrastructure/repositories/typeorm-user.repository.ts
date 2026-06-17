@@ -26,14 +26,14 @@ export class TypeOrmUserRepository implements IUserRepository {
   async findByEmailWithRoles(email: string): Promise<User | null> {
     return this.repository.findOne({
       where: { email },
-      relations: ['roles', 'roles.permissions'],
+      relations: { roles: { permissions: true } },
     });
   }
 
   async findByIdWithRoles(id: string): Promise<User | null> {
     return this.repository.findOne({
       where: { id },
-      relations: ['roles', 'roles.permissions'],
+      relations: { roles: { permissions: true } },
     });
   }
 
@@ -43,7 +43,7 @@ export class TypeOrmUserRepository implements IUserRepository {
 
   async findAllWithRoles(): Promise<User[]> {
     return this.repository.find({
-      relations: ['roles', 'roles.permissions'],
+      relations: { roles: { permissions: true } },
     });
   }
 

@@ -66,7 +66,7 @@ async function seed() {
   const adminRole =
     (await roleRepo.findOne({
       where: { name: 'admin' },
-      relations: ['permissions'],
+      relations: { permissions: true },
     })) ||
     roleRepo.create({
       name: 'admin',
@@ -78,7 +78,7 @@ async function seed() {
   const developerRole =
     (await roleRepo.findOne({
       where: { name: 'developer' },
-      relations: ['permissions'],
+      relations: { permissions: true },
     })) ||
     roleRepo.create({
       name: 'developer',
@@ -92,7 +92,7 @@ async function seed() {
   const viewerRole =
     (await roleRepo.findOne({
       where: { name: 'viewer' },
-      relations: ['permissions'],
+      relations: { permissions: true },
     })) ||
     roleRepo.create({
       name: 'viewer',

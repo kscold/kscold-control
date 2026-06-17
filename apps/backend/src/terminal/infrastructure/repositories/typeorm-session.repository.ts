@@ -20,7 +20,7 @@ export class TypeOrmSessionRepository implements ISessionRepository {
   async findWithMessages(sessionId: string): Promise<Session | null> {
     return this.repo.findOne({
       where: { id: sessionId },
-      relations: ['messages'],
+      relations: { messages: true },
     });
   }
 
