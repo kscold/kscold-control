@@ -14,7 +14,7 @@ export class UserRepository implements IUserRepository {
   async findById(id: string): Promise<User | null> {
     return this.repository.findOne({
       where: { id },
-      relations: ['roles', 'roles.permissions'],
+      relations: { roles: { permissions: true } },
     });
   }
 
@@ -25,7 +25,7 @@ export class UserRepository implements IUserRepository {
   async findByEmailWithRelations(email: string): Promise<User | null> {
     return this.repository.findOne({
       where: { email },
-      relations: ['roles', 'roles.permissions'],
+      relations: { roles: { permissions: true } },
     });
   }
 
