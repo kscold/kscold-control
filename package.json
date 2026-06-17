@@ -16,8 +16,14 @@
     "clean": "turbo run clean && rm -rf node_modules"
   },
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
     "@playwright/test": "^1.61.0",
+    "eslint": "^9.39.4",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "eslint-plugin-react-refresh": "^0.5.3",
+    "globals": "^17.6.0",
     "prettier": "^3.8.4",
-    "turbo": "^2.9.18"
+    "turbo": "^2.9.18",
+    "typescript-eslint": "^8.61.1"
   }
 }

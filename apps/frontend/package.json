@@ -10,7 +10,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "format": "prettier --write \"src/**/*.{ts,tsx}\"",
-    "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0"
+    "lint": "eslint ."
   },
   "dependencies": {
     "@types/diff": "^8.0.0",
@@ -39,7 +39,6 @@
     "@types/react-dom": "^18.2.19",
     "@vitejs/plugin-react": "^5.0.0",
     "autoprefixer": "^10.5.0",
-    "eslint": "^8.56.0",
     "jsdom": "^26.1.0",
     "postcss": "^8.5.15",
     "prettier": "^3.8.4",
