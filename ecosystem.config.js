@@ -21,7 +21,12 @@ module.exports = {
       },
       // 자동 재시작
       watch: false,
-      max_memory_restart: '500M',
+      // 소스 업로드 시 배치 multipart 파싱으로 메모리가 일시적으로 크게 튄다.
+      // 500M는 빠듯해 큰 프로젝트(bigzmai 등) 업로드 중 PM2가 프로세스를 죽여
+      // "Network Error"가 발생했다. 넉넉히 2G로 상향.
+      max_memory_restart: '2G',
+      // Node 힙도 함께 키워 GC 압박/OOM을 방지.
+      node_args: '--max-old-space-size=2048',
 
       // 로그
       log_date_format: 'YYYY-MM-DD HH:mm:ss',
