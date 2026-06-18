@@ -64,8 +64,11 @@ export class RepositoryService extends BaseApiService {
       const formData = new FormData();
       const relativePaths: string[] = [];
 
+      // 전송 직전 메모리로 스냅샷 — 업로드 중 파일이 바뀌어도
+      // ERR_UPLOAD_FILE_CHANGED 없이 전송된다. (uploadSessionBatch와 동일)
       for (const cf of files) {
-        formData.append('files', cf.file, cf.file.name);
+        const snapshot = await cf.file.arrayBuffer();
+        formData.append('files', new Blob([snapshot]), cf.file.name);
         relativePaths.push(cf.relativePath);
       }
       formData.append('relativePaths', JSON.stringify(relativePaths));
@@ -166,8 +169,15 @@ export class RepositoryService extends BaseApiService {
       const formData = new FormData();
       const relativePaths: string[] = [];
 
+      // 디스크의 File 객체를 그대로 첨부하면 브라우저가 "전송 시점"에 파일의
+      // 수정시각·크기를 재검증한다. 업로드 도중 파일이 바뀌면(AI·dev 서버가
+      // 소스를 계속 수정하는 환경) net::ERR_UPLOAD_FILE_CHANGED 로 전송을 거부한다.
+      // → 전송 직전 메모리로 읽어 스냅샷(Blob)을 첨부하면 이후 디스크 변경과
+      //   무관하게 그 배치는 전송된다. 시도/재선택마다 최신 내용으로 다시 읽으므로
+      //   "같은 폴더 다시 선택 → 이어올리기"도 반복 가능하다.
       for (const cf of files) {
-        formData.append('files', cf.file, cf.file.name);
+        const snapshot = await cf.file.arrayBuffer();
+        formData.append('files', new Blob([snapshot]), cf.file.name);
         relativePaths.push(cf.relativePath);
       }
       formData.append('relativePaths', JSON.stringify(relativePaths));
