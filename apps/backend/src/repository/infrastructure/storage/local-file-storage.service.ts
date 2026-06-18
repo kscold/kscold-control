@@ -1,5 +1,6 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { promises as fs, createReadStream } from 'fs';
+import * as os from 'os';
 import * as path from 'path';
 import { Readable } from 'stream';
 import { spawn } from 'child_process';
@@ -13,12 +14,43 @@ import {
 const VERSIONS_DIR = '.versions';
 
 @Injectable()
-export class LocalFileStorageService implements IFileStorage {
+export class LocalFileStorageService implements IFileStorage, OnModuleInit {
   private readonly logger = new Logger(LocalFileStorageService.name);
   private readonly baseDir: string;
 
   constructor() {
-    this.baseDir = process.env.REPOSITORY_STORAGE_DIR ?? '/var/repos';
+    // 기본값을 사용자 홈 하위로 둔다. 과거 기본값 '/var/repos'는 macOS/Linux 모두
+    // root 권한이 필요해, REPOSITORY_STORAGE_DIR 환경변수가 프로세스에 전달되지
+    // 않으면 모든 업로드가 EACCES(permission denied, mkdir '/var/repos')로 통째로
+    // 실패하는 사고가 있었다. 쓰기 가능한 안전한 기본값으로 바꾼다.
+    this.baseDir =
+      process.env.REPOSITORY_STORAGE_DIR ??
+      path.join(os.homedir(), 'repository-storage');
+  }
+
+  /**
+   * 부팅 시 저장소 디렉토리를 생성하고 실제 쓰기 가능 여부를 점검한다.
+   * 문제가 있으면(권한 없음 등) 업로드가 조용히 실패하지 않도록 명확한
+   * 조치 안내와 함께 에러 로그를 남긴다. (패널 전체를 죽이지는 않는다.)
+   */
+  async onModuleInit(): Promise<void> {
+    try {
+      await fs.mkdir(this.baseDir, { recursive: true });
+      const probe = path.join(this.baseDir, `.write-test-${process.pid}`);
+      await fs.writeFile(probe, 'ok');
+      await fs.rm(probe, { force: true });
+      this.logger.log(`저장소 디렉토리 준비 완료: ${this.baseDir}`);
+    } catch (err) {
+      const reason = (err as Error).message;
+      this.logger.error(
+        [
+          `저장소 디렉토리를 쓸 수 없습니다: ${this.baseDir} (${reason})`,
+          `→ 소스 업로드가 실패합니다. 쓰기 가능한 경로를 REPOSITORY_STORAGE_DIR 로 지정하고 재시작하세요.`,
+          `  예) REPOSITORY_STORAGE_DIR=${path.join(os.homedir(), 'repository-storage')}`,
+          `  PM2 사용 시: pm2 start ecosystem.config.js --update-env`,
+        ].join('\n'),
+      );
+    }
   }
 
   // ── 경로 헬퍼 ──────────────────────────────────────────────────────────────

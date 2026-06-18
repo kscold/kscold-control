@@ -1,3 +1,4 @@
+import axios from 'axios';
 import { api } from '../../lib/api';
 import { BaseApiService } from './base.service';
 import type {
@@ -153,7 +154,15 @@ export class RepositoryService extends BaseApiService {
     files: ClientFile[],
     options?: { onProgress?: (percent: number) => void },
   ): Promise<UploadSessionBatchResult> {
-    try {
+    const url = `${this.basePath}/projects/${projectId}/upload-sessions/${sessionId}/batches/${batchIndex}`;
+    // 대형 프로젝트는 배치 수십 개를 순차 전송한다. 한 배치가 일시적 네트워크
+    // 단절/타임아웃으로 실패해도 전체 업로드가 멈추지 않도록 배치 단위로 재시도한다.
+    // 배치 전송은 멱등이다(같은 파일 재기록, replace 는 서버에서 1회만 적용).
+    const maxAttempts = 4;
+    let lastError: unknown;
+
+    for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+      // FormData/파일 스트림은 한 번 전송되면 재사용이 불안정하므로 시도마다 새로 만든다.
       const formData = new FormData();
       const relativePaths: string[] = [];
 
@@ -163,37 +172,78 @@ export class RepositoryService extends BaseApiService {
       }
       formData.append('relativePaths', JSON.stringify(relativePaths));
 
-      const { data } = await api.post<UploadSessionBatchResult>(
-        `${this.basePath}/projects/${projectId}/upload-sessions/${sessionId}/batches/${batchIndex}`,
-        formData,
-        {
-          // Content-Type 수동 설정 금지 — 브라우저가 boundary 포함한 multipart/form-data 자동 설정
-          onUploadProgress: (e) => {
-            if (!options?.onProgress) {
-              return;
-            }
+      try {
+        const { data } = await api.post<UploadSessionBatchResult>(
+          url,
+          formData,
+          {
+            // Content-Type 수동 설정 금지 — 브라우저가 boundary 포함한 multipart/form-data 자동 설정
+            // 배치 1건당 2분 타임아웃 — 멈춘 연결을 빨리 실패 처리해 재시도로 넘긴다.
+            timeout: 120_000,
+            onUploadProgress: (e) => {
+              if (!options?.onProgress) {
+                return;
+              }
 
-            const ratio =
-              typeof e.progress === 'number'
-                ? e.progress
-                : e.total
-                  ? e.loaded / e.total
-                  : null;
+              const ratio =
+                typeof e.progress === 'number'
+                  ? e.progress
+                  : e.total
+                    ? e.loaded / e.total
+                    : null;
 
-            if (ratio !== null) {
-              options.onProgress(Math.round(ratio * 100));
-            }
+              if (ratio !== null) {
+                options.onProgress(Math.round(ratio * 100));
+              }
+            },
+            maxContentLength: Infinity,
+            maxBodyLength: Infinity,
           },
-          maxContentLength: Infinity,
-          maxBodyLength: Infinity,
-        },
-      );
+        );
 
-      return data;
-    } catch (error) {
-      this.logError('RepositoryService', 'uploadSessionBatch', error);
-      this.handleError(error, '업로드 배치 전송 실패');
+        return data;
+      } catch (error) {
+        lastError = error;
+        this.logError(
+          'RepositoryService',
+          `uploadSessionBatch(batch ${batchIndex}, attempt ${attempt}/${maxAttempts})`,
+          error,
+        );
+
+        // 재시도 불가한 오류(4xx 등)이거나 마지막 시도면 즉시 중단한다.
+        if (!this.isRetryableError(error) || attempt === maxAttempts) {
+          break;
+        }
+
+        // 지수 백오프 + 지터: 약 1s → 2s → 4s. 진행률을 0으로 되돌려 재시도 중임을 표시.
+        options?.onProgress?.(0);
+        const backoffMs = Math.min(1000 * 2 ** (attempt - 1), 8000);
+        const jitter = Math.floor(Math.random() * 400);
+        await this.delay(backoffMs + jitter);
+      }
     }
+
+    this.handleError(lastError, '업로드 배치 전송 실패');
+  }
+
+  /** 일시적 전송 오류(네트워크 단절·타임아웃·5xx)만 재시도 대상으로 본다. 4xx 는 재시도 무의미. */
+  private isRetryableError(error: unknown): boolean {
+    if (axios.isAxiosError(error)) {
+      // 응답이 없으면 네트워크 단절/타임아웃(ECONNABORTED 등) → 재시도
+      if (!error.response) {
+        return true;
+      }
+      const status = error.response.status;
+      return (
+        status === 408 || status === 425 || status === 429 || status >= 500
+      );
+    }
+    // Axios 외 예외(코드 버그 등)는 재시도하지 않는다.
+    return false;
+  }
+
+  private delay(ms: number): Promise<void> {
+    return new Promise((resolve) => setTimeout(resolve, ms));
   }
 
   async getTree(projectId: string): Promise<FileTreeNode> {
