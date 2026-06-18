@@ -18,7 +18,7 @@ const execAsync = promisify(exec);
 const DOCKER_LOG_MAX_BUFFER = 50 * 1024 * 1024;
 const DOCKER_ARCHIVE_MAX_BUFFER = 200 * 1024 * 1024;
 const NGINX_ACCESS_PATTERN =
-  /(?:^|\s)\[[0-9]{2}\/[A-Za-z]{3}\/[0-9]{4}:[0-9:]{8}\s[+\-][0-9]{4}\]\s"[A-Z]+ .* HTTP\/[0-9.]+"/;
+  /(?:^|\s)\[[0-9]{2}\/[A-Za-z]{3}\/[0-9]{4}:[0-9:]{8}\s[+-][0-9]{4}\]\s"[A-Z]+ .* HTTP\/[0-9.]+"/;
 const NGINX_ERROR_PATTERN =
   /\[(?:emerg|alert|crit|error|warn|notice|info|debug)\]/i;
 const GENERIC_ERROR_PATTERN =

@@ -11,7 +11,7 @@ import { ClaudeChat } from '../features/claude-chat/ui';
 import { OpenAIChat } from '../features/openai-chat/ui';
 import { useClaudeTabs } from '../features/claude-chat/hooks';
 
-function tabIcon(type: string, mode?: string, active?: boolean) {
+function tabIcon(type: string, mode?: string, _active?: boolean) {
   if (type === 'claude-code' || mode === 'claude')
     return <Sparkles size={14} />;
   if (type === 'claude-chat') return <MessageCircle size={14} />;

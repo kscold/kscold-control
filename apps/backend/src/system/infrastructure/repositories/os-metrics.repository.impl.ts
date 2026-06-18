@@ -215,8 +215,8 @@ export class OsMetricsRepositoryImpl implements IOsMetricsRepository {
 
   private async calculateMemoryUsage(): Promise<MemoryStats> {
     const totalMem = os.totalmem();
-    let appMem = 0;
-    let availableMem = 0;
+    let appMem: number;
+    let availableMem: number;
 
     try {
       const { stdout } = await execAsync('vm_stat');

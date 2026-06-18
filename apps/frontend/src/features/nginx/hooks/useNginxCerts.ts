@@ -69,7 +69,7 @@ export function useNginxCerts() {
       } else {
         showAlert(`갱신 실패: ${data.output}`);
       }
-    } catch (e: any) {
+    } catch {
       showAlert('갱신 중 오류가 발생했습니다.');
     } finally {
       setIssuing(false);

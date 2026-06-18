@@ -10,7 +10,7 @@ import {
   AlertTriangle,
   Wifi,
 } from 'lucide-react';
-import type { NginxSite, DnsCheckResult, TabType } from '../lib/nginx.types';
+import type { NginxSite, DnsCheckResult } from '../lib/nginx.types';
 
 interface SiteListProps {
   sites: NginxSite[];

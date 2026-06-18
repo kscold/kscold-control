@@ -32,7 +32,7 @@ export function usePortMappings() {
     }
   };
 
-  const handleCreate = async (externalIp: string) => {
+  const handleCreate = async (_externalIp: string) => {
     const pubPort = parseInt(form.publicPort, 10);
     const privPort = parseInt(form.privatePort, 10);
 

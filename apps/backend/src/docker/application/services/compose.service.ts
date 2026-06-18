@@ -7,7 +7,6 @@ import { resolveDockerProjectRoot } from './docker-project-path.util';
 
 const execAsync = promisify(exec);
 
-// eslint-disable-next-line @typescript-eslint/no-var-requires
 const yaml = require('js-yaml');
 
 /**
@@ -100,7 +99,7 @@ export class ComposeService {
           }
         }
       }
-    } catch (error) {
+    } catch {
       this.logger.warn(
         'Docker 포트 목록을 읽지 못해 compose 기준만 사용합니다.',
       );
@@ -235,7 +234,7 @@ export class ComposeService {
         `docker compose -f "${this.composeFilePath}" rm -f -s ${name}`,
         { cwd: this.projectRoot },
       );
-    } catch (error) {
+    } catch {
       this.logger.warn(`Compose rollback rm failed for "${name}"`);
     }
 
