@@ -26,7 +26,8 @@ server {
     ssl_prefer_server_ciphers on;
     ssl_ciphers HIGH:!aNULL:!MD5;
 
-    client_max_body_size 20M;
+    # 소스 저장소 업로드 대비 — 백엔드 json/multipart 한도(100MB)와 맞춘다.
+    client_max_body_size 100M;
 
     location / {
         proxy_pass http://ubuntu-app:3000;
@@ -47,6 +48,13 @@ server {
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
+
+        # 소스 업로드(대형 프로젝트의 배치 multipart 전송)는 nginx 기본 60초
+        # proxy 타임아웃에 걸려 중간에 끊기기 쉽다. 업로드 친화적으로 늘리고,
+        # 업로드 본문은 버퍼링하지 않고 백엔드로 바로 스트리밍한다.
+        proxy_read_timeout 600s;
+        proxy_send_timeout 600s;
+        proxy_request_buffering off;
     }
 
     location /uploads/ {

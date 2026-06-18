@@ -9,7 +9,6 @@ import type {
   GatewayInfo,
 } from '../../domain/types/port-mapping.type';
 
-// eslint-disable-next-line @typescript-eslint/no-var-requires
 const NatAPI = require('nat-api');
 
 @Injectable()
