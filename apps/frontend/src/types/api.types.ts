@@ -3,15 +3,7 @@
  * Request/Response types for API calls
  */
 
-import {
-  User,
-  Role,
-  Permission,
-  Container,
-  CreateContainerConfig,
-  SystemInfo,
-  LogType,
-} from './domain.types';
+import { User, SystemInfo, LogType } from './domain.types';
 
 // ============= Auth API Types =============
 
@@ -112,7 +104,7 @@ export interface GetDockerContainerLogsResponse {
 
 // ============= System API Types =============
 
-export interface SystemInfoResponse extends SystemInfo {}
+export type SystemInfoResponse = SystemInfo;
 
 // ============= Common API Types =============
 

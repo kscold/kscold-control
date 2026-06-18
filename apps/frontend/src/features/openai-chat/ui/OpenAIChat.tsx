@@ -62,7 +62,7 @@ export function OpenAIChat({
   // provider 전환 시마다 해당 provider의 저장된 세션 ID를 읽어옴
   const savedSessionId = useMemo(
     () => localStorage.getItem(storageKey),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+
     [storageKey],
   );
   const {
@@ -76,7 +76,7 @@ export function OpenAIChat({
     clear: clearMessages,
   } = useOpenAIChatMessages();
 
-  const { sendMessage, abort, closeSession } = useOpenAIChatSocket({
+  const { sendMessage, abort } = useOpenAIChatSocket({
     token,
     provider,
     savedSessionId,

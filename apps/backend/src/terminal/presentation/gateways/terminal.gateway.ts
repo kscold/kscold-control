@@ -176,7 +176,9 @@ export class TerminalGateway
             `[Terminal] Failed to create PTY for session ${session.id}:`,
             ptyError,
           );
-          throw new Error('PTY 프로세스 생성 실패: ' + ptyError.message);
+          throw new Error('PTY 프로세스 생성 실패: ' + ptyError.message, {
+            cause: ptyError,
+          });
         }
       }
 

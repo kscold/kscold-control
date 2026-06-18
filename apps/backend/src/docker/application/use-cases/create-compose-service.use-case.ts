@@ -41,11 +41,9 @@ export class CreateComposeServiceUseCase {
   ): Promise<{ output: string; container: ContainerResponseDto }> {
     await this.validateBeforeCreate(config);
 
-    let output = '';
-
     try {
       this.composeService.addService(config);
-      output = await this.composeService.upService(config.name);
+      const output = await this.composeService.upService(config.name);
 
       const dockerContainer = await this.waitForContainer(config.name);
       const container = await this.importContainerUseCase.execute(

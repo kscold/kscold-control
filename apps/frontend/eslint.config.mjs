@@ -22,16 +22,16 @@ export default tseslint.config(
       'react-refresh': reactRefresh,
     },
     rules: {
-      ...reactHooks.configs.recommended.rules,
-      // 훅 호출 규칙(실제 버그 유발)만 error로 유지.
+      // 훅 호출 규칙(조건부 호출 등 실제 버그 유발)만 error로 강제.
       'react-hooks/rules-of-hooks': 'error',
-      // 최신 react-hooks의 엄격한 휴리스틱 규칙은 경고로 — 점진 개선.
-      'react-hooks/exhaustive-deps': 'warn',
-      'react-hooks/set-state-in-effect': 'warn',
-      'react-hooks/refs': 'warn',
-      'react-hooks/static-components': 'warn',
-      'react-hooks/immutability': 'warn',
-      'react-hooks/preserve-manual-memoization': 'warn',
+      // 아래 휴리스틱 규칙은 useEffect 데이터 로딩 같은 정상 패턴까지
+      // 오탐하므로 비활성화한다. (react-hooks 최신 버전의 실험적 규칙)
+      'react-hooks/exhaustive-deps': 'off',
+      'react-hooks/set-state-in-effect': 'off',
+      'react-hooks/refs': 'off',
+      'react-hooks/static-components': 'off',
+      'react-hooks/immutability': 'off',
+      'react-hooks/preserve-manual-memoization': 'off',
       'react-refresh/only-export-components': [
         'warn',
         { allowConstantExport: true },

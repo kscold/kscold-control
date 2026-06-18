@@ -22,7 +22,7 @@ export class SystemStatusReaderRepository implements ISystemStatusReader {
       } catch {
         return { running: false, version };
       }
-    } catch (error) {
+    } catch {
       return { running: false };
     }
   }
