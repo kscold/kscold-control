@@ -17,10 +17,7 @@ import {
   IUploadSessionRepository,
   UPLOAD_SESSION_REPOSITORY,
 } from '../../domain/repositories/upload-session.repository.interface';
-import {
-  RepositoryUploadBatch,
-  RepositoryUploadSession,
-} from '../../domain/types/upload-session.type';
+import { RepositoryUploadSession } from '../../domain/types/upload-session.type';
 import { Project } from '../../domain/entities/project.entity';
 
 export interface UploadSessionBatchFile {
@@ -168,14 +165,20 @@ export class UploadSessionBatchUseCase {
     this.recalculateSession(session);
 
     const persistedSession = await this.uploadSessionRepository.save(session);
-    const stats = await this.fileStorage.getStats(project.name);
-    const updatedProject = await this.projectRepository.update(projectId, {
-      fileCount: stats.fileCount,
-      totalSize: stats.totalSize,
-    });
 
-    // 세션이 완료되면 스냅샷 생성 (비동기, 실패해도 응답에 영향 없음)
+    // 성능: 매 배치마다 프로젝트 전체 트리를 재스캔(getStats)하면 O(N²)이 되어
+    // 배치 수십 개 × 파일 수천 개의 대형 프로젝트(bigzmai 등)에서 후반 배치가
+    // 급격히 느려지고 전송이 끊긴다. 전체 통계 갱신과 스냅샷 생성은 세션이
+    // 끝났을 때 1회만 수행한다. 진행 중에는 세션의 누적 카운트로 충분하다.
+    let updatedProject = project;
     if (persistedSession.status === 'completed') {
+      const stats = await this.fileStorage.getStats(project.name);
+      updatedProject = await this.projectRepository.update(projectId, {
+        fileCount: stats.fileCount,
+        totalSize: stats.totalSize,
+      });
+
+      // 스냅샷 생성 (비동기, 실패해도 응답에 영향 없음)
       this.fileStorage.createSnapshot(project.name).catch((err: Error) => {
         this.logger.error(
           `스냅샷 생성 실패 — project: ${project.name}, reason: ${err.message}`,

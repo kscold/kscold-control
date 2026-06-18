@@ -64,7 +64,7 @@ export class DockerodeClientAdapter implements IDockerClient, OnModuleInit {
       );
 
       // Map ports for Docker
-      const exposedPorts: Record<string, {}> = {};
+      const exposedPorts: Record<string, Record<string, never>> = {};
       const portBindings: Record<string, Array<{ HostPort: string }>> = {};
 
       Object.entries(config.ports).forEach(([internal, external]) => {

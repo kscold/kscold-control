@@ -41,6 +41,7 @@ export class UpnpService {
       this.logger.error('Failed to add UPnP mapping', err);
       throw new Error(
         `포트 매핑 추가 실패: ${err instanceof Error ? err.message : err}`,
+        { cause: err },
       );
     }
   }
@@ -58,6 +59,7 @@ export class UpnpService {
       this.logger.error('Failed to remove UPnP mapping', err);
       throw new Error(
         `포트 매핑 삭제 실패: ${err instanceof Error ? err.message : err}`,
+        { cause: err },
       );
     }
   }
@@ -69,6 +71,7 @@ export class UpnpService {
       this.logger.error('Failed to get external IP via UPnP', err);
       throw new Error(
         `외부 IP 조회 실패: ${err instanceof Error ? err.message : err}`,
+        { cause: err },
       );
     }
   }

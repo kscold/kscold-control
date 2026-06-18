@@ -15,11 +15,7 @@ import {
 } from 'lucide-react';
 import { auditService } from '../../../services/api/audit.service';
 import { useAuditTimeline } from '../hooks/useAuditTimeline';
-import {
-  buildDiffEntries,
-  buildDiffPreview,
-  isRecord,
-} from '../lib/audit-diff';
+import { buildDiffEntries, buildDiffPreview } from '../lib/audit-diff';
 import {
   formatAuditTimestamp,
   formatExportFilename,

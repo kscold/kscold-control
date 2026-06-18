@@ -41,7 +41,7 @@ function isExecutable(targetPath: string): boolean {
 }
 
 function shellQuote(value: string): string {
-  return `'${value.replace(/'/g, `'\"'\"'`)}'`;
+  return `'${value.replace(/'/g, `'"'"'`)}'`;
 }
 
 function readExtensionCandidates(

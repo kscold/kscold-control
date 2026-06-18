@@ -1,10 +1,6 @@
 import { api } from '../../lib/api';
 import { BaseApiService } from './base.service';
-import {
-  GetLogsRequest,
-  GetLogsResponse,
-  GetDockerContainerLogsResponse,
-} from '../../types';
+import { GetLogsRequest, GetDockerContainerLogsResponse } from '../../types';
 
 /**
  * Logs API Service

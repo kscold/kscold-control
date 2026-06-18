@@ -1164,7 +1164,9 @@ export class WorkspaceFileService {
       staged: change.staged,
       unstaged: change.unstaged,
       diff,
-      hunks: this.parseDiffHunks(actionDiff).map(({ patch, ...hunk }) => hunk),
+      hunks: this.parseDiffHunks(actionDiff).map(
+        ({ patch: _patch, ...hunk }) => hunk,
+      ),
       canAccept: true,
       canReject: true,
     };

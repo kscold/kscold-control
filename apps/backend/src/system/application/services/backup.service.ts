@@ -78,7 +78,9 @@ export class BackupService {
             `du -sh "${fullPath}" | cut -f1`,
           );
           size = result.toString().trim();
-        } catch {}
+        } catch {
+          // du 실패 시 기본값 '-' 유지
+        }
         return { date: e.name, path: fullPath, size };
       });
   }
