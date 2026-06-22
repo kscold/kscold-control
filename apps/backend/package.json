@@ -49,7 +49,7 @@
     "@nestjs/schematics": "^11.0.0",
     "@nestjs/testing": "^11.1.27",
     "@types/bcrypt": "^5.0.2",
-    "@types/dockerode": "^3.3.23",
+    "@types/dockerode": "^4.0.1",
     "@types/express": "^5.0.6",
     "@types/jest": "^29.5.11",
     "@types/node": "^20.11.16",
