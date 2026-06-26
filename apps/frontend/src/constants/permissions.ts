@@ -16,4 +16,9 @@ export const PERMISSIONS = {
   SYSTEM_WRITE: 'system:write',
   TERMINAL_ACCESS: 'terminal:access',
   RBAC_MANAGE: 'rbac:manage',
+  REPOSITORY_READ: 'repository:read',
+  REPOSITORY_WRITE: 'repository:write',
+  REPOSITORY_DELETE: 'repository:delete',
+  SECURITY_READ: 'security:read',
+  SECURITY_MANAGE: 'security:manage',
 } as const;
