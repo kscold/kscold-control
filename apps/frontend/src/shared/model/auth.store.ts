@@ -79,11 +79,13 @@ export const useAuthStore = create<AuthState>()(
         }
       },
 
-      hasPermission: (_permission: string) => {
+      hasPermission: (permission: string) => {
         const { user } = get();
         if (!user) return false;
-        if (user.roles.includes('admin')) return true;
-        return false; // 세밀한 권한은 백엔드에서 처리
+        if (user.roles.includes('admin') || user.roles.includes('super_admin')) {
+          return true;
+        }
+        return user.permissions.includes(permission);
       },
     }),
     {

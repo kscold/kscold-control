@@ -43,7 +43,8 @@ import { AuditInterceptor } from './common/interceptors';
     // React 빌드 파일 서빙 (프로덕션)
     ServeStaticModule.forRoot({
       rootPath: join(__dirname, '..', '..', 'frontend', 'dist'),
-      exclude: ['/api/(.*)'], // API 라우트만 제외, SPA 라우팅(/docker, /claude 등)은 index.html로
+      // Express 5 / path-to-regexp v8: '/api/(.*)' is invalid.
+      exclude: ['/api/{*any}'], // API 라우트만 제외, SPA 라우팅(/docker, /claude 등)은 index.html로
       serveRoot: '/',
     }),
 
