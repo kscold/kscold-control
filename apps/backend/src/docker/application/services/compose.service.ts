@@ -8,6 +8,7 @@ import { resolveDockerProjectRoot } from './docker-project-path.util';
 const execAsync = promisify(exec);
 
 const yaml = require('js-yaml');
+const SAFE_COMPOSE_SERVICE_NAME = /^[a-zA-Z0-9][a-zA-Z0-9_.-]{0,62}$/;
 
 /**
  * docker-compose 서비스 생성에 쓰는 설정입니다.
@@ -64,6 +65,7 @@ export class ComposeService {
    * 특정 이름의 서비스가 compose에 있는지 확인합니다.
    */
   hasService(name: string): boolean {
+    this.assertSafeServiceName(name);
     const compose = this.readCompose();
     return Boolean(compose.services?.[name]);
   }
@@ -128,6 +130,7 @@ export class ComposeService {
    * 새 서비스를 docker-compose.yml에 추가합니다.
    */
   addService(config: ComposeServiceConfig): void {
+    this.assertSafeServiceName(config.name);
     const compose = this.readCompose();
 
     if (compose.services?.[config.name]) {
@@ -166,6 +169,7 @@ export class ComposeService {
    * docker-compose.yml에서 서비스를 제거합니다.
    */
   removeService(name: string): void {
+    this.assertSafeServiceName(name);
     const compose = this.readCompose();
 
     if (!compose.services?.[name]) {
@@ -196,6 +200,7 @@ export class ComposeService {
    * 특정 서비스를 docker compose up으로 기동합니다.
    */
   async upService(name: string): Promise<string> {
+    this.assertSafeServiceName(name);
     try {
       const { stdout, stderr } = await execAsync(
         `docker compose -f "${this.composeFilePath}" up -d ${name}`,
@@ -213,6 +218,7 @@ export class ComposeService {
    * 특정 서비스를 중지하고 compose에서 제거합니다.
    */
   async downService(name: string): Promise<string> {
+    this.assertSafeServiceName(name);
     try {
       const { stdout, stderr } = await execAsync(
         `docker compose -f "${this.composeFilePath}" rm -f -s ${name}`,
@@ -229,6 +235,7 @@ export class ComposeService {
    * 서비스 생성 실패 시 컨테이너와 compose 정의를 함께 원복합니다.
    */
   async rollbackServiceCreation(name: string): Promise<void> {
+    this.assertSafeServiceName(name);
     try {
       await execAsync(
         `docker compose -f "${this.composeFilePath}" rm -f -s ${name}`,
@@ -247,7 +254,16 @@ export class ComposeService {
    * 특정 서비스의 compose 설정을 반환합니다.
    */
   getServiceConfig(name: string): any | null {
+    this.assertSafeServiceName(name);
     const compose = this.readCompose();
     return compose.services?.[name] || null;
+  }
+
+  private assertSafeServiceName(name: string): void {
+    if (!SAFE_COMPOSE_SERVICE_NAME.test(name)) {
+      throw new BadRequestException(
+        '서비스 이름은 영문/숫자로 시작하고 영문, 숫자, 점, 밑줄, 하이픈만 사용할 수 있습니다.',
+      );
+    }
   }
 }

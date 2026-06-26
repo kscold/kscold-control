@@ -35,33 +35,36 @@ export class RbacSeedService {
    * Seed initial permissions, roles, and assign admin role
    */
   async seedInitialData(): Promise<void> {
-    // Create permissions
-    const permissionData = [
-      { name: PERMISSIONS.DOCKER_READ, description: 'Docker 컨테이너 조회' },
-      { name: PERMISSIONS.DOCKER_CREATE, description: 'Docker 컨테이너 생성' },
-      {
-        name: PERMISSIONS.DOCKER_UPDATE,
-        description: 'Docker 컨테이너 수정 (시작/중지)',
-      },
-      { name: PERMISSIONS.DOCKER_DELETE, description: 'Docker 컨테이너 삭제' },
-      { name: PERMISSIONS.TERMINAL_ACCESS, description: '터미널 접근' },
-      { name: PERMISSIONS.RBAC_MANAGE, description: 'RBAC 관리' },
-      {
-        name: PERMISSIONS.SYSTEM_READ,
-        description: '시스템 정보 및 로그 조회',
-      },
-      {
-        name: PERMISSIONS.REPOSITORY_READ,
-        description: '소스 저장소 조회/다운로드',
-      },
-      { name: PERMISSIONS.REPOSITORY_WRITE, description: '소스 저장소 업로드' },
-      { name: PERMISSIONS.REPOSITORY_DELETE, description: '소스 저장소 삭제' },
-    ];
+    const permissionDescriptions: Record<string, string> = {
+      [PERMISSIONS.CLAUDE_EXECUTE]: 'Claude/AI 실행',
+      [PERMISSIONS.DOCKER_READ]: 'Docker 컨테이너 조회',
+      [PERMISSIONS.DOCKER_READ_ALL]: '전체 Docker 컨테이너 조회',
+      [PERMISSIONS.DOCKER_CREATE]: 'Docker 컨테이너 생성',
+      [PERMISSIONS.DOCKER_UPDATE]: 'Docker 컨테이너 수정 (시작/중지)',
+      [PERMISSIONS.DOCKER_DELETE]: 'Docker 컨테이너 삭제',
+      [PERMISSIONS.SESSION_READ]: '세션 조회',
+      [PERMISSIONS.SESSION_WRITE]: '세션 기록',
+      [PERMISSIONS.USER_MANAGE]: '사용자 관리',
+      [PERMISSIONS.SYSTEM_READ]: '시스템 정보 및 로그 조회',
+      [PERMISSIONS.SYSTEM_WRITE]: '시스템/Nginx/네트워크 설정 변경',
+      [PERMISSIONS.TERMINAL_ACCESS]: '터미널 접근',
+      [PERMISSIONS.RBAC_MANAGE]: 'RBAC 관리',
+      [PERMISSIONS.REPOSITORY_READ]: '소스 저장소 조회/다운로드',
+      [PERMISSIONS.REPOSITORY_WRITE]: '소스 저장소 업로드',
+      [PERMISSIONS.REPOSITORY_DELETE]: '소스 저장소 삭제',
+      [PERMISSIONS.SECURITY_READ]: 'IP 차단 목록 조회',
+      [PERMISSIONS.SECURITY_MANAGE]: 'IP 차단 관리',
+    };
 
-    for (const perm of permissionData) {
-      const exists = await this.permissionRepo.findByName(perm.name);
+    for (const name of Object.values(PERMISSIONS)) {
+      const exists = await this.permissionRepo.findByName(name);
       if (!exists) {
-        await this.permissionRepo.save(this.permissionRepo.create(perm));
+        await this.permissionRepo.save(
+          this.permissionRepo.create({
+            name,
+            description: permissionDescriptions[name] ?? name,
+          }),
+        );
       }
     }
 
@@ -87,7 +90,11 @@ export class RbacSeedService {
 
     // Create Read Only role
     const readOnlyPerms = allPermissions.filter(
-      (p) => p.name === PERMISSIONS.DOCKER_READ,
+      (p) =>
+        p.name === PERMISSIONS.DOCKER_READ ||
+        p.name === PERMISSIONS.SYSTEM_READ ||
+        p.name === PERMISSIONS.REPOSITORY_READ ||
+        p.name === PERMISSIONS.SECURITY_READ,
     );
     const readOnlyRole = await this.roleRepository.findByName(ROLES.READ_ONLY);
     if (!readOnlyRole) {
@@ -103,7 +110,10 @@ export class RbacSeedService {
     const operatorPerms = allPermissions.filter(
       (p) =>
         p.name === PERMISSIONS.DOCKER_READ ||
-        p.name === PERMISSIONS.DOCKER_UPDATE,
+        p.name === PERMISSIONS.DOCKER_UPDATE ||
+        p.name === PERMISSIONS.SYSTEM_READ ||
+        p.name === PERMISSIONS.REPOSITORY_READ ||
+        p.name === PERMISSIONS.SECURITY_READ,
     );
     const operatorRole = await this.roleRepository.findByName(ROLES.OPERATOR);
     if (!operatorRole) {
