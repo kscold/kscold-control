@@ -67,6 +67,30 @@ describe('DockerTopologyService', () => {
                 isManaged: true,
               },
               {
+                id: 'blog-agent',
+                dockerId: 'dock-blog-agent',
+                name: 'kscold-vault-agent',
+                image: 'kscold-vault-agent:test',
+                status: 'running',
+                liveStatus: 'running',
+                ports: { '9090': 9090 },
+                resources: { cpus: 1, memory: '512mb' },
+                createdAt: new Date().toISOString(),
+                isManaged: true,
+              },
+              {
+                id: 'blog-qdrant',
+                dockerId: 'dock-blog-qdrant',
+                name: 'kscold-vault-qdrant',
+                image: 'qdrant/qdrant:v1.10.1',
+                status: 'running',
+                liveStatus: 'running',
+                ports: { '6333': 6333 },
+                resources: { cpus: 1, memory: '512mb' },
+                createdAt: new Date().toISOString(),
+                isManaged: true,
+              },
+              {
                 id: 'slacord-app',
                 dockerId: 'dock-slacord',
                 name: 'ubuntu-slacord',
@@ -151,6 +175,22 @@ describe('DockerTopologyService', () => {
                   });
                 }
 
+                if (dockerId === 'dock-blog-agent') {
+                  return Promise.resolve({
+                    pm2: [],
+                    services: [
+                      { name: 'Vault Agent', port: 9090, icon: 'agent' },
+                    ],
+                  });
+                }
+
+                if (dockerId === 'dock-blog-qdrant') {
+                  return Promise.resolve({
+                    pm2: [],
+                    services: [{ name: 'Qdrant', port: 6333, icon: 'vector' }],
+                  });
+                }
+
                 return Promise.resolve({
                   pm2: [],
                   services: [{ name: 'Nginx', port: 80, icon: 'nginx' }],
@@ -172,6 +212,12 @@ describe('DockerTopologyService', () => {
     const blogSiteNode = snapshot.nodes.find(
       (node) => node.id === 'nginx-blog',
     );
+    const blogAgentNode = snapshot.nodes.find(
+      (node) => node.id === 'container-blog-agent',
+    );
+    const blogQdrantNode = snapshot.nodes.find(
+      (node) => node.id === 'container-blog-qdrant',
+    );
     const controlNode = snapshot.nodes.find(
       (node) => node.id === 'local-control',
     );
@@ -186,7 +232,7 @@ describe('DockerTopologyService', () => {
       (node) => node.id === 'container-infra-db',
     );
 
-    expect(snapshot.summary.containerCount).toBe(4);
+    expect(snapshot.summary.containerCount).toBe(6);
     expect(snapshot.nodes.some((node) => node.id === 'host')).toBe(true);
     expect(snapshot.nodes.some((node) => node.id === 'local-control')).toBe(
       true,
@@ -238,6 +284,35 @@ describe('DockerTopologyService', () => {
       }),
     );
     expect(blogNode?.position.x).toBe(blogSiteNode?.position.x);
+    expect(blogAgentNode?.position.x).toBeGreaterThan(
+      blogNode?.position.x ?? 0,
+    );
+    expect(blogAgentNode?.position.x).toBeLessThan(
+      (blogNode?.position.x ?? 0) + 350,
+    );
+    expect(blogAgentNode?.position.y).toBeGreaterThan(
+      blogNode?.position.y ?? 0,
+    );
+    expect(blogQdrantNode?.position.x).toBeGreaterThan(
+      blogAgentNode?.position.x ?? 0,
+    );
+    expect(blogQdrantNode?.position.x).toBeLessThan(
+      (blogNode?.position.x ?? 0) + 650,
+    );
+    expect(
+      snapshot.edges.some(
+        (edge) =>
+          edge.source === 'container-blog-app' &&
+          edge.target === 'container-blog-agent',
+      ),
+    ).toBe(true);
+    expect(
+      snapshot.edges.some(
+        (edge) =>
+          edge.source === 'container-blog-app' &&
+          edge.target === 'container-blog-qdrant',
+      ),
+    ).toBe(true);
     expect(slacordNode?.position.x).toBe(slacordSiteNode?.position.x);
     expect(
       (slacordNode?.position.x ?? 0) - (blogNode?.position.x ?? 0),

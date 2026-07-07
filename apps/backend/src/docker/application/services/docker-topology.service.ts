@@ -41,6 +41,8 @@ interface ContainerGatewayInfo {
 interface AppColumnEntry {
   container: ContainerResponseDto;
   columnIndex: number;
+  yOffset?: number;
+  companionParentName?: string;
 }
 
 const COL_GAP = 400;
@@ -183,7 +185,12 @@ export class DockerTopologyService {
       })),
     ];
 
-    const totalColumns = Math.max(sortedSites.length, appColumns.length, 5);
+    const maxColumnIndex = Math.max(
+      sortedSites.length - 1,
+      ...appColumns.map((entry) => entry.columnIndex),
+      4,
+    );
+    const totalColumns = Math.ceil(maxColumnIndex) + 1;
     const totalWidth = totalColumns * COL_GAP;
     const centerX = totalWidth / 2;
     const rowStartX =
@@ -314,54 +321,77 @@ export class DockerTopologyService {
       }
     });
 
-    appColumns.forEach(({ container, columnIndex }) => {
-      const meta = this.getStackMeta(container.image, container.name);
-      const processes = processMap[container.id] ?? { pm2: [], services: [] };
-      const domains = this.getContainerDomains(container, sites);
-      const gateway = this.buildContainerGateway(
-        container,
-        processes.services,
-        domains,
-      );
-      const nodeId = `container-${container.id}`;
-      const x = rowStartX + columnIndex * COL_GAP;
-      const y = APP_Y;
-
-      nodes.push({
-        id: nodeId,
-        type: 'container',
-        position: { x, y },
-        data: {
-          label: meta.label || container.name,
-          image: container.image,
-          status: container.liveStatus,
-          ports: container.ports,
-          meta,
-          processes,
-          composeManaged: composeServices.has(container.name),
+    appColumns.forEach(
+      ({ container, columnIndex, yOffset, companionParentName }) => {
+        const meta = this.getStackMeta(container.image, container.name);
+        const processes = processMap[container.id] ?? { pm2: [], services: [] };
+        const domains = this.getContainerDomains(container, sites);
+        const gateway = this.buildContainerGateway(
+          container,
+          processes.services,
           domains,
-          gateway,
-        },
-        draggable: true,
-      });
+        );
+        const nodeId = `container-${container.id}`;
+        const x = rowStartX + columnIndex * COL_GAP;
+        const y = APP_Y + (yOffset ?? 0);
 
-      containerNodeMap.set(container.name, nodeId);
-      addEdge({
-        id: `host-${nodeId}`,
-        source: 'host',
-        target: nodeId,
-        style: { stroke: '#334155', strokeWidth: 1.5, strokeDasharray: '6 3' },
-      });
-      this.addServiceNodes(
-        nodes,
-        addEdge,
-        serviceNodeIds,
-        nodeId,
-        processes.services,
-        x,
-        y,
-      );
-    });
+        nodes.push({
+          id: nodeId,
+          type: 'container',
+          position: { x, y },
+          data: {
+            label: meta.label || container.name,
+            image: container.image,
+            status: container.liveStatus,
+            ports: container.ports,
+            meta,
+            processes,
+            composeManaged: composeServices.has(container.name),
+            domains,
+            gateway,
+          },
+          draggable: true,
+        });
+
+        containerNodeMap.set(container.name, nodeId);
+        addEdge({
+          id: `host-${nodeId}`,
+          source: 'host',
+          target: nodeId,
+          style: {
+            stroke: '#334155',
+            strokeWidth: 1.5,
+            strokeDasharray: '6 3',
+          },
+        });
+        this.addServiceNodes(
+          nodes,
+          addEdge,
+          serviceNodeIds,
+          nodeId,
+          processes.services,
+          x,
+          y,
+        );
+
+        if (companionParentName) {
+          const parentNodeId = containerNodeMap.get(companionParentName);
+          if (parentNodeId) {
+            addEdge({
+              id: `${parentNodeId}-${nodeId}`,
+              source: parentNodeId,
+              target: nodeId,
+              animated: container.liveStatus === 'running',
+              style: {
+                stroke: '#8b5cf6',
+                strokeWidth: 1.5,
+                strokeDasharray: '5 3',
+              },
+            });
+          }
+        }
+      },
+    );
 
     for (const site of sortedSites) {
       const target = this.resolveUpstreamTarget(
@@ -501,6 +531,7 @@ export class DockerTopologyService {
   ): AppColumnEntry[] {
     const usedContainerIds = new Set<string>();
     const alignedEntries: AppColumnEntry[] = [];
+    const columnByContainerName = new Map<string, number>();
 
     sortedSites.forEach((site, columnIndex) => {
       const matchedContainer = appContainers.find(
@@ -514,11 +545,45 @@ export class DockerTopologyService {
       }
 
       usedContainerIds.add(matchedContainer.id);
+      columnByContainerName.set(matchedContainer.name, columnIndex);
       alignedEntries.push({
         container: matchedContainer,
         columnIndex,
       });
     });
+
+    const companionEntries = appContainers
+      .filter((container) => !usedContainerIds.has(container.id))
+      .map((container) => {
+        const parentName = this.getCompanionParentName(container.name);
+        return parentName
+          ? {
+              container,
+              parentName,
+              order: this.getCompanionOrder(container.name),
+            }
+          : null;
+      })
+      .filter(
+        (
+          entry,
+        ): entry is {
+          container: ContainerResponseDto;
+          parentName: string;
+          order: number;
+        } => entry !== null && columnByContainerName.has(entry.parentName),
+      )
+      .sort((left, right) => left.order - right.order)
+      .map((entry, index) => {
+        usedContainerIds.add(entry.container.id);
+        return {
+          container: entry.container,
+          columnIndex:
+            columnByContainerName.get(entry.parentName)! + 0.72 + index * 0.72,
+          yOffset: 145,
+          companionParentName: entry.parentName,
+        };
+      });
 
     const orphanContainers = appContainers.filter(
       (container) => !usedContainerIds.has(container.id),
@@ -526,11 +591,35 @@ export class DockerTopologyService {
 
     return [
       ...alignedEntries,
+      ...companionEntries,
       ...orphanContainers.map((container, index) => ({
         container,
         columnIndex: sortedSites.length + index,
       })),
     ];
+  }
+
+  private getCompanionParentName(containerName: string): string | null {
+    const normalizedName = containerName.toLowerCase();
+
+    if (
+      normalizedName.includes('vault-agent') ||
+      normalizedName.includes('blog-agent') ||
+      normalizedName.includes('vault-qdrant') ||
+      normalizedName.includes('blog-qdrant')
+    ) {
+      return 'ubuntu-blog';
+    }
+
+    return null;
+  }
+
+  private getCompanionOrder(containerName: string): number {
+    const normalizedName = containerName.toLowerCase();
+
+    if (normalizedName.includes('agent')) return 0;
+    if (normalizedName.includes('qdrant')) return 1;
+    return 10;
   }
 
   private resolveUpstreamTarget(
@@ -755,6 +844,53 @@ export class DockerTopologyService {
   private getStackMeta(image: string, containerName: string): StackMeta {
     const normalizedImage = image.toLowerCase();
     const normalizedName = containerName.toLowerCase();
+
+    if (
+      normalizedName.includes('vault-agent') ||
+      normalizedName.includes('blog-agent')
+    ) {
+      return {
+        label: 'Vault Agent',
+        type: 'app',
+        color: 'border-violet-500',
+        shadowColor: 'shadow-violet-500/20',
+        headerBg: 'bg-violet-950',
+        stacks: [
+          {
+            name: 'LangGraph',
+            badge: 'Agent',
+            color: 'bg-violet-900 text-violet-300',
+          },
+          {
+            name: 'gRPC',
+            badge: ':9090',
+            color: 'bg-sky-900 text-sky-300',
+          },
+        ],
+        knownServices: [{ name: 'Vault Agent', port: 9090, icon: 'agent' }],
+      };
+    }
+
+    if (
+      normalizedImage.includes('qdrant') ||
+      normalizedName.includes('qdrant')
+    ) {
+      return {
+        label: 'Vault Qdrant',
+        type: 'storage',
+        color: 'border-cyan-500',
+        shadowColor: 'shadow-cyan-500/20',
+        headerBg: 'bg-cyan-950',
+        stacks: [
+          {
+            name: 'Qdrant',
+            badge: 'Vector DB',
+            color: 'bg-cyan-900 text-cyan-300',
+          },
+        ],
+        knownServices: [{ name: 'Qdrant', port: 6333, icon: 'vector' }],
+      };
+    }
 
     if (
       normalizedImage.includes('slacord') ||
