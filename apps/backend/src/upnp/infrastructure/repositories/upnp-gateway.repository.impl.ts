@@ -9,23 +9,11 @@ import type {
   GatewayInfo,
 } from '../../domain/types/port-mapping.type';
 
-const NatAPI = require('nat-api');
-
 @Injectable()
 export class UpnpGatewayRepositoryImpl implements IUpnpGatewayRepository {
   private readonly logger = new Logger(UpnpGatewayRepositoryImpl.name);
   private gatewayCache: GatewayInfo | null = null;
   private gatewayCacheTime = 0;
-
-  // ── NatAPI ──────────────────────────────────────────────
-
-  private createClient(): any {
-    return new NatAPI({
-      ttl: 7200,
-      description: 'kscold-control',
-      autoUpdate: false,
-    });
-  }
 
   // ── SSDP Discovery ─────────────────────────────────────
 
@@ -353,21 +341,23 @@ export class UpnpGatewayRepositoryImpl implements IUpnpGatewayRepository {
   }
 
   async getExternalIp(): Promise<string> {
-    const client = this.createClient();
-    try {
-      const ip = await new Promise<string>((resolve, reject) => {
-        client.externalIp((err: Error, ip: string) => {
-          if (err) return reject(err);
-          resolve(ip);
-        });
-      });
-      return ip;
-    } finally {
-      try {
-        client.destroy(() => {});
-      } catch {
-        // ignore
-      }
+    const gw = await this.discoverGateway();
+    const xml = await this.soapCall(
+      gw.host,
+      gw.port,
+      gw.controlUrl,
+      `${gw.serviceType}#GetExternalIPAddress`,
+      `<u:GetExternalIPAddress xmlns:u="${gw.serviceType}"></u:GetExternalIPAddress>`,
+    );
+
+    if (xml.includes('UPnPError') || xml.includes('Fault')) {
+      throw new Error('UPnP 외부 IP 조회 실패');
     }
+
+    const ip = xml.match(
+      /<NewExternalIPAddress>([^<]+)<\/NewExternalIPAddress>/i,
+    )?.[1];
+    if (!ip) throw new Error('UPnP 외부 IP 응답이 없습니다');
+    return ip.trim();
   }
 }

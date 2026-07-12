@@ -3,6 +3,15 @@
   "version": "1.0.0",
   "private": true,
   "packageManager": "pnpm@10.29.3",
+  "pnpm": {
+    "overrides": {
+      "broadcast-channel": "7.3.0",
+      "multer": "2.2.0",
+      "react-router": "6.30.4",
+      "socket.io-parser": "4.2.6",
+      "ws": "8.21.0"
+    }
+  },
   "scripts": {
     "dev": "turbo run dev",
     "build": "turbo run build",
