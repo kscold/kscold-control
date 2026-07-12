@@ -1,9 +1,4 @@
-import {
-  Inject,
-  Injectable,
-  NotFoundException,
-  BadRequestException,
-} from '@nestjs/common';
+import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import {
   IProjectRepository,
   PROJECT_REPOSITORY,
@@ -12,6 +7,7 @@ import {
   FILE_STORAGE,
   IFileStorage,
 } from '../../domain/repositories/file-storage.interface';
+import { assertSafeRepositoryPath } from '../utils/repository-path.util';
 
 export interface FileContentResult {
   path: string;
@@ -117,14 +113,13 @@ export class ReadFileUseCase {
   async execute(
     projectId: string,
     relativePath: string,
+    ownerId?: string,
   ): Promise<FileContentResult> {
-    const project = await this.projectRepository.findById(projectId);
+    const project = await this.projectRepository.findById(projectId, ownerId);
     if (!project) {
       throw new NotFoundException(`프로젝트를 찾을 수 없습니다: ${projectId}`);
     }
-    if (!relativePath || relativePath.includes('..')) {
-      throw new BadRequestException('잘못된 경로');
-    }
+    assertSafeRepositoryPath(relativePath);
 
     let buffer: Buffer;
     try {

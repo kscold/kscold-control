@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import * as fs from 'fs';
 import * as path from 'path';
 import type { INginxConfigRepository } from '../../domain/interfaces/nginx-config.repository';
@@ -42,6 +42,7 @@ export class NginxConfigRepositoryImpl implements INginxConfigRepository {
   }
 
   read(name: string): NginxSite | null {
+    this.assertSafeName(name);
     const enabledPath = path.join(NGINX_CONF_DIR, `${name}.conf`);
     const disabledPath = path.join(NGINX_CONF_DIR, `${name}.conf.disabled`);
 
@@ -63,6 +64,7 @@ export class NginxConfigRepositoryImpl implements INginxConfigRepository {
   }
 
   write(name: string, dto: CreateNginxSiteDto): NginxSite {
+    this.assertSafeName(name);
     const enabledPath = path.join(NGINX_CONF_DIR, `${name}.conf`);
     const disabledPath = path.join(NGINX_CONF_DIR, `${name}.conf.disabled`);
 
@@ -87,11 +89,13 @@ export class NginxConfigRepositoryImpl implements INginxConfigRepository {
   }
 
   delete(name: string): void {
+    this.assertSafeName(name);
     const filePath = this.getFilePath(name);
     fs.unlinkSync(filePath);
   }
 
   toggle(name: string): { enabled: boolean } {
+    this.assertSafeName(name);
     const enabledPath = path.join(NGINX_CONF_DIR, `${name}.conf`);
     const disabledPath = path.join(NGINX_CONF_DIR, `${name}.conf.disabled`);
 
@@ -210,10 +214,17 @@ server {
   }
 
   private getFilePath(name: string): string {
+    this.assertSafeName(name);
     const enabledPath = path.join(NGINX_CONF_DIR, `${name}.conf`);
     const disabledPath = path.join(NGINX_CONF_DIR, `${name}.conf.disabled`);
     if (fs.existsSync(enabledPath)) return enabledPath;
     if (fs.existsSync(disabledPath)) return disabledPath;
     throw new Error(`Site "${name}" not found`);
+  }
+
+  private assertSafeName(name: string): void {
+    if (!/^[A-Za-z0-9][A-Za-z0-9_.-]{0,62}$/.test(name)) {
+      throw new BadRequestException('사이트 이름이 올바르지 않습니다.');
+    }
   }
 }

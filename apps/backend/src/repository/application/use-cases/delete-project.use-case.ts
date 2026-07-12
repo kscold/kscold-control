@@ -17,8 +17,8 @@ export class DeleteProjectUseCase {
     private readonly fileStorage: IFileStorage,
   ) {}
 
-  async execute(id: string): Promise<void> {
-    const project = await this.projectRepository.findById(id);
+  async execute(id: string, ownerId?: string): Promise<void> {
+    const project = await this.projectRepository.findById(id, ownerId);
     if (!project) {
       throw new NotFoundException(`프로젝트를 찾을 수 없습니다: ${id}`);
     }

@@ -26,6 +26,7 @@ export class Project {
   totalSize: number;
 
   @Column({ type: 'varchar', length: 100, nullable: true })
+  @Index()
   ownerId: string | null;
 
   @CreateDateColumn()

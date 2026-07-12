@@ -35,7 +35,7 @@ import { TerminalSessionService } from '../../application/services/terminal-sess
  */
 @Injectable()
 @WebSocketGateway({
-  cors: { origin: '*' },
+  cors: { origin: process.env.FRONTEND_URL || 'http://localhost:3000' },
   namespace: '/terminal',
 })
 export class TerminalGateway

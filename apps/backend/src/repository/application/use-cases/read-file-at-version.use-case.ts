@@ -13,6 +13,7 @@ import {
   IFileStorage,
 } from '../../domain/repositories/file-storage.interface';
 import type { FileContentResult } from './read-file.use-case';
+import { assertSafeRepositoryPath } from '../utils/repository-path.util';
 
 const MAX_PREVIEW_BYTES = 512 * 1024;
 
@@ -29,14 +30,13 @@ export class ReadFileAtVersionUseCase {
     projectId: string,
     versionId: string,
     relativePath: string,
+    ownerId?: string,
   ): Promise<FileContentResult & { found: boolean }> {
-    const project = await this.projectRepository.findById(projectId);
+    const project = await this.projectRepository.findById(projectId, ownerId);
     if (!project) {
       throw new NotFoundException(`프로젝트를 찾을 수 없습니다: ${projectId}`);
     }
-    if (!relativePath || relativePath.includes('..')) {
-      throw new BadRequestException('잘못된 경로');
-    }
+    assertSafeRepositoryPath(relativePath);
     if (!versionId) {
       throw new BadRequestException('versionId가 필요합니다');
     }

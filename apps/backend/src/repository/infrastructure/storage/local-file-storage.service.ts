@@ -65,7 +65,12 @@ export class LocalFileStorageService implements IFileStorage, OnModuleInit {
    * 위반 시 Error 를 throw 합니다.
    */
   private assertSafeFilePath(projectDir: string, target: string): void {
-    if (!path.resolve(target).startsWith(path.resolve(projectDir))) {
+    const root = path.resolve(projectDir);
+    const resolvedTarget = path.resolve(target);
+    if (
+      resolvedTarget !== root &&
+      !resolvedTarget.startsWith(`${root}${path.sep}`)
+    ) {
       throw new Error(
         `Path traversal blocked: ${path.relative(projectDir, target)}`,
       );

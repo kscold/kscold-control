@@ -20,6 +20,7 @@ import { PermissionsGuard } from '../../../common/guards';
 import { RequirePermissions } from '../../../common/decorators';
 import { Audit } from '../../../common/decorators/audit.decorator';
 import { PERMISSIONS } from '../../../common/constants/permissions';
+import { ROLES } from '../../../common/constants/roles';
 import type { JwtRequest } from '../../../common/types/jwt-request.type';
 import {
   CreateProjectUseCase,
@@ -82,8 +83,10 @@ export class RepositoryController {
 
   @Get('projects')
   @RequirePermissions(PERMISSIONS.REPOSITORY_READ)
-  async listProjects() {
-    const items = await this.listProjectsUseCase.execute();
+  async listProjects(@Request() req: JwtRequest) {
+    const items = await this.listProjectsUseCase.execute(
+      getProjectOwnerScope(req),
+    );
     return { items };
   }
 
@@ -117,8 +120,8 @@ export class RepositoryController {
     targetType: 'project',
     targetId: (ctx) => ctx.params.id,
   })
-  async deleteProject(@Param('id') id: string) {
-    await this.deleteProjectUseCase.execute(id);
+  async deleteProject(@Param('id') id: string, @Request() req: JwtRequest) {
+    await this.deleteProjectUseCase.execute(id, getProjectOwnerScope(req));
     return { success: true };
   }
 
@@ -138,7 +141,8 @@ export class RepositoryController {
     @Param('id') id: string,
     @UploadedFiles() files: MulterFile[],
     @Body('relativePaths') relativePathsRaw: string | string[],
-    @Query('replace') replace?: string,
+    @Query('replace') replace: string | undefined,
+    @Request() req: JwtRequest,
   ) {
     const paths: string[] = parseRelativePaths(relativePathsRaw);
 
@@ -148,7 +152,12 @@ export class RepositoryController {
       size: f.size,
     }));
 
-    return this.uploadFilesUseCase.execute(id, uploadFiles, replace === 'true');
+    return this.uploadFilesUseCase.execute(
+      id,
+      uploadFiles,
+      replace === 'true',
+      getProjectOwnerScope(req),
+    );
   }
 
   @Post('projects/:id/upload-sessions')
@@ -177,14 +186,25 @@ export class RepositoryController {
   async createUploadSession(
     @Param('id') id: string,
     @Body() body: CreateUploadSessionInput,
+    @Request() req: JwtRequest,
   ) {
-    return this.createUploadSessionUseCase.execute(id, body);
+    return this.createUploadSessionUseCase.execute(
+      id,
+      body,
+      getProjectOwnerScope(req),
+    );
   }
 
   @Get('projects/:id/upload-sessions/latest')
   @RequirePermissions(PERMISSIONS.REPOSITORY_READ)
-  async getLatestUploadSession(@Param('id') id: string) {
-    const item = await this.getUploadSessionUseCase.executeLatest(id);
+  async getLatestUploadSession(
+    @Param('id') id: string,
+    @Request() req: JwtRequest,
+  ) {
+    const item = await this.getUploadSessionUseCase.executeLatest(
+      id,
+      getProjectOwnerScope(req),
+    );
     return { item };
   }
 
@@ -193,8 +213,13 @@ export class RepositoryController {
   async getUploadSession(
     @Param('id') id: string,
     @Param('sessionId') sessionId: string,
+    @Request() req: JwtRequest,
   ) {
-    const item = await this.getUploadSessionUseCase.executeById(id, sessionId);
+    const item = await this.getUploadSessionUseCase.executeById(
+      id,
+      sessionId,
+      getProjectOwnerScope(req),
+    );
     return { item };
   }
 
@@ -238,6 +263,7 @@ export class RepositoryController {
     @Param('batchIndex') batchIndexRaw: string,
     @UploadedFiles() files: MulterFile[],
     @Body('relativePaths') relativePathsRaw: string | string[],
+    @Request() req: JwtRequest,
   ) {
     const batchIndex = parseInt(batchIndexRaw, 10);
     const paths: string[] = parseRelativePaths(relativePathsRaw);
@@ -253,13 +279,21 @@ export class RepositoryController {
       sessionId,
       batchIndex,
       uploadFiles,
+      getProjectOwnerScope(req),
     );
   }
 
   @Get('projects/:id/download')
   @RequirePermissions(PERMISSIONS.REPOSITORY_READ)
-  async downloadArchive(@Param('id') id: string, @Res() res: Response) {
-    const { filename, stream } = await this.downloadArchiveUseCase.execute(id);
+  async downloadArchive(
+    @Param('id') id: string,
+    @Res() res: Response,
+    @Request() req: JwtRequest,
+  ) {
+    const { filename, stream } = await this.downloadArchiveUseCase.execute(
+      id,
+      getProjectOwnerScope(req),
+    );
     res.setHeader('Content-Type', 'application/gzip');
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
     stream.pipe(res);
@@ -267,14 +301,18 @@ export class RepositoryController {
 
   @Get('projects/:id/tree')
   @RequirePermissions(PERMISSIONS.REPOSITORY_READ)
-  async browseTree(@Param('id') id: string) {
-    return this.browseTreeUseCase.execute(id);
+  async browseTree(@Param('id') id: string, @Request() req: JwtRequest) {
+    return this.browseTreeUseCase.execute(id, getProjectOwnerScope(req));
   }
 
   @Get('projects/:id/file')
   @RequirePermissions(PERMISSIONS.REPOSITORY_READ)
-  async readFile(@Param('id') id: string, @Query('path') path: string) {
-    return this.readFileUseCase.execute(id, path);
+  async readFile(
+    @Param('id') id: string,
+    @Query('path') path: string,
+    @Request() req: JwtRequest,
+  ) {
+    return this.readFileUseCase.execute(id, path, getProjectOwnerScope(req));
   }
 
   @Get('projects/:id/file-at-version')
@@ -283,14 +321,23 @@ export class RepositoryController {
     @Param('id') id: string,
     @Query('path') path: string,
     @Query('versionId') versionId: string,
+    @Request() req: JwtRequest,
   ) {
-    return this.readFileAtVersionUseCase.execute(id, versionId, path);
+    return this.readFileAtVersionUseCase.execute(
+      id,
+      versionId,
+      path,
+      getProjectOwnerScope(req),
+    );
   }
 
   @Get('projects/:id/versions')
   @RequirePermissions(PERMISSIONS.REPOSITORY_READ)
-  async listVersions(@Param('id') id: string) {
-    const versions = await this.listVersionsUseCase.execute(id);
+  async listVersions(@Param('id') id: string, @Request() req: JwtRequest) {
+    const versions = await this.listVersionsUseCase.execute(
+      id,
+      getProjectOwnerScope(req),
+    );
     return { items: versions };
   }
 
@@ -309,10 +356,11 @@ export class RepositoryController {
       deleted: (ctx.response as { deleted: number }).deleted,
     }),
   })
-  async cleanupVersions(@Param('id') id: string) {
+  async cleanupVersions(@Param('id') id: string, @Request() req: JwtRequest) {
     const { projectName, deleted } = await this.cleanupVersionsUseCase.execute(
       id,
       1,
+      getProjectOwnerScope(req),
     );
     // projectName 을 응답에 포함시켜 @Audit summary 팩토리에서 사용
     return { projectName, deleted };
@@ -332,7 +380,16 @@ export class RepositoryController {
   async restoreVersion(
     @Param('id') id: string,
     @Param('versionId') versionId: string,
+    @Request() req: JwtRequest,
   ) {
-    return this.restoreVersionUseCase.execute(id, versionId);
+    return this.restoreVersionUseCase.execute(
+      id,
+      versionId,
+      getProjectOwnerScope(req),
+    );
   }
+}
+
+function getProjectOwnerScope(req: JwtRequest): string | undefined {
+  return req.user.roles?.includes(ROLES.SUPER_ADMIN) ? undefined : req.user.id;
 }

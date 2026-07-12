@@ -26,12 +26,17 @@ export class RemoveContainerUseCase {
     private readonly portForwardingService: PortForwardingService,
   ) {}
 
-  async execute(id: string): Promise<void> {
-    // 1. Try to find in DB by UUID
-    const container = await this.containerRepo.findById(id);
+  async execute(id: string, ownerId?: string): Promise<void> {
+    // 1. Resolve managed containers by either DB UUID or Docker ID.
+    const container =
+      (await this.containerRepo.findById(id)) ??
+      (await this.containerRepo.findByDockerId(id));
+
+    if (ownerId && container?.userId !== ownerId) {
+      throw new ContainerNotFoundException(id);
+    }
 
     if (container) {
-      // Managed container: remove from Docker + DB
       try {
         await this.dockerClient.removeContainer(container.dockerId);
       } catch (error) {
@@ -52,11 +57,15 @@ export class RemoveContainerUseCase {
         );
       }
 
-      await this.containerRepo.delete(id);
+      await this.containerRepo.delete(container.id);
       return;
     }
 
-    // 2. Fallback: treat id as dockerId for external containers
+    if (ownerId) {
+      throw new ContainerNotFoundException(id);
+    }
+
+    // Super admins may operate unmanaged external containers by Docker ID.
     try {
       await this.dockerClient.removeContainer(id);
     } catch {

@@ -20,8 +20,9 @@ export class CleanupVersionsUseCase {
   async execute(
     projectId: string,
     keepCount = 1,
+    ownerId?: string,
   ): Promise<{ projectName: string; deleted: number }> {
-    const project = await this.projectRepository.findById(projectId);
+    const project = await this.projectRepository.findById(projectId, ownerId);
     if (!project) {
       throw new NotFoundException(`프로젝트를 찾을 수 없습니다: ${projectId}`);
     }

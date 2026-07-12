@@ -70,7 +70,12 @@ describe('DockerController', () => {
     };
     dockerTopologyService.getSnapshot.mockResolvedValueOnce(snapshot);
 
-    await expect(controller.getTopologySnapshot()).resolves.toEqual(snapshot);
+    await expect(
+      controller.getTopologySnapshot({
+        user: { id: 'user-1' },
+      } as any),
+    ).resolves.toEqual(snapshot);
+    expect(dockerTopologyService.getSnapshot).toHaveBeenCalledWith('user-1');
   });
 
   it('정리 후보를 그대로 반환한다', async () => {

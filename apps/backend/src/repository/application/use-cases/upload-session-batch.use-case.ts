@@ -19,6 +19,7 @@ import {
 } from '../../domain/repositories/upload-session.repository.interface';
 import { RepositoryUploadSession } from '../../domain/types/upload-session.type';
 import { Project } from '../../domain/entities/project.entity';
+import { assertSafeRepositoryPath } from '../utils/repository-path.util';
 
 export interface UploadSessionBatchFile {
   relativePath: string;
@@ -52,8 +53,9 @@ export class UploadSessionBatchUseCase {
     sessionId: string,
     batchIndex: number,
     files: UploadSessionBatchFile[],
+    ownerId?: string,
   ): Promise<UploadSessionBatchResult> {
-    const project = await this.projectRepository.findById(projectId);
+    const project = await this.projectRepository.findById(projectId, ownerId);
     if (!project) {
       throw new NotFoundException(`프로젝트를 찾을 수 없습니다: ${projectId}`);
     }
@@ -240,8 +242,6 @@ export class UploadSessionBatchUseCase {
   }
 
   private assertSafePath(relativePath: string): void {
-    if (relativePath.includes('..') || relativePath.startsWith('/')) {
-      throw new BadRequestException(`안전하지 않은 경로: ${relativePath}`);
-    }
+    assertSafeRepositoryPath(relativePath);
   }
 }

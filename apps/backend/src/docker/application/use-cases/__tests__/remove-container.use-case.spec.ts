@@ -21,6 +21,7 @@ describe('RemoveContainerUseCase', () => {
   beforeEach(async () => {
     const mockContainerRepo: Partial<IContainerRepository> = {
       findById: jest.fn(),
+      findByDockerId: jest.fn(),
       delete: jest.fn(),
     };
 

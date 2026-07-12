@@ -32,7 +32,7 @@ import { ClaudeSessionMapperService } from '../../application/services/claude-se
 
 @Injectable()
 @WebSocketGateway({
-  cors: { origin: '*' },
+  cors: { origin: process.env.FRONTEND_URL || 'http://localhost:3000' },
   namespace: '/claude-chat',
 })
 export class ClaudeChatGateway

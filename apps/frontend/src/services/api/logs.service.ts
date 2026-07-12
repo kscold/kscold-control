@@ -26,10 +26,10 @@ export class LogsService extends BaseApiService {
         params.containerId = containerId;
       }
 
-      const { data } = await api.get<string[]>(`${this.basePath}/${logType}`, {
-        params,
+      const { data } = await api.get<{ logs?: string[] }>(this.basePath, {
+        params: { ...params, type: logType },
       });
-      return data;
+      return data.logs ?? [];
     } catch (error) {
       this.logError('LogsService', 'getLogs', error);
       this.handleError(error, 'Failed to load logs');
@@ -59,10 +59,14 @@ export class LogsService extends BaseApiService {
    */
   async getDockerContainerList(): Promise<GetDockerContainerLogsResponse> {
     try {
-      const { data } = await api.get<GetDockerContainerLogsResponse>(
+      const { data } = await api.get<
+        Array<{ id: string; name: string; status: string }>
+      >(
         `${this.basePath}/docker/containers`,
       );
-      return data;
+      return {
+        containers: data.map(({ id, name }) => ({ id, name })),
+      };
     } catch (error) {
       this.logError('LogsService', 'getDockerContainerList', error);
       this.handleError(error, 'Failed to load Docker container list');

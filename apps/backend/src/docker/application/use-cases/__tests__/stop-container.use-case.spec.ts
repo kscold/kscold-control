@@ -19,6 +19,7 @@ describe('StopContainerUseCase', () => {
   beforeEach(async () => {
     const mockContainerRepo: Partial<IContainerRepository> = {
       findById: jest.fn(),
+      findByDockerId: jest.fn(),
       updateStatus: jest.fn(),
     };
 

@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { promises as fs } from 'fs';
+import * as os from 'os';
 import * as path from 'path';
 import { IUploadSessionRepository } from '../../domain/repositories/upload-session.repository.interface';
 import { RepositoryUploadSession } from '../../domain/types/upload-session.type';
@@ -11,7 +12,8 @@ export class LocalUploadSessionRepository implements IUploadSessionRepository {
 
   constructor() {
     const repositoryBaseDir =
-      process.env.REPOSITORY_STORAGE_DIR ?? '/var/repos';
+      process.env.REPOSITORY_STORAGE_DIR ??
+      path.join(os.homedir(), 'repository-storage');
     this.baseDir =
       process.env.REPOSITORY_UPLOAD_SESSION_DIR ??
       path.join(repositoryBaseDir, '.upload-sessions');
