@@ -1,5 +1,8 @@
-import { Injectable, Logger } from '@nestjs/common';
-import NatAPI = require('nat-api');
+import { Inject, Injectable, Logger } from '@nestjs/common';
+import {
+  type IUpnpGatewayRepository,
+  UPNP_GATEWAY_REPOSITORY,
+} from '../../../upnp/domain/interfaces/upnp-gateway.repository';
 
 /**
  * Port Forwarding Service
@@ -8,12 +11,13 @@ import NatAPI = require('nat-api');
 @Injectable()
 export class PortForwardingService {
   private readonly logger = new Logger(PortForwardingService.name);
-  private client: any;
   private externalIp: string | null = null;
   private readonly domain = 'kscold.iptime.org'; // Fixed domain
 
-  constructor() {
-    this.client = new NatAPI({ ttl: 0 }); // 0 = permanent
+  constructor(
+    @Inject(UPNP_GATEWAY_REPOSITORY)
+    private readonly gateway: IUpnpGatewayRepository,
+  ) {
     this.initializeExternalIp();
   }
 
@@ -21,17 +25,18 @@ export class PortForwardingService {
    * Initialize external IP (runs once)
    */
   private initializeExternalIp() {
-    this.client.externalIp((err: Error, ip: string) => {
-      if (err) {
+    void this.gateway
+      .getExternalIp()
+      .then((ip) => {
+        this.externalIp = ip;
+        this.logger.log(`External IP: ${this.externalIp}`);
+      })
+      .catch(() => {
         this.logger.warn(
           'Failed to get external IP via UPnP, using domain instead',
         );
         this.externalIp = this.domain;
-      } else {
-        this.externalIp = ip;
-        this.logger.log(`External IP: ${this.externalIp}`);
-      }
-    });
+      });
   }
 
   /**
@@ -42,47 +47,34 @@ export class PortForwardingService {
     externalPort: number,
     description: string,
   ): Promise<void> {
-    return new Promise((resolve) => {
-      this.client.map(
-        {
-          publicPort: externalPort,
-          privatePort: internalPort,
-          ttl: 0,
-          description,
-        },
-        (err: Error) => {
-          if (err) {
-            this.logger.error(
-              `Failed to add port mapping ${externalPort} -> ${internalPort}: ${err.message}`,
-            );
-          } else {
-            this.logger.log(
-              `Port forwarding added: ${externalPort} -> ${internalPort} (${description})`,
-            );
-          }
-          // Continue even if UPnP fails
-          resolve();
-        },
+    try {
+      await this.gateway.addMapping({
+        publicPort: externalPort,
+        privatePort: internalPort,
+        description,
+      });
+      this.logger.log(
+        `Port forwarding added: ${externalPort} -> ${internalPort} (${description})`,
       );
-    });
+    } catch (error) {
+      this.logger.error(
+        `Failed to add port mapping ${externalPort} -> ${internalPort}: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    }
   }
 
   /**
    * Remove port forwarding rule
    */
   async removePortMapping(externalPort: number): Promise<void> {
-    return new Promise((resolve) => {
-      this.client.unmap(externalPort, (err: Error) => {
-        if (err) {
-          this.logger.error(
-            `Failed to remove port mapping ${externalPort}: ${err.message}`,
-          );
-        } else {
-          this.logger.log(`Port forwarding removed: ${externalPort}`);
-        }
-        resolve();
-      });
-    });
+    try {
+      await this.gateway.removeMapping(externalPort, 'TCP');
+      this.logger.log(`Port forwarding removed: ${externalPort}`);
+    } catch (error) {
+      this.logger.error(
+        `Failed to remove port mapping ${externalPort}: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    }
   }
 
   /**
@@ -140,10 +132,6 @@ export class PortForwardingService {
    * Close UPnP connection
    */
   async close(): Promise<void> {
-    return new Promise((resolve) => {
-      this.client.destroy();
-      this.logger.log('UPnP client closed');
-      resolve();
-    });
+    this.logger.log('UPnP client closed');
   }
 }

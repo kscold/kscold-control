@@ -35,6 +35,7 @@ import { NginxConfigRepositoryImpl } from '../nginx/infrastructure/repositories/
 import { DockerController } from './presentation/controllers/docker.controller';
 
 import { AuthModule } from '../auth/auth.module';
+import { UpnpModule } from '../upnp/upnp.module';
 
 /**
  * Docker Module
@@ -50,6 +51,7 @@ import { AuthModule } from '../auth/auth.module';
   imports: [
     TypeOrmModule.forFeature([Container, TopologyNodeLayout]),
     AuthModule,
+    UpnpModule,
   ],
   controllers: [DockerController],
   providers: [

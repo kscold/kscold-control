@@ -13,6 +13,6 @@ import { UPNP_GATEWAY_REPOSITORY } from './domain/interfaces/upnp-gateway.reposi
       useClass: UpnpGatewayRepositoryImpl,
     },
   ],
-  exports: [UpnpService],
+  exports: [UpnpService, UPNP_GATEWAY_REPOSITORY],
 })
 export class UpnpModule {}
