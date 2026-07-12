@@ -26,6 +26,7 @@ import { Permission } from './rbac/domain/entities/permission.entity';
 import { Session } from './terminal/domain/entities/session.entity';
 import { Message } from './terminal/domain/entities/message.entity';
 import { Container } from './docker/domain/entities/container.entity';
+import { TopologyNodeLayout } from './docker/domain/entities/topology-node-layout.entity';
 import { Project } from './repository/domain/entities/project.entity';
 import { IpBan } from './security/domain/entities/ip-ban.entity';
 
@@ -59,6 +60,7 @@ import { AuditInterceptor } from './common/interceptors';
         Session,
         Message,
         Container,
+        TopologyNodeLayout,
         Project,
         IpBan,
       ],

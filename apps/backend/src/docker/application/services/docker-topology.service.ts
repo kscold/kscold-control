@@ -1,4 +1,7 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { randomUUID } from 'crypto';
+import { Inject, Injectable, OnModuleInit } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
 import { ComposeService } from './compose.service';
 import type {
   TopologySnapshot,
@@ -16,6 +19,7 @@ import {
   DOCKER_CLIENT,
   type IDockerClient,
 } from '../../domain/repositories/docker-client.interface';
+import { TopologyNodeLayout } from '../../domain/entities/topology-node-layout.entity';
 
 type RuntimeProcesses = {
   pm2: any[];
@@ -43,6 +47,12 @@ interface AppColumnEntry {
   columnIndex: number;
   yOffset?: number;
   companionParentName?: string;
+}
+
+interface TopologyNodePositionInput {
+  nodeId: string;
+  x: number;
+  y: number;
 }
 
 const COL_GAP = 400;
@@ -111,16 +121,25 @@ const INFERRED_SITE_HINTS: NginxSite[] = [
 ];
 
 @Injectable()
-export class DockerTopologyService {
+export class DockerTopologyService implements OnModuleInit {
+  private layoutTableReady = false;
+  private layoutTableInitialization?: Promise<void>;
+
   constructor(
     private readonly composeService: ComposeService,
     private readonly listContainersUseCase: ListContainersUseCase,
     @Inject(NGINX_CONFIG_REPOSITORY)
     private readonly nginxConfigRepository: INginxConfigRepository,
     @Inject(DOCKER_CLIENT) private readonly dockerClient: IDockerClient,
+    @InjectRepository(TopologyNodeLayout)
+    private readonly topologyNodeLayoutRepository: Repository<TopologyNodeLayout>,
   ) {}
 
-  async getSnapshot(): Promise<TopologySnapshot> {
+  async onModuleInit(): Promise<void> {
+    await this.ensureLayoutTable();
+  }
+
+  async getSnapshot(userId: string): Promise<TopologySnapshot> {
     const [containers, configuredSites] = await Promise.all([
       this.listContainersUseCase.execute(undefined),
       this.nginxConfigRepository.list(),
@@ -415,6 +434,8 @@ export class DockerTopologyService {
       });
     }
 
+    await this.applyStoredNodePositions(userId, nodes);
+
     return {
       nodes,
       edges,
@@ -425,6 +446,122 @@ export class DockerTopologyService {
         serviceNodeCount: serviceNodeIds.size,
       },
     };
+  }
+
+  async saveNodePositions(
+    userId: string,
+    positions: TopologyNodePositionInput[],
+  ): Promise<void> {
+    if (!userId) {
+      throw new Error('A user ID is required to save topology layout.');
+    }
+
+    const sanitizedPositions = positions.filter(
+      (position) =>
+        position.nodeId.trim().length > 0 &&
+        Number.isFinite(position.x) &&
+        Number.isFinite(position.y),
+    );
+
+    if (sanitizedPositions.length === 0) {
+      return;
+    }
+
+    await this.ensureLayoutTable();
+
+    const valuesSql = sanitizedPositions
+      .map((_, index) => {
+        const offset = index * 5;
+        return `($${offset + 1}, $${offset + 2}, $${offset + 3}, $${offset + 4}, $${offset + 5})`;
+      })
+      .join(', ');
+    const parameters = sanitizedPositions.flatMap((position) => [
+      randomUUID(),
+      userId,
+      position.nodeId.trim(),
+      position.x,
+      position.y,
+    ]);
+
+    await this.topologyNodeLayoutRepository.query(
+      `
+        INSERT INTO topology_node_layouts (id, user_id, node_id, x, y)
+        VALUES ${valuesSql}
+        ON CONFLICT (user_id, node_id)
+        DO UPDATE SET
+          x = EXCLUDED.x,
+          y = EXCLUDED.y,
+          updated_at = NOW()
+      `,
+      parameters,
+    );
+  }
+
+  private async applyStoredNodePositions(
+    userId: string,
+    nodes: TopologySnapshotNode[],
+  ): Promise<void> {
+    await this.ensureLayoutTable();
+    const rows = await this.topologyNodeLayoutRepository.query(
+      `
+        SELECT node_id AS "nodeId", x, y
+        FROM topology_node_layouts
+        WHERE user_id = $1
+      `,
+      [userId],
+    );
+    const positions = new Map<string, { x: number; y: number }>(
+      rows.map(
+        (row: { nodeId: string; x: number; y: number }) =>
+          [row.nodeId, { x: Number(row.x), y: Number(row.y) }] as [
+            string,
+            { x: number; y: number },
+          ],
+      ),
+    );
+
+    nodes.forEach((node) => {
+      const position = positions.get(node.id);
+      if (
+        position &&
+        Number.isFinite(position.x) &&
+        Number.isFinite(position.y)
+      ) {
+        node.position = position;
+      }
+    });
+  }
+
+  private async ensureLayoutTable(): Promise<void> {
+    if (this.layoutTableReady) {
+      return;
+    }
+
+    if (!this.layoutTableInitialization) {
+      this.layoutTableInitialization = this.topologyNodeLayoutRepository
+        .query(
+          `
+            CREATE TABLE IF NOT EXISTS topology_node_layouts (
+              id uuid PRIMARY KEY,
+              user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+              node_id varchar NOT NULL,
+              x double precision NOT NULL,
+              y double precision NOT NULL,
+              created_at timestamptz NOT NULL DEFAULT NOW(),
+              updated_at timestamptz NOT NULL DEFAULT NOW(),
+              CONSTRAINT topology_node_layouts_user_node_key UNIQUE (user_id, node_id)
+            )
+          `,
+        )
+        .then(() => {
+          this.layoutTableReady = true;
+        })
+        .finally(() => {
+          this.layoutTableInitialization = undefined;
+        });
+    }
+
+    await this.layoutTableInitialization;
   }
 
   private mergeSites(

@@ -23,7 +23,7 @@ interface TopologyCanvasProps {
 }
 
 export function TopologyCanvas({ snapshot }: TopologyCanvasProps) {
-  const { nodes, edges, onNodesChange, onEdgesChange } =
+  const { nodes, edges, onNodesChange, onEdgesChange, onNodeDragStop } =
     useTopologyCanvasState(snapshot);
 
   const miniMapNodeColor = (node: Node) => {
@@ -47,6 +47,7 @@ export function TopologyCanvas({ snapshot }: TopologyCanvasProps) {
       edges={edges}
       onNodesChange={onNodesChange}
       onEdgesChange={onEdgesChange}
+      onNodeDragStop={onNodeDragStop}
       nodeTypes={nodeTypes}
       fitView
       fitViewOptions={{ padding: 0.16 }}
