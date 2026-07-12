@@ -1,4 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { getRepositoryToken } from '@nestjs/typeorm';
 import { DockerTopologyService } from '../docker-topology.service';
 import { ComposeService } from '../compose.service';
 import { ListContainersUseCase } from '../../use-cases';
@@ -10,11 +11,15 @@ import {
   DOCKER_CLIENT,
   type IDockerClient,
 } from '../../../domain/repositories/docker-client.interface';
+import { TopologyNodeLayout } from '../../../domain/entities/topology-node-layout.entity';
 
 describe('DockerTopologyService', () => {
   let service: DockerTopologyService;
+  let layoutQuery: jest.Mock;
 
   beforeEach(async () => {
+    layoutQuery = jest.fn().mockResolvedValue([]);
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         DockerTopologyService,
@@ -198,6 +203,10 @@ describe('DockerTopologyService', () => {
               }),
           } satisfies Partial<IDockerClient>,
         },
+        {
+          provide: getRepositoryToken(TopologyNodeLayout),
+          useValue: { query: layoutQuery },
+        },
       ],
     }).compile();
 
@@ -205,7 +214,7 @@ describe('DockerTopologyService', () => {
   });
 
   it('구성과 실행 상태를 합쳐 토폴로지 스냅샷을 만든다', async () => {
-    const snapshot = await service.getSnapshot();
+    const snapshot = await service.getSnapshot('user-1');
     const blogNode = snapshot.nodes.find(
       (node) => node.id === 'container-blog-app',
     );
@@ -321,5 +330,50 @@ describe('DockerTopologyService', () => {
     expect(
       (blogSiteNode?.position.y ?? 0) - (hostNode?.position.y ?? 0),
     ).toBeGreaterThan(500);
+  });
+
+  it('현재 사용자의 저장된 좌표를 스냅샷에 반영한다', async () => {
+    layoutQuery.mockImplementation((sql: string) => {
+      if (sql.includes('SELECT node_id')) {
+        return Promise.resolve([
+          { nodeId: 'container-blog-app', x: 123, y: 456 },
+        ]);
+      }
+
+      return Promise.resolve([]);
+    });
+
+    const snapshot = await service.getSnapshot('user-1');
+    const blogNode = snapshot.nodes.find(
+      (node) => node.id === 'container-blog-app',
+    );
+
+    expect(blogNode?.position).toEqual({ x: 123, y: 456 });
+    expect(layoutQuery).toHaveBeenCalledWith(
+      expect.stringContaining('user_id = $1'),
+      ['user-1'],
+    );
+  });
+
+  it('사용자별 노드 좌표를 PostgreSQL upsert로 저장한다', async () => {
+    await service.saveNodePositions('user-1', [
+      { nodeId: 'host', x: 10, y: 20 },
+      { nodeId: 'invalid', x: Number.NaN, y: 30 },
+    ]);
+
+    const upsertCall = layoutQuery.mock.calls.find(([sql]) =>
+      String(sql).includes('INSERT INTO topology_node_layouts'),
+    );
+
+    expect(upsertCall?.[0]).toEqual(
+      expect.stringContaining('ON CONFLICT (user_id, node_id)'),
+    );
+    expect(upsertCall?.[1]).toEqual([
+      expect.any(String),
+      'user-1',
+      'host',
+      10,
+      20,
+    ]);
   });
 });

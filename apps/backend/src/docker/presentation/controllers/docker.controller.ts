@@ -1,6 +1,7 @@
 import {
   Controller,
   Get,
+  Patch,
   Post,
   Delete,
   Body,
@@ -98,8 +99,45 @@ export class DockerController {
 
   @Get('topology/snapshot')
   @RequirePermissions(PERMISSIONS.DOCKER_READ)
-  async getTopologySnapshot() {
-    return this.dockerTopologyService.getSnapshot();
+  async getTopologySnapshot(@Request() req: JwtRequest) {
+    return this.dockerTopologyService.getSnapshot(req.user.id);
+  }
+
+  @Patch('topology/layout/nodes')
+  @RequirePermissions(PERMISSIONS.DOCKER_UPDATE)
+  @Audit({
+    domain: 'docker',
+    action: 'topology.layout.update',
+    summary: '토폴로지 노드 배치를 저장했습니다.',
+    targetType: 'topology',
+    targetId: () => 'layout',
+    metadata: (ctx) => ({
+      nodeCount:
+        (ctx.body as { positions?: unknown[] } | undefined)?.positions
+          ?.length ?? 0,
+    }),
+  })
+  async updateTopologyLayout(
+    @Body()
+    body: {
+      positions?: Array<{
+        nodeId?: string;
+        x?: number;
+        y?: number;
+      }>;
+    },
+    @Request() req: JwtRequest,
+  ) {
+    await this.dockerTopologyService.saveNodePositions(
+      req.user.id,
+      (body.positions ?? []).map((position) => ({
+        nodeId: String(position.nodeId ?? ''),
+        x: Number(position.x),
+        y: Number(position.y),
+      })),
+    );
+
+    return { success: true };
   }
 
   @Get('cleanup/candidates')

@@ -79,6 +79,12 @@ export interface TopologySnapshotNode {
   draggable?: boolean;
 }
 
+export interface TopologyNodePositionUpdate {
+  nodeId: string;
+  x: number;
+  y: number;
+}
+
 export interface TopologySnapshotEdge {
   id: string;
   source: string;

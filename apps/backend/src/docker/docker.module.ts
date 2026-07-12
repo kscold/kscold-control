@@ -3,6 +3,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 
 // Domain
 import { Container } from './domain/entities/container.entity';
+import { TopologyNodeLayout } from './domain/entities/topology-node-layout.entity';
 import { CONTAINER_REPOSITORY } from './domain/repositories/container.repository.interface';
 import { DOCKER_CLIENT } from './domain/repositories/docker-client.interface';
 
@@ -46,7 +47,10 @@ import { AuthModule } from '../auth/auth.module';
  * - Presentation: Controllers (depends on Application)
  */
 @Module({
-  imports: [TypeOrmModule.forFeature([Container]), AuthModule],
+  imports: [
+    TypeOrmModule.forFeature([Container, TopologyNodeLayout]),
+    AuthModule,
+  ],
   controllers: [DockerController],
   providers: [
     // Use Cases

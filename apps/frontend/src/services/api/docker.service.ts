@@ -10,7 +10,10 @@ import type {
   DockerCleanupCandidates,
   DockerCleanupResult,
 } from '../../features/docker/lib/docker-cleanup.types';
-import type { TopologySnapshot } from '../../features/topology/lib/topology.types';
+import type {
+  TopologyNodePositionUpdate,
+  TopologySnapshot,
+} from '../../features/topology/lib/topology.types';
 
 /**
  * Docker API Service
@@ -209,6 +212,17 @@ export class DockerService extends BaseApiService {
     } catch (error) {
       this.logError('DockerService', 'getTopologySnapshot', error);
       this.handleError(error, 'Failed to load topology snapshot');
+    }
+  }
+
+  async updateTopologyNodePositions(
+    positions: TopologyNodePositionUpdate[],
+  ): Promise<void> {
+    try {
+      await api.patch(`${this.basePath}/topology/layout/nodes`, { positions });
+    } catch (error) {
+      this.logError('DockerService', 'updateTopologyNodePositions', error);
+      this.handleError(error, 'Failed to save topology layout');
     }
   }
 

@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react';
+import { useCallback, useEffect, useMemo } from 'react';
 import {
   useEdgesState,
   useNodesState,
@@ -7,6 +7,7 @@ import {
 } from '@xyflow/react';
 import type { TopologySnapshot } from '../lib/topology.types';
 import { getTopologyCanvasElements } from '../lib/topology-canvas.utils';
+import { dockerService } from '../../../services/api/docker.service';
 
 export function useTopologyCanvasState(snapshot: TopologySnapshot | null) {
   const { nodes: initialNodes, edges: initialEdges } = useMemo(
@@ -35,10 +36,21 @@ export function useTopologyCanvasState(snapshot: TopologySnapshot | null) {
     setEdges(initialEdges);
   }, [initialEdges, initialNodes, setEdges, setNodes]);
 
+  const onNodeDragStop = useCallback((_event: unknown, node: Node) => {
+    void dockerService
+      .updateTopologyNodePositions([
+        { nodeId: node.id, x: node.position.x, y: node.position.y },
+      ])
+      .catch((error: unknown) => {
+        console.error('Topology layout save failed', error);
+      });
+  }, []);
+
   return {
     nodes,
     edges,
     onNodesChange,
     onEdgesChange,
+    onNodeDragStop,
   };
 }
