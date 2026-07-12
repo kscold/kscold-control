@@ -11,12 +11,21 @@ export class TypeOrmProjectRepository implements IProjectRepository {
     private readonly repo: Repository<Project>,
   ) {}
 
-  findAll(): Promise<Project[]> {
+  findAll(ownerId?: string): Promise<Project[]> {
+    if (ownerId) {
+      return this.repo.find({
+        where: { ownerId },
+        order: { updatedAt: 'DESC' },
+      });
+    }
+
     return this.repo.find({ order: { updatedAt: 'DESC' } });
   }
 
-  findById(id: string): Promise<Project | null> {
-    return this.repo.findOne({ where: { id } });
+  findById(id: string, ownerId?: string): Promise<Project | null> {
+    return this.repo.findOne({
+      where: ownerId ? { id, ownerId } : { id },
+    });
   }
 
   findByName(name: string): Promise<Project | null> {

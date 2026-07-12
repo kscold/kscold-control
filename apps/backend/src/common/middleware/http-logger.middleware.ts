@@ -23,7 +23,7 @@ export class HttpLoggerMiddleware implements NestMiddleware {
       const logData = {
         timestamp: new Date().toISOString(),
         method,
-        url: originalUrl,
+        url: this.sanitizeUrl(originalUrl),
         statusCode,
         responseTime: `${responseTime}ms`,
         ip: ip || req.socket.remoteAddress,
@@ -67,5 +67,20 @@ export class HttpLoggerMiddleware implements NestMiddleware {
   private maskToken(token: string): string {
     if (token.length <= 20) return '***';
     return token.substring(0, 10) + '...' + token.substring(token.length - 5);
+  }
+
+  private sanitizeUrl(originalUrl: string): string {
+    try {
+      const url = new URL(originalUrl, 'http://localhost');
+      for (const key of ['token', 'access_token', 'refresh_token']) {
+        url.searchParams.delete(key);
+      }
+      return `${url.pathname}${url.search}`;
+    } catch {
+      return originalUrl.replace(
+        /([?&](?:token|access_token|refresh_token)=)[^&]*/gi,
+        '$1***REDACTED***',
+      );
+    }
   }
 }

@@ -13,6 +13,7 @@ import {
   IFileStorage,
 } from '../../domain/repositories/file-storage.interface';
 import { Project } from '../../domain/entities/project.entity';
+import { assertSafeRepositoryPath } from '../utils/repository-path.util';
 
 export interface UploadFile {
   relativePath: string;
@@ -39,8 +40,9 @@ export class UploadFilesUseCase {
     projectId: string,
     files: UploadFile[],
     replace: boolean,
+    ownerId?: string,
   ): Promise<UploadResult> {
-    const project = await this.projectRepository.findById(projectId);
+    const project = await this.projectRepository.findById(projectId, ownerId);
     if (!project) {
       throw new NotFoundException(`프로젝트를 찾을 수 없습니다: ${projectId}`);
     }
@@ -85,8 +87,6 @@ export class UploadFilesUseCase {
   }
 
   private assertSafePath(relativePath: string): void {
-    if (relativePath.includes('..') || relativePath.startsWith('/')) {
-      throw new BadRequestException(`안전하지 않은 경로: ${relativePath}`);
-    }
+    assertSafeRepositoryPath(relativePath);
   }
 }

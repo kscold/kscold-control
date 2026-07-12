@@ -1,6 +1,11 @@
-import { Injectable, Inject, Logger } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  Inject,
+  Logger,
+} from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
-import { exec } from 'child_process';
+import { execFile } from 'child_process';
 import { promisify } from 'util';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -8,7 +13,7 @@ import type { CertInfo } from '../../domain/types/nginx-site.type';
 import type { INginxRuntimeRepository } from '../../domain/interfaces/nginx-runtime.repository';
 import { NGINX_RUNTIME_REPOSITORY } from '../../domain/interfaces/nginx-runtime.repository';
 
-const execAsync = promisify(exec);
+const execFileAsync = promisify(execFile);
 
 const SSL_DIR = path.resolve(__dirname, '../../../../../../ssl');
 const COMPOSE_DIR = path.resolve(__dirname, '../../../../../../');
@@ -207,28 +212,39 @@ export class CertService {
     domain: string,
     email: string,
   ): Promise<{ success: boolean; output: string }> {
+    this.assertIssueInput(domain, email);
     this.logger.log(`Issuing SSL cert for ${domain}`);
 
     const webrootVolume = 'kscold-control_certbot-webroot';
 
-    const cmd = [
-      'docker run --rm',
-      `--name certbot-${domain.replace(/\./g, '-')}`,
-      `-v ${webrootVolume}:/var/www/certbot`,
-      `-v "${LETSENCRYPT_DIR}:${LETSENCRYPT_DIR}"`,
-      `-v "${LETSENCRYPT_LIB_DIR}:${LETSENCRYPT_LIB_DIR}"`,
-      'certbot/certbot certonly',
+    const args = [
+      'run',
+      '--rm',
+      '--name',
+      `certbot-${domain.replace(/\./g, '-')}`,
+      '-v',
+      `${webrootVolume}:/var/www/certbot`,
+      '-v',
+      `${LETSENCRYPT_DIR}:${LETSENCRYPT_DIR}`,
+      '-v',
+      `${LETSENCRYPT_LIB_DIR}:${LETSENCRYPT_LIB_DIR}`,
+      'certbot/certbot',
+      'certonly',
       '--webroot',
-      '-w /var/www/certbot',
-      `-d ${domain}`,
-      `--email ${email}`,
+      '-w',
+      '/var/www/certbot',
+      '-d',
+      domain,
+      '--email',
+      email,
       '--agree-tos',
       '--non-interactive',
-      `--cert-name ${domain}`,
-    ].join(' ');
+      '--cert-name',
+      domain,
+    ];
 
     try {
-      const { stdout, stderr } = await execAsync(cmd, {
+      const { stdout, stderr } = await execFileAsync('docker', args, {
         timeout: 120000,
         cwd: COMPOSE_DIR,
       });
@@ -262,20 +278,29 @@ export class CertService {
   async renewAll(): Promise<{ success: boolean; output: string }> {
     const webrootVolume = 'kscold-control_certbot-webroot';
 
-    const cmd = [
-      'docker run --rm',
-      '--name certbot-renew',
-      `-v ${webrootVolume}:/var/www/certbot`,
-      `-v "${LETSENCRYPT_DIR}:${LETSENCRYPT_DIR}"`,
-      `-v "${LETSENCRYPT_LIB_DIR}:${LETSENCRYPT_LIB_DIR}"`,
-      'certbot/certbot renew',
+    const args = [
+      'run',
+      '--rm',
+      '--name',
+      'certbot-renew',
+      '-v',
+      `${webrootVolume}:/var/www/certbot`,
+      '-v',
+      `${LETSENCRYPT_DIR}:${LETSENCRYPT_DIR}`,
+      '-v',
+      `${LETSENCRYPT_LIB_DIR}:${LETSENCRYPT_LIB_DIR}`,
+      'certbot/certbot',
+      'renew',
       '--webroot',
-      '-w /var/www/certbot',
+      '-w',
+      '/var/www/certbot',
       '--non-interactive',
-    ].join(' ');
+    ];
 
     try {
-      const { stdout, stderr } = await execAsync(cmd, { timeout: 300000 });
+      const { stdout, stderr } = await execFileAsync('docker', args, {
+        timeout: 300000,
+      });
       const output = stdout + stderr;
 
       const certs = await this.listCerts();
@@ -303,6 +328,7 @@ export class CertService {
     domain: string,
     email: string,
   ): Promise<{ success: boolean; output: string }> {
+    this.assertIssueInput(domain, email);
     this.logger.log(`Issuing SSL cert (standalone) for ${domain}`);
 
     const domainDir = path.join(SSL_DIR, domain);
@@ -316,24 +342,36 @@ export class CertService {
       // nginx might not be running
     }
 
-    const cmd = [
-      'docker run --rm',
-      `--name certbot-standalone-${domain.replace(/\./g, '-')}`,
-      '--network host',
-      `-v "${domainDir}:/etc/ssl-output"`,
-      'certbot/certbot certonly',
+    const args = [
+      'run',
+      '--rm',
+      '--name',
+      `certbot-standalone-${domain.replace(/\./g, '-')}`,
+      '--network',
+      'host',
+      '-v',
+      `${domainDir}:/etc/ssl-output`,
+      'certbot/certbot',
+      'certonly',
       '--standalone',
-      `-d ${domain}`,
-      `--email ${email}`,
+      '-d',
+      domain,
+      '--email',
+      email,
       '--agree-tos',
       '--non-interactive',
-      `--fullchain-path /etc/ssl-output/fullchain.pem`,
-      `--key-path /etc/ssl-output/privkey.pem`,
-      `--cert-path /etc/ssl-output/cert.pem`,
-    ].join(' ');
+      '--fullchain-path',
+      '/etc/ssl-output/fullchain.pem',
+      '--key-path',
+      '/etc/ssl-output/privkey.pem',
+      '--cert-path',
+      '/etc/ssl-output/cert.pem',
+    ];
 
     try {
-      const { stdout, stderr } = await execAsync(cmd, { timeout: 120000 });
+      const { stdout, stderr } = await execFileAsync('docker', args, {
+        timeout: 120000,
+      });
       const output = stdout + stderr;
 
       await this.runtimeRepo.start();
@@ -371,8 +409,20 @@ export class CertService {
     for (const file of ['fullchain.pem', 'privkey.pem']) {
       const src = path.join(liveDir, file);
       const dest = path.join(domainDir, file);
-      const cmd = `DOCKER_HOST=${dockerHost} docker run --rm -v "${LETSENCRYPT_DIR}:${LETSENCRYPT_DIR}" --entrypoint cat certbot/certbot "${src}"`;
-      const { stdout } = await execAsync(cmd);
+      const { stdout } = await execFileAsync(
+        'docker',
+        [
+          'run',
+          '--rm',
+          '-v',
+          `${LETSENCRYPT_DIR}:${LETSENCRYPT_DIR}`,
+          '--entrypoint',
+          'cat',
+          'certbot/certbot',
+          src,
+        ],
+        { env: { ...process.env, DOCKER_HOST: dockerHost } },
+      );
       if (!stdout) throw new Error(`빈 인증서 출력: ${domain}/${file}`);
       fs.writeFileSync(dest, stdout, { mode: 0o644 });
     }
@@ -385,9 +435,14 @@ export class CertService {
     certPath: string,
   ): Promise<Omit<CertInfo, 'domain' | 'exists'>> {
     try {
-      const { stdout } = await execAsync(
-        `openssl x509 -in "${certPath}" -noout -issuer -dates 2>/dev/null`,
-      );
+      const { stdout } = await execFileAsync('openssl', [
+        'x509',
+        '-in',
+        certPath,
+        '-noout',
+        '-issuer',
+        '-dates',
+      ]);
 
       const issuerMatch = stdout.match(/issuer=(.+)/);
       const notBeforeMatch = stdout.match(/notBefore=(.+)/);
@@ -412,6 +467,24 @@ export class CertService {
       };
     } catch {
       return {};
+    }
+  }
+
+  private assertIssueInput(domain: string, email: string): void {
+    if (
+      !/^(?=.{1,253}$)(?:[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?\.)+[A-Za-z]{2,}$/.test(
+        domain,
+      )
+    ) {
+      throw new BadRequestException(
+        '인증서 발급 도메인 형식이 올바르지 않습니다.',
+      );
+    }
+
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      throw new BadRequestException(
+        '인증서 발급 이메일 형식이 올바르지 않습니다.',
+      );
     }
   }
 }

@@ -22,18 +22,27 @@ export class StartContainerUseCase {
     private readonly dockerClient: IDockerClient,
   ) {}
 
-  async execute(id: string): Promise<void> {
-    // 1. Try to find in DB by UUID
-    const container = await this.containerRepo.findById(id);
+  async execute(id: string, ownerId?: string): Promise<void> {
+    // 1. Resolve managed containers by either DB UUID or Docker ID.
+    const container =
+      (await this.containerRepo.findById(id)) ??
+      (await this.containerRepo.findByDockerId(id));
+
+    if (ownerId && container?.userId !== ownerId) {
+      throw new ContainerNotFoundException(id);
+    }
 
     if (container) {
-      // Managed container: start via dockerId and update DB
       await this.dockerClient.startContainer(container.dockerId);
-      await this.containerRepo.updateStatus(id, 'running');
+      await this.containerRepo.updateStatus(container.id, 'running');
       return;
     }
 
-    // 2. Fallback: treat id as dockerId for external containers
+    if (ownerId) {
+      throw new ContainerNotFoundException(id);
+    }
+
+    // Super admins may operate unmanaged external containers by Docker ID.
     try {
       await this.dockerClient.startContainer(id);
     } catch {

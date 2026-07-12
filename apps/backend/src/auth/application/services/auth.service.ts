@@ -10,6 +10,7 @@ import {
   ROLE_REPOSITORY,
 } from '../../domain/repositories/role.repository.interface';
 import { LoginDto, RegisterDto } from '../dto';
+import { ROLES } from '../../../common/constants/roles';
 
 @Injectable()
 export class AuthService {
@@ -25,12 +26,14 @@ export class AuthService {
    * 회원가입
    */
   async register(dto: RegisterDto) {
-    const { email, password, role: roleName = 'user' } = dto;
+    const { email, password } = dto;
+    const roleName = ROLES.READ_ONLY;
 
     // 비밀번호 해시
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // Role 조회 또는 생성
+    // 공개 회원가입은 항상 읽기 전용 역할로 시작한다.
+    // 요청 body로 역할을 받으면 신규 사용자가 관리자 권한을 주입할 수 있다.
     let role = await this.roleRepository.findByName(roleName);
     if (!role) {
       role = this.roleRepository.create({ name: roleName });

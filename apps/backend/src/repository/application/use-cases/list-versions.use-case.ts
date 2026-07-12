@@ -18,8 +18,11 @@ export class ListVersionsUseCase {
     private readonly fileStorage: IFileStorage,
   ) {}
 
-  async execute(projectId: string): Promise<ProjectVersion[]> {
-    const project = await this.projectRepository.findById(projectId);
+  async execute(
+    projectId: string,
+    ownerId?: string,
+  ): Promise<ProjectVersion[]> {
+    const project = await this.projectRepository.findById(projectId, ownerId);
     if (!project) {
       throw new NotFoundException(`프로젝트를 찾을 수 없습니다: ${projectId}`);
     }

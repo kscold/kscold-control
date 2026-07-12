@@ -1,5 +1,6 @@
 import {
   Controller,
+  NotFoundException,
   Get,
   Patch,
   Post,
@@ -93,7 +94,20 @@ export class DockerController {
    */
   @Get('containers/:dockerId/processes')
   @RequirePermissions(PERMISSIONS.DOCKER_READ)
-  async getContainerProcesses(@Param('dockerId') dockerId: string) {
+  async getContainerProcesses(
+    @Param('dockerId') dockerId: string,
+    @Request() req: JwtRequest,
+  ) {
+    const ownerId = getContainerOwnerScope(req);
+    if (ownerId) {
+      const ownedContainers = await this.listContainersUseCase.execute(ownerId);
+      if (
+        !ownedContainers.some((container) => container.dockerId === dockerId)
+      ) {
+        throw new NotFoundException('컨테이너를 찾을 수 없습니다.');
+      }
+    }
+
     return this.dockerClient.getContainerProcesses(dockerId);
   }
 
@@ -246,8 +260,8 @@ export class DockerController {
     targetType: 'container',
     targetId: (ctx) => ctx.params.id,
   })
-  async startContainer(@Param('id') id: string) {
-    await this.startContainerUseCase.execute(id);
+  async startContainer(@Param('id') id: string, @Request() req: JwtRequest) {
+    await this.startContainerUseCase.execute(id, getContainerOwnerScope(req));
     return { success: true, message: 'Container started successfully' };
   }
 
@@ -264,8 +278,8 @@ export class DockerController {
     targetType: 'container',
     targetId: (ctx) => ctx.params.id,
   })
-  async stopContainer(@Param('id') id: string) {
-    await this.stopContainerUseCase.execute(id);
+  async stopContainer(@Param('id') id: string, @Request() req: JwtRequest) {
+    await this.stopContainerUseCase.execute(id, getContainerOwnerScope(req));
     return { success: true, message: 'Container stopped successfully' };
   }
 
@@ -282,8 +296,8 @@ export class DockerController {
     targetType: 'container',
     targetId: (ctx) => ctx.params.id,
   })
-  async removeContainer(@Param('id') id: string) {
-    await this.removeContainerUseCase.execute(id);
+  async removeContainer(@Param('id') id: string, @Request() req: JwtRequest) {
+    await this.removeContainerUseCase.execute(id, getContainerOwnerScope(req));
     return { success: true, message: 'Container removed successfully' };
   }
 
@@ -366,4 +380,8 @@ export class DockerController {
     await this.removeComposeServiceUseCase.execute(name);
     return { success: true, message: `Service "${name}" removed from compose` };
   }
+}
+
+function getContainerOwnerScope(req: JwtRequest): string | undefined {
+  return req.user.roles?.includes(ROLES.SUPER_ADMIN) ? undefined : req.user.id;
 }

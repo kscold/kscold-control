@@ -12,7 +12,7 @@ export class ListProjectsUseCase {
     private readonly projectRepository: IProjectRepository,
   ) {}
 
-  async execute(): Promise<Project[]> {
-    return this.projectRepository.findAll();
+  async execute(ownerId?: string): Promise<Project[]> {
+    return this.projectRepository.findAll(ownerId);
   }
 }

@@ -13,17 +13,17 @@ A self-hosted infrastructure governance panel for managing Docker containers, Ng
 
 ## Features
 
-| Category | Capabilities |
-|---|---|
+| Category        | Capabilities                                                                                  |
+| --------------- | --------------------------------------------------------------------------------------------- |
 | **AI Terminal** | Claude Code workspace · Claude Chat · OpenAI Chat API (GPT-4o) · OpenAI Codex CLI — multi-tab |
-| **Docker** | Container lifecycle, real-time log streaming, archive log viewer |
-| **Nginx** | Virtual host management, SSL issuance & renewal (Let's Encrypt) |
-| **Repository** | Source upload, version history snapshots, diff viewer, file browser |
-| **Audit** | AOP-based automatic audit log, CSV export, actor/target insights |
-| **Security** | IP ban management, JWT RBAC, permission guards |
-| **Logs** | Unified viewer — backend · PM2 · Nginx · Docker · blog container logs |
-| **Network** | Topology graph (React Flow), UPnP port management |
-| **System** | Real-time CPU / memory / disk, Nginx status, host info |
+| **Docker**      | Container lifecycle, real-time log streaming, archive log viewer                              |
+| **Nginx**       | Virtual host management, SSL issuance & renewal (Let's Encrypt)                               |
+| **Repository**  | Source upload, version history snapshots, diff viewer, file browser                           |
+| **Audit**       | AOP-based automatic audit log, CSV export, actor/target insights                              |
+| **Security**    | IP ban management, JWT RBAC, permission guards                                                |
+| **Logs**        | Unified viewer — backend · PM2 · Nginx · Docker · blog container logs                         |
+| **Network**     | Topology graph (React Flow), UPnP port management                                             |
+| **System**      | Real-time CPU / memory / disk, Nginx status, host info                                        |
 
 ---
 
@@ -69,12 +69,12 @@ kscold-control/
 
 ### Prerequisites
 
-| Tool | Min version |
-|------|-------------|
-| Node.js | 20 |
-| pnpm | 9 |
-| PostgreSQL | 14 |
-| Docker | 24 (optional) |
+| Tool       | Min version   |
+| ---------- | ------------- |
+| Node.js    | 20            |
+| pnpm       | 9             |
+| PostgreSQL | 14            |
+| Docker     | 24 (optional) |
 
 ### One-command setup
 
@@ -128,34 +128,44 @@ npm install -g @openai/codex
 
 ## Environment Variables
 
-| Variable | Default | Description |
-|---|---|---|
-| `DATABASE_URL` | — | PostgreSQL connection string (required) |
-| `JWT_SECRET` | — | JWT signing secret (required) |
-| `PORT` | `4000` | Backend HTTP/WS port |
-| `FRONTEND_URL` | `http://localhost:3000` | CORS allowed origin |
-| `NODE_ENV` | `development` | `production` disables TypeORM auto-sync |
-| `CLAUDE_WORKING_DIR` | `$HOME` | Working directory for AI coding sessions |
-| `OPENAI_API_KEY` | — | OpenAI API key (Chat API + Codex CLI) |
-| `OPENAI_MODEL` | `gpt-4o` | OpenAI model for Chat API |
-| `CODEX_BIN` | `codex` | Path to Codex binary |
-| `LOG_LEVEL` | `info` | Winston log level |
+| Variable             | Default                 | Description                              |
+| -------------------- | ----------------------- | ---------------------------------------- |
+| `DATABASE_URL`       | —                       | PostgreSQL connection string (required)  |
+| `JWT_SECRET`         | —                       | JWT signing secret (required)            |
+| `PORT`               | `4000`                  | Backend HTTP/WS port                     |
+| `FRONTEND_URL`       | `http://localhost:3000` | CORS allowed origin                      |
+| `NODE_ENV`           | `development`           | `production` disables TypeORM auto-sync  |
+| `CLAUDE_WORKING_DIR` | `$HOME`                 | Working directory for AI coding sessions |
+| `OPENAI_API_KEY`     | —                       | OpenAI API key (Chat API + Codex CLI)    |
+| `OPENAI_MODEL`       | `gpt-4o`                | OpenAI model for Chat API                |
+| `CODEX_BIN`          | `codex`                 | Path to Codex binary                     |
+| `LOG_LEVEL`          | `info`                  | Winston log level                        |
 
 ---
 
 ## Production Deployment
 
 ```bash
-# 1. Build everything
+# 1. Configure required runtime secrets
+export DATABASE_URL='postgresql://...'
+export JWT_SECRET="$(openssl rand -base64 48)"
+
+# 2. Build everything
 pnpm build
 
-# 2. Start with PM2
+# 3. Start with PM2
 pm2 start ecosystem.config.js --update-env
 pm2 save
 ```
 
 The backend serves the built frontend under `/` and all API routes under `/api`.  
 A sample Nginx reverse-proxy config is at [`nginx/conf.d/app-stack.conf.example`](nginx/conf.d/app-stack.conf.example).
+
+For the optional Slacord compose service, copy `env/slacord.env.example` to
+`env/slacord.env` and replace every placeholder before starting the stack.
+The compose file allows that file to be absent so unrelated services can still
+be validated with `docker compose config`, but Slacord itself needs its runtime
+secrets to start correctly.
 
 SSL certificates can be issued and renewed directly from the **Nginx → SSL** panel.
 

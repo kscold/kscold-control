@@ -47,8 +47,9 @@ export class CreateUploadSessionUseCase {
   async execute(
     projectId: string,
     input: CreateUploadSessionInput,
+    ownerId?: string,
   ): Promise<RepositoryUploadSession> {
-    const project = await this.projectRepository.findById(projectId);
+    const project = await this.projectRepository.findById(projectId, ownerId);
     if (!project) {
       throw new NotFoundException(`프로젝트를 찾을 수 없습니다: ${projectId}`);
     }

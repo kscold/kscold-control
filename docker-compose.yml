@@ -91,7 +91,8 @@ services:
     container_name: ubuntu-slacord
     command: /entrypoint.sh
     env_file:
-      - ./env/slacord.env
+      - path: ./env/slacord.env
+        required: false
     ports:
       - '2226:22'
       - '8084:8082'

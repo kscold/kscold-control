@@ -32,7 +32,10 @@ import { OpenAISessionMapperService } from '../../application/services/openai-se
 export type OpenAIProvider = 'api' | 'codex';
 
 @Injectable()
-@WebSocketGateway({ cors: { origin: '*' }, namespace: '/openai-chat' })
+@WebSocketGateway({
+  cors: { origin: process.env.FRONTEND_URL || 'http://localhost:3000' },
+  namespace: '/openai-chat',
+})
 export class OpenAIChatGateway
   implements OnGatewayConnection, OnGatewayDisconnect
 {

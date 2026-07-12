@@ -1,3 +1,16 @@
+const databaseUrl = process.env.DATABASE_URL;
+const jwtSecret = process.env.JWT_SECRET;
+
+if (!databaseUrl) {
+  throw new Error('DATABASE_URL must be set before starting kscold-control');
+}
+
+if (!jwtSecret || jwtSecret.length < 32) {
+  throw new Error(
+    'JWT_SECRET must be set to a random value of at least 32 characters',
+  );
+}
+
 module.exports = {
   apps: [
     {
@@ -13,9 +26,10 @@ module.exports = {
         // 1. PM2 ecosystem file with env_file option, or
         // 2. PM2 startup command: pm2 start ecosystem.config.js --update-env
         // 3. System environment variables
-        DATABASE_URL: process.env.DATABASE_URL || 'postgresql://admin:admin123@localhost:5432/kscold-infra-db',
+        DATABASE_URL: databaseUrl,
         DOCKER_HOST: process.env.DOCKER_HOST || 'unix:///Users/kscold/.colima/default/docker.sock',
-        JWT_SECRET: process.env.JWT_SECRET || 'kscold-infra-secret-change-in-production',
+        JWT_SECRET: jwtSecret,
+        FRONTEND_URL: process.env.FRONTEND_URL || 'https://control.kscold.com',
         CLAUDE_WORKING_DIR: process.env.CLAUDE_WORKING_DIR || '/Users/kscold/Desktop',
         REPOSITORY_STORAGE_DIR: process.env.REPOSITORY_STORAGE_DIR || '/Users/kscold/repository-storage',
       },
