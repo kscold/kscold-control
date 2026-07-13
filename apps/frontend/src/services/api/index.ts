@@ -1,4 +1,3 @@
-export * from './base.service';
 export * from './docker.service';
 export * from './rbac.service';
 export * from './nginx.service';

@@ -1,11 +1,10 @@
-import { api } from '../../lib/api';
-import { BaseApiService } from './base.service';
+import { api } from '@/shared/api/client';
+import { BaseApiService } from '@/shared/api/base.service';
+import { Container, ComposeProvisioningTemplate } from '../../types';
 import {
-  Container,
-  ComposeProvisioningTemplate,
   CreateContainerRequest,
   ContainerStatsResponse,
-} from '../../types';
+} from '@/shared/api/types';
 import type {
   DockerCleanupCandidates,
   DockerCleanupResult,

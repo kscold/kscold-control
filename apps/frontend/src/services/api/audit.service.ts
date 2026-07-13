@@ -1,11 +1,11 @@
-import { BaseApiService } from './base.service';
+import { BaseApiService } from '@/shared/api/base.service';
 import type {
   AuditExportPayload,
   AuditDomain,
   AuditEvent,
   AuditSummary,
 } from '../../features/audit/lib/audit.types';
-import { api } from '../../lib/api';
+import { api } from '@/shared/api/client';
 
 type AuditQueryParams = {
   domain?: AuditDomain;

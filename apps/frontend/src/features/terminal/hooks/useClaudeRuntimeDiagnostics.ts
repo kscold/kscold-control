@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { api } from '../../../lib/api';
+import { api } from '@/shared/api/client';
 import type { ClaudeRuntimeDiagnostics } from '../lib/terminal.types';
 
 interface UseClaudeRuntimeDiagnosticsOptions {

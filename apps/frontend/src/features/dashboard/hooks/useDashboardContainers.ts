@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
-import { api } from '../../../lib/api';
+import { api } from '@/shared/api/client';
 import type { ContainerInfo } from '../lib/dashboard.types';
 
 export function useDashboardContainers() {

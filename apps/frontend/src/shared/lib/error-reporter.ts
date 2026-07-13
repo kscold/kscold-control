@@ -1,6 +1,6 @@
 import type { ErrorInfo } from 'react';
-import { useAuthStore } from '../shared/model/auth.store';
-import { API_URL } from './api';
+import { useAuthStore } from '../model/auth.store';
+import { API_URL } from '../api/client';
 
 export function reportFrontendError(error: Error, errorInfo?: ErrorInfo): void {
   const token = useAuthStore.getState().token;

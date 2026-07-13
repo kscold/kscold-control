@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { History, Trash2, Loader2, PackageOpen, RotateCcw } from 'lucide-react';
 import { repositoryService } from '../../../services/api/repository.service';
 import { formatBytes } from '../lib/file-filter';
-import { formatFullDateTime } from '../../../lib/date-format';
+import { formatFullDateTime } from '@/shared/lib/date-format';
 import type { ProjectVersion } from '../lib/repository.types';
 
 interface VersionListProps {

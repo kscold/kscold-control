@@ -1,5 +1,5 @@
-import { api } from '../../lib/api';
-import { BaseApiService } from './base.service';
+import { api } from '@/shared/api/client';
+import { BaseApiService } from '@/shared/api/base.service';
 import type {
   WorkspaceBranchResult,
   WorkspaceCommitResult,

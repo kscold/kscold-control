@@ -3,7 +3,7 @@
  * Request/Response types for API calls
  */
 
-import { User, SystemInfo, LogType } from './domain.types';
+import { User, SystemInfo, LogType } from '../../types/domain.types';
 
 // ============= Auth API Types =============
 

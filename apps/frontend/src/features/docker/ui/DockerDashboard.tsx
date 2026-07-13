@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { usePermissions } from '../../../hooks/usePermissions';
-import { PERMISSIONS } from '../../../constants/permissions';
+import { usePermissions } from '@/shared/lib/use-permissions';
+import { PERMISSIONS } from '@/shared/config/permissions';
 import {
   useContainers,
   useContainerActions,

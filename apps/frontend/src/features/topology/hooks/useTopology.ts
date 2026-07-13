@@ -5,7 +5,7 @@ import {
   useNodesState,
   useEdgesState,
 } from '@xyflow/react';
-import { api } from '../../../lib/api';
+import { api } from '@/shared/api/client';
 import type {
   ContainerData,
   NginxSiteData,

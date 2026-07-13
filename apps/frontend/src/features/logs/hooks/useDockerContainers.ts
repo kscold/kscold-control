@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { api } from '../../../lib/api';
+import { api } from '@/shared/api/client';
 import type { DockerContainer } from '../lib/logs.types';
 
 const PREFERRED_CONTAINER_ORDER = [

@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { api } from '../../../lib/api';
+import { api } from '@/shared/api/client';
 import type { SystemInfo } from '../lib/dashboard.types';
 
 export function useSystemInfo() {

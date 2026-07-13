@@ -19,7 +19,7 @@ import { buildDiffEntries, buildDiffPreview } from '../lib/audit-diff';
 import {
   formatAuditTimestamp,
   formatExportFilename,
-} from '../../../lib/date-format';
+} from '@/shared/lib/date-format';
 import type { AuditDomain, AuditEvent } from '../lib/audit.types';
 
 const DOMAIN_OPTIONS: Array<{ value: AuditDomain; label: string }> = [
