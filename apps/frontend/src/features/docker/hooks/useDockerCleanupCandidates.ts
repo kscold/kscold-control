@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
-import { dockerService } from '../../../services/api/docker.service';
-import type { DockerCleanupCandidates } from '../lib/docker-cleanup.types';
+import { dockerService } from '@/entities/container';
+import type { DockerCleanupCandidates } from '@/entities/container';
 
 export function useDockerCleanupCandidates() {
   const [candidates, setCandidates] = useState<DockerCleanupCandidates | null>(

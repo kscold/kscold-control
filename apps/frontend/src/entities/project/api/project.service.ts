@@ -13,7 +13,7 @@ import type {
   RepositoryUploadSession,
   UploadSessionBatchResult,
   ProjectVersion,
-} from '../../features/repository/lib/repository.types';
+} from '../model/types';
 
 /**
  * Repository API Service — 소스 저장소 관리

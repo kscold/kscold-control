@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { usePermissions } from '@/shared/lib/use-permissions';
 import { PERMISSIONS } from '@/shared/config/permissions';
-import type { Container } from '../../../types/domain.types';
+import type { Container } from '@/entities/container';
 
 const MONGO_CONTAINERS = ['ubuntu-blog', 'ubuntu-congbang'];
 

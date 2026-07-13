@@ -5,7 +5,7 @@ import { useDockerCleanupActions } from '../hooks';
 import { DockerCleanupCategoryCard } from './DockerCleanupCategoryCard';
 import { DockerCleanupSummaryCard } from './DockerCleanupSummaryCard';
 import { SkeletonBlock } from '../../../shared/ui';
-import type { DockerCleanupCandidates } from '../lib/docker-cleanup.types';
+import type { DockerCleanupCandidates } from '@/entities/container';
 
 interface DockerCleanupSectionProps {
   onRefreshContainers: () => void;

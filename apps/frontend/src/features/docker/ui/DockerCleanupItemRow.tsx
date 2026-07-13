@@ -1,4 +1,4 @@
-import type { DockerCleanupCandidateItem } from '../lib/docker-cleanup.types';
+import type { DockerCleanupCandidateItem } from '@/entities/container';
 import { formatBytes } from '../../../shared/lib';
 
 interface DockerCleanupItemRowProps {

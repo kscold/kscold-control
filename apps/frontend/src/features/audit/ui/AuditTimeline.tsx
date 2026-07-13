@@ -13,7 +13,7 @@ import {
   Table2,
   Users,
 } from 'lucide-react';
-import { auditService } from '../../../services/api/audit.service';
+import { auditService } from '../api/audit.service';
 import { useAuditTimeline } from '../hooks/useAuditTimeline';
 import { buildDiffEntries, buildDiffPreview } from '../lib/audit-diff';
 import {

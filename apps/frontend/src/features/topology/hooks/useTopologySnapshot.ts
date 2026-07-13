@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
-import { dockerService } from '../../../services/api/docker.service';
-import type { TopologySnapshot } from '../lib/topology.types';
+import { dockerService } from '@/entities/container';
+import type { TopologySnapshot } from '@/entities/container';
 
 export function useTopologySnapshot() {
   const [snapshot, setSnapshot] = useState<TopologySnapshot | null>(null);

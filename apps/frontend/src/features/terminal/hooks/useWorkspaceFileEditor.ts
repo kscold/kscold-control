@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { workspaceFileService } from '../../../services/api/workspace-file.service';
+import { workspaceFileService } from '../api/workspace-file.service';
 import type {
   WorkspaceDiffResult,
   WorkspaceFileRecord,

@@ -1,6 +1,6 @@
 import { Activity } from 'lucide-react';
 import { ContainerCard } from './ContainerCard';
-import type { Container } from '../../../types/domain.types';
+import type { Container } from '@/entities/container';
 
 interface ContainerListProps {
   containers: Container[];

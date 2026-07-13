@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useModalStore } from '../../../shared/model';
-import { nginxService } from '../../../services/api/nginx.service';
+import { nginxService } from '../api/nginx.service';
 import type {
   NginxSite,
   CreateNginxSiteDto,

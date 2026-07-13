@@ -1,6 +1,6 @@
 import { api } from '@/shared/api/client';
 import { BaseApiService } from '@/shared/api/base.service';
-import { User, Role, Permission } from '../../types';
+import { User, Role, Permission } from '../model/types';
 import {
   CreateUserRequest,
   UpdateUserRequest,
@@ -8,7 +8,7 @@ import {
   UpdateTerminalLimitRequest,
   CreateRoleRequest,
   UpdateRoleRequest,
-} from '@/shared/api/types';
+} from './types';
 
 /**
  * RBAC API Service

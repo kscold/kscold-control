@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { networkService } from '../../../services/api/network.service';
+import { networkService } from '../api/network.service';
 
 export function useExternalIp() {
   const [externalIp, setExternalIp] = useState<string>('');

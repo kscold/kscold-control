@@ -8,7 +8,7 @@ import {
   AssignRolesModal,
   PermissionsList,
 } from './';
-import type { User } from '../../../types/domain.types';
+import type { User } from '@/entities/user';
 
 /**
  * RbacDashboard Component

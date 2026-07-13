@@ -5,7 +5,7 @@ import {
   useMemo,
   useState,
 } from 'react';
-import { auditService } from '../../../services/api/audit.service';
+import { auditService } from '../api/audit.service';
 import type {
   AuditDomain,
   AuditEvent,

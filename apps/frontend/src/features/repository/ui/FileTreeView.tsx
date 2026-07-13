@@ -7,7 +7,7 @@ import {
   FileCode,
   File,
 } from 'lucide-react';
-import type { FileTreeNode } from '../lib/repository.types';
+import type { FileTreeNode } from '@/entities/project';
 
 interface FileTreeViewProps {
   tree: FileTreeNode | null;

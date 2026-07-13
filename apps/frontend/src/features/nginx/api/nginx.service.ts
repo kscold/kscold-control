@@ -7,7 +7,7 @@ import type {
   CertRenewalStatus,
   DnsCheckResult,
   UpstreamOption,
-} from '../../features/nginx/lib/nginx.types';
+} from '../lib/nginx.types';
 
 export class NginxApiService extends BaseApiService {
   private readonly basePath = '/nginx';

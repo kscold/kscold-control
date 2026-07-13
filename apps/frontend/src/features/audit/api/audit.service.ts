@@ -4,7 +4,7 @@ import type {
   AuditDomain,
   AuditEvent,
   AuditSummary,
-} from '../../features/audit/lib/audit.types';
+} from '../lib/audit.types';
 import { api } from '@/shared/api/client';
 
 type AuditQueryParams = {

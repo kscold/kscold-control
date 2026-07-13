@@ -1,4 +1,4 @@
-import type { Permission } from '../../../types/domain.types';
+import type { Permission } from '@/entities/user';
 
 interface PermissionsListProps {
   permissions: Permission[];

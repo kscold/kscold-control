@@ -1,18 +1,18 @@
 import { api } from '@/shared/api/client';
 import { BaseApiService } from '@/shared/api/base.service';
-import { Container, ComposeProvisioningTemplate } from '../../types';
+import { Container, ComposeProvisioningTemplate } from '../model/types';
 import {
   CreateContainerRequest,
   ContainerStatsResponse,
-} from '@/shared/api/types';
+} from './types';
 import type {
   DockerCleanupCandidates,
   DockerCleanupResult,
-} from '../../features/docker/lib/docker-cleanup.types';
+} from '../model/cleanup.types';
 import type {
   TopologyNodePositionUpdate,
   TopologySnapshot,
-} from '../../features/topology/lib/topology.types';
+} from '../model/topology.types';
 
 /**
  * Docker API Service

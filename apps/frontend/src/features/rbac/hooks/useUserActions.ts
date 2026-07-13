@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { rbacService } from '../../../services/api/rbac.service';
+import { rbacService } from '@/entities/user';
 import { useModalStore } from '../../../shared/model';
 
 /**

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { dockerService } from '../../../services/api/docker.service';
-import type { Container } from '../../../types/domain.types';
+import { dockerService } from '@/entities/container';
+import type { Container } from '@/entities/container';
 
 /**
  * useContainers Hook

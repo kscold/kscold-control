@@ -11,7 +11,7 @@ import type {
   NginxSiteData,
   UpnpMappingData,
   ContainerProcesses,
-} from '../lib/topology.types';
+} from '@/entities/container';
 import { getStackMeta } from '../lib/topology.utils';
 
 export function useTopology() {

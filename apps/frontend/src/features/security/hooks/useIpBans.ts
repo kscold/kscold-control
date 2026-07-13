@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { securityService } from '../../../services/api';
+import { securityService } from '../api/security.service';
 import type { CreateIpBanInput, IpBan } from '../lib/security.types';
 
 export function useIpBans() {

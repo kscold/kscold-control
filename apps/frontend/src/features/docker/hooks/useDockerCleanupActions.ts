@@ -1,8 +1,8 @@
 import { useMemo, useState } from 'react';
-import { dockerService } from '../../../services/api/docker.service';
+import { dockerService } from '@/entities/container';
 import { useModalStore } from '../../../shared/model';
 import { formatBytes } from '../../../shared/lib';
-import type { DockerCleanupResult } from '../lib/docker-cleanup.types';
+import type { DockerCleanupResult } from '@/entities/container';
 
 export type DockerCleanupActionKey =
   | 'images'

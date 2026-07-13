@@ -3,7 +3,7 @@ import { formatBytes } from '../../../shared/lib';
 import type {
   DockerCleanupCategory,
   DockerCleanupResult,
-} from '../lib/docker-cleanup.types';
+} from '@/entities/container';
 import type { DockerCleanupActionKey } from '../hooks/useDockerCleanupActions';
 import { DockerCleanupItemRow } from './DockerCleanupItemRow';
 

@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import { dockerService } from '../../../services/api/docker.service';
+import { dockerService } from '@/entities/container';
 import { useModalStore } from '../../../shared/model';
-import type { Container } from '../../../types/domain.types';
+import type { Container } from '@/entities/container';
 
 /**
  * useContainerActions Hook

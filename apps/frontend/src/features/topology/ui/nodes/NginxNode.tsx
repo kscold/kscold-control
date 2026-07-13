@@ -1,7 +1,7 @@
 import { memo } from 'react';
 import { Handle, Position, type NodeProps } from '@xyflow/react';
 import { Globe, ArrowRight, HardDrive } from 'lucide-react';
-import type { NginxSiteData } from '../../lib/topology.types';
+import type { NginxSiteData } from '@/entities/container';
 
 export const NginxNode = memo(function NginxNode({ data }: NodeProps) {
   const d = data as unknown as NginxSiteData;

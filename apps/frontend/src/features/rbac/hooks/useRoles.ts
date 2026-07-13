@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { rbacService } from '../../../services/api/rbac.service';
-import type { Role, Permission } from '../../../types/domain.types';
+import { rbacService } from '@/entities/user';
+import type { Role, Permission } from '@/entities/user';
 
 /**
  * useRoles Hook

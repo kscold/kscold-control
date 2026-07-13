@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { dockerService } from '../../../services/api/docker.service';
+import { dockerService } from '@/entities/container';
 import { useModalStore } from '../../../shared/model';
 
 interface ContainerConfig {

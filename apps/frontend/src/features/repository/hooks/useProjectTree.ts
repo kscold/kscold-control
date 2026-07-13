@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useState } from 'react';
-import { repositoryService } from '../../../services/api/repository.service';
+import { repositoryService } from '@/entities/project';
 import type {
   FileTreeNode,
   FileContentResult,
   VersionedFileContentResult,
-} from '../lib/repository.types';
+} from '@/entities/project';
 
 export function useProjectTree(projectId: string | null) {
   const [tree, setTree] = useState<FileTreeNode | null>(null);

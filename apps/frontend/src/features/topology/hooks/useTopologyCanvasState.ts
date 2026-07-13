@@ -5,9 +5,9 @@ import {
   type Edge,
   type Node,
 } from '@xyflow/react';
-import type { TopologySnapshot } from '../lib/topology.types';
+import type { TopologySnapshot } from '@/entities/container';
 import { getTopologyCanvasElements } from '../lib/topology-canvas.utils';
-import { dockerService } from '../../../services/api/docker.service';
+import { dockerService } from '@/entities/container';
 
 export function useTopologyCanvasState(snapshot: TopologySnapshot | null) {
   const { nodes: initialNodes, edges: initialEdges } = useMemo(

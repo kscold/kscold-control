@@ -19,7 +19,7 @@ import { VersionList } from './VersionList';
 import type {
   RepositoryProject,
   RepositoryUploadActivity,
-} from '../lib/repository.types';
+} from '@/entities/project';
 
 interface ProjectBrowserProps {
   project: RepositoryProject;
