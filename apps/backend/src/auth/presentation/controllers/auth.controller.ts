@@ -9,36 +9,37 @@ import {
   HttpStatus,
 } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
-import { AuthService } from '../../application/services/auth.service';
+import {
+  RegisterUseCase,
+  LoginUseCase,
+  GetMeUseCase,
+} from '../../application/use-cases';
 import { LoginDto, RegisterDto } from '../../application/dto';
-import { PermissionExtractor } from '../../../common/utils/permission-extractor.util';
 import type { User } from '../../../rbac/domain/entities/user.entity';
 
 @Controller('auth')
 export class AuthController {
-  constructor(private readonly authService: AuthService) {}
+  constructor(
+    private readonly registerUseCase: RegisterUseCase,
+    private readonly loginUseCase: LoginUseCase,
+    private readonly getMeUseCase: GetMeUseCase,
+  ) {}
 
   @Post('register')
   @HttpCode(HttpStatus.CREATED)
   async register(@Body() dto: RegisterDto) {
-    return this.authService.register(dto);
+    return this.registerUseCase.execute(dto);
   }
 
   @Post('login')
   @HttpCode(HttpStatus.OK)
   async login(@Body() dto: LoginDto) {
-    return this.authService.login(dto);
+    return this.loginUseCase.execute(dto);
   }
 
   @UseGuards(AuthGuard('jwt'))
   @Get('me')
   async getMe(@Request() req: { user: User }) {
-    const user = req.user;
-    return {
-      id: user.id,
-      email: user.email,
-      roles: user.roles?.map((r) => r.name) ?? [],
-      permissions: PermissionExtractor.extractFromRoles(user.roles ?? []),
-    };
+    return this.getMeUseCase.execute(req.user);
   }
 }
