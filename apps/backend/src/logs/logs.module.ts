@@ -1,7 +1,17 @@
 import { Module } from '@nestjs/common';
 import { AuthModule } from '../auth/auth.module';
 import { LogsController } from './presentation/controllers/logs.controller';
-import { LogsService } from './application/services/logs.service';
+import {
+  LogFrontendErrorUseCase,
+  GetLogsUseCase,
+  GetPm2LogsUseCase,
+  GetDockerContainersUseCase,
+  GetDockerArchiveSourcesUseCase,
+  GetDockerArchiveLogsUseCase,
+  StreamDockerLogsUseCase,
+  GetNginxStatusUseCase,
+  GetSystemInfoUseCase,
+} from './application/use-cases';
 import {
   FILE_LOG_READER,
   DOCKER_LOG_READER,
@@ -17,12 +27,19 @@ import { SystemStatusReaderRepository } from './infrastructure/repositories/syst
   imports: [AuthModule],
   controllers: [LogsController],
   providers: [
-    LogsService,
+    LogFrontendErrorUseCase,
+    GetLogsUseCase,
+    GetPm2LogsUseCase,
+    GetDockerContainersUseCase,
+    GetDockerArchiveSourcesUseCase,
+    GetDockerArchiveLogsUseCase,
+    StreamDockerLogsUseCase,
+    GetNginxStatusUseCase,
+    GetSystemInfoUseCase,
     { provide: FILE_LOG_READER, useClass: FileLogReaderRepository },
     { provide: DOCKER_LOG_READER, useClass: DockerLogReaderRepository },
     { provide: PM2_LOG_READER, useClass: Pm2LogReaderRepository },
     { provide: SYSTEM_STATUS_READER, useClass: SystemStatusReaderRepository },
   ],
-  exports: [LogsService],
 })
 export class LogsModule {}
