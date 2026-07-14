@@ -4,11 +4,11 @@ import * as bcrypt from 'bcrypt';
 import {
   IUserRepository,
   USER_REPOSITORY,
-} from '../../domain/repositories/user.repository.interface';
+} from '../../../rbac/domain/repositories/user.repository.interface';
 import {
   IRoleRepository,
   ROLE_REPOSITORY,
-} from '../../domain/repositories/role.repository.interface';
+} from '../../../rbac/domain/repositories/role.repository.interface';
 import { LoginDto, RegisterDto } from '../dto';
 import { ROLES } from '../../../common/constants/roles';
 
@@ -58,7 +58,7 @@ export class AuthService {
   async login(dto: LoginDto) {
     const { email, password } = dto;
 
-    const user = await this.userRepository.findByEmailWithRelations(email);
+    const user = await this.userRepository.findByEmailWithRoles(email);
 
     if (!user) {
       throw new UnauthorizedException(

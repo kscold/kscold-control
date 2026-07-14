@@ -1,7 +1,4 @@
-import { randomUUID } from 'crypto';
-import { Inject, Injectable, OnModuleInit } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Inject, Injectable } from '@nestjs/common';
 import { ComposeService } from './compose.service';
 import type {
   TopologySnapshot,
@@ -12,14 +9,17 @@ import type { NginxSite } from '../../../nginx/domain/types/nginx-site.type';
 import {
   NGINX_CONFIG_REPOSITORY,
   type INginxConfigRepository,
-} from '../../../nginx/domain/interfaces/nginx-config.repository';
+} from '../../../nginx/domain/repositories/nginx-config.repository';
 import { ListContainersUseCase } from '../use-cases';
 import type { ContainerResponseDto } from '../dto/container-response.dto';
 import {
   DOCKER_CLIENT,
   type IDockerClient,
 } from '../../domain/repositories/docker-client.interface';
-import { TopologyNodeLayout } from '../../domain/entities/topology-node-layout.entity';
+import {
+  ITopologyLayoutRepository,
+  TOPOLOGY_LAYOUT_REPOSITORY,
+} from '../../domain/repositories/topology-layout.repository.interface';
 
 type RuntimeProcesses = {
   pm2: any[];
@@ -121,23 +121,16 @@ const INFERRED_SITE_HINTS: NginxSite[] = [
 ];
 
 @Injectable()
-export class DockerTopologyService implements OnModuleInit {
-  private layoutTableReady = false;
-  private layoutTableInitialization?: Promise<void>;
-
+export class DockerTopologyService {
   constructor(
     private readonly composeService: ComposeService,
     private readonly listContainersUseCase: ListContainersUseCase,
     @Inject(NGINX_CONFIG_REPOSITORY)
     private readonly nginxConfigRepository: INginxConfigRepository,
     @Inject(DOCKER_CLIENT) private readonly dockerClient: IDockerClient,
-    @InjectRepository(TopologyNodeLayout)
-    private readonly topologyNodeLayoutRepository: Repository<TopologyNodeLayout>,
+    @Inject(TOPOLOGY_LAYOUT_REPOSITORY)
+    private readonly topologyLayoutRepository: ITopologyLayoutRepository,
   ) {}
-
-  async onModuleInit(): Promise<void> {
-    await this.ensureLayoutTable();
-  }
 
   async getSnapshot(userId: string): Promise<TopologySnapshot> {
     const [containers, configuredSites] = await Promise.all([
@@ -467,33 +460,13 @@ export class DockerTopologyService implements OnModuleInit {
       return;
     }
 
-    await this.ensureLayoutTable();
-
-    const valuesSql = sanitizedPositions
-      .map((_, index) => {
-        const offset = index * 5;
-        return `($${offset + 1}, $${offset + 2}, $${offset + 3}, $${offset + 4}, $${offset + 5})`;
-      })
-      .join(', ');
-    const parameters = sanitizedPositions.flatMap((position) => [
-      randomUUID(),
+    await this.topologyLayoutRepository.upsertPositions(
       userId,
-      position.nodeId.trim(),
-      position.x,
-      position.y,
-    ]);
-
-    await this.topologyNodeLayoutRepository.query(
-      `
-        INSERT INTO topology_node_layouts (id, user_id, node_id, x, y)
-        VALUES ${valuesSql}
-        ON CONFLICT (user_id, node_id)
-        DO UPDATE SET
-          x = EXCLUDED.x,
-          y = EXCLUDED.y,
-          updated_at = NOW()
-      `,
-      parameters,
+      sanitizedPositions.map((position) => ({
+        nodeId: position.nodeId.trim(),
+        x: position.x,
+        y: position.y,
+      })),
     );
   }
 
@@ -501,23 +474,9 @@ export class DockerTopologyService implements OnModuleInit {
     userId: string,
     nodes: TopologySnapshotNode[],
   ): Promise<void> {
-    await this.ensureLayoutTable();
-    const rows = await this.topologyNodeLayoutRepository.query(
-      `
-        SELECT node_id AS "nodeId", x, y
-        FROM topology_node_layouts
-        WHERE user_id = $1
-      `,
-      [userId],
-    );
+    const rows = await this.topologyLayoutRepository.findPositionsByUser(userId);
     const positions = new Map<string, { x: number; y: number }>(
-      rows.map(
-        (row: { nodeId: string; x: number; y: number }) =>
-          [row.nodeId, { x: Number(row.x), y: Number(row.y) }] as [
-            string,
-            { x: number; y: number },
-          ],
-      ),
+      rows.map((row) => [row.nodeId, { x: row.x, y: row.y }]),
     );
 
     nodes.forEach((node) => {
@@ -530,38 +489,6 @@ export class DockerTopologyService implements OnModuleInit {
         node.position = position;
       }
     });
-  }
-
-  private async ensureLayoutTable(): Promise<void> {
-    if (this.layoutTableReady) {
-      return;
-    }
-
-    if (!this.layoutTableInitialization) {
-      this.layoutTableInitialization = this.topologyNodeLayoutRepository
-        .query(
-          `
-            CREATE TABLE IF NOT EXISTS topology_node_layouts (
-              id uuid PRIMARY KEY,
-              user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-              node_id varchar NOT NULL,
-              x double precision NOT NULL,
-              y double precision NOT NULL,
-              created_at timestamptz NOT NULL DEFAULT NOW(),
-              updated_at timestamptz NOT NULL DEFAULT NOW(),
-              CONSTRAINT topology_node_layouts_user_node_key UNIQUE (user_id, node_id)
-            )
-          `,
-        )
-        .then(() => {
-          this.layoutTableReady = true;
-        })
-        .finally(() => {
-          this.layoutTableInitialization = undefined;
-        });
-    }
-
-    await this.layoutTableInitialization;
   }
 
   private mergeSites(

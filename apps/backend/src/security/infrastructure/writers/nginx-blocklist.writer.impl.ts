@@ -1,11 +1,11 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import * as fs from 'fs/promises';
 import * as path from 'path';
-import type { INginxBlocklistWriter } from '../../domain/interfaces/nginx-blocklist.writer';
+import type { INginxBlocklistWriter } from '../../domain/repositories/nginx-blocklist.writer';
 import {
   NGINX_RUNTIME_REPOSITORY,
   type INginxRuntimeRepository,
-} from '../../../nginx/domain/interfaces/nginx-runtime.repository';
+} from '../../../nginx/domain/repositories/nginx-runtime.repository';
 
 const NGINX_CONF_DIR = path.resolve(
   __dirname,

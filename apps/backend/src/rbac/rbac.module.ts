@@ -74,6 +74,7 @@ import { RbacController } from './presentation/controllers/rbac.controller';
   exports: [
     // Export repository tokens for other modules (e.g., TerminalModule)
     USER_REPOSITORY,
+    ROLE_REPOSITORY,
 
     // Export use cases for potential reuse in other modules
     CreateUserUseCase,

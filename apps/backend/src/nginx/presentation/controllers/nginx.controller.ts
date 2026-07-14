@@ -17,7 +17,7 @@ import { NginxSiteService } from '../../application/services/nginx-site.service'
 import { CertService } from '../../application/services/cert.service';
 import { DnsService } from '../../application/services/dns.service';
 import { ListContainersUseCase } from '../../../docker/application/use-cases';
-import type { CreateNginxSiteDto } from '../../domain/types/nginx-site.type';
+import { CreateNginxSiteRequestDto } from '../dto/create-nginx-site.request.dto';
 import type { JwtRequest } from '../../../common/types/jwt-request.type';
 import { AuditLogService } from '../../../audit/application/services/audit-log.service';
 
@@ -41,7 +41,7 @@ export class NginxController {
   @Post('sites')
   @RequirePermissions(PERMISSIONS.SYSTEM_WRITE)
   async createSite(
-    @Body() dto: CreateNginxSiteDto,
+    @Body() dto: CreateNginxSiteRequestDto,
     @Request() req: JwtRequest,
   ) {
     const result = await this.nginxSiteService.createSite(dto);
@@ -65,7 +65,7 @@ export class NginxController {
   @RequirePermissions(PERMISSIONS.SYSTEM_WRITE)
   async updateSite(
     @Param('name') name: string,
-    @Body() dto: CreateNginxSiteDto,
+    @Body() dto: CreateNginxSiteRequestDto,
     @Request() req: JwtRequest,
   ) {
     const beforeSite = await this.getSiteSnapshot(name);

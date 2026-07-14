@@ -20,7 +20,7 @@ import {
   type IDockerLogReader,
   type IPm2LogReader,
   type ISystemStatusReader,
-} from '../../domain/interfaces/log-reader.repository';
+} from '../../domain/repositories/log-reader.repository';
 import type {
   LogType,
   Pm2LogResult,

@@ -1,7 +1,7 @@
 import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import * as fs from 'fs';
 import * as path from 'path';
-import type { INginxConfigRepository } from '../../domain/interfaces/nginx-config.repository';
+import type { INginxConfigRepository } from '../../domain/repositories/nginx-config.repository';
 import type {
   NginxSite,
   CreateNginxSiteDto,

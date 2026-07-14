@@ -3,7 +3,7 @@ import * as os from 'os';
 import { exec } from 'child_process';
 import { promisify } from 'util';
 
-import type { IOsMetricsRepository } from '../../domain/interfaces/os-metrics.repository';
+import type { IOsMetricsRepository } from '../../domain/repositories/os-metrics.repository';
 import type {
   CpuStats,
   DiskBreakdown,
@@ -11,7 +11,7 @@ import type {
   DockerStorageUsage,
   MemoryStats,
 } from '../../domain/types/system-info.type';
-import { parseDockerSystemDfOutput } from './docker-disk-usage.util';
+import { parseDockerSystemDfOutput } from '../../../common/utils/docker-disk-usage.util';
 
 const execAsync = promisify(exec);
 const DEFAULT_DOCKER_HOST = 'unix:///Users/kscold/.colima/default/docker.sock';
