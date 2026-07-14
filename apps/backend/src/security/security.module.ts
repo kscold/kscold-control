@@ -8,6 +8,12 @@ import { IpBanRepositoryImpl } from './infrastructure/repositories/ip-ban.reposi
 import { NginxBlocklistWriterImpl } from './infrastructure/writers/nginx-blocklist.writer.impl';
 import { IpBanService } from './application/services/ip-ban.service';
 import { IpAllowlistService } from './application/services/ip-allowlist.service';
+import {
+  CreateIpBanUseCase,
+  DeleteIpBanUseCase,
+  ListIpBansUseCase,
+  ResyncBlocklistUseCase,
+} from './application/use-cases';
 import { SecurityController } from './presentation/controllers/security.controller';
 
 @Module({
@@ -16,6 +22,10 @@ import { SecurityController } from './presentation/controllers/security.controll
   providers: [
     IpBanService,
     IpAllowlistService,
+    ListIpBansUseCase,
+    CreateIpBanUseCase,
+    DeleteIpBanUseCase,
+    ResyncBlocklistUseCase,
     { provide: IP_BAN_REPOSITORY, useClass: IpBanRepositoryImpl },
     { provide: NGINX_BLOCKLIST_WRITER, useClass: NginxBlocklistWriterImpl },
   ],

@@ -14,7 +14,12 @@ import { PermissionsGuard } from '../../../common/guards/permissions.guard';
 import { RequirePermissions } from '../../../common/decorators/permissions.decorator';
 import { PERMISSIONS } from '../../../common/constants/permissions';
 import { AuditLogService } from '../../../audit/application/services/audit-log.service';
-import { IpBanService } from '../../application/services/ip-ban.service';
+import {
+  CreateIpBanUseCase,
+  DeleteIpBanUseCase,
+  ListIpBansUseCase,
+  ResyncBlocklistUseCase,
+} from '../../application/use-cases';
 import { CreateIpBanDto } from '../../application/dto/create-ip-ban.dto';
 import type { JwtRequest } from '../../../common/types/jwt-request.type';
 import type { IpBan } from '../../domain/entities/ip-ban.entity';
@@ -25,14 +30,17 @@ type SecurityRequest = Request & JwtRequest;
 @UseGuards(AuthGuard('jwt'), PermissionsGuard)
 export class SecurityController {
   constructor(
-    private readonly ipBanService: IpBanService,
+    private readonly listIpBans: ListIpBansUseCase,
+    private readonly createIpBan: CreateIpBanUseCase,
+    private readonly deleteIpBan: DeleteIpBanUseCase,
+    private readonly resyncBlocklist: ResyncBlocklistUseCase,
     private readonly auditLogService: AuditLogService,
   ) {}
 
   @Get('bans')
   @RequirePermissions(PERMISSIONS.SECURITY_READ)
   async listBans() {
-    const items = await this.ipBanService.list();
+    const items = await this.listIpBans.execute();
     return { items: items.map(toResponse) };
   }
 
@@ -42,7 +50,7 @@ export class SecurityController {
     const requesterIp = extractIp(req);
     const actorId = req.user?.id ?? req.user?.sub ?? null;
 
-    const ban = await this.ipBanService.create({
+    const ban = await this.createIpBan.execute({
       ip: dto.ip,
       reason: dto.reason ?? null,
       ttlMinutes: dto.ttlMinutes ?? null,
@@ -75,7 +83,7 @@ export class SecurityController {
   @Delete('bans/:id')
   @RequirePermissions(PERMISSIONS.SECURITY_MANAGE)
   async removeBan(@Param('id') id: string, @Req() req: SecurityRequest) {
-    const ban = await this.ipBanService.remove(id);
+    const ban = await this.deleteIpBan.execute(id);
 
     await this.auditLogService.record({
       domain: 'security',
@@ -97,7 +105,7 @@ export class SecurityController {
   @Post('resync')
   @RequirePermissions(PERMISSIONS.SECURITY_MANAGE)
   async resync() {
-    return this.ipBanService.syncNginxBlocklist();
+    return this.resyncBlocklist.execute();
   }
 }
 
