@@ -1,24 +1,29 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { getRepositoryToken } from '@nestjs/typeorm';
 import { DockerTopologyService } from '../docker-topology.service';
 import { ComposeService } from '../compose.service';
 import { ListContainersUseCase } from '../../use-cases';
 import {
   NGINX_CONFIG_REPOSITORY,
   type INginxConfigRepository,
-} from '../../../../nginx/domain/interfaces/nginx-config.repository';
+} from '../../../../nginx/domain/repositories/nginx-config.repository';
 import {
   DOCKER_CLIENT,
   type IDockerClient,
 } from '../../../domain/repositories/docker-client.interface';
-import { TopologyNodeLayout } from '../../../domain/entities/topology-node-layout.entity';
+import {
+  TOPOLOGY_LAYOUT_REPOSITORY,
+  type ITopologyLayoutRepository,
+} from '../../../domain/repositories/topology-layout.repository.interface';
 
 describe('DockerTopologyService', () => {
   let service: DockerTopologyService;
-  let layoutQuery: jest.Mock;
+  let layoutRepository: jest.Mocked<ITopologyLayoutRepository>;
 
   beforeEach(async () => {
-    layoutQuery = jest.fn().mockResolvedValue([]);
+    layoutRepository = {
+      upsertPositions: jest.fn().mockResolvedValue(undefined),
+      findPositionsByUser: jest.fn().mockResolvedValue([]),
+    };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -204,8 +209,8 @@ describe('DockerTopologyService', () => {
           } satisfies Partial<IDockerClient>,
         },
         {
-          provide: getRepositoryToken(TopologyNodeLayout),
-          useValue: { query: layoutQuery },
+          provide: TOPOLOGY_LAYOUT_REPOSITORY,
+          useValue: layoutRepository,
         },
       ],
     }).compile();
@@ -333,15 +338,9 @@ describe('DockerTopologyService', () => {
   });
 
   it('현재 사용자의 저장된 좌표를 스냅샷에 반영한다', async () => {
-    layoutQuery.mockImplementation((sql: string) => {
-      if (sql.includes('SELECT node_id')) {
-        return Promise.resolve([
-          { nodeId: 'container-blog-app', x: 123, y: 456 },
-        ]);
-      }
-
-      return Promise.resolve([]);
-    });
+    layoutRepository.findPositionsByUser.mockResolvedValue([
+      { nodeId: 'container-blog-app', x: 123, y: 456 },
+    ]);
 
     const snapshot = await service.getSnapshot('user-1');
     const blogNode = snapshot.nodes.find(
@@ -349,31 +348,17 @@ describe('DockerTopologyService', () => {
     );
 
     expect(blogNode?.position).toEqual({ x: 123, y: 456 });
-    expect(layoutQuery).toHaveBeenCalledWith(
-      expect.stringContaining('user_id = $1'),
-      ['user-1'],
-    );
+    expect(layoutRepository.findPositionsByUser).toHaveBeenCalledWith('user-1');
   });
 
-  it('사용자별 노드 좌표를 PostgreSQL upsert로 저장한다', async () => {
+  it('유효한 노드 좌표만 저장소 포트로 upsert한다', async () => {
     await service.saveNodePositions('user-1', [
       { nodeId: 'host', x: 10, y: 20 },
       { nodeId: 'invalid', x: Number.NaN, y: 30 },
     ]);
 
-    const upsertCall = layoutQuery.mock.calls.find(([sql]) =>
-      String(sql).includes('INSERT INTO topology_node_layouts'),
-    );
-
-    expect(upsertCall?.[0]).toEqual(
-      expect.stringContaining('ON CONFLICT (user_id, node_id)'),
-    );
-    expect(upsertCall?.[1]).toEqual([
-      expect.any(String),
-      'user-1',
-      'host',
-      10,
-      20,
+    expect(layoutRepository.upsertPositions).toHaveBeenCalledWith('user-1', [
+      { nodeId: 'host', x: 10, y: 20 },
     ]);
   });
 });

@@ -2,7 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import * as pty from 'node-pty';
-import { IPtyManager } from '../../domain/interfaces/pty-manager.interface';
+import { IPtyManager } from '../../domain/repositories/pty-manager.interface';
 import {
   prependClaudeBinaryDir,
   resolveClaudeBinary,

@@ -19,10 +19,10 @@ import { JwtService } from '@nestjs/jwt';
 
 import type { AuthenticatedSocket } from '../../../common/types/authenticated-socket.type';
 import { PERMISSIONS } from '../../../common/constants/permissions';
-import type { ISessionRepository } from '../../../terminal/domain/interfaces/session.repository.interface';
-import { SESSION_REPOSITORY } from '../../../terminal/domain/interfaces/session.repository.interface';
-import type { IMessageRepository } from '../../../terminal/domain/interfaces/message.repository.interface';
-import { MESSAGE_REPOSITORY } from '../../../terminal/domain/interfaces/message.repository.interface';
+import type { ISessionRepository } from '../../../terminal/domain/repositories/session.repository.interface';
+import { SESSION_REPOSITORY } from '../../../terminal/domain/repositories/session.repository.interface';
+import type { IMessageRepository } from '../../../terminal/domain/repositories/message.repository.interface';
+import { MESSAGE_REPOSITORY } from '../../../terminal/domain/repositories/message.repository.interface';
 import { WsPermissionService } from '../../../terminal/application/services/ws-permission.service';
 
 import { OpenAIApiService } from '../../application/services/openai-api.service';

@@ -1,5 +1,5 @@
 import { PortForwardingService } from '../port-forwarding.service';
-import type { IUpnpGatewayRepository } from '../../../../upnp/domain/interfaces/upnp-gateway.repository';
+import type { IUpnpGatewayRepository } from '../../../../upnp/domain/repositories/upnp-gateway.repository';
 
 describe('PortForwardingService', () => {
   let service: PortForwardingService;

@@ -3,7 +3,7 @@ import { Inject, Injectable } from '@nestjs/common';
 import {
   OS_METRICS_REPOSITORY,
   type IOsMetricsRepository,
-} from '../../domain/interfaces/os-metrics.repository';
+} from '../../domain/repositories/os-metrics.repository';
 import type {
   LiveStats,
   SystemInfo,

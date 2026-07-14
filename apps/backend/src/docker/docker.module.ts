@@ -1,4 +1,6 @@
-import { Module } from '@nestjs/common';
+import { forwardRef, Module } from '@nestjs/common';
+import { TOPOLOGY_LAYOUT_REPOSITORY } from './domain/repositories/topology-layout.repository.interface';
+import { TypeOrmTopologyLayoutRepository } from './infrastructure/repositories/typeorm-topology-layout.repository';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
 // Domain
@@ -28,13 +30,12 @@ import { DockerCommandService } from './application/services/docker-command.serv
 // Infrastructure
 import { TypeOrmContainerRepository } from './infrastructure/repositories/typeorm-container.repository';
 import { DockerodeClientAdapter } from './infrastructure/adapters/dockerode-client.adapter';
-import { NGINX_CONFIG_REPOSITORY } from '../nginx/domain/interfaces/nginx-config.repository';
-import { NginxConfigRepositoryImpl } from '../nginx/infrastructure/repositories/nginx-config.repository.impl';
 
 // Presentation
 import { DockerController } from './presentation/controllers/docker.controller';
 
 import { AuthModule } from '../auth/auth.module';
+import { NginxModule } from '../nginx/nginx.module';
 import { UpnpModule } from '../upnp/upnp.module';
 
 /**
@@ -49,12 +50,17 @@ import { UpnpModule } from '../upnp/upnp.module';
  */
 @Module({
   imports: [
+    forwardRef(() => NginxModule),
     TypeOrmModule.forFeature([Container, TopologyNodeLayout]),
     AuthModule,
     UpnpModule,
   ],
   controllers: [DockerController],
   providers: [
+    {
+      provide: TOPOLOGY_LAYOUT_REPOSITORY,
+      useClass: TypeOrmTopologyLayoutRepository,
+    },
     // Use Cases
     CreateContainerUseCase,
     ListContainersUseCase,
@@ -83,10 +89,6 @@ import { UpnpModule } from '../upnp/upnp.module';
     {
       provide: DOCKER_CLIENT,
       useClass: DockerodeClientAdapter,
-    },
-    {
-      provide: NGINX_CONFIG_REPOSITORY,
-      useClass: NginxConfigRepositoryImpl,
     },
   ],
   exports: [

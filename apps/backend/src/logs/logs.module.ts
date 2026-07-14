@@ -7,7 +7,7 @@ import {
   DOCKER_LOG_READER,
   PM2_LOG_READER,
   SYSTEM_STATUS_READER,
-} from './domain/interfaces/log-reader.repository';
+} from './domain/repositories/log-reader.repository';
 import { FileLogReaderRepository } from './infrastructure/repositories/file-log-reader.repository';
 import { DockerLogReaderRepository } from './infrastructure/repositories/docker-log-reader.repository';
 import { Pm2LogReaderRepository } from './infrastructure/repositories/pm2-log-reader.repository';

@@ -2,7 +2,7 @@ import { Inject, Injectable, Logger } from '@nestjs/common';
 import {
   type IUpnpGatewayRepository,
   UPNP_GATEWAY_REPOSITORY,
-} from '../../../upnp/domain/interfaces/upnp-gateway.repository';
+} from '../../../upnp/domain/repositories/upnp-gateway.repository';
 
 /**
  * Port Forwarding Service

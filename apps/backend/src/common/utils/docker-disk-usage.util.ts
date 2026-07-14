@@ -1,7 +1,7 @@
 import type {
   DockerStorageMetric,
   DockerStorageUsage,
-} from '../../domain/types/system-info.type';
+} from '../../system/domain/types/system-info.type';
 
 const EMPTY_METRIC: DockerStorageMetric = {
   size: 0,

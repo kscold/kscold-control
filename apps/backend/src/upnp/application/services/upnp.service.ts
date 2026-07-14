@@ -3,7 +3,7 @@ import { Inject, Injectable, Logger } from '@nestjs/common';
 import {
   type IUpnpGatewayRepository,
   UPNP_GATEWAY_REPOSITORY,
-} from '../../domain/interfaces/upnp-gateway.repository';
+} from '../../domain/repositories/upnp-gateway.repository';
 import type {
   PortMapping,
   CreateMappingDto,

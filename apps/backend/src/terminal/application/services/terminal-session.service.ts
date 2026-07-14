@@ -1,10 +1,10 @@
 import { Injectable, Inject, Logger } from '@nestjs/common';
 import type { Session } from '../../domain/entities/session.entity';
 import type { Message } from '../../domain/entities/message.entity';
-import type { ISessionRepository } from '../../domain/interfaces/session.repository.interface';
-import type { IMessageRepository } from '../../domain/interfaces/message.repository.interface';
-import { SESSION_REPOSITORY } from '../../domain/interfaces/session.repository.interface';
-import { MESSAGE_REPOSITORY } from '../../domain/interfaces/message.repository.interface';
+import type { ISessionRepository } from '../../domain/repositories/session.repository.interface';
+import type { IMessageRepository } from '../../domain/repositories/message.repository.interface';
+import { SESSION_REPOSITORY } from '../../domain/repositories/session.repository.interface';
+import { MESSAGE_REPOSITORY } from '../../domain/repositories/message.repository.interface';
 
 @Injectable()
 export class TerminalSessionService {

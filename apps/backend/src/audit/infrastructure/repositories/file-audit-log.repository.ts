@@ -2,7 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import { randomUUID } from 'crypto';
-import type { IAuditLogRepository } from '../../domain/interfaces/audit-log.repository.interface';
+import type { IAuditLogRepository } from '../../domain/repositories/audit-log.repository.interface';
 import type {
   AuditActorSummary,
   AuditDiffSummary,

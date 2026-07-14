@@ -10,8 +10,8 @@ import { promisify } from 'util';
 import * as fs from 'fs';
 import * as path from 'path';
 import type { CertInfo } from '../../domain/types/nginx-site.type';
-import type { INginxRuntimeRepository } from '../../domain/interfaces/nginx-runtime.repository';
-import { NGINX_RUNTIME_REPOSITORY } from '../../domain/interfaces/nginx-runtime.repository';
+import type { INginxRuntimeRepository } from '../../domain/repositories/nginx-runtime.repository';
+import { NGINX_RUNTIME_REPOSITORY } from '../../domain/repositories/nginx-runtime.repository';
 
 const execFileAsync = promisify(execFile);
 

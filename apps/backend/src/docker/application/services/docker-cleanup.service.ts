@@ -13,7 +13,7 @@ import type {
 import {
   parseDockerSizeToBytes,
   parseDockerSystemDfOutput,
-} from '../../../system/infrastructure/repositories/docker-disk-usage.util';
+} from '../../../common/utils/docker-disk-usage.util';
 import {
   DOCKER_CLIENT,
   type IDockerClient,

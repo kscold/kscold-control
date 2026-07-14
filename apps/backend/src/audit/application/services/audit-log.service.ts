@@ -2,7 +2,7 @@ import { Inject, Injectable } from '@nestjs/common';
 import {
   AUDIT_LOG_REPOSITORY,
   type IAuditLogRepository,
-} from '../../domain/interfaces/audit-log.repository.interface';
+} from '../../domain/repositories/audit-log.repository.interface';
 import type {
   CreateAuditEventInput,
   ListAuditEventsInput,

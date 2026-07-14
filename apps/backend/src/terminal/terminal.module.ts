@@ -6,8 +6,8 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 // Domain
 import { Session } from './domain/entities/session.entity';
 import { Message } from './domain/entities/message.entity';
-import { SESSION_REPOSITORY } from './domain/interfaces/session.repository.interface';
-import { MESSAGE_REPOSITORY } from './domain/interfaces/message.repository.interface';
+import { SESSION_REPOSITORY } from './domain/repositories/session.repository.interface';
+import { MESSAGE_REPOSITORY } from './domain/repositories/message.repository.interface';
 
 // Infrastructure
 import { TypeOrmSessionRepository } from './infrastructure/repositories/typeorm-session.repository';

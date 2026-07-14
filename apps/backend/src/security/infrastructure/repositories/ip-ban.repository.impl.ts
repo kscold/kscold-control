@@ -5,7 +5,7 @@ import { IpBan } from '../../domain/entities/ip-ban.entity';
 import type {
   CreateIpBanInput,
   IIpBanRepository,
-} from '../../domain/interfaces/ip-ban.repository';
+} from '../../domain/repositories/ip-ban.repository';
 
 @Injectable()
 export class IpBanRepositoryImpl implements IIpBanRepository {

@@ -7,7 +7,7 @@ import {
 import * as fs from 'fs';
 import * as path from 'path';
 import { promisify } from 'util';
-import { IDockerLogReader } from '../../domain/interfaces/log-reader.repository';
+import { IDockerLogReader } from '../../domain/repositories/log-reader.repository';
 import {
   DockerContainerSummary,
   DockerLogArchiveSource,

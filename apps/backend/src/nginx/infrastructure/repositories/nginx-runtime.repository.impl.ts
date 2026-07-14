@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { exec } from 'child_process';
 import { promisify } from 'util';
-import type { INginxRuntimeRepository } from '../../domain/interfaces/nginx-runtime.repository';
+import type { INginxRuntimeRepository } from '../../domain/repositories/nginx-runtime.repository';
 
 const execAsync = promisify(exec);
 const NGINX_CONTAINER = 'kscold-nginx';
