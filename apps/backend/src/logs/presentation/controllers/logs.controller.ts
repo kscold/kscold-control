@@ -15,6 +15,7 @@ import { RequirePermissions } from '../../../common/decorators/permissions.decor
 import { PERMISSIONS } from '../../../common/constants/permissions';
 import type { JwtRequest } from '../../../common/types/jwt-request.type';
 import { LogsService } from '../../application/services/logs.service';
+import { FrontendErrorRequestDto } from '../dto/frontend-error.request.dto';
 import { LogType, type DockerLogFilter } from '../../domain/types/log.type';
 
 @Controller('logs')
@@ -24,13 +25,7 @@ export class LogsController {
 
   @Post('frontend-error')
   reportFrontendError(
-    @Body()
-    body: {
-      message: string;
-      stack?: string;
-      componentStack?: string;
-      url?: string;
-    },
+    @Body() body: FrontendErrorRequestDto,
   ) {
     this.logsService.logFrontendError(body);
     return { ok: true };

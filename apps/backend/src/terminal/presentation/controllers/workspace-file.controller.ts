@@ -7,6 +7,12 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
+import {
+  WorkspaceBranchDto,
+  WorkspaceCommitDto,
+  WorkspaceHunkDto,
+  WorkspacePathDto,
+} from '../dto/workspace-file.request.dto';
 import { AuthGuard } from '@nestjs/passport';
 import { RequirePermissions } from '../../../common/decorators';
 import { PermissionsGuard } from '../../../common/guards';
@@ -50,19 +56,19 @@ export class WorkspaceFileController {
 
   @Post('workspace-diff/accept')
   @RequirePermissions(PERMISSIONS.TERMINAL_ACCESS)
-  async acceptDiff(@Body() body: { path: string }) {
+  async acceptDiff(@Body() body: WorkspacePathDto) {
     return this.workspaceFileService.acceptDiff(body.path);
   }
 
   @Post('workspace-diff/reject')
   @RequirePermissions(PERMISSIONS.TERMINAL_ACCESS)
-  async rejectDiff(@Body() body: { path: string }) {
+  async rejectDiff(@Body() body: WorkspacePathDto) {
     return this.workspaceFileService.rejectDiff(body.path);
   }
 
   @Post('workspace-diff/hunk/accept')
   @RequirePermissions(PERMISSIONS.TERMINAL_ACCESS)
-  async acceptDiffHunk(@Body() body: { path: string; hunkIndex: number }) {
+  async acceptDiffHunk(@Body() body: WorkspaceHunkDto) {
     return this.workspaceFileService.acceptDiffHunk(
       body.path,
       Number(body.hunkIndex ?? -1),
@@ -71,7 +77,7 @@ export class WorkspaceFileController {
 
   @Post('workspace-diff/hunk/reject')
   @RequirePermissions(PERMISSIONS.TERMINAL_ACCESS)
-  async rejectDiffHunk(@Body() body: { path: string; hunkIndex: number }) {
+  async rejectDiffHunk(@Body() body: WorkspaceHunkDto) {
     return this.workspaceFileService.rejectDiffHunk(
       body.path,
       Number(body.hunkIndex ?? -1),
@@ -80,13 +86,13 @@ export class WorkspaceFileController {
 
   @Post('workspace-commit')
   @RequirePermissions(PERMISSIONS.TERMINAL_ACCESS)
-  async commitChanges(@Body() body: { message: string }) {
+  async commitChanges(@Body() body: WorkspaceCommitDto) {
     return this.workspaceFileService.commitChanges(body.message ?? '');
   }
 
   @Post('workspace-branch')
   @RequirePermissions(PERMISSIONS.TERMINAL_ACCESS)
-  async createBranch(@Body() body: { name: string }) {
+  async createBranch(@Body() body: WorkspaceBranchDto) {
     return this.workspaceFileService.createBranch(body.name ?? '');
   }
 

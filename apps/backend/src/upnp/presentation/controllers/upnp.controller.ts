@@ -13,7 +13,7 @@ import { PermissionsGuard } from '../../../common/guards/permissions.guard';
 import { RequirePermissions } from '../../../common/decorators/permissions.decorator';
 import { PERMISSIONS } from '../../../common/constants/permissions';
 import { UpnpService } from '../../application/services/upnp.service';
-import type { CreateMappingDto } from '../../domain/types/port-mapping.type';
+import { CreateMappingRequestDto } from '../dto/create-mapping.request.dto';
 
 @Controller('upnp')
 @UseGuards(AuthGuard('jwt'), PermissionsGuard)
@@ -36,7 +36,7 @@ export class UpnpController {
    */
   @Post('mappings')
   @RequirePermissions(PERMISSIONS.SYSTEM_WRITE)
-  addMapping(@Body() dto: CreateMappingDto) {
+  addMapping(@Body() dto: CreateMappingRequestDto) {
     return this.upnpService.addMapping(dto);
   }
 
