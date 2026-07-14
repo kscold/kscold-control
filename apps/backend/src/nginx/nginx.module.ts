@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { forwardRef, Module } from '@nestjs/common';
 import { NginxController } from './presentation/controllers/nginx.controller';
 import { NginxSiteService } from './application/services/nginx-site.service';
 import { CertService } from './application/services/cert.service';
@@ -10,7 +10,7 @@ import { NginxRuntimeRepositoryImpl } from './infrastructure/repositories/nginx-
 import { DockerModule } from '../docker/docker.module';
 
 @Module({
-  imports: [DockerModule],
+  imports: [forwardRef(() => DockerModule)],
   controllers: [NginxController],
   providers: [
     NginxSiteService,
@@ -19,6 +19,6 @@ import { DockerModule } from '../docker/docker.module';
     { provide: NGINX_CONFIG_REPOSITORY, useClass: NginxConfigRepositoryImpl },
     { provide: NGINX_RUNTIME_REPOSITORY, useClass: NginxRuntimeRepositoryImpl },
   ],
-  exports: [NGINX_RUNTIME_REPOSITORY],
+  exports: [NGINX_RUNTIME_REPOSITORY, NGINX_CONFIG_REPOSITORY],
 })
 export class NginxModule {}
