@@ -1,10 +1,10 @@
 import { Eye, PlayCircle } from 'lucide-react';
-import { formatBytes } from '../../../shared/lib';
+import { formatBytes } from '@/shared/lib';
 import type {
   DockerCleanupCategory,
   DockerCleanupResult,
-} from '../lib/docker-cleanup.types';
-import type { DockerCleanupActionKey } from '../hooks/useDockerCleanupActions';
+} from '@/entities/container';
+import type { DockerCleanupActionKey } from '../model/useDockerCleanupActions';
 import { DockerCleanupItemRow } from './DockerCleanupItemRow';
 
 interface DockerCleanupCategoryCardProps {

@@ -8,8 +8,8 @@ import {
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { ContainerNode, HostNode, InternetNode, NginxNode } from './nodes';
-import type { TopologySnapshot } from '../lib/topology.types';
-import { useTopologyCanvasState } from '../hooks/useTopologyCanvasState';
+import type { TopologySnapshot } from '@/entities/container';
+import { useTopologyCanvasState } from '../model/useTopologyCanvasState';
 
 const nodeTypes = {
   host: HostNode,

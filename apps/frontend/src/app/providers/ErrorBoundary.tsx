@@ -1,6 +1,6 @@
 import React, { Component, ErrorInfo, ReactNode } from 'react';
 import { ErrorFallback } from './ErrorFallback';
-import { reportFrontendError } from '../../lib/error-reporter';
+import { reportFrontendError } from '@/shared/lib/error-reporter';
 
 interface ErrorBoundaryProps {
   children: ReactNode;

@@ -1,5 +1,5 @@
 import { Network } from 'lucide-react';
-import type { CreateMappingForm } from '../lib/network.types';
+import type { CreateMappingForm } from '../model/network.types';
 
 interface CreateMappingModalProps {
   form: CreateMappingForm;

@@ -1,8 +1,8 @@
 import { useEffect } from 'react';
 import { RefreshCw } from 'lucide-react';
-import { useSystemInfo } from '../hooks/useSystemInfo';
-import { useLiveStats } from '../hooks/useLiveStats';
-import { useDashboardContainers } from '../hooks/useDashboardContainers';
+import { useSystemInfo } from '../model/useSystemInfo';
+import { useLiveStats } from '../model/useLiveStats';
+import { useDashboardContainers } from '../model/useDashboardContainers';
 import { formatUptime } from '../lib/dashboard.utils';
 import { DashboardOverviewSkeleton } from './DashboardOverviewSkeleton';
 import { SystemStatsCard } from './SystemStatsCard';

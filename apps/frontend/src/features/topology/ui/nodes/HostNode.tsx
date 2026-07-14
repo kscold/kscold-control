@@ -1,7 +1,7 @@
 import { memo } from 'react';
 import { Handle, Position, type NodeProps } from '@xyflow/react';
 import { Server } from 'lucide-react';
-import type { HostNodeData } from '../../lib/topology.types';
+import type { HostNodeData } from '@/entities/container';
 
 export const HostNode = memo(function HostNode({ data }: NodeProps) {
   const d = data as unknown as HostNodeData;

@@ -1,8 +1,8 @@
-import { useAuthStore } from '../../../shared/model';
-import { useModalStore } from '../../../shared/model';
-import { useTerminalSession } from '../hooks/useTerminalSession';
-import { useTerminalSetup } from '../hooks/useTerminalSetup';
-import { useTerminalSocket } from '../hooks/useTerminalSocket';
+import { useAuthStore } from '@/shared/model';
+import { useModalStore } from '@/shared/model';
+import { useTerminalSession } from '../model/useTerminalSession';
+import { useTerminalSetup } from '../model/useTerminalSetup';
+import { useTerminalSocket } from '../model/useTerminalSocket';
 import { getTerminalSessionStorageKey } from '../lib/terminal.constants';
 import { TerminalHeader } from './TerminalHeader';
 

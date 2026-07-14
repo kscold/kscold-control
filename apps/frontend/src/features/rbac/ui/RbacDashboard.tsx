@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Shield } from 'lucide-react';
-import { useUsers, useRoles, useUserActions } from '../hooks';
+import { useUsers, useRoles, useUserActions } from '../model';
 import {
   RoleList,
   UserList,
@@ -8,7 +8,7 @@ import {
   AssignRolesModal,
   PermissionsList,
 } from './';
-import type { User } from '../../../types/domain.types';
+import type { User } from '@/entities/user';
 
 /**
  * RbacDashboard Component

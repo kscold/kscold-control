@@ -1,7 +1,7 @@
 import { memo } from 'react';
 import { Handle, Position, type NodeProps } from '@xyflow/react';
 import { Network, ArrowRight } from 'lucide-react';
-import type { UpnpMappingData } from '../../lib/topology.types';
+import type { UpnpMappingData } from '@/entities/container';
 
 export const UpnpNode = memo(function UpnpNode({ data }: NodeProps) {
   const d = data as unknown as UpnpMappingData;

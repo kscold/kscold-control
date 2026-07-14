@@ -1,4 +1,4 @@
-import type { TopologySnapshot } from './topology.types';
+import type { TopologySnapshot } from '@/entities/container';
 import { getTopologyCanvasElements } from './topology-canvas.utils';
 
 describe('getTopologyCanvasElements', () => {

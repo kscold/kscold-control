@@ -7,7 +7,7 @@ import type {
   ContainerInfo,
   LiveStats,
   SystemInfo,
-} from '../lib/dashboard.types';
+} from '../model/dashboard.types';
 import { formatBytes } from '../lib/dashboard.utils';
 import { DiskUsageCard } from './DiskUsageCard';
 import { MetricCard } from './MetricCard';

@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import { Layers3, Box, Database, PackageOpen, Trash2 } from 'lucide-react';
 import { dashboardStorageTones } from '../lib/dashboard.colors';
-import type { DockerStorageMetric, SystemInfo } from '../lib/dashboard.types';
+import type { DockerStorageMetric, SystemInfo } from '../model/dashboard.types';
 import { formatBytes } from '../lib/dashboard.utils';
 
 interface DockerStorageDetailsCardProps {

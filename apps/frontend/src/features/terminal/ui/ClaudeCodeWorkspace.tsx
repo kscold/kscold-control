@@ -16,15 +16,15 @@ import {
   Wand2,
   X,
 } from 'lucide-react';
-import { useAuthStore } from '../../../shared/model';
-import { useModalStore } from '../../../shared/model';
-import { useClaudeRuntimeDiagnostics } from '../hooks/useClaudeRuntimeDiagnostics';
-import { useTerminalSession } from '../hooks/useTerminalSession';
-import { useTerminalSetup } from '../hooks/useTerminalSetup';
-import { useTerminalSocket } from '../hooks/useTerminalSocket';
-import { useWorkspaceFileEditor } from '../hooks/useWorkspaceFileEditor';
+import { useAuthStore } from '@/shared/model';
+import { useModalStore } from '@/shared/model';
+import { useClaudeRuntimeDiagnostics } from '../model/useClaudeRuntimeDiagnostics';
+import { useTerminalSession } from '../model/useTerminalSession';
+import { useTerminalSetup } from '../model/useTerminalSetup';
+import { useTerminalSocket } from '../model/useTerminalSocket';
+import { useWorkspaceFileEditor } from '../model/useWorkspaceFileEditor';
 import { getTerminalSessionStorageKey } from '../lib/terminal.constants';
-import type { ClaudeRuntimeCheck } from '../lib/terminal.types';
+import type { ClaudeRuntimeCheck } from '../model/terminal.types';
 import { ClaudeWorkspaceFilePanel } from './ClaudeWorkspaceFilePanel';
 
 interface ClaudeCodeWorkspaceProps {

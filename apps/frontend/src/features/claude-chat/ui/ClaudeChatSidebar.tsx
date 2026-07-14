@@ -7,7 +7,7 @@ import {
   Sparkles,
   Wrench,
 } from 'lucide-react';
-import { ChatMessage, ClaudeChatSession } from '../lib/claude-chat.types';
+import { ChatMessage, ClaudeChatSession } from '../model/claude-chat.types';
 
 interface ClaudeChatSidebarProps {
   session: ClaudeChatSession;

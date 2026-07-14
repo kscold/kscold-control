@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Users, Edit2, Key, Trash2 } from 'lucide-react';
-import type { User } from '../../../types/domain.types';
-import { ROLES } from '../../../constants/roles';
+import type { User } from '@/entities/user';
+import { ROLES } from '@/shared/config/roles';
 
 interface UserListProps {
   users: User[];

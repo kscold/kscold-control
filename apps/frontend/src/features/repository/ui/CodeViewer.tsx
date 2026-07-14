@@ -6,7 +6,7 @@ import {
   useFileContent,
   useFileAtVersion,
   useLatestVersion,
-} from '../hooks/useProjectTree';
+} from '../model/useProjectTree';
 import { DiffViewer } from './DiffViewer';
 
 interface CodeViewerProps {

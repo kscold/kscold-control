@@ -1,4 +1,4 @@
-import type { TerminalSession } from '../lib/terminal.types';
+import type { TerminalSession } from '../model/terminal.types';
 
 interface TerminalStatusProps {
   session: TerminalSession;
