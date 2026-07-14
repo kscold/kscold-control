@@ -1,18 +1,26 @@
 import { Module } from '@nestjs/common';
 import { UpnpController } from './presentation/controllers/upnp.controller';
-import { UpnpService } from './application/services/upnp.service';
+import {
+  ListPortMappingsUseCase,
+  AddPortMappingUseCase,
+  RemovePortMappingUseCase,
+  GetExternalIpUseCase,
+} from './application/use-cases';
 import { UpnpGatewayRepositoryImpl } from './infrastructure/repositories/upnp-gateway.repository.impl';
 import { UPNP_GATEWAY_REPOSITORY } from './domain/repositories/upnp-gateway.repository';
 
 @Module({
   controllers: [UpnpController],
   providers: [
-    UpnpService,
+    ListPortMappingsUseCase,
+    AddPortMappingUseCase,
+    RemovePortMappingUseCase,
+    GetExternalIpUseCase,
     {
       provide: UPNP_GATEWAY_REPOSITORY,
       useClass: UpnpGatewayRepositoryImpl,
     },
   ],
-  exports: [UpnpService, UPNP_GATEWAY_REPOSITORY],
+  exports: [UPNP_GATEWAY_REPOSITORY],
 })
 export class UpnpModule {}
