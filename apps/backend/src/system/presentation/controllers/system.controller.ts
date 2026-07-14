@@ -4,39 +4,45 @@ import { PermissionsGuard } from '../../../common/guards';
 import { RequirePermissions } from '../../../common/decorators';
 import { PERMISSIONS } from '../../../common/constants/permissions';
 
-import { SystemService } from '../../application/services/system.service';
-import { BackupService } from '../../application/services/backup.service';
+import {
+  BackupMongodbUseCase,
+  GetStatsUseCase,
+  GetSystemInfoUseCase,
+  ListBackupsUseCase,
+} from '../../application/use-cases';
 
 @Controller('system')
 @UseGuards(AuthGuard('jwt'), PermissionsGuard)
 export class SystemController {
   constructor(
-    private readonly systemService: SystemService,
-    private readonly backupService: BackupService,
+    private readonly getStatsUseCase: GetStatsUseCase,
+    private readonly getSystemInfoUseCase: GetSystemInfoUseCase,
+    private readonly backupMongodbUseCase: BackupMongodbUseCase,
+    private readonly listBackupsUseCase: ListBackupsUseCase,
   ) {}
 
   @Get('stats')
   @RequirePermissions(PERMISSIONS.SYSTEM_READ)
   async getStats() {
-    return this.systemService.getStats();
+    return this.getStatsUseCase.execute();
   }
 
   @Get('info')
   @RequirePermissions(PERMISSIONS.SYSTEM_READ)
   async getSystemInfo() {
-    return this.systemService.getSystemInfo();
+    return this.getSystemInfoUseCase.execute();
   }
 
   @Post('backup/mongodb/:containerName')
   @RequirePermissions(PERMISSIONS.SYSTEM_WRITE)
   async backupMongodb(@Param('containerName') containerName: string) {
-    const result = await this.backupService.backupMongodb(containerName);
+    const result = await this.backupMongodbUseCase.execute(containerName);
     return { success: true, ...result };
   }
 
   @Get('backup/mongodb/:containerName/list')
   @RequirePermissions(PERMISSIONS.SYSTEM_READ)
   listBackups(@Param('containerName') containerName: string) {
-    return this.backupService.listBackups(containerName);
+    return this.listBackupsUseCase.execute(containerName);
   }
 }

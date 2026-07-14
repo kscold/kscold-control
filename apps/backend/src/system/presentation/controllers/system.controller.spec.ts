@@ -1,18 +1,16 @@
 import { SystemController } from './system.controller';
 
 describe('SystemController', () => {
-  const systemService = {
-    getStats: jest.fn(),
-    getSystemInfo: jest.fn(),
-  };
-  const backupService = {
-    backupMongodb: jest.fn(),
-    listBackups: jest.fn(),
-  };
+  const getStatsUseCase = { execute: jest.fn() };
+  const getSystemInfoUseCase = { execute: jest.fn() };
+  const backupMongodbUseCase = { execute: jest.fn() };
+  const listBackupsUseCase = { execute: jest.fn() };
 
   const controller = new SystemController(
-    systemService as any,
-    backupService as any,
+    getStatsUseCase as any,
+    getSystemInfoUseCase as any,
+    backupMongodbUseCase as any,
+    listBackupsUseCase as any,
   );
 
   beforeEach(() => {
@@ -25,7 +23,7 @@ describe('SystemController', () => {
       memory: { used: 1, total: 2, usedPercent: 50 },
       uptime: 1234,
     };
-    systemService.getStats.mockResolvedValueOnce(stats);
+    getStatsUseCase.execute.mockResolvedValueOnce(stats);
 
     await expect(controller.getStats()).resolves.toEqual(stats);
   });
@@ -39,7 +37,7 @@ describe('SystemController', () => {
       hostname: 'mac-mini',
       uptime: 10,
     };
-    systemService.getSystemInfo.mockResolvedValueOnce(systemInfo);
+    getSystemInfoUseCase.execute.mockResolvedValueOnce(systemInfo);
 
     await expect(controller.getSystemInfo()).resolves.toEqual(systemInfo);
   });
@@ -50,20 +48,20 @@ describe('SystemController', () => {
       fileName: 'backup.gz',
       size: 1000,
     };
-    backupService.backupMongodb.mockResolvedValueOnce(backupResult);
+    backupMongodbUseCase.execute.mockResolvedValueOnce(backupResult);
 
     await expect(controller.backupMongodb('mongo-1')).resolves.toEqual({
       success: true,
       ...backupResult,
     });
-    expect(backupService.backupMongodb).toHaveBeenCalledWith('mongo-1');
+    expect(backupMongodbUseCase.execute).toHaveBeenCalledWith('mongo-1');
   });
 
-  it('백업 목록 조회는 컨테이너 이름을 그대로 전달한다', async () => {
+  it('백업 목록 조회는 컨테이너 이름을 그대로 전달한다', () => {
     const backups = [{ fileName: 'backup.gz', size: 1000 }];
-    backupService.listBackups.mockReturnValueOnce(backups);
+    listBackupsUseCase.execute.mockReturnValueOnce(backups);
 
     expect(controller.listBackups('mongo-1')).toEqual(backups);
-    expect(backupService.listBackups).toHaveBeenCalledWith('mongo-1');
+    expect(listBackupsUseCase.execute).toHaveBeenCalledWith('mongo-1');
   });
 });
