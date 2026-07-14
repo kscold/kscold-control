@@ -13,10 +13,23 @@ import { AuthGuard } from '@nestjs/passport';
 import { PermissionsGuard } from '../../../common/guards/permissions.guard';
 import { RequirePermissions } from '../../../common/decorators/permissions.decorator';
 import { PERMISSIONS } from '../../../common/constants/permissions';
-import { NginxSiteService } from '../../application/services/nginx-site.service';
-import { CertService } from '../../application/services/cert.service';
-import { DnsService } from '../../application/services/dns.service';
-import { ListContainersUseCase } from '../../../docker/application/use-cases';
+import {
+  ListNginxSitesUseCase,
+  CreateNginxSiteUseCase,
+  UpdateNginxSiteUseCase,
+  DeleteNginxSiteUseCase,
+  ToggleNginxSiteUseCase,
+  TestNginxConfigUseCase,
+  ReloadNginxUseCase,
+  GetNginxUpstreamsUseCase,
+  ListCertsUseCase,
+  IssueCertUseCase,
+  RenewCertsUseCase,
+  GetCertRenewalStatusUseCase,
+  GetPublicIpUseCase,
+  VerifyDnsUseCase,
+  VerifyAllDnsUseCase,
+} from '../../application/use-cases';
 import { CreateNginxSiteRequestDto } from '../dto/create-nginx-site.request.dto';
 import type { JwtRequest } from '../../../common/types/jwt-request.type';
 import { AuditLogService } from '../../../audit/application/services/audit-log.service';
@@ -25,17 +38,28 @@ import { AuditLogService } from '../../../audit/application/services/audit-log.s
 @UseGuards(AuthGuard('jwt'), PermissionsGuard)
 export class NginxController {
   constructor(
-    private readonly nginxSiteService: NginxSiteService,
-    private readonly certService: CertService,
-    private readonly dnsService: DnsService,
-    private readonly listContainersUseCase: ListContainersUseCase,
+    private readonly listSitesUseCase: ListNginxSitesUseCase,
+    private readonly createSiteUseCase: CreateNginxSiteUseCase,
+    private readonly updateSiteUseCase: UpdateNginxSiteUseCase,
+    private readonly deleteSiteUseCase: DeleteNginxSiteUseCase,
+    private readonly toggleSiteUseCase: ToggleNginxSiteUseCase,
+    private readonly testConfigUseCase: TestNginxConfigUseCase,
+    private readonly reloadNginxUseCase: ReloadNginxUseCase,
+    private readonly getUpstreamsUseCase: GetNginxUpstreamsUseCase,
+    private readonly listCertsUseCase: ListCertsUseCase,
+    private readonly issueCertUseCase: IssueCertUseCase,
+    private readonly renewCertsUseCase: RenewCertsUseCase,
+    private readonly getRenewalStatusUseCase: GetCertRenewalStatusUseCase,
+    private readonly getPublicIpUseCase: GetPublicIpUseCase,
+    private readonly verifyDnsUseCase: VerifyDnsUseCase,
+    private readonly verifyAllDnsUseCase: VerifyAllDnsUseCase,
     private readonly auditLogService: AuditLogService,
   ) {}
 
   @Get('sites')
   @RequirePermissions(PERMISSIONS.SYSTEM_READ)
   listSites() {
-    return this.nginxSiteService.listSites();
+    return this.listSitesUseCase.execute();
   }
 
   @Post('sites')
@@ -44,7 +68,7 @@ export class NginxController {
     @Body() dto: CreateNginxSiteRequestDto,
     @Request() req: JwtRequest,
   ) {
-    const result = await this.nginxSiteService.createSite(dto);
+    const result = await this.createSiteUseCase.execute(dto);
     await this.auditLogService.record({
       domain: 'nginx',
       action: 'site.create',
@@ -69,7 +93,7 @@ export class NginxController {
     @Request() req: JwtRequest,
   ) {
     const beforeSite = await this.getSiteSnapshot(name);
-    const result = await this.nginxSiteService.updateSite(name, dto);
+    const result = await this.updateSiteUseCase.execute(name, dto);
     await this.auditLogService.record({
       domain: 'nginx',
       action: 'site.update',
@@ -91,7 +115,7 @@ export class NginxController {
   @RequirePermissions(PERMISSIONS.SYSTEM_WRITE)
   async deleteSite(@Param('name') name: string, @Request() req: JwtRequest) {
     const beforeSite = await this.getSiteSnapshot(name);
-    const result = await this.nginxSiteService.deleteSite(name);
+    const result = await this.deleteSiteUseCase.execute(name);
     await this.auditLogService.record({
       domain: 'nginx',
       action: 'site.delete',
@@ -112,7 +136,7 @@ export class NginxController {
   @RequirePermissions(PERMISSIONS.SYSTEM_WRITE)
   async toggleSite(@Param('name') name: string, @Request() req: JwtRequest) {
     const beforeSite = await this.getSiteSnapshot(name);
-    const result = await this.nginxSiteService.toggleSite(name);
+    const result = await this.toggleSiteUseCase.execute(name);
     await this.auditLogService.record({
       domain: 'nginx',
       action: result.enabled ? 'site.enable' : 'site.disable',
@@ -140,13 +164,13 @@ export class NginxController {
   @Post('test')
   @RequirePermissions(PERMISSIONS.SYSTEM_READ)
   testConfig() {
-    return this.nginxSiteService.testConfig();
+    return this.testConfigUseCase.execute();
   }
 
   @Post('reload')
   @RequirePermissions(PERMISSIONS.SYSTEM_WRITE)
   async reloadNginx(@Request() req: JwtRequest) {
-    const result = await this.nginxSiteService.reloadNginx();
+    const result = await this.reloadNginxUseCase.execute();
     await this.auditLogService.record({
       domain: 'nginx',
       action: 'reload',
@@ -165,25 +189,8 @@ export class NginxController {
    */
   @Get('upstreams')
   @RequirePermissions(PERMISSIONS.SYSTEM_READ)
-  async getUpstreams() {
-    const containers = await this.listContainersUseCase.execute();
-    return containers
-      .filter((c) => c.liveStatus === 'running')
-      .map((c) => {
-        const upstreams: Array<{ label: string; value: string }> = [];
-        for (const [internal] of Object.entries(c.ports)) {
-          upstreams.push({
-            label: `${c.name}:${internal}`,
-            value: `http://${c.name}:${internal}`,
-          });
-        }
-        return {
-          name: c.name,
-          image: c.image,
-          status: c.liveStatus,
-          upstreams,
-        };
-      });
+  getUpstreams() {
+    return this.getUpstreamsUseCase.execute();
   }
 
   // ===== SSL Certificate Endpoints =====
@@ -195,7 +202,7 @@ export class NginxController {
   @Get('certs')
   @RequirePermissions(PERMISSIONS.SYSTEM_READ)
   listCerts() {
-    return this.certService.listCerts();
+    return this.listCertsUseCase.execute();
   }
 
   /**
@@ -208,10 +215,11 @@ export class NginxController {
     @Body() body: { domain: string; email: string; mode?: string },
     @Request() req: JwtRequest,
   ) {
-    const result =
-      body.mode === 'standalone'
-        ? await this.certService.issueCertStandalone(body.domain, body.email)
-        : await this.certService.issueCert(body.domain, body.email);
+    const result = await this.issueCertUseCase.execute(
+      body.domain,
+      body.email,
+      body.mode,
+    );
 
     await this.auditLogService.record({
       domain: 'nginx',
@@ -237,7 +245,7 @@ export class NginxController {
   @Post('certs/renew')
   @RequirePermissions(PERMISSIONS.SYSTEM_WRITE)
   async renewCerts(@Request() req: JwtRequest) {
-    const result = await this.certService.runRenewal('manual');
+    const result = await this.renewCertsUseCase.execute();
     await this.auditLogService.record({
       domain: 'nginx',
       action: 'cert.renew-all',
@@ -257,7 +265,7 @@ export class NginxController {
   @Get('certs/renewal-status')
   @RequirePermissions(PERMISSIONS.SYSTEM_READ)
   getRenewalStatus() {
-    return this.certService.getRenewalStatus();
+    return this.getRenewalStatusUseCase.execute();
   }
 
   // ===== DNS Management Endpoints =====
@@ -269,7 +277,7 @@ export class NginxController {
   @Get('dns/ip')
   @RequirePermissions(PERMISSIONS.SYSTEM_READ)
   getPublicIp() {
-    return this.dnsService.getPublicIp().then((ip) => ({ ip }));
+    return this.getPublicIpUseCase.execute();
   }
 
   /**
@@ -279,7 +287,7 @@ export class NginxController {
   @Post('dns/verify')
   @RequirePermissions(PERMISSIONS.SYSTEM_READ)
   verifyDns(@Body() body: { domain: string }) {
-    return this.dnsService.verifyDns(body.domain);
+    return this.verifyDnsUseCase.execute(body.domain);
   }
 
   /**
@@ -288,14 +296,12 @@ export class NginxController {
    */
   @Get('dns/verify-all')
   @RequirePermissions(PERMISSIONS.SYSTEM_READ)
-  async verifyAllDns() {
-    const sites = await this.nginxSiteService.listSites();
-    const domains = sites.map((s: any) => s.domain);
-    return this.dnsService.verifyAll(domains);
+  verifyAllDns() {
+    return this.verifyAllDnsUseCase.execute();
   }
 
   private async getSiteSnapshot(name: string) {
-    const items = await this.nginxSiteService.listSites();
+    const items = await this.listSitesUseCase.execute();
     return this.toSiteSnapshot(
       items.find((item) => item.name === name) ?? null,
     );
