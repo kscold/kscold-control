@@ -1,4 +1,4 @@
-import { TopologyView } from '../features/topology/ui';
+import { TopologyView } from '@/features/topology';
 
 export function TopologyPage() {
   return <TopologyView />;

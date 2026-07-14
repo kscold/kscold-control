@@ -1,7 +1,7 @@
 import { TopologyCanvas } from './TopologyCanvas';
 import { TopologyLegend } from './TopologyLegend';
 import { TopologySkeleton } from './TopologySkeleton';
-import { useTopologySnapshot } from '../hooks/useTopologySnapshot';
+import { useTopologySnapshot } from '../model/useTopologySnapshot';
 
 export function TopologyView() {
   const { snapshot, loading, error, reload } = useTopologySnapshot();

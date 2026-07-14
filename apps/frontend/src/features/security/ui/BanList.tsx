@@ -1,5 +1,5 @@
 import { Trash2, Clock, Ban, Zap } from 'lucide-react';
-import type { IpBan } from '../lib/security.types';
+import type { IpBan } from '../model/security.types';
 
 interface Props {
   bans: IpBan[];

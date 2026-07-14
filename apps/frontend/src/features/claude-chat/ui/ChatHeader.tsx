@@ -6,7 +6,7 @@ import {
   Wifi,
   WifiOff,
 } from 'lucide-react';
-import { ClaudeChatSession } from '../lib/claude-chat.types';
+import { ClaudeChatSession } from '../model/claude-chat.types';
 
 interface ChatHeaderProps {
   session: ClaudeChatSession;

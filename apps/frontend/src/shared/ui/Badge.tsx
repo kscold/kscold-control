@@ -1,4 +1,4 @@
-import { BadgeProps } from '../../types';
+import { BadgeProps } from './types';
 
 /**
  * Reusable Badge Component

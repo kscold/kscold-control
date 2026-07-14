@@ -7,7 +7,7 @@ import {
   RotateCcw,
   Filter,
 } from 'lucide-react';
-import { repositoryService } from '../../../services/api/repository.service';
+import { repositoryService } from '@/entities/project';
 import {
   filterFiles,
   formatBytes,
@@ -20,7 +20,7 @@ import type {
   RepositoryProject,
   RepositoryUploadActivity,
   RepositoryUploadSession,
-} from '../lib/repository.types';
+} from '@/entities/project';
 
 interface UploadDropzoneProps {
   project: RepositoryProject;

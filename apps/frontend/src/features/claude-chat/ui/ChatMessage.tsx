@@ -1,5 +1,5 @@
-import { ChatMessage as ChatMessageType } from '../lib/claude-chat.types';
-import { MarkdownRenderer } from '../../../shared/ui';
+import { ChatMessage as ChatMessageType } from '../model/claude-chat.types';
+import { MarkdownRenderer } from '@/shared/ui';
 import { ToolIndicator } from './ToolIndicator';
 
 interface ChatMessageProps {

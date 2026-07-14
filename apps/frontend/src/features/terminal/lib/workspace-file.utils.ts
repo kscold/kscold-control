@@ -1,4 +1,4 @@
-import type { WorkspaceFileReference } from './terminal.types';
+import type { WorkspaceFileReference } from '../model/terminal.types';
 
 const FILE_REFERENCE_LIMIT = 12;
 const FILE_REFERENCE_PATTERN =

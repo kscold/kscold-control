@@ -9,8 +9,8 @@ import {
   ExternalLink,
   Info,
 } from 'lucide-react';
-import { usePortMappings } from '../hooks/usePortMappings';
-import { useExternalIp } from '../hooks/useExternalIp';
+import { usePortMappings } from '../model/usePortMappings';
+import { useExternalIp } from '../model/useExternalIp';
 import { PortMappingList } from './PortMappingList';
 import { CreateMappingModal } from './CreateMappingModal';
 

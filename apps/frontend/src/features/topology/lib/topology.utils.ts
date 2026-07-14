@@ -1,4 +1,4 @@
-import type { StackMeta } from './topology.types';
+import type { StackMeta } from '@/entities/container';
 
 export function getStackMeta(image: string, containerName: string): StackMeta {
   const img = image.toLowerCase();

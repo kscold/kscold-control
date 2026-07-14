@@ -1,5 +1,5 @@
 import { Key } from 'lucide-react';
-import type { Role } from '../../../types/domain.types';
+import type { Role } from '@/entities/user';
 
 interface RoleListProps {
   roles: Role[];

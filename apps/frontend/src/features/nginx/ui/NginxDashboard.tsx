@@ -8,12 +8,12 @@ import {
   Lock,
   Wifi,
 } from 'lucide-react';
-import type { TabType } from '../lib/nginx.types';
-import { emptyForm } from '../lib/nginx.types';
-import { useNginxSites } from '../hooks/useNginxSites';
-import { useNginxConfig } from '../hooks/useNginxConfig';
-import { useNginxCerts } from '../hooks/useNginxCerts';
-import { useNginxDns } from '../hooks/useNginxDns';
+import type { TabType } from '../model/nginx.types';
+import { emptyForm } from '../model/nginx.types';
+import { useNginxSites } from '../model/useNginxSites';
+import { useNginxConfig } from '../model/useNginxConfig';
+import { useNginxCerts } from '../model/useNginxCerts';
+import { useNginxDns } from '../model/useNginxDns';
 import { SiteList } from './SiteList';
 import { SiteFormModal } from './SiteFormModal';
 import { CertList } from './CertList';

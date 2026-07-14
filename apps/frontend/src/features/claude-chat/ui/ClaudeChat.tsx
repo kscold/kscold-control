@@ -1,8 +1,8 @@
 import { useCallback, useState } from 'react';
-import { useAuthStore } from '../../../shared/model';
-import { useClaudeChatSession } from '../hooks/useClaudeChatSession';
-import { useClaudeChatMessages } from '../hooks/useClaudeChatMessages';
-import { useClaudeChatSocket } from '../hooks/useClaudeChatSocket';
+import { useAuthStore } from '@/shared/model';
+import { useClaudeChatSession } from '../model/useClaudeChatSession';
+import { useClaudeChatMessages } from '../model/useClaudeChatMessages';
+import { useClaudeChatSocket } from '../model/useClaudeChatSocket';
 import { getClaudeSessionStorageKey } from '../lib/claude-chat.constants';
 import { ChatHeader } from './ChatHeader';
 import { ChatMessageList } from './ChatMessageList';

@@ -1,4 +1,4 @@
-import { ToolUse } from '../lib/claude-chat.types';
+import { ToolUse } from '../model/claude-chat.types';
 
 const TOOL_LABELS: Record<string, { label: string; color: string }> = {
   Read: { label: 'Read', color: 'bg-green-900 text-green-300' },

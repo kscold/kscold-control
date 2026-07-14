@@ -5,7 +5,7 @@ import type {
   ContainerNodeData,
   Pm2Process,
   SystemService,
-} from '../../lib/topology.types';
+} from '@/entities/container';
 import { formatMemory, pm2Dot } from '../../lib/topology.utils';
 
 export const ContainerNode = memo(function ContainerNode({ data }: NodeProps) {

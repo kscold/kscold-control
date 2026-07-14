@@ -1,4 +1,4 @@
-import { LogsViewer } from '../features/logs/ui';
+import { LogsViewer } from '@/features/logs';
 
 export function LogsPage() {
   return <LogsViewer />;

@@ -1,6 +1,6 @@
 import { memo } from 'react';
 import { Handle, Position, type NodeProps } from '@xyflow/react';
-import type { ServiceNodeData } from '../../lib/topology.types';
+import type { ServiceNodeData } from '@/entities/container';
 
 export const ServiceNode = memo(function ServiceNode({ data }: NodeProps) {
   const nodeData = data as unknown as ServiceNodeData;

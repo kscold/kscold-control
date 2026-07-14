@@ -1,5 +1,5 @@
 import type { Edge, Node } from '@xyflow/react';
-import type { TopologySnapshot } from './topology.types';
+import type { TopologySnapshot } from '@/entities/container';
 
 export interface TopologyCanvasElements {
   nodes: Node[];

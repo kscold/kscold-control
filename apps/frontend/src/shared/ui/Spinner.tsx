@@ -1,4 +1,4 @@
-import { SpinnerProps } from '../../types';
+import { SpinnerProps } from './types';
 
 /**
  * Reusable Spinner Component

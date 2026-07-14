@@ -7,7 +7,7 @@ import {
   CheckCircle2,
   XCircle,
 } from 'lucide-react';
-import type { CertInfo, CertRenewalStatus } from '../lib/nginx.types';
+import type { CertInfo, CertRenewalStatus } from '../model/nginx.types';
 import { SslIssueModal } from './SslIssueModal';
 
 const getDaysLeftColor = (days?: number) => {

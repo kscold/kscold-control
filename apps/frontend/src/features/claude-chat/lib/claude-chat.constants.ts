@@ -2,6 +2,6 @@
 export {
   CLAUDE_SESSION_STORAGE_KEY,
   getClaudeSessionStorageKey,
-} from '../../../shared/lib';
+} from '@/shared/lib';
 
 export const API_URL = import.meta.env.VITE_API_URL || '';

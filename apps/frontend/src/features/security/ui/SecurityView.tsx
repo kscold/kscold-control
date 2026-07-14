@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Shield, Plus, Loader2, RefreshCw } from 'lucide-react';
-import { useIpBans } from '../hooks/useIpBans';
+import { useIpBans } from '../model/useIpBans';
 import { BanList } from './BanList';
 import { AddBanModal } from './AddBanModal';
 

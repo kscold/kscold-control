@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import type { User, Role } from '../../../types/domain.types';
+import type { User, Role } from '@/entities/user';
 
 interface AssignRolesModalProps {
   user: User | null;
