@@ -14,20 +14,40 @@ import { PermissionsGuard } from '../../../common/guards/permissions.guard';
 import { RequirePermissions } from '../../../common/decorators/permissions.decorator';
 import { PERMISSIONS } from '../../../common/constants/permissions';
 import type { JwtRequest } from '../../../common/types/jwt-request.type';
-import { LogsService } from '../../application/services/logs.service';
+import {
+  LogFrontendErrorUseCase,
+  GetLogsUseCase,
+  GetPm2LogsUseCase,
+  GetDockerContainersUseCase,
+  GetDockerArchiveSourcesUseCase,
+  GetDockerArchiveLogsUseCase,
+  StreamDockerLogsUseCase,
+  GetNginxStatusUseCase,
+  GetSystemInfoUseCase,
+} from '../../application/use-cases';
 import { FrontendErrorRequestDto } from '../dto/frontend-error.request.dto';
 import { LogType, type DockerLogFilter } from '../../domain/types/log.type';
 
 @Controller('logs')
 @UseGuards(AuthGuard('jwt'), PermissionsGuard)
 export class LogsController {
-  constructor(private readonly logsService: LogsService) {}
+  constructor(
+    private readonly logFrontendErrorUseCase: LogFrontendErrorUseCase,
+    private readonly getLogsUseCase: GetLogsUseCase,
+    private readonly getPm2LogsUseCase: GetPm2LogsUseCase,
+    private readonly getDockerContainersUseCase: GetDockerContainersUseCase,
+    private readonly getDockerArchiveSourcesUseCase: GetDockerArchiveSourcesUseCase,
+    private readonly getDockerArchiveLogsUseCase: GetDockerArchiveLogsUseCase,
+    private readonly streamDockerLogsUseCase: StreamDockerLogsUseCase,
+    private readonly getNginxStatusUseCase: GetNginxStatusUseCase,
+    private readonly getSystemInfoUseCase: GetSystemInfoUseCase,
+  ) {}
 
   @Post('frontend-error')
   reportFrontendError(
     @Body() body: FrontendErrorRequestDto,
   ) {
-    this.logsService.logFrontendError(body);
+    this.logFrontendErrorUseCase.execute(body);
     return { ok: true };
   }
 
@@ -51,7 +71,7 @@ export class LogsController {
           ? 'all'
           : parseInt(lines ?? '', 10) || lineCount
         : undefined;
-    const logs = await this.logsService.getLogs(type, lineCount, containerId, {
+    const logs = await this.getLogsUseCase.execute(type, lineCount, containerId, {
       containerName,
       tail: dockerTail,
       timestamps:
@@ -87,7 +107,7 @@ export class LogsController {
   @RequirePermissions(PERMISSIONS.SYSTEM_READ)
   async getPm2Logs(@Query('lines') lines?: string) {
     const lineCount = lines ? parseInt(lines) : 100;
-    return this.logsService.getPm2Logs(lineCount);
+    return this.getPm2LogsUseCase.execute(lineCount);
   }
 
   /**
@@ -96,7 +116,7 @@ export class LogsController {
   @Get('docker/containers')
   @RequirePermissions(PERMISSIONS.DOCKER_READ)
   async getDockerContainers() {
-    return this.logsService.getDockerContainers();
+    return this.getDockerContainersUseCase.execute();
   }
 
   @Get('docker/archive/sources')
@@ -106,7 +126,7 @@ export class LogsController {
       return { items: [] };
     }
 
-    const items = await this.logsService.getDockerArchiveSources(containerId);
+    const items = await this.getDockerArchiveSourcesUseCase.execute(containerId);
     return { items };
   }
 
@@ -127,7 +147,7 @@ export class LogsController {
     }
 
     const tail = lines === 'all' ? 'all' : parseInt(lines ?? '', 10) || 200;
-    const logs = await this.logsService.getDockerArchiveLogs({
+    const logs = await this.getDockerArchiveLogsUseCase.execute({
       containerId,
       containerName,
       sourceId,
@@ -180,7 +200,7 @@ export class LogsController {
       filter: filter ?? 'all',
     } as const;
 
-    const process = this.logsService.createDockerLogStream(streamOptions);
+    const process = this.streamDockerLogsUseCase.execute(streamOptions);
 
     res.status(200);
     res.setHeader('Content-Type', 'text/event-stream; charset=utf-8');
@@ -214,7 +234,7 @@ export class LogsController {
 
       const parts = buffer.split(/\r?\n/);
       buffer = force ? '' : (parts.pop() ?? '');
-      const filtered = this.logsService.filterDockerLogLines(
+      const filtered = this.streamDockerLogsUseCase.filterLines(
         parts.filter((line) => line.trim()),
         streamOptions,
       );
@@ -261,7 +281,7 @@ export class LogsController {
   @Get('nginx/status')
   @RequirePermissions(PERMISSIONS.SYSTEM_READ)
   async getNginxStatus() {
-    return this.logsService.getNginxStatus();
+    return this.getNginxStatusUseCase.execute();
   }
 
   /**
@@ -270,6 +290,6 @@ export class LogsController {
   @Get('system')
   @RequirePermissions(PERMISSIONS.SYSTEM_READ)
   async getSystemInfo() {
-    return this.logsService.getSystemInfo();
+    return this.getSystemInfoUseCase.execute();
   }
 }
