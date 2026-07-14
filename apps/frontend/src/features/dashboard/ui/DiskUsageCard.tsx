@@ -18,7 +18,6 @@ export function DiskUsageCard({ systemInfo }: DiskUsageCardProps) {
       <MetricCard
         icon={<HardDrive size={18} className="text-orange-300" />}
         label="Disk"
-        className="min-h-[332px]"
         value={
           <div className="space-y-3">
             <div className="h-10 w-44 animate-pulse rounded-lg bg-gray-800/85" />
@@ -100,7 +99,6 @@ export function DiskUsageCard({ systemInfo }: DiskUsageCardProps) {
     <MetricCard
       icon={<HardDrive size={18} className={diskTone.iconClassName} />}
       label="Disk"
-      className="min-h-[332px]"
       value={
         <p className="text-lg sm:text-2xl font-bold text-white">
           {formatBytes(disk.used)} / {formatBytes(disk.total)}
