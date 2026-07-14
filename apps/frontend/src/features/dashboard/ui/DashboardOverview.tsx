@@ -24,9 +24,9 @@ export function DashboardOverview() {
 
   const showSkeleton =
     !error &&
-    ((loading && !systemInfo) ||
-      (liveStatsLoading && !liveStats) ||
-      (containersLoading && containers.length === 0));
+    (loading && !systemInfo) &&
+    (liveStatsLoading && !liveStats) &&
+    (containersLoading && containers.length === 0);
 
   if (showSkeleton) {
     return <DashboardOverviewSkeleton />;
