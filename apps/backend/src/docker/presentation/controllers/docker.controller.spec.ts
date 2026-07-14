@@ -11,15 +11,14 @@ describe('DockerController', () => {
   const getComposeProvisioningTemplateUseCase = { execute: jest.fn() };
   const createComposeServiceUseCase = { execute: jest.fn() };
   const removeComposeServiceUseCase = { execute: jest.fn() };
-  const composeService = {} as any;
-  const dockerTopologyService = { getSnapshot: jest.fn() };
-  const dockerCleanupService = {
-    getCandidates: jest.fn(),
-    pruneDanglingImages: jest.fn(),
-    pruneBuildCache: jest.fn(),
-    pruneExitedContainers: jest.fn(),
-    pruneDanglingVolumes: jest.fn(),
-  };
+  const listComposeServicesUseCase = { execute: jest.fn() };
+  const getTopologySnapshotUseCase = { execute: jest.fn() };
+  const saveTopologyLayoutUseCase = { execute: jest.fn() };
+  const getDockerCleanupCandidatesUseCase = { execute: jest.fn() };
+  const pruneDanglingImagesUseCase = { execute: jest.fn() };
+  const pruneBuildCacheUseCase = { execute: jest.fn() };
+  const pruneExitedContainersUseCase = { execute: jest.fn() };
+  const pruneDanglingVolumesUseCase = { execute: jest.fn() };
   const dockerClient = {} as any;
 
   const controller = new DockerController(
@@ -32,9 +31,14 @@ describe('DockerController', () => {
     getComposeProvisioningTemplateUseCase as any,
     createComposeServiceUseCase as any,
     removeComposeServiceUseCase as any,
-    composeService,
-    dockerTopologyService as any,
-    dockerCleanupService as any,
+    listComposeServicesUseCase as any,
+    getTopologySnapshotUseCase as any,
+    saveTopologyLayoutUseCase as any,
+    getDockerCleanupCandidatesUseCase as any,
+    pruneDanglingImagesUseCase as any,
+    pruneBuildCacheUseCase as any,
+    pruneExitedContainersUseCase as any,
+    pruneDanglingVolumesUseCase as any,
     dockerClient,
   );
 
@@ -68,14 +72,14 @@ describe('DockerController', () => {
       edges: [],
       summary: { generatedAt: 1 },
     };
-    dockerTopologyService.getSnapshot.mockResolvedValueOnce(snapshot);
+    getTopologySnapshotUseCase.execute.mockResolvedValueOnce(snapshot);
 
     await expect(
       controller.getTopologySnapshot({
         user: { id: 'user-1' },
       } as any),
     ).resolves.toEqual(snapshot);
-    expect(dockerTopologyService.getSnapshot).toHaveBeenCalledWith('user-1');
+    expect(getTopologySnapshotUseCase.execute).toHaveBeenCalledWith('user-1');
   });
 
   it('정리 후보를 그대로 반환한다', async () => {
@@ -94,7 +98,7 @@ describe('DockerController', () => {
       },
       warnings: [],
     };
-    dockerCleanupService.getCandidates.mockResolvedValueOnce(candidates);
+    getDockerCleanupCandidatesUseCase.execute.mockResolvedValueOnce(candidates);
 
     await expect(controller.getCleanupCandidates()).resolves.toEqual(
       candidates,
@@ -102,39 +106,35 @@ describe('DockerController', () => {
   });
 
   it('이미지 정리는 body가 없으면 dryRun=true로 실행한다', async () => {
-    dockerCleanupService.pruneDanglingImages.mockResolvedValueOnce({});
+    pruneDanglingImagesUseCase.execute.mockResolvedValueOnce({});
 
     await controller.pruneDanglingImages();
 
-    expect(dockerCleanupService.pruneDanglingImages).toHaveBeenCalledWith(true);
+    expect(pruneDanglingImagesUseCase.execute).toHaveBeenCalledWith(true);
   });
 
   it('빌드 캐시 정리는 명시된 dryRun 값을 전달한다', async () => {
-    dockerCleanupService.pruneBuildCache.mockResolvedValueOnce({});
+    pruneBuildCacheUseCase.execute.mockResolvedValueOnce({});
 
     await controller.pruneBuildCache({ dryRun: false });
 
-    expect(dockerCleanupService.pruneBuildCache).toHaveBeenCalledWith(false);
+    expect(pruneBuildCacheUseCase.execute).toHaveBeenCalledWith(false);
   });
 
   it('종료된 컨테이너 정리는 body가 없으면 dryRun=true로 실행한다', async () => {
-    dockerCleanupService.pruneExitedContainers.mockResolvedValueOnce({});
+    pruneExitedContainersUseCase.execute.mockResolvedValueOnce({});
 
     await controller.pruneExitedContainers();
 
-    expect(dockerCleanupService.pruneExitedContainers).toHaveBeenCalledWith(
-      true,
-    );
+    expect(pruneExitedContainersUseCase.execute).toHaveBeenCalledWith(true);
   });
 
   it('dangling 볼륨 정리는 명시된 dryRun 값을 전달한다', async () => {
-    dockerCleanupService.pruneDanglingVolumes.mockResolvedValueOnce({});
+    pruneDanglingVolumesUseCase.execute.mockResolvedValueOnce({});
 
     await controller.pruneDanglingVolumes({ dryRun: false });
 
-    expect(dockerCleanupService.pruneDanglingVolumes).toHaveBeenCalledWith(
-      false,
-    );
+    expect(pruneDanglingVolumesUseCase.execute).toHaveBeenCalledWith(false);
   });
 
   it('컨테이너 생성 시 요청 사용자 id를 dto에 주입한다', async () => {

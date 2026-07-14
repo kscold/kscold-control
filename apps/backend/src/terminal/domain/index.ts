@@ -6,3 +6,6 @@ export * from './entities/message.entity';
 export * from './repositories/pty-manager.interface';
 export * from './repositories/session.repository.interface';
 export * from './repositories/message.repository.interface';
+
+// Types
+export * from './types/workspace-file.type';

@@ -19,9 +19,35 @@ import {
   SessionMapperService,
   TerminalLimitService,
   TerminalSessionService,
-  WorkspaceFileService,
+  WorkspaceGitService,
   WsPermissionService,
 } from './application/services';
+
+// Application Use-Cases
+import {
+  CheckTerminalCommandLimitUseCase,
+  ClearTerminalHistoryUseCase,
+  CloseTerminalSessionUseCase,
+  CreateTerminalSessionUseCase,
+  DeleteTerminalSessionUseCase,
+  GetOrCreateTerminalSessionUseCase,
+  GetTerminalHistoryUseCase,
+  LoadTerminalSessionUseCase,
+  SaveTerminalMessageUseCase,
+  TouchTerminalSessionUseCase,
+  UpdateTerminalActivityUseCase,
+  ReadWorkspaceFileUseCase,
+  WriteWorkspaceFileUseCase,
+  ReadWorkspaceTreeUseCase,
+  ReadWorkspaceDiffUseCase,
+  AcceptWorkspaceDiffUseCase,
+  RejectWorkspaceDiffUseCase,
+  AcceptWorkspaceDiffHunkUseCase,
+  RejectWorkspaceDiffHunkUseCase,
+  CommitWorkspaceChangesUseCase,
+  CreateWorkspaceBranchUseCase,
+  PushWorkspaceBranchUseCase,
+} from './application/use-cases';
 import { WorkspaceFileController } from './presentation/controllers/workspace-file.controller';
 
 // Presentation
@@ -60,17 +86,40 @@ import { RbacModule } from '../rbac/rbac.module';
     SessionMapperService,
     TerminalLimitService,
     TerminalSessionService,
-    WorkspaceFileService,
+    WorkspaceGitService,
     WsPermissionService,
+
+    // Application Use-Cases (terminal session)
+    GetOrCreateTerminalSessionUseCase,
+    GetTerminalHistoryUseCase,
+    SaveTerminalMessageUseCase,
+    ClearTerminalHistoryUseCase,
+    UpdateTerminalActivityUseCase,
+    TouchTerminalSessionUseCase,
+    CreateTerminalSessionUseCase,
+    LoadTerminalSessionUseCase,
+    CloseTerminalSessionUseCase,
+    DeleteTerminalSessionUseCase,
+    CheckTerminalCommandLimitUseCase,
+
+    // Application Use-Cases (workspace file)
+    ReadWorkspaceFileUseCase,
+    WriteWorkspaceFileUseCase,
+    ReadWorkspaceTreeUseCase,
+    ReadWorkspaceDiffUseCase,
+    AcceptWorkspaceDiffUseCase,
+    RejectWorkspaceDiffUseCase,
+    AcceptWorkspaceDiffHunkUseCase,
+    RejectWorkspaceDiffHunkUseCase,
+    CommitWorkspaceChangesUseCase,
+    CreateWorkspaceBranchUseCase,
+    PushWorkspaceBranchUseCase,
 
     // Presentation
     TerminalGateway,
   ],
-  exports: [
-    TerminalGateway,
-    WsPermissionService,
-    SESSION_REPOSITORY,
-    MESSAGE_REPOSITORY,
-  ],
+  // 리포지토리 포트는 외부로 노출하지 않는다 — 챗 모듈(claude/openai)은
+  // TerminalSessionService를 경유해 세션/메시지를 다룬다.
+  exports: [TerminalSessionService, WsPermissionService],
 })
 export class TerminalModule {}

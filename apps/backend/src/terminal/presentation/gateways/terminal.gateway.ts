@@ -19,19 +19,33 @@ import { JwtService } from '@nestjs/jwt';
 
 import { PERMISSIONS } from '../../../common/constants/permissions';
 
-// Application Services
+// Application Services (realtime infrastructure)
 import {
   PtyManagerService,
   SessionMapperService,
-  TerminalLimitService,
   WsPermissionService,
 } from '../../application/services';
-import { TerminalSessionService } from '../../application/services/terminal-session.service';
+
+// Application Use-Cases (domain/session orchestration)
+import {
+  CheckTerminalCommandLimitUseCase,
+  ClearTerminalHistoryUseCase,
+  CloseTerminalSessionUseCase,
+  CreateTerminalSessionUseCase,
+  DeleteTerminalSessionUseCase,
+  GetOrCreateTerminalSessionUseCase,
+  GetTerminalHistoryUseCase,
+  LoadTerminalSessionUseCase,
+  SaveTerminalMessageUseCase,
+  TouchTerminalSessionUseCase,
+  UpdateTerminalActivityUseCase,
+} from '../../application/use-cases';
 
 /**
  * Terminal Gateway
  * Presentation layer - handles WebSocket connections only
- * Delegates business logic to application services
+ * Delegates business logic to application use-cases;
+ * keeps realtime plumbing (PTY, client-session mapping, emits) here
  */
 @Injectable()
 @WebSocketGateway({
@@ -50,9 +64,18 @@ export class TerminalGateway
     private readonly jwtService: JwtService,
     private readonly ptyManager: PtyManagerService,
     private readonly sessionMapper: SessionMapperService,
-    private readonly terminalLimit: TerminalLimitService,
-    private readonly terminalSession: TerminalSessionService,
     private readonly wsPermission: WsPermissionService,
+    private readonly getOrCreateTerminalSession: GetOrCreateTerminalSessionUseCase,
+    private readonly getTerminalHistory: GetTerminalHistoryUseCase,
+    private readonly saveTerminalMessage: SaveTerminalMessageUseCase,
+    private readonly clearTerminalHistory: ClearTerminalHistoryUseCase,
+    private readonly updateTerminalActivity: UpdateTerminalActivityUseCase,
+    private readonly touchTerminalSession: TouchTerminalSessionUseCase,
+    private readonly createTerminalSession: CreateTerminalSessionUseCase,
+    private readonly loadTerminalSession: LoadTerminalSessionUseCase,
+    private readonly closeTerminalSession: CloseTerminalSessionUseCase,
+    private readonly deleteTerminalSession: DeleteTerminalSessionUseCase,
+    private readonly checkTerminalCommandLimit: CheckTerminalCommandLimitUseCase,
   ) {}
 
   private async checkPermission(
@@ -85,7 +108,7 @@ export class TerminalGateway
       );
 
       const { session, isReconnect } =
-        await this.terminalSession.getOrCreateSession(
+        await this.getOrCreateTerminalSession.execute(
           payload.sub,
           client.handshake.auth.sessionId,
         );
@@ -102,7 +125,10 @@ export class TerminalGateway
       });
 
       if (isReconnect) {
-        const messages = await this.terminalSession.getHistory(session.id);
+        const messages = await this.getTerminalHistory.execute(
+          session.id,
+          payload.sub,
+        );
         if (messages.length > 0) {
           this.logger.log(
             `[Terminal] Loading ${messages.length} messages for session: ${session.id}`,
@@ -128,8 +154,9 @@ export class TerminalGateway
 
           shell.onData(async (data) => {
             try {
-              await this.terminalSession.saveMessage(
+              await this.saveTerminalMessage.execute(
                 session.id,
+                payload.sub,
                 'system',
                 data,
               );
@@ -182,7 +209,7 @@ export class TerminalGateway
         }
       }
 
-      await this.terminalSession.touchSession(session);
+      await this.touchTerminalSession.execute(session);
     } catch (error) {
       this.logger.error('[Terminal] Connection failed:', error.message);
       client.emit('terminal:error', { message: '연결 실패: ' + error.message });
@@ -208,13 +235,15 @@ export class TerminalGateway
 
     const isCommand =
       data.message.includes('\r') || data.message.includes('\n');
+    const userId = client.user?.sub;
+    if (!userId) {
+      client.emit('terminal:error', { message: 'Unauthorized' });
+      return;
+    }
 
     if (isCommand) {
-      const user = client.user;
-      if (user && user.sub) {
-        const result = await this.terminalLimit.checkAndIncrementCommand(
-          user.sub,
-        );
+      if (userId) {
+        const result = await this.checkTerminalCommandLimit.execute(userId);
 
         if (!result.allowed) {
           client.emit('terminal:error', {
@@ -239,15 +268,25 @@ export class TerminalGateway
         this.logger.log(
           `[Terminal] User typed 'clear', deleting history for session: ${sessionId}`,
         );
-        await this.terminalSession.clearHistory(sessionId);
-        await this.terminalSession.saveMessage(sessionId, 'user', commandText);
+        await this.clearTerminalHistory.execute(sessionId, userId);
+        await this.saveTerminalMessage.execute(
+          sessionId,
+          userId,
+          'user',
+          commandText,
+        );
       } else if (commandText) {
-        await this.terminalSession.saveMessage(sessionId, 'user', commandText);
+        await this.saveTerminalMessage.execute(
+          sessionId,
+          userId,
+          'user',
+          commandText,
+        );
       }
     }
 
     this.ptyManager.write(sessionId, data.message);
-    await this.terminalSession.updateActivity(sessionId);
+    await this.updateTerminalActivity.execute(sessionId, userId);
   }
 
   @SubscribeMessage('terminal:interrupt')
@@ -267,11 +306,16 @@ export class TerminalGateway
 
   @SubscribeMessage('terminal:create-session')
   async handleCreateSession(
-    @ConnectedSocket() client: Socket,
-    @MessageBody() data: { userId: string; title: string },
+    @ConnectedSocket() client: AuthenticatedSocket,
+    @MessageBody() data: { title: string },
   ) {
-    const session = await this.terminalSession.createNamedSession(
-      data.userId,
+    if (!client.user?.sub) {
+      client.emit('terminal:error', { message: 'Unauthorized' });
+      return;
+    }
+
+    const session = await this.createTerminalSession.execute(
+      client.user.sub,
       data.title,
     );
     client.emit('terminal:session-created', { sessionId: session.id });
@@ -280,7 +324,7 @@ export class TerminalGateway
 
   @SubscribeMessage('terminal:save-message')
   async handleSaveMessage(
-    @ConnectedSocket() _client: Socket,
+    @ConnectedSocket() client: AuthenticatedSocket,
     @MessageBody()
     data: {
       sessionId: string;
@@ -288,8 +332,14 @@ export class TerminalGateway
       content: string;
     },
   ) {
-    await this.terminalSession.saveMessage(
+    if (!client.user?.sub) {
+      client.emit('terminal:error', { message: 'Unauthorized' });
+      return;
+    }
+
+    await this.saveTerminalMessage.execute(
       data.sessionId,
+      client.user.sub,
       data.role,
       data.content,
     );
@@ -298,11 +348,17 @@ export class TerminalGateway
 
   @SubscribeMessage('terminal:load-session')
   async handleLoadSession(
-    @ConnectedSocket() client: Socket,
+    @ConnectedSocket() client: AuthenticatedSocket,
     @MessageBody() data: { sessionId: string },
   ) {
-    const session = await this.terminalSession.loadSessionWithMessages(
+    if (!client.user?.sub) {
+      client.emit('terminal:error', { message: 'Unauthorized' });
+      return;
+    }
+
+    const session = await this.loadTerminalSession.execute(
       data.sessionId,
+      client.user.sub,
     );
     if (!session) {
       client.emit('terminal:error', { message: 'Session not found' });
@@ -346,23 +402,31 @@ export class TerminalGateway
   }
 
   @SubscribeMessage('terminal:clear-history')
-  async handleClearHistory(@ConnectedSocket() client: Socket) {
+  async handleClearHistory(@ConnectedSocket() client: AuthenticatedSocket) {
     const sessionId = this.sessionMapper.getSessionId(client.id);
     if (!sessionId) return;
+    if (!client.user?.sub) {
+      client.emit('terminal:error', { message: 'Unauthorized' });
+      return;
+    }
 
     this.logger.log(`[Terminal] Clearing history for session: ${sessionId}`);
-    await this.terminalSession.clearHistory(sessionId);
+    await this.clearTerminalHistory.execute(sessionId, client.user.sub);
     return { success: true };
   }
 
   @SubscribeMessage('terminal:close-session')
-  async handleCloseSession(@ConnectedSocket() client: Socket) {
+  async handleCloseSession(@ConnectedSocket() client: AuthenticatedSocket) {
     const sessionId = this.sessionMapper.getSessionId(client.id);
     if (!sessionId) return;
+    if (!client.user?.sub) {
+      client.emit('terminal:error', { message: 'Unauthorized' });
+      return;
+    }
 
     this.logger.log(`[Terminal] Explicitly closing session: ${sessionId}`);
     this.ptyManager.killPty(sessionId);
-    await this.terminalSession.closeSession(sessionId);
+    await this.closeTerminalSession.execute(sessionId, client.user.sub);
 
     const clients = this.sessionMapper.getClients(sessionId);
     if (clients) {
@@ -386,7 +450,7 @@ export class TerminalGateway
       return;
     }
 
-    const session = await this.terminalSession.deleteSession(
+    const session = await this.deleteTerminalSession.execute(
       data.sessionId,
       user.sub,
     );

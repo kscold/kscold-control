@@ -10,7 +10,6 @@ import {
 import { Server, Socket } from 'socket.io';
 import {
   Injectable,
-  Inject,
   Logger,
   UnauthorizedException,
   ForbiddenException,
@@ -19,15 +18,18 @@ import { JwtService } from '@nestjs/jwt';
 
 import type { AuthenticatedSocket } from '../../../common/types/authenticated-socket.type';
 import { PERMISSIONS } from '../../../common/constants/permissions';
-import type { ISessionRepository } from '../../../terminal/domain/repositories/session.repository.interface';
-import { SESSION_REPOSITORY } from '../../../terminal/domain/repositories/session.repository.interface';
-import type { IMessageRepository } from '../../../terminal/domain/repositories/message.repository.interface';
-import { MESSAGE_REPOSITORY } from '../../../terminal/domain/repositories/message.repository.interface';
 import { WsPermissionService } from '../../../terminal/application/services/ws-permission.service';
 
 import { OpenAIApiService } from '../../application/services/openai-api.service';
 import { CodexProcessManagerService } from '../../application/services/codex-process-manager.service';
 import { OpenAISessionMapperService } from '../../application/services/openai-session-mapper.service';
+import {
+  GetOrCreateOpenAISessionUseCase,
+  GetOpenAIHistoryUseCase,
+  SaveOpenAIMessageUseCase,
+  TouchOpenAISessionUseCase,
+  CloseOpenAISessionUseCase,
+} from '../../application/use-cases';
 
 export type OpenAIProvider = 'api' | 'codex';
 
@@ -46,15 +48,16 @@ export class OpenAIChatGateway
   private readonly clientProviders = new Map<string, OpenAIProvider>();
 
   constructor(
-    @Inject(SESSION_REPOSITORY)
-    private readonly sessionRepo: ISessionRepository,
-    @Inject(MESSAGE_REPOSITORY)
-    private readonly messageRepo: IMessageRepository,
     private readonly jwtService: JwtService,
     private readonly openAIApi: OpenAIApiService,
     private readonly codexManager: CodexProcessManagerService,
     private readonly sessionMapper: OpenAISessionMapperService,
     private readonly wsPermission: WsPermissionService,
+    private readonly getOrCreateSessionUseCase: GetOrCreateOpenAISessionUseCase,
+    private readonly getHistoryUseCase: GetOpenAIHistoryUseCase,
+    private readonly saveMessageUseCase: SaveOpenAIMessageUseCase,
+    private readonly touchSessionUseCase: TouchOpenAISessionUseCase,
+    private readonly closeSessionUseCase: CloseOpenAISessionUseCase,
   ) {}
 
   async handleConnection(client: AuthenticatedSocket) {
@@ -76,24 +79,12 @@ export class OpenAIChatGateway
         client.handshake.auth.provider === 'codex' ? 'codex' : 'api';
       this.clientProviders.set(client.id, provider);
 
-      const requestedSessionId = client.handshake.auth.sessionId;
-      let isReconnect = false;
-      let session = requestedSessionId
-        ? await this.sessionRepo.findActive(requestedSessionId, payload.sub)
-        : null;
-
-      if (session) {
-        isReconnect = true;
-      } else {
-        session = await this.sessionRepo.save(
-          this.sessionRepo.create({
-            userId: payload.sub,
-            title: `OpenAI ${provider === 'codex' ? 'Codex' : 'Chat'} ${new Date().toLocaleString()}`,
-            isActive: true,
-            lastActivityAt: new Date(),
-          }),
+      const { session, isReconnect } =
+        await this.getOrCreateSessionUseCase.execute(
+          payload.sub,
+          provider,
+          client.handshake.auth.sessionId,
         );
-      }
 
       this.sessionMapper.mapClientToSession(client.id, session.id);
       this.logger.log(`[OpenAIChat] Connected: ${client.id} (${provider})`);
@@ -108,7 +99,10 @@ export class OpenAIChatGateway
       });
 
       if (isReconnect) {
-        const messages = await this.messageRepo.findBySession(session.id);
+        const messages = await this.getHistoryUseCase.execute(
+          session.id,
+          payload.sub,
+        );
         if (messages.length > 0) {
           client.emit('openai:history', {
             messages: messages.map((m) => ({
@@ -140,12 +134,17 @@ export class OpenAIChatGateway
 
   @SubscribeMessage('openai:send-message')
   async handleSendMessage(
-    @ConnectedSocket() client: Socket,
+    @ConnectedSocket() client: AuthenticatedSocket,
     @MessageBody() data: { message: string; provider?: OpenAIProvider },
   ) {
     const sessionId = this.sessionMapper.getSessionId(client.id);
     if (!sessionId) {
       client.emit('openai:error', { message: 'Session not found' });
+      return;
+    }
+
+    if (!client.user?.sub) {
+      client.emit('openai:error', { message: 'Unauthorized' });
       return;
     }
 
@@ -160,12 +159,11 @@ export class OpenAIChatGateway
       return;
     }
 
-    await this.messageRepo.save(
-      this.messageRepo.create({
-        sessionId,
-        role: 'user',
-        content: data.message,
-      }),
+    await this.saveMessageUseCase.execute(
+      sessionId,
+      client.user.sub,
+      'user',
+      data.message,
     );
 
     this.emit(sessionId, 'openai:message-start', {
@@ -180,13 +178,16 @@ export class OpenAIChatGateway
       if (messageEnded) return;
       messageEnded = true;
 
-      await this.messageRepo.save(
-        this.messageRepo.create({
-          sessionId,
-          role: 'assistant',
-          content,
-          metadata: { type: 'openai-chat', provider, ...meta },
-        }),
+      await this.saveMessageUseCase.execute(
+        sessionId,
+        client.user.sub,
+        'assistant',
+        content,
+        {
+          type: 'openai-chat',
+          provider,
+          ...meta,
+        },
       );
 
       this.emit(sessionId, 'openai:message-end', {
@@ -195,7 +196,9 @@ export class OpenAIChatGateway
         ...meta,
       });
       fullContent = '';
-      this.sessionRepo.updateActivity(sessionId).catch(() => {});
+      this.touchSessionUseCase
+        .execute(sessionId, client.user.sub)
+        .catch(() => {});
     };
 
     const safeHandleEnd = (content: string, meta?: Record<string, any>) => {
@@ -260,14 +263,18 @@ export class OpenAIChatGateway
   }
 
   @SubscribeMessage('openai:close-session')
-  async handleCloseSession(@ConnectedSocket() client: Socket) {
+  async handleCloseSession(@ConnectedSocket() client: AuthenticatedSocket) {
     const sessionId = this.sessionMapper.getSessionId(client.id);
     if (!sessionId) return;
+    if (!client.user?.sub) {
+      client.emit('openai:error', { message: 'Unauthorized' });
+      return;
+    }
 
     this.codexManager.kill(sessionId);
     this.openAIApi.abort(sessionId);
     this.openAIApi.clearHistory(sessionId);
-    await this.sessionRepo.deactivate(sessionId);
+    await this.closeSessionUseCase.execute(sessionId, client.user.sub);
 
     const clients = this.sessionMapper.getClients(sessionId);
     clients?.forEach((cid) => {
@@ -275,16 +282,9 @@ export class OpenAIChatGateway
     });
     this.sessionMapper.clearSession(sessionId);
 
-    const user = (client as AuthenticatedSocket).user;
     const provider = this.clientProviders.get(client.id) ?? 'api';
-    const newSession = await this.sessionRepo.save(
-      this.sessionRepo.create({
-        userId: user.sub,
-        title: `OpenAI ${provider === 'codex' ? 'Codex' : 'Chat'} ${new Date().toLocaleString()}`,
-        isActive: true,
-        lastActivityAt: new Date(),
-      }),
-    );
+    const { session: newSession } =
+      await this.getOrCreateSessionUseCase.execute(client.user.sub, provider);
 
     this.sessionMapper.mapClientToSession(client.id, newSession.id);
     client.emit('openai:session-ready', {

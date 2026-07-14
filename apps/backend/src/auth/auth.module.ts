@@ -3,16 +3,23 @@ import { JwtModule } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
 import { ConfigService } from '@nestjs/config';
 
-// Controllers
+// 컨트롤러
 import { AuthController } from './presentation/controllers/auth.controller';
 
-// Services
+// Services (JwtStrategy 전용 토큰 검증)
 import { AuthService } from './application/services/auth.service';
+
+// 유스케이스
+import {
+  RegisterUseCase,
+  LoginUseCase,
+  GetMeUseCase,
+} from './application/use-cases';
 
 // 사용자/역할 저장소는 RbacModule이 단일 소유·export 한다 (중복 구현 제거)
 import { RbacModule } from '../rbac/rbac.module';
 
-// Strategies
+// 전략(Passport)
 import { JwtStrategy } from './infrastructure/strategies/jwt.strategy';
 
 @Module({
@@ -35,12 +42,18 @@ import { JwtStrategy } from './infrastructure/strategies/jwt.strategy';
   ],
   controllers: [AuthController],
   providers: [
-    // Services
+    // 서비스
     AuthService,
 
-    // Strategies
+    // 유스케이스
+    RegisterUseCase,
+    LoginUseCase,
+    GetMeUseCase,
+
+    // 전략(Passport)
     JwtStrategy,
   ],
-  exports: [AuthService], // 다른 모듈에서 사용할 수 있도록 export
+  // AuthService를 주입하는 외부 모듈이 없어 export 제거
+  // (다른 모듈의 AuthModule import는 JwtStrategy 등록 목적)
 })
 export class AuthModule {}
