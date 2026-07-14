@@ -3,6 +3,7 @@
  * Use instead of hardcoded role name strings.
  */
 export const ROLES = {
+  ADMIN: 'admin',
   SUPER_ADMIN: 'super_admin',
   READ_ONLY: 'read_only',
   OPERATOR: 'operator',

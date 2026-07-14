@@ -16,7 +16,7 @@ import { PermissionsGuard } from '../../../common/guards';
 import { RequirePermissions } from '../../../common/decorators';
 import { Audit } from '../../../common/decorators/audit.decorator';
 import { PERMISSIONS } from '../../../common/constants/permissions';
-import { ROLES } from '../../../common/constants/roles';
+import { isGlobalAdministrator } from '../../../common/utils';
 import type { JwtRequest } from '../../../common/types/jwt-request.type';
 import {
   CreateContainerUseCase,
@@ -92,7 +92,7 @@ export class DockerController {
   @Get('containers')
   @RequirePermissions(PERMISSIONS.DOCKER_READ)
   async listContainers(@Request() req: JwtRequest) {
-    const userId = req.user.roles?.includes(ROLES.SUPER_ADMIN)
+    const userId = isGlobalAdministrator(req.user.roles)
       ? undefined
       : req.user.id;
     return this.listContainersUseCase.execute(userId);
@@ -388,5 +388,5 @@ export class DockerController {
 }
 
 function getContainerOwnerScope(req: JwtRequest): string | undefined {
-  return req.user.roles?.includes(ROLES.SUPER_ADMIN) ? undefined : req.user.id;
+  return isGlobalAdministrator(req.user.roles) ? undefined : req.user.id;
 }

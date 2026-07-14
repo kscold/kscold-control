@@ -20,7 +20,7 @@ import { PermissionsGuard } from '../../../common/guards';
 import { RequirePermissions } from '../../../common/decorators';
 import { Audit } from '../../../common/decorators/audit.decorator';
 import { PERMISSIONS } from '../../../common/constants/permissions';
-import { ROLES } from '../../../common/constants/roles';
+import { isGlobalAdministrator } from '../../../common/utils';
 import type { JwtRequest } from '../../../common/types/jwt-request.type';
 import {
   CreateProjectUseCase,
@@ -391,5 +391,5 @@ export class RepositoryController {
 }
 
 function getProjectOwnerScope(req: JwtRequest): string | undefined {
-  return req.user.roles?.includes(ROLES.SUPER_ADMIN) ? undefined : req.user.id;
+  return isGlobalAdministrator(req.user.roles) ? undefined : req.user.id;
 }
