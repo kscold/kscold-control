@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Message } from '../../domain/entities/message.entity';
-import type { IMessageRepository } from '../../domain/interfaces/message.repository.interface';
+import type { IMessageRepository } from '../../domain/repositories/message.repository.interface';
 
 @Injectable()
 export class TypeOrmMessageRepository implements IMessageRepository {

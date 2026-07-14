@@ -7,11 +7,11 @@ import {
 import {
   NGINX_CONFIG_REPOSITORY,
   type INginxConfigRepository,
-} from '../../domain/interfaces/nginx-config.repository';
+} from '../../domain/repositories/nginx-config.repository';
 import {
   NGINX_RUNTIME_REPOSITORY,
   type INginxRuntimeRepository,
-} from '../../domain/interfaces/nginx-runtime.repository';
+} from '../../domain/repositories/nginx-runtime.repository';
 import type {
   NginxSite,
   CreateNginxSiteDto,

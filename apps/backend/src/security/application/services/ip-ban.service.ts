@@ -10,11 +10,11 @@ import {
 import {
   IP_BAN_REPOSITORY,
   type IIpBanRepository,
-} from '../../domain/interfaces/ip-ban.repository';
+} from '../../domain/repositories/ip-ban.repository';
 import {
   NGINX_BLOCKLIST_WRITER,
   type INginxBlocklistWriter,
-} from '../../domain/interfaces/nginx-blocklist.writer';
+} from '../../domain/repositories/nginx-blocklist.writer';
 import { IpAllowlistService } from './ip-allowlist.service';
 import type { IpBan, IpBanSource } from '../../domain/entities/ip-ban.entity';
 

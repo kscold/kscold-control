@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Session } from '../../domain/entities/session.entity';
-import type { ISessionRepository } from '../../domain/interfaces/session.repository.interface';
+import type { ISessionRepository } from '../../domain/repositories/session.repository.interface';
 
 @Injectable()
 export class TypeOrmSessionRepository implements ISessionRepository {

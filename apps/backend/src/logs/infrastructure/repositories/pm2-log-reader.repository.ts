@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { exec } from 'child_process';
 import { promisify } from 'util';
-import { IPm2LogReader } from '../../domain/interfaces/log-reader.repository';
+import { IPm2LogReader } from '../../domain/repositories/log-reader.repository';
 import { Pm2LogResult } from '../../domain/types/log.type';
 
 const execAsync = promisify(exec);

@@ -1,7 +1,7 @@
 import { Global, Module } from '@nestjs/common';
 import { AuditLogService } from './application/services/audit-log.service';
 import { AuditController } from './presentation/controllers/audit.controller';
-import { AUDIT_LOG_REPOSITORY } from './domain/interfaces/audit-log.repository.interface';
+import { AUDIT_LOG_REPOSITORY } from './domain/repositories/audit-log.repository.interface';
 import { FileAuditLogRepository } from './infrastructure/repositories/file-audit-log.repository';
 
 @Global()

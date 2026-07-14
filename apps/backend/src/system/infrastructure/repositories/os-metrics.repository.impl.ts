@@ -3,7 +3,7 @@ import * as os from 'os';
 import { exec } from 'child_process';
 import { promisify } from 'util';
 
-import type { IOsMetricsRepository } from '../../domain/interfaces/os-metrics.repository';
+import type { IOsMetricsRepository } from '../../domain/repositories/os-metrics.repository';
 import type {
   CpuStats,
   DiskBreakdown,
