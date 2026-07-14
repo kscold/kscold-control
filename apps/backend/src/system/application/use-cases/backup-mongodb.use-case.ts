@@ -1,5 +1,5 @@
 import { BadRequestException, Injectable, Logger } from '@nestjs/common';
-import { execFile, execFileSync } from 'child_process';
+import { execFile } from 'child_process';
 import { promisify } from 'util';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -16,14 +16,18 @@ const BACKUP_ROOT = path.join(
 const DOCKER_HOST =
   process.env.DOCKER_HOST || 'unix:///Users/kscold/.colima/default/docker.sock';
 
+/** 지정 컨테이너의 MongoDB(kscold-blog) 백업 수행 */
 @Injectable()
-export class BackupService {
-  private readonly logger = new Logger(BackupService.name);
+export class BackupMongodbUseCase {
+  private readonly logger = new Logger(BackupMongodbUseCase.name);
 
-  async backupMongodb(
+  async execute(
     containerName: string,
   ): Promise<{ path: string; size: string }> {
-    this.assertSafeContainerName(containerName);
+    if (!/^[a-zA-Z0-9][a-zA-Z0-9_.-]*$/.test(containerName)) {
+      throw new BadRequestException('잘못된 컨테이너 이름입니다.');
+    }
+
     const date = new Date()
       .toISOString()
       .replace(/T/, '_')
@@ -74,35 +78,5 @@ export class BackupService {
 
     this.logger.log(`백업 완료: ${backupDir} (${size})`);
     return { path: backupDir, size };
-  }
-
-  listBackups(
-    containerName: string,
-  ): { date: string; path: string; size: string }[] {
-    this.assertSafeContainerName(containerName);
-    const containerDir = path.join(BACKUP_ROOT, containerName);
-    if (!fs.existsSync(containerDir)) return [];
-
-    return fs
-      .readdirSync(containerDir, { withFileTypes: true })
-      .filter((e) => e.isDirectory())
-      .sort((a, b) => b.name.localeCompare(a.name)) // 최신순
-      .map((e) => {
-        const fullPath = path.join(containerDir, e.name);
-        let size = '-';
-        try {
-          const result = execFileSync('du', ['-sh', fullPath]);
-          size = result.toString().trim().split(/\s+/)[0] ?? '-';
-        } catch {
-          // du 실패 시 기본값 '-' 유지
-        }
-        return { date: e.name, path: fullPath, size };
-      });
-  }
-
-  private assertSafeContainerName(containerName: string): void {
-    if (!/^[a-zA-Z0-9][a-zA-Z0-9_.-]*$/.test(containerName)) {
-      throw new BadRequestException('잘못된 컨테이너 이름입니다.');
-    }
   }
 }

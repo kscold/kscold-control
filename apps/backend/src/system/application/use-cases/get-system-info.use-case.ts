@@ -4,29 +4,17 @@ import {
   OS_METRICS_REPOSITORY,
   type IOsMetricsRepository,
 } from '../../domain/repositories/os-metrics.repository';
-import type {
-  LiveStats,
-  SystemInfo,
-} from '../../domain/types/system-info.type';
+import type { SystemInfo } from '../../domain/types/system-info.type';
 
+/** 시스템 정보(CPU/메모리/디스크/플랫폼) 조회 */
 @Injectable()
-export class SystemService {
+export class GetSystemInfoUseCase {
   constructor(
     @Inject(OS_METRICS_REPOSITORY)
     private readonly osMetrics: IOsMetricsRepository,
   ) {}
 
-  async getStats(): Promise<LiveStats> {
-    const [cpu, memory] = await Promise.all([
-      this.osMetrics.getCpuStats(),
-      this.osMetrics.getMemoryStats(),
-    ]);
-    const { uptime } = this.osMetrics.getSystemMeta();
-
-    return { cpu, memory, uptime };
-  }
-
-  async getSystemInfo(): Promise<SystemInfo> {
+  async execute(): Promise<SystemInfo> {
     const [cpu, memory, disk] = await Promise.all([
       this.osMetrics.getCpuStats(),
       this.osMetrics.getMemoryStats(),
