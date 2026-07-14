@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { FolderGit2, Plus, Loader2, ArrowLeft } from 'lucide-react';
-import { useProjects } from '../hooks/useProjects';
+import { useProjects } from '../model/useProjects';
 import { ProjectCard } from './ProjectCard';
 import { CreateProjectModal } from './CreateProjectModal';
 import { ProjectBrowser } from './ProjectBrowser';

@@ -1,5 +1,5 @@
 import { Trash2, ArrowRight } from 'lucide-react';
-import type { PortMapping } from '../lib/network.types';
+import type { PortMapping } from '../model/network.types';
 
 interface PortMappingListProps {
   mappings: PortMapping[];

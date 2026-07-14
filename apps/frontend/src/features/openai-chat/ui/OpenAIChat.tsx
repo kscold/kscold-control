@@ -13,13 +13,13 @@ import {
   Send,
   Square,
 } from 'lucide-react';
-import { useAuthStore } from '../../../shared/model';
-import { MarkdownRenderer } from '../../../shared/ui';
-import type { OpenAIProvider } from '../lib/openai-chat.types';
+import { useAuthStore } from '@/shared/model';
+import { MarkdownRenderer } from '@/shared/ui';
+import type { OpenAIProvider } from '../model/openai-chat.types';
 import { getOpenAISessionStorageKey } from '../lib/openai-chat.constants';
-import { useOpenAIChatSession } from '../hooks/useOpenAIChatSession';
-import { useOpenAIChatMessages } from '../hooks/useOpenAIChatMessages';
-import { useOpenAIChatSocket } from '../hooks/useOpenAIChatSocket';
+import { useOpenAIChatSession } from '../model/useOpenAIChatSession';
+import { useOpenAIChatMessages } from '../model/useOpenAIChatMessages';
+import { useOpenAIChatSocket } from '../model/useOpenAIChatSocket';
 
 interface OpenAIChatProps {
   tabId?: string;

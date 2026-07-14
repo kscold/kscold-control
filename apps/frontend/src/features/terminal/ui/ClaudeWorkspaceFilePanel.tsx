@@ -24,7 +24,7 @@ import type {
   WorkspaceReviewState,
   WorkspaceShipStatus,
   WorkspaceTreeNode,
-} from '../lib/terminal.types';
+} from '../model/terminal.types';
 import {
   getLineOffset,
   getWorkspaceFileDisplayPath,

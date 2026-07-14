@@ -7,7 +7,7 @@ import type {
   WorkspaceFileRecord,
   WorkspacePushResult,
   WorkspaceTreeResult,
-} from '../lib/terminal.types';
+} from '../model/terminal.types';
 
 export class WorkspaceFileService extends BaseApiService {
   private readonly basePath = '/terminal';

@@ -3,7 +3,7 @@ import { BaseApiService } from '@/shared/api/base.service';
 import type {
   IpBan,
   CreateIpBanInput,
-} from '../lib/security.types';
+} from '../model/security.types';
 
 export class SecurityService extends BaseApiService {
   private readonly basePath = '/security';

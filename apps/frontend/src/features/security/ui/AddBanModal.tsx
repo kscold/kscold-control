@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { X } from 'lucide-react';
-import { TTL_OPTIONS, type CreateIpBanInput } from '../lib/security.types';
+import { TTL_OPTIONS, type CreateIpBanInput } from '../model/security.types';
 
 interface Props {
   open: boolean;

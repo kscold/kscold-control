@@ -9,15 +9,15 @@ import {
   RefreshCw,
   Terminal,
 } from 'lucide-react';
-import { useLogs } from '../hooks/useLogs';
-import { useDockerContainers } from '../hooks/useDockerContainers';
+import { useLogs } from '../model/useLogs';
+import { useDockerContainers } from '../model/useDockerContainers';
 import type {
   DockerLogArchiveSource,
   DockerLogFilter,
   DockerLogSince,
   LogLineCount,
   LogType,
-} from '../lib/logs.types';
+} from '../model/logs.types';
 
 const DEFAULT_LINE_OPTIONS: LogLineCount[] = [50, 100, 200, 500, 1000];
 const DOCKER_LINE_OPTIONS: LogLineCount[] = [

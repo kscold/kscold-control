@@ -1,4 +1,4 @@
-import { SkeletonBlock } from '../../../shared/ui';
+import { SkeletonBlock } from '@/shared/ui';
 
 const NODE_POSITIONS = [
   'left-[42%] top-[14%]',

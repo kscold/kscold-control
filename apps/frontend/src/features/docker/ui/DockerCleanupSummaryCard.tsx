@@ -1,6 +1,6 @@
 import { Sparkles, Trash2 } from 'lucide-react';
 import type { DockerCleanupCandidates } from '@/entities/container';
-import { formatBytes } from '../../../shared/lib';
+import { formatBytes } from '@/shared/lib';
 
 interface DockerCleanupSummaryCardProps {
   candidates: DockerCleanupCandidates;

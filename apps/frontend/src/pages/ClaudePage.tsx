@@ -6,10 +6,10 @@ import {
   TerminalSquare,
   X,
 } from 'lucide-react';
-import { ClaudeCodeWorkspace, Terminal } from '../features/terminal/ui';
-import { ClaudeChat } from '../features/claude-chat/ui';
-import { OpenAIChat } from '../features/openai-chat/ui';
-import { useClaudeTabs } from '../features/claude-chat/hooks';
+import { ClaudeCodeWorkspace, Terminal } from '@/features/terminal';
+import { ClaudeChat } from '@/features/claude-chat';
+import { OpenAIChat } from '@/features/openai-chat';
+import { useClaudeTabs } from '@/features/claude-chat';
 
 function tabIcon(type: string, mode?: string, _active?: boolean) {
   if (type === 'claude-code' || mode === 'claude')

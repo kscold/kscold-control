@@ -1,6 +1,6 @@
 import { api } from '@/shared/api/client';
 import { BaseApiService } from '@/shared/api/base.service';
-import type { PortMapping } from '../lib/network.types';
+import type { PortMapping } from '../model/network.types';
 
 export class NetworkApiService extends BaseApiService {
   private readonly basePath = '/upnp';

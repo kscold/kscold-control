@@ -6,7 +6,7 @@ import {
   useContainerActions,
   useCreateContainer,
   useDockerCleanupCandidates,
-} from '../hooks';
+} from '../model';
 import {
   ContainerList,
   CreateContainerModal,

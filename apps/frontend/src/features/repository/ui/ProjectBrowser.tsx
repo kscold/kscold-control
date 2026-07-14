@@ -10,7 +10,7 @@ import {
   FolderTree,
   FileCode2,
 } from 'lucide-react';
-import { useProjectTree } from '../hooks/useProjectTree';
+import { useProjectTree } from '../model/useProjectTree';
 import { formatBytes } from '../lib/file-filter';
 import { FileTreeView } from './FileTreeView';
 import { CodeViewer } from './CodeViewer';

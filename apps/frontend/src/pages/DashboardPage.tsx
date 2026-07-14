@@ -1,4 +1,4 @@
-import { DashboardOverview } from '../features/dashboard/ui';
+import { DashboardOverview } from '@/features/dashboard';
 
 export function DashboardPage() {
   return <DashboardOverview />;

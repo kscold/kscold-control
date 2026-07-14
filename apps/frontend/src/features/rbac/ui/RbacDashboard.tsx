@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Shield } from 'lucide-react';
-import { useUsers, useRoles, useUserActions } from '../hooks';
+import { useUsers, useRoles, useUserActions } from '../model';
 import {
   RoleList,
   UserList,

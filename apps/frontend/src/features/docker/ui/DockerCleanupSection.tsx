@@ -1,10 +1,10 @@
 import { RefreshCw } from 'lucide-react';
 import { usePermissions } from '@/shared/lib/use-permissions';
 import { PERMISSIONS } from '@/shared/config/permissions';
-import { useDockerCleanupActions } from '../hooks';
+import { useDockerCleanupActions } from '../model';
 import { DockerCleanupCategoryCard } from './DockerCleanupCategoryCard';
 import { DockerCleanupSummaryCard } from './DockerCleanupSummaryCard';
-import { SkeletonBlock } from '../../../shared/ui';
+import { SkeletonBlock } from '@/shared/ui';
 import type { DockerCleanupCandidates } from '@/entities/container';
 
 interface DockerCleanupSectionProps {

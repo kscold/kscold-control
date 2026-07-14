@@ -14,13 +14,13 @@ import {
   Users,
 } from 'lucide-react';
 import { auditService } from '../api/audit.service';
-import { useAuditTimeline } from '../hooks/useAuditTimeline';
+import { useAuditTimeline } from '../model/useAuditTimeline';
 import { buildDiffEntries, buildDiffPreview } from '../lib/audit-diff';
 import {
   formatAuditTimestamp,
   formatExportFilename,
 } from '@/shared/lib/date-format';
-import type { AuditDomain, AuditEvent } from '../lib/audit.types';
+import type { AuditDomain, AuditEvent } from '../model/audit.types';
 
 const DOMAIN_OPTIONS: Array<{ value: AuditDomain; label: string }> = [
   { value: 'all', label: '전체 도메인' },

@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { ChatMessage as ChatMessageType } from '../lib/claude-chat.types';
+import { ChatMessage as ChatMessageType } from '../model/claude-chat.types';
 import { ChatMessage } from './ChatMessage';
 
 interface ChatMessageListProps {

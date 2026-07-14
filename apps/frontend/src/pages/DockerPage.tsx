@@ -1,4 +1,4 @@
-import { DockerDashboard } from '../features/docker/ui';
+import { DockerDashboard } from '@/features/docker';
 
 export function DockerPage() {
   return <DockerDashboard />;

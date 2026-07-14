@@ -7,7 +7,7 @@ import {
   Copy,
   Search,
 } from 'lucide-react';
-import type { DnsCheckResult } from '../lib/nginx.types';
+import type { DnsCheckResult } from '../model/nginx.types';
 import {
   getDnsStatusIcon,
   getDnsStatusIconColor,

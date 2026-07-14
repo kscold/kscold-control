@@ -1,5 +1,5 @@
 import { Server } from 'lucide-react';
-import type { CreateNginxSiteDto } from '../lib/nginx.types';
+import type { CreateNginxSiteDto } from '../model/nginx.types';
 
 interface FlatUpstream {
   label: string;

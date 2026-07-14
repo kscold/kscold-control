@@ -1,5 +1,5 @@
 import { TerminalStatus } from './TerminalStatus';
-import type { TerminalSession } from '../lib/terminal.types';
+import type { TerminalSession } from '../model/terminal.types';
 
 interface TerminalHeaderProps {
   session: TerminalSession;
