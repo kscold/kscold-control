@@ -33,7 +33,7 @@ export function SystemStatsCard({
 
   return (
     <>
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-4 sm:mb-5">
+      <div className="grid grid-cols-2 items-start lg:grid-cols-4 gap-3 sm:gap-4 mb-4 sm:mb-5">
         <MetricCard
           icon={<Container size={18} className="text-blue-400" />}
           label="Containers"

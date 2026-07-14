@@ -56,7 +56,7 @@ export function DashboardOverviewSkeleton() {
         </div>
       </div>
 
-      <div className="mb-4 grid grid-cols-2 gap-3 sm:mb-5 sm:gap-4 lg:grid-cols-4">
+      <div className="mb-4 grid grid-cols-2 items-start gap-3 sm:mb-5 sm:gap-4 lg:grid-cols-4">
         <MetricSkeleton withProgress={false} />
         <MetricSkeleton />
         <MetricSkeleton />
