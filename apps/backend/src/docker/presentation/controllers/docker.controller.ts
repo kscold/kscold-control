@@ -28,11 +28,16 @@ import {
   GetComposeProvisioningTemplateUseCase,
   CreateComposeServiceUseCase,
   RemoveComposeServiceUseCase,
+  ListComposeServicesUseCase,
+  GetTopologySnapshotUseCase,
+  SaveTopologyLayoutUseCase,
+  GetDockerCleanupCandidatesUseCase,
+  PruneDanglingImagesUseCase,
+  PruneBuildCacheUseCase,
+  PruneExitedContainersUseCase,
+  PruneDanglingVolumesUseCase,
 } from '../../application/use-cases';
 import { CreateContainerDto } from '../../application/dto';
-import { ComposeService } from '../../application/services/compose.service';
-import { DockerTopologyService } from '../../application/services/docker-topology.service';
-import { DockerCleanupService } from '../../application/services/docker-cleanup.service';
 import {
   IDockerClient,
   DOCKER_CLIENT,
@@ -59,9 +64,14 @@ export class DockerController {
     private readonly getComposeProvisioningTemplateUseCase: GetComposeProvisioningTemplateUseCase,
     private readonly createComposeServiceUseCase: CreateComposeServiceUseCase,
     private readonly removeComposeServiceUseCase: RemoveComposeServiceUseCase,
-    private readonly composeService: ComposeService,
-    private readonly dockerTopologyService: DockerTopologyService,
-    private readonly dockerCleanupService: DockerCleanupService,
+    private readonly listComposeServicesUseCase: ListComposeServicesUseCase,
+    private readonly getTopologySnapshotUseCase: GetTopologySnapshotUseCase,
+    private readonly saveTopologyLayoutUseCase: SaveTopologyLayoutUseCase,
+    private readonly getDockerCleanupCandidatesUseCase: GetDockerCleanupCandidatesUseCase,
+    private readonly pruneDanglingImagesUseCase: PruneDanglingImagesUseCase,
+    private readonly pruneBuildCacheUseCase: PruneBuildCacheUseCase,
+    private readonly pruneExitedContainersUseCase: PruneExitedContainersUseCase,
+    private readonly pruneDanglingVolumesUseCase: PruneDanglingVolumesUseCase,
     @Inject(DOCKER_CLIENT) private readonly dockerClient: IDockerClient,
   ) {}
 
@@ -114,7 +124,7 @@ export class DockerController {
   @Get('topology/snapshot')
   @RequirePermissions(PERMISSIONS.DOCKER_READ)
   async getTopologySnapshot(@Request() req: JwtRequest) {
-    return this.dockerTopologyService.getSnapshot(req.user.id);
+    return this.getTopologySnapshotUseCase.execute(req.user.id);
   }
 
   @Patch('topology/layout/nodes')
@@ -142,7 +152,7 @@ export class DockerController {
     },
     @Request() req: JwtRequest,
   ) {
-    await this.dockerTopologyService.saveNodePositions(
+    await this.saveTopologyLayoutUseCase.execute(
       req.user.id,
       (body.positions ?? []).map((position) => ({
         nodeId: String(position.nodeId ?? ''),
@@ -157,33 +167,31 @@ export class DockerController {
   @Get('cleanup/candidates')
   @RequirePermissions(PERMISSIONS.DOCKER_READ)
   async getCleanupCandidates() {
-    return this.dockerCleanupService.getCandidates();
+    return this.getDockerCleanupCandidatesUseCase.execute();
   }
 
   @Post('cleanup/images/prune')
   @RequirePermissions(PERMISSIONS.DOCKER_DELETE)
   async pruneDanglingImages(@Body() body?: { dryRun?: boolean }) {
-    return this.dockerCleanupService.pruneDanglingImages(body?.dryRun ?? true);
+    return this.pruneDanglingImagesUseCase.execute(body?.dryRun ?? true);
   }
 
   @Post('cleanup/build-cache/prune')
   @RequirePermissions(PERMISSIONS.DOCKER_DELETE)
   async pruneBuildCache(@Body() body?: { dryRun?: boolean }) {
-    return this.dockerCleanupService.pruneBuildCache(body?.dryRun ?? true);
+    return this.pruneBuildCacheUseCase.execute(body?.dryRun ?? true);
   }
 
   @Post('cleanup/containers/prune-exited')
   @RequirePermissions(PERMISSIONS.DOCKER_DELETE)
   async pruneExitedContainers(@Body() body?: { dryRun?: boolean }) {
-    return this.dockerCleanupService.pruneExitedContainers(
-      body?.dryRun ?? true,
-    );
+    return this.pruneExitedContainersUseCase.execute(body?.dryRun ?? true);
   }
 
   @Post('cleanup/volumes/prune-dangling')
   @RequirePermissions(PERMISSIONS.DOCKER_DELETE)
   async pruneDanglingVolumes(@Body() body?: { dryRun?: boolean }) {
-    return this.dockerCleanupService.pruneDanglingVolumes(body?.dryRun ?? true);
+    return this.pruneDanglingVolumesUseCase.execute(body?.dryRun ?? true);
   }
 
   /**
@@ -310,10 +318,7 @@ export class DockerController {
   @Get('compose/services')
   @RequirePermissions(PERMISSIONS.DOCKER_READ)
   async listComposeServices() {
-    return {
-      services: this.composeService.listServices(),
-      compose: this.composeService.readCompose(),
-    };
+    return this.listComposeServicesUseCase.execute();
   }
 
   @Get('compose/provisioning-template')

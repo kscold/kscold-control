@@ -184,8 +184,8 @@ export class NginxController {
   }
 
   /**
-   * Get available container upstreams for proxy configuration
-   * Returns running containers with their internal ports
+   * 프록시 설정에 쓸 컨테이너 업스트림 후보 조회
+   * 실행 중인 컨테이너와 내부 포트 목록 반환
    */
   @Get('upstreams')
   @RequirePermissions(PERMISSIONS.SYSTEM_READ)
@@ -193,10 +193,10 @@ export class NginxController {
     return this.getUpstreamsUseCase.execute();
   }
 
-  // ===== SSL Certificate Endpoints =====
+  // ===== SSL 인증서 엔드포인트 =====
 
   /**
-   * List all SSL certificates
+   * SSL 인증서 전체 목록
    * GET /nginx/certs
    */
   @Get('certs')
@@ -206,7 +206,7 @@ export class NginxController {
   }
 
   /**
-   * Issue a new SSL certificate
+   * 새 SSL 인증서 발급
    * POST /nginx/certs/issue
    */
   @Post('certs/issue')
@@ -239,7 +239,7 @@ export class NginxController {
   }
 
   /**
-   * Renew all certificates
+   * 인증서 전체 갱신
    * POST /nginx/certs/renew
    */
   @Post('certs/renew')
@@ -268,10 +268,10 @@ export class NginxController {
     return this.getRenewalStatusUseCase.execute();
   }
 
-  // ===== DNS Management Endpoints =====
+  // ===== DNS 관리 엔드포인트 =====
 
   /**
-   * Get public IP of this server
+   * 이 서버의 공인 IP 조회
    * GET /nginx/dns/ip
    */
   @Get('dns/ip')
@@ -281,7 +281,7 @@ export class NginxController {
   }
 
   /**
-   * Verify DNS for a single domain
+   * 단일 도메인 DNS 검증
    * POST /nginx/dns/verify
    */
   @Post('dns/verify')
@@ -291,7 +291,7 @@ export class NginxController {
   }
 
   /**
-   * Verify DNS for all configured proxy domains
+   * 설정된 모든 프록시 도메인 DNS 검증
    * GET /nginx/dns/verify-all
    */
   @Get('dns/verify-all')

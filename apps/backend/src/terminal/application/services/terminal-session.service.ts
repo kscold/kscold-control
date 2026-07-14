@@ -1,4 +1,4 @@
-import { Injectable, Inject, Logger } from '@nestjs/common';
+import { Injectable, Inject, Logger, NotFoundException } from '@nestjs/common';
 import type { Session } from '../../domain/entities/session.entity';
 import type { Message } from '../../domain/entities/message.entity';
 import type { ISessionRepository } from '../../domain/repositories/session.repository.interface';
@@ -18,12 +18,14 @@ export class TerminalSessionService {
   ) {}
 
   /**
-   * Find existing active session or create a new one.
-   * Returns the session and whether this is a reconnection.
+   * 활성 세션을 찾거나 새로 생성한다.
+   * 세션과 재접속 여부를 함께 반환한다.
+   * titlePrefix: 새 세션 제목 접두어 — 터미널/claude-chat/openai-chat 게이트웨이가 공유하므로 호출자별로 구분
    */
   async getOrCreateSession(
     userId: string,
     requestedSessionId?: string,
+    titlePrefix = 'Terminal',
   ): Promise<{ session: Session; isReconnect: boolean }> {
     if (requestedSessionId) {
       const existing = await this.sessionRepo.findActive(
@@ -38,7 +40,7 @@ export class TerminalSessionService {
 
     const session = this.sessionRepo.create({
       userId,
-      title: `Terminal ${new Date().toLocaleString()}`,
+      title: `${titlePrefix} ${new Date().toLocaleString()}`,
       isActive: true,
       lastActivityAt: new Date(),
     });
@@ -47,31 +49,43 @@ export class TerminalSessionService {
     return { session: saved, isReconnect: false };
   }
 
-  async getHistory(sessionId: string): Promise<Message[]> {
+  async getHistory(sessionId: string, userId: string): Promise<Message[]> {
+    await this.requireSessionOwner(sessionId, userId);
     return this.messageRepo.findBySession(sessionId);
   }
 
   async saveMessage(
     sessionId: string,
+    userId: string,
     role: 'user' | 'assistant' | 'system',
     content: string,
+    metadata?: Record<string, any>,
   ): Promise<void> {
-    const message = this.messageRepo.create({ sessionId, role, content });
+    await this.requireSessionOwner(sessionId, userId);
+    const message = this.messageRepo.create({
+      sessionId,
+      role,
+      content,
+      ...(metadata ? { metadata } : {}),
+    });
     await this.messageRepo.save(message);
   }
 
-  async clearHistory(sessionId: string): Promise<void> {
+  async clearHistory(sessionId: string, userId: string): Promise<void> {
+    await this.requireSessionOwner(sessionId, userId);
     await this.messageRepo.deleteBySession(sessionId);
   }
 
-  async updateActivity(sessionId: string): Promise<void> {
+  async updateActivity(sessionId: string, userId: string): Promise<void> {
+    await this.requireSessionOwner(sessionId, userId);
     await this.sessionRepo.updateActivity(sessionId);
   }
 
   /**
    * Close a session: deactivate it and return the session id.
    */
-  async closeSession(sessionId: string): Promise<void> {
+  async closeSession(sessionId: string, userId: string): Promise<void> {
+    await this.requireSessionOwner(sessionId, userId);
     await this.sessionRepo.deactivate(sessionId);
   }
 
@@ -100,12 +114,28 @@ export class TerminalSessionService {
     return this.sessionRepo.save(session);
   }
 
-  async loadSessionWithMessages(sessionId: string): Promise<Session | null> {
+  async loadSessionWithMessages(
+    sessionId: string,
+    userId: string,
+  ): Promise<Session | null> {
+    await this.requireSessionOwner(sessionId, userId);
     return this.sessionRepo.findWithMessages(sessionId);
   }
 
   async touchSession(session: Session): Promise<void> {
     session.lastActivityAt = new Date();
     await this.sessionRepo.save(session);
+  }
+
+  private async requireSessionOwner(
+    sessionId: string,
+    userId: string,
+  ): Promise<Session> {
+    const session = await this.sessionRepo.findByIdForUser(sessionId, userId);
+    if (!session) {
+      throw new NotFoundException('터미널 세션을 찾을 수 없습니다.');
+    }
+
+    return session;
   }
 }

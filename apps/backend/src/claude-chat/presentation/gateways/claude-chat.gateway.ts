@@ -11,7 +11,6 @@ import { Server, Socket } from 'socket.io';
 import type { AuthenticatedSocket } from '../../../common/types/authenticated-socket.type';
 import {
   Injectable,
-  Inject,
   Logger,
   UnauthorizedException,
   ForbiddenException,
@@ -19,16 +18,19 @@ import {
 import { JwtService } from '@nestjs/jwt';
 
 import { PERMISSIONS } from '../../../common/constants/permissions';
-import type { ISessionRepository } from '../../../terminal/domain/repositories/session.repository.interface';
-import { SESSION_REPOSITORY } from '../../../terminal/domain/repositories/session.repository.interface';
-import type { IMessageRepository } from '../../../terminal/domain/repositories/message.repository.interface';
-import { MESSAGE_REPOSITORY } from '../../../terminal/domain/repositories/message.repository.interface';
 import { WsPermissionService } from '../../../terminal/application/services/ws-permission.service';
 import {
   ClaudeProcessManagerService,
   ClaudeStreamEvent,
 } from '../../application/services/claude-process-manager.service';
 import { ClaudeSessionMapperService } from '../../application/services/claude-session-mapper.service';
+import {
+  GetOrCreateClaudeSessionUseCase,
+  GetClaudeHistoryUseCase,
+  SaveClaudeMessageUseCase,
+  TouchClaudeSessionUseCase,
+  CloseClaudeSessionUseCase,
+} from '../../application/use-cases';
 
 @Injectable()
 @WebSocketGateway({
@@ -44,14 +46,15 @@ export class ClaudeChatGateway
   private readonly logger = new Logger(ClaudeChatGateway.name);
 
   constructor(
-    @Inject(SESSION_REPOSITORY)
-    private readonly sessionRepo: ISessionRepository,
-    @Inject(MESSAGE_REPOSITORY)
-    private readonly messageRepo: IMessageRepository,
     private readonly jwtService: JwtService,
     private readonly processManager: ClaudeProcessManagerService,
     private readonly sessionMapper: ClaudeSessionMapperService,
     private readonly wsPermission: WsPermissionService,
+    private readonly getOrCreateSessionUseCase: GetOrCreateClaudeSessionUseCase,
+    private readonly getHistoryUseCase: GetClaudeHistoryUseCase,
+    private readonly saveMessageUseCase: SaveClaudeMessageUseCase,
+    private readonly touchSessionUseCase: TouchClaudeSessionUseCase,
+    private readonly closeSessionUseCase: CloseClaudeSessionUseCase,
   ) {}
 
   private async checkPermission(
@@ -83,27 +86,11 @@ export class ClaudeChatGateway
         `[ClaudeChat] Client connected: ${client.id} (user: ${payload.email})`,
       );
 
-      const requestedSessionId = client.handshake.auth.sessionId;
-      let isReconnect = false;
-
-      let existingSession = requestedSessionId
-        ? await this.sessionRepo.findActive(requestedSessionId, payload.sub)
-        : null;
-
-      if (existingSession) {
-        isReconnect = true;
-      } else {
-        existingSession = await this.sessionRepo.save(
-          this.sessionRepo.create({
-            userId: payload.sub,
-            title: `Claude Chat ${new Date().toLocaleString()}`,
-            isActive: true,
-            lastActivityAt: new Date(),
-          }),
+      const { session, isReconnect } =
+        await this.getOrCreateSessionUseCase.execute(
+          payload.sub,
+          client.handshake.auth.sessionId,
         );
-      }
-
-      const session = existingSession;
 
       this.sessionMapper.mapClientToSession(client.id, session.id);
 
@@ -114,7 +101,10 @@ export class ClaudeChatGateway
       });
 
       if (isReconnect) {
-        const messages = await this.messageRepo.findBySession(session.id);
+        const messages = await this.getHistoryUseCase.execute(
+          session.id,
+          payload.sub,
+        );
         if (messages.length > 0) {
           client.emit('claude:history', {
             messages: messages.map((m) => ({
@@ -140,7 +130,7 @@ export class ClaudeChatGateway
 
   @SubscribeMessage('claude:send-message')
   async handleSendMessage(
-    @ConnectedSocket() client: Socket,
+    @ConnectedSocket() client: AuthenticatedSocket,
     @MessageBody() data: { message: string },
   ) {
     const sessionId = this.sessionMapper.getSessionId(client.id);
@@ -154,12 +144,17 @@ export class ClaudeChatGateway
       return;
     }
 
-    const userMsg = this.messageRepo.create({
+    if (!client.user?.sub) {
+      client.emit('claude:error', { message: 'Unauthorized' });
+      return;
+    }
+
+    await this.saveMessageUseCase.execute(
       sessionId,
-      role: 'user',
-      content: data.message,
-    });
-    await this.messageRepo.save(userMsg);
+      client.user.sub,
+      'user',
+      data.message,
+    );
 
     const clients = this.sessionMapper.getClients(sessionId);
     const emit = (event: string, payload: any) => {
@@ -195,20 +190,22 @@ export class ClaudeChatGateway
             if (messageEnded) break;
             messageEnded = true;
 
-            const assistantMsg = this.messageRepo.create({
-              sessionId,
-              role: 'assistant',
-              content: event.content || fullContent,
-              metadata: {
-                type: 'claude-chat',
-                costUsd: event.costUsd,
-                durationMs: event.durationMs,
-                totalCostUsd: event.totalCostUsd,
-              },
-            });
-            this.messageRepo.save(assistantMsg).catch((err) => {
-              this.logger.error('[ClaudeChat] Failed to save message:', err);
-            });
+            this.saveMessageUseCase
+              .execute(
+                sessionId,
+                client.user.sub,
+                'assistant',
+                event.content || fullContent,
+                {
+                  type: 'claude-chat',
+                  costUsd: event.costUsd,
+                  durationMs: event.durationMs,
+                  totalCostUsd: event.totalCostUsd,
+                },
+              )
+              .catch((err) => {
+                this.logger.error('[ClaudeChat] Failed to save message:', err);
+              });
 
             emit('claude:message-end', {
               content: event.content || fullContent,
@@ -218,7 +215,9 @@ export class ClaudeChatGateway
             });
             fullContent = '';
 
-            this.sessionRepo.updateActivity(sessionId).catch(() => {});
+            this.touchSessionUseCase
+              .execute(sessionId, client.user.sub)
+              .catch(() => {});
             break;
           }
 
@@ -251,12 +250,16 @@ export class ClaudeChatGateway
   }
 
   @SubscribeMessage('claude:close-session')
-  async handleCloseSession(@ConnectedSocket() client: Socket) {
+  async handleCloseSession(@ConnectedSocket() client: AuthenticatedSocket) {
     const sessionId = this.sessionMapper.getSessionId(client.id);
     if (!sessionId) return;
+    if (!client.user?.sub) {
+      client.emit('claude:error', { message: 'Unauthorized' });
+      return;
+    }
 
     this.processManager.kill(sessionId);
-    await this.sessionRepo.deactivate(sessionId);
+    await this.closeSessionUseCase.execute(sessionId, client.user.sub);
 
     // 공유 세션의 다른 클라이언트에만 알림 (요청 클라이언트 제외)
     const clients = this.sessionMapper.getClients(sessionId);
@@ -270,15 +273,8 @@ export class ClaudeChatGateway
     this.sessionMapper.clearSession(sessionId);
 
     // 요청 클라이언트에 새 세션 즉시 생성
-    const user = (client as AuthenticatedSocket).user;
-    const newSession = await this.sessionRepo.save(
-      this.sessionRepo.create({
-        userId: user.sub,
-        title: `Claude Chat ${new Date().toLocaleString()}`,
-        isActive: true,
-        lastActivityAt: new Date(),
-      }),
-    );
+    const { session: newSession } =
+      await this.getOrCreateSessionUseCase.execute(client.user.sub);
     this.sessionMapper.mapClientToSession(client.id, newSession.id);
     client.emit('claude:session-ready', {
       sessionId: newSession.id,

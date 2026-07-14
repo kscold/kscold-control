@@ -10,6 +10,20 @@ import os from 'node:os';
 import path from 'node:path';
 import { promisify } from 'node:util';
 import { PtyManagerService } from './pty-manager.service';
+import type {
+  GitCommandResult,
+  GitContext,
+  GitHubRemoteTarget,
+  ParsedWorkspaceDiffHunk,
+  ResolvedWorkspacePath,
+  WorkspaceChangeKind,
+  WorkspaceFileResult,
+  WorkspaceGitChange,
+  WorkspacePullRequestDraft,
+  WorkspaceReviewState,
+  WorkspaceShipStatus,
+  WorkspaceTreeNode,
+} from '../../domain/types/workspace-file.type';
 
 const execFileAsync = promisify(execFile);
 
@@ -23,182 +37,36 @@ const IGNORED_WORKSPACE_DIRECTORIES = new Set([
   '.turbo',
 ]);
 
-export type WorkspaceFileEncoding = 'utf8' | 'base64';
-export type WorkspaceChangeKind =
-  | 'modified'
-  | 'added'
-  | 'deleted'
-  | 'untracked';
-export type WorkspaceReviewState =
-  | 'clean'
-  | 'modified'
-  | 'added'
-  | 'deleted'
-  | 'untracked'
-  | 'staged'
-  | 'mixed';
-
-export interface WorkspaceFileResult {
-  path: string;
-  relativePath: string;
-  absolutePath: string;
-  size: number;
-  encoding: WorkspaceFileEncoding;
-  content: string;
-  updatedAt: string;
-}
-
-export interface WorkspaceGitChange {
-  path: string;
-  absolutePath: string;
-  kind: WorkspaceChangeKind;
-  reviewState: WorkspaceReviewState;
-  staged: boolean;
-  unstaged: boolean;
-}
-
-export interface WorkspaceTreeNode {
-  name: string;
-  path: string;
-  type: 'file' | 'directory';
-  size?: number;
-  children?: WorkspaceTreeNode[];
-  changed: boolean;
-  reviewState: WorkspaceReviewState | null;
-}
-
-export interface WorkspaceTreeResult {
-  root: WorkspaceTreeNode;
-  changes: WorkspaceGitChange[];
-  git: {
-    enabled: boolean;
-    rootPath: string | null;
-    branch: string | null;
-  };
-  ship: WorkspaceShipStatus;
-}
-
-export interface WorkspaceDiffResult {
-  path: string;
-  absolutePath: string;
-  gitEnabled: boolean;
-  changeKind: WorkspaceChangeKind | null;
-  reviewState: WorkspaceReviewState;
-  staged: boolean;
-  unstaged: boolean;
-  diff: string;
-  hunks: WorkspaceDiffHunk[];
-  canAccept: boolean;
-  canReject: boolean;
-}
-
-export interface WorkspaceDiffHunk {
-  index: number;
-  header: string;
-  preview: string;
-  additions: number;
-  deletions: number;
-  canStage: boolean;
-  canRevert: boolean;
-}
-
-export interface WorkspaceShipStatus {
-  gitEnabled: boolean;
-  branch: string | null;
-  defaultBaseBranch: string | null;
-  trackingBranch: string | null;
-  isOnDefaultBranch: boolean;
-  hasRemoteTracking: boolean;
-  remoteUrl: string | null;
-  compareUrl: string | null;
-  changedCount: number;
-  stagedCount: number;
-  lastCommit: {
-    sha: string;
-    message: string;
-  } | null;
-  draft: WorkspacePullRequestDraft;
-}
-
-export interface WorkspaceCommitResult {
-  ok: true;
-  commitSha: string;
-  commitMessage: string;
-  branch: string | null;
-  compareUrl: string | null;
-}
-
-export interface WorkspaceBranchResult {
-  ok: true;
-  branch: string;
-  compareUrl: string | null;
-}
-
-export interface WorkspacePushResult {
-  ok: true;
-  branch: string | null;
-  trackingBranch: string | null;
-  remoteUrl: string | null;
-  compareUrl: string | null;
-}
-
-export interface WorkspacePullRequestDraft {
-  title: string;
-  body: string;
-  compareUrl: string | null;
-  branch: string | null;
-  baseBranch: string | null;
-  canOpen: boolean;
-}
-
-interface GitContext {
-  enabled: boolean;
-  repoRoot: string | null;
-  branch: string | null;
-}
-
-interface ResolvedWorkspacePath {
-  absolutePath: string;
-  relativePath: string;
-}
-
-interface GitCommandResult {
-  stdout: string;
-  stderr: string;
-  code: number;
-}
-
-interface GitHubRemoteTarget {
-  owner: string;
-  repo: string;
-}
-
-interface ParsedWorkspaceDiffHunk extends WorkspaceDiffHunk {
-  patch: string;
-}
-
+/**
+ * Workspace Git Service
+ * Shared git/filesystem plumbing used by the workspace file use-cases.
+ */
 @Injectable()
-export class WorkspaceFileService {
+export class WorkspaceGitService {
   constructor(private readonly ptyManager: PtyManagerService) {}
 
-  private getWorkspaceRoot(): string {
+  getWorkspaceRoot(): string {
     return path.resolve(this.ptyManager.getWorkingDirectory());
   }
 
-  private toPosixPath(value: string): string {
+  toPosixPath(value: string): string {
     return value.split(path.sep).join('/');
   }
 
   private normalizeRequestedPath(rawPath: string): string {
-    const trimmed = rawPath.trim();
-    if (!trimmed) {
+    if (!rawPath?.trim()) {
       throw new BadRequestException('파일 경로가 필요합니다.');
     }
 
-    return trimmed.replace(/[:#]\d+(?::\d+)?$/, '');
+    const normalized = rawPath.replace(/[:#]\d+(?::\d+)?$/, '');
+    if (!normalized.trim()) {
+      throw new BadRequestException('파일 경로가 필요합니다.');
+    }
+
+    return normalized;
   }
 
-  private resolveWorkspacePath(rawPath: string): ResolvedWorkspacePath {
+  resolveWorkspacePath(rawPath: string): ResolvedWorkspacePath {
     const workspaceRoot = this.getWorkspaceRoot();
     const normalized = this.normalizeRequestedPath(rawPath);
     const absolutePath = path.isAbsolute(normalized)
@@ -223,7 +91,67 @@ export class WorkspaceFileService {
     };
   }
 
-  private async runGitCommand(
+  async assertWorkspacePath(
+    resolvedPath: ResolvedWorkspacePath,
+  ): Promise<void> {
+    const workspaceRoot = this.getWorkspaceRoot();
+    let existingPath = resolvedPath.absolutePath;
+    let targetExists = true;
+
+    try {
+      try {
+        await fs.lstat(existingPath);
+      } catch {
+        targetExists = false;
+      }
+
+      while (!targetExists && existingPath !== workspaceRoot) {
+        existingPath = path.dirname(existingPath);
+        try {
+          await fs.lstat(existingPath);
+          break;
+        } catch {
+          // Find the nearest existing parent for a new workspace file.
+        }
+      }
+
+      const [realRoot, realExistingPath] = await Promise.all([
+        fs.realpath(workspaceRoot),
+        fs.realpath(existingPath),
+      ]);
+      const isInsideRoot =
+        realExistingPath === realRoot ||
+        realExistingPath.startsWith(`${realRoot}${path.sep}`);
+
+      if (!isInsideRoot) {
+        throw new ForbiddenException(
+          '작업 디렉터리 바깥 파일에는 접근할 수 없습니다.',
+        );
+      }
+
+      if (!targetExists) {
+        return;
+      }
+
+      const realTarget = await fs.realpath(resolvedPath.absolutePath);
+      const isTargetInsideRoot =
+        realTarget === realRoot ||
+        realTarget.startsWith(`${realRoot}${path.sep}`);
+      if (!isTargetInsideRoot) {
+        throw new ForbiddenException(
+          '작업 디렉터리 바깥 파일에는 접근할 수 없습니다.',
+        );
+      }
+    } catch (error) {
+      if (error instanceof ForbiddenException) {
+        throw error;
+      }
+
+      throw new ForbiddenException('작업 디렉터리 경로를 확인할 수 없습니다.');
+    }
+  }
+
+  async runGitCommand(
     args: string[],
     cwd: string,
     allowedExitCodes: number[] = [0],
@@ -256,7 +184,7 @@ export class WorkspaceFileService {
     }
   }
 
-  private async applyGitPatch(
+  async applyGitPatch(
     args: string[],
     cwd: string,
     patch: string,
@@ -274,7 +202,7 @@ export class WorkspaceFileService {
     }
   }
 
-  private async resolveGitContext(): Promise<GitContext> {
+  async resolveGitContext(): Promise<GitContext> {
     const workspaceRoot = this.getWorkspaceRoot();
 
     try {
@@ -311,7 +239,7 @@ export class WorkspaceFileService {
     }
   }
 
-  private toWorkspaceFileResult(
+  toWorkspaceFileResult(
     absolutePath: string,
     relativePath: string,
     buffer: Buffer,
@@ -360,7 +288,7 @@ export class WorkspaceFileService {
     return null;
   }
 
-  private buildCompareUrl(
+  buildCompareUrl(
     remoteUrl: string | null,
     baseBranch: string | null,
     currentBranch: string | null,
@@ -382,9 +310,7 @@ export class WorkspaceFileService {
     return `https://github.com/${parsedRemote.owner}/${parsedRemote.repo}/compare/${baseBranch}...${currentBranch}?expand=1`;
   }
 
-  private async resolveRemoteUrl(
-    gitContext: GitContext,
-  ): Promise<string | null> {
+  async resolveRemoteUrl(gitContext: GitContext): Promise<string | null> {
     if (!gitContext.enabled || !gitContext.repoRoot) {
       return null;
     }
@@ -400,7 +326,7 @@ export class WorkspaceFileService {
     }
   }
 
-  private async resolveDefaultBaseBranch(
+  async resolveDefaultBaseBranch(
     gitContext: GitContext,
   ): Promise<string | null> {
     if (!gitContext.enabled || !gitContext.repoRoot) {
@@ -436,7 +362,7 @@ export class WorkspaceFileService {
     return null;
   }
 
-  private async resolveLastCommit(
+  async resolveLastCommit(
     gitContext: GitContext,
   ): Promise<WorkspaceShipStatus['lastCommit']> {
     if (!gitContext.enabled || !gitContext.repoRoot) {
@@ -462,9 +388,7 @@ export class WorkspaceFileService {
     }
   }
 
-  private async resolveTrackingBranch(
-    gitContext: GitContext,
-  ): Promise<string | null> {
+  async resolveTrackingBranch(gitContext: GitContext): Promise<string | null> {
     if (!gitContext.enabled || !gitContext.repoRoot) {
       return null;
     }
@@ -541,7 +465,7 @@ export class WorkspaceFileService {
     };
   }
 
-  private sanitizeBranchName(rawBranchName: string): string {
+  sanitizeBranchName(rawBranchName: string): string {
     const normalized = rawBranchName
       .trim()
       .replace(/\s+/g, '-')
@@ -560,7 +484,27 @@ export class WorkspaceFileService {
     return normalized;
   }
 
-  private async buildShipStatus(
+  async assertValidBranchName(
+    branchName: string,
+    gitContext: GitContext,
+  ): Promise<void> {
+    if (!gitContext.enabled || !gitContext.repoRoot) {
+      throw new BadRequestException(
+        'Git 작업공간에서만 브랜치 이름을 검증할 수 있습니다.',
+      );
+    }
+
+    const result = await this.runGitCommand(
+      ['check-ref-format', '--branch', branchName],
+      gitContext.repoRoot,
+      [0, 1],
+    );
+    if (result.code !== 0) {
+      throw new BadRequestException('브랜치 이름 형식이 올바르지 않습니다.');
+    }
+  }
+
+  async buildShipStatus(
     gitContext: GitContext,
     changes: WorkspaceGitChange[],
   ): Promise<WorkspaceShipStatus> {
@@ -632,14 +576,12 @@ export class WorkspaceFileService {
       workspaceRoot: string;
     },
   ): WorkspaceGitChange[] {
-    const entries = output
-      .split('\n')
-      .map((line) => line.trim())
-      .filter(Boolean);
+    const entries = output.split('\0');
     const changes: WorkspaceGitChange[] = [];
 
-    for (const entry of entries) {
-      const [statusCode, rawPath] = entry.split('\t');
+    for (let index = 0; index + 1 < entries.length; index += 2) {
+      const statusCode = entries[index];
+      const rawPath = entries[index + 1];
       if (!statusCode || !rawPath) {
         continue;
       }
@@ -682,7 +624,11 @@ export class WorkspaceFileService {
       if (!existing) {
         merged.set(change.path, {
           ...change,
-          reviewState: change.kind,
+          reviewState: this.resolveReviewState(
+            change.kind,
+            change.staged,
+            change.unstaged,
+          ),
         });
         continue;
       }
@@ -698,28 +644,13 @@ export class WorkspaceFileService {
               ? 'untracked'
               : 'modified';
 
-      let reviewState: WorkspaceReviewState = kind;
-      if (kind !== 'untracked') {
-        if (staged && unstaged) {
-          reviewState = 'mixed';
-        } else if (staged) {
-          reviewState = 'staged';
-        } else if (kind === 'added') {
-          reviewState = 'added';
-        } else if (kind === 'deleted') {
-          reviewState = 'deleted';
-        } else {
-          reviewState = 'modified';
-        }
-      }
-
       merged.set(change.path, {
         ...existing,
         ...change,
         kind,
         staged,
         unstaged,
-        reviewState,
+        reviewState: this.resolveReviewState(kind, staged, unstaged),
       });
     }
 
@@ -728,7 +659,20 @@ export class WorkspaceFileService {
     );
   }
 
-  private async listGitChanges(
+  private resolveReviewState(
+    kind: WorkspaceChangeKind,
+    staged: boolean,
+    unstaged: boolean,
+  ): WorkspaceReviewState {
+    if (kind === 'untracked') return 'untracked';
+    if (staged && unstaged) return 'mixed';
+    if (staged) return 'staged';
+    if (kind === 'added') return 'added';
+    if (kind === 'deleted') return 'deleted';
+    return 'modified';
+  }
+
+  async listGitChanges(
     workspaceRoot: string,
     gitContext: GitContext,
   ): Promise<WorkspaceGitChange[]> {
@@ -738,15 +682,15 @@ export class WorkspaceFileService {
 
     const [stagedResult, unstagedResult, untrackedResult] = await Promise.all([
       this.runGitCommand(
-        ['diff', '--name-status', '--cached', '--no-renames', '--'],
+        ['diff', '--name-status', '--cached', '--no-renames', '-z', '--'],
         gitContext.repoRoot,
       ),
       this.runGitCommand(
-        ['diff', '--name-status', '--no-renames', '--'],
+        ['diff', '--name-status', '--no-renames', '-z', '--'],
         gitContext.repoRoot,
       ),
       this.runGitCommand(
-        ['ls-files', '--others', '--exclude-standard'],
+        ['ls-files', '--others', '--exclude-standard', '-z'],
         gitContext.repoRoot,
       ),
     ]);
@@ -764,9 +708,8 @@ export class WorkspaceFileService {
       workspaceRoot,
     });
     const untrackedChanges = untrackedResult.stdout
-      .split('\n')
-      .map((line) => line.trim())
-      .filter(Boolean)
+      .split('\0')
+      .filter((rawPath) => rawPath.length > 0)
       .map((rawPath) => {
         const absolutePath = path.resolve(gitContext.repoRoot!, rawPath);
         return {
@@ -797,7 +740,7 @@ export class WorkspaceFileService {
     ]);
   }
 
-  private getDirectoryReviewState(
+  getDirectoryReviewState(
     children: WorkspaceTreeNode[],
   ): WorkspaceReviewState | null {
     const states = children
@@ -813,7 +756,7 @@ export class WorkspaceFileService {
     return null;
   }
 
-  private async buildWorkspaceTree(
+  async buildWorkspaceTree(
     directoryPath: string,
     relativePath: string,
     changeMap: Map<string, WorkspaceGitChange>,
@@ -877,7 +820,7 @@ export class WorkspaceFileService {
     });
   }
 
-  private getRepoRelativePath(
+  getRepoRelativePath(
     resolvedPath: ResolvedWorkspacePath,
     gitContext: GitContext,
   ): string {
@@ -890,7 +833,7 @@ export class WorkspaceFileService {
     );
   }
 
-  private parseDiffHunks(diff: string): ParsedWorkspaceDiffHunk[] {
+  parseDiffHunks(diff: string): ParsedWorkspaceDiffHunk[] {
     if (!diff.trim()) {
       return [];
     }
@@ -944,7 +887,7 @@ export class WorkspaceFileService {
     return hunks;
   }
 
-  private async resolveActionDiffForChange(
+  async resolveActionDiffForChange(
     resolvedPath: ResolvedWorkspacePath,
     change: WorkspaceGitChange,
     gitContext: GitContext,
@@ -972,7 +915,7 @@ export class WorkspaceFileService {
     return result.stdout;
   }
 
-  private async resolveDiffForChange(
+  async resolveDiffForChange(
     resolvedPath: ResolvedWorkspacePath,
     change: WorkspaceGitChange,
     gitContext: GitContext,
@@ -1000,7 +943,7 @@ export class WorkspaceFileService {
     return result.stdout;
   }
 
-  private async resolveHunkPatch(
+  async resolveHunkPatch(
     resolvedPath: ResolvedWorkspacePath,
     change: WorkspaceGitChange,
     gitContext: GitContext,
@@ -1019,452 +962,5 @@ export class WorkspaceFileService {
     }
 
     return targetHunk;
-  }
-
-  async readFile(filePath: string): Promise<WorkspaceFileResult> {
-    const { absolutePath, relativePath } = this.resolveWorkspacePath(filePath);
-
-    try {
-      const [buffer, stats] = await Promise.all([
-        fs.readFile(absolutePath),
-        fs.stat(absolutePath),
-      ]);
-
-      if (!stats.isFile()) {
-        throw new NotFoundException('파일이 아닙니다.');
-      }
-
-      return this.toWorkspaceFileResult(
-        absolutePath,
-        relativePath,
-        buffer,
-        stats.mtime,
-      );
-    } catch (error) {
-      if (
-        error instanceof BadRequestException ||
-        error instanceof ForbiddenException ||
-        error instanceof NotFoundException
-      ) {
-        throw error;
-      }
-
-      throw new NotFoundException('파일을 찾을 수 없습니다.');
-    }
-  }
-
-  async writeFile(
-    filePath: string,
-    content: string,
-  ): Promise<WorkspaceFileResult> {
-    const { absolutePath, relativePath } = this.resolveWorkspacePath(filePath);
-
-    await fs.mkdir(path.dirname(absolutePath), { recursive: true });
-    await fs.writeFile(absolutePath, content, 'utf8');
-
-    const [buffer, stats] = await Promise.all([
-      fs.readFile(absolutePath),
-      fs.stat(absolutePath),
-    ]);
-
-    return this.toWorkspaceFileResult(
-      absolutePath,
-      relativePath,
-      buffer,
-      stats.mtime,
-    );
-  }
-
-  async readTree(): Promise<WorkspaceTreeResult> {
-    const workspaceRoot = this.getWorkspaceRoot();
-    const gitContext = await this.resolveGitContext();
-    const changes = await this.listGitChanges(workspaceRoot, gitContext);
-    const changeMap = new Map(changes.map((change) => [change.path, change]));
-    const children = await this.buildWorkspaceTree(
-      workspaceRoot,
-      '',
-      changeMap,
-    );
-    const ship = await this.buildShipStatus(gitContext, changes);
-
-    return {
-      root: {
-        name: path.basename(workspaceRoot),
-        path: '.',
-        type: 'directory',
-        children,
-        changed: children.some((child) => child.changed),
-        reviewState: this.getDirectoryReviewState(children),
-      },
-      changes,
-      git: {
-        enabled: gitContext.enabled,
-        rootPath: gitContext.repoRoot,
-        branch: gitContext.branch,
-      },
-      ship,
-    };
-  }
-
-  async readDiff(filePath: string): Promise<WorkspaceDiffResult> {
-    const resolvedPath = this.resolveWorkspacePath(filePath);
-    const gitContext = await this.resolveGitContext();
-
-    if (!gitContext.enabled) {
-      return {
-        path: resolvedPath.relativePath,
-        absolutePath: resolvedPath.absolutePath,
-        gitEnabled: false,
-        changeKind: null,
-        reviewState: 'clean',
-        staged: false,
-        unstaged: false,
-        diff: '',
-        hunks: [],
-        canAccept: false,
-        canReject: false,
-      };
-    }
-
-    const changes = await this.listGitChanges(
-      this.getWorkspaceRoot(),
-      gitContext,
-    );
-    const change = changes.find(
-      (item) => item.path === resolvedPath.relativePath,
-    );
-
-    if (!change) {
-      return {
-        path: resolvedPath.relativePath,
-        absolutePath: resolvedPath.absolutePath,
-        gitEnabled: true,
-        changeKind: null,
-        reviewState: 'clean',
-        staged: false,
-        unstaged: false,
-        diff: '',
-        hunks: [],
-        canAccept: false,
-        canReject: false,
-      };
-    }
-
-    const [diff, actionDiff] = await Promise.all([
-      this.resolveDiffForChange(resolvedPath, change, gitContext),
-      this.resolveActionDiffForChange(resolvedPath, change, gitContext),
-    ]);
-
-    return {
-      path: resolvedPath.relativePath,
-      absolutePath: resolvedPath.absolutePath,
-      gitEnabled: true,
-      changeKind: change.kind,
-      reviewState: change.reviewState,
-      staged: change.staged,
-      unstaged: change.unstaged,
-      diff,
-      hunks: this.parseDiffHunks(actionDiff).map(
-        ({ patch: _patch, ...hunk }) => hunk,
-      ),
-      canAccept: true,
-      canReject: true,
-    };
-  }
-
-  async acceptDiff(filePath: string): Promise<WorkspaceDiffResult> {
-    const resolvedPath = this.resolveWorkspacePath(filePath);
-    const gitContext = await this.resolveGitContext();
-
-    if (!gitContext.enabled || !gitContext.repoRoot) {
-      throw new BadRequestException(
-        'Git 작업공간에서만 변경 리뷰를 지원합니다.',
-      );
-    }
-
-    const repoRelativePath = this.toPosixPath(
-      path.relative(gitContext.repoRoot, resolvedPath.absolutePath),
-    );
-    await this.runGitCommand(
-      ['add', '--', repoRelativePath],
-      gitContext.repoRoot,
-    );
-
-    return this.readDiff(filePath);
-  }
-
-  async rejectDiff(filePath: string): Promise<WorkspaceDiffResult> {
-    const resolvedPath = this.resolveWorkspacePath(filePath);
-    const gitContext = await this.resolveGitContext();
-
-    if (!gitContext.enabled || !gitContext.repoRoot) {
-      throw new BadRequestException(
-        'Git 작업공간에서만 변경 리뷰를 지원합니다.',
-      );
-    }
-
-    const change = await this.readDiff(filePath);
-    const repoRelativePath = this.toPosixPath(
-      path.relative(gitContext.repoRoot, resolvedPath.absolutePath),
-    );
-
-    if (change.changeKind === 'untracked' || change.changeKind === 'added') {
-      await this.runGitCommand(
-        ['rm', '--cached', '--force', '--', repoRelativePath],
-        gitContext.repoRoot,
-        [0, 128],
-      );
-      await fs.rm(resolvedPath.absolutePath, { force: true, recursive: true });
-      return this.readDiff(filePath);
-    }
-
-    await this.runGitCommand(
-      [
-        'restore',
-        '--source=HEAD',
-        '--staged',
-        '--worktree',
-        '--',
-        repoRelativePath,
-      ],
-      gitContext.repoRoot,
-    );
-
-    return this.readDiff(filePath);
-  }
-
-  async acceptDiffHunk(
-    filePath: string,
-    hunkIndex: number,
-  ): Promise<WorkspaceDiffResult> {
-    const resolvedPath = this.resolveWorkspacePath(filePath);
-    const gitContext = await this.resolveGitContext();
-
-    if (!gitContext.enabled || !gitContext.repoRoot) {
-      throw new BadRequestException(
-        'Git 작업공간에서만 hunk 리뷰를 지원합니다.',
-      );
-    }
-
-    const changes = await this.listGitChanges(
-      this.getWorkspaceRoot(),
-      gitContext,
-    );
-    const change = changes.find(
-      (item) => item.path === resolvedPath.relativePath,
-    );
-
-    if (!change) {
-      throw new NotFoundException('변경된 파일을 찾지 못했습니다.');
-    }
-
-    const hunk = await this.resolveHunkPatch(
-      resolvedPath,
-      change,
-      gitContext,
-      hunkIndex,
-    );
-
-    try {
-      await this.applyGitPatch(
-        ['apply', '--cached', '--whitespace=nowarn', '--recount'],
-        gitContext.repoRoot,
-        hunk.patch,
-      );
-    } catch (error) {
-      throw new BadRequestException(
-        error instanceof Error
-          ? error.message
-          : '선택한 hunk를 스테이징하지 못했습니다.',
-      );
-    }
-
-    return this.readDiff(filePath);
-  }
-
-  async rejectDiffHunk(
-    filePath: string,
-    hunkIndex: number,
-  ): Promise<WorkspaceDiffResult> {
-    const resolvedPath = this.resolveWorkspacePath(filePath);
-    const gitContext = await this.resolveGitContext();
-
-    if (!gitContext.enabled || !gitContext.repoRoot) {
-      throw new BadRequestException(
-        'Git 작업공간에서만 hunk 리뷰를 지원합니다.',
-      );
-    }
-
-    const changes = await this.listGitChanges(
-      this.getWorkspaceRoot(),
-      gitContext,
-    );
-    const change = changes.find(
-      (item) => item.path === resolvedPath.relativePath,
-    );
-
-    if (!change) {
-      throw new NotFoundException('변경된 파일을 찾지 못했습니다.');
-    }
-
-    const hunk = await this.resolveHunkPatch(
-      resolvedPath,
-      change,
-      gitContext,
-      hunkIndex,
-    );
-
-    try {
-      await this.applyGitPatch(
-        ['apply', '-R', '--whitespace=nowarn', '--recount'],
-        gitContext.repoRoot,
-        hunk.patch,
-      );
-    } catch (error) {
-      throw new BadRequestException(
-        error instanceof Error
-          ? error.message
-          : '선택한 hunk를 되돌리지 못했습니다.',
-      );
-    }
-
-    return this.readDiff(filePath);
-  }
-
-  async commitChanges(message: string): Promise<WorkspaceCommitResult> {
-    const commitMessage = message.trim();
-    if (!commitMessage) {
-      throw new BadRequestException('커밋 메시지를 입력해주세요.');
-    }
-
-    const workspaceRoot = this.getWorkspaceRoot();
-    const gitContext = await this.resolveGitContext();
-
-    if (!gitContext.enabled || !gitContext.repoRoot) {
-      throw new BadRequestException('Git 작업공간에서만 커밋할 수 있습니다.');
-    }
-
-    const changes = await this.listGitChanges(workspaceRoot, gitContext);
-    const stagedCount = changes.filter((change) => change.staged).length;
-    if (stagedCount === 0) {
-      throw new BadRequestException(
-        '커밋할 staged 변경이 없습니다. accept로 먼저 스테이징해주세요.',
-      );
-    }
-
-    try {
-      await this.runGitCommand(
-        ['commit', '-m', commitMessage],
-        gitContext.repoRoot,
-      );
-    } catch (error) {
-      throw new BadRequestException(
-        error instanceof Error
-          ? error.message
-          : '커밋에 실패했습니다. Git 설정을 확인해주세요.',
-      );
-    }
-
-    const [headResult, remoteUrl, defaultBaseBranch] = await Promise.all([
-      this.runGitCommand(['rev-parse', 'HEAD'], gitContext.repoRoot),
-      this.resolveRemoteUrl(gitContext),
-      this.resolveDefaultBaseBranch(gitContext),
-    ]);
-
-    return {
-      ok: true,
-      commitSha: headResult.stdout.trim(),
-      commitMessage,
-      branch: gitContext.branch,
-      compareUrl: this.buildCompareUrl(
-        remoteUrl,
-        defaultBaseBranch,
-        gitContext.branch,
-      ),
-    };
-  }
-
-  async createBranch(branchName: string): Promise<WorkspaceBranchResult> {
-    const nextBranchName = this.sanitizeBranchName(branchName);
-    const gitContext = await this.resolveGitContext();
-
-    if (!gitContext.enabled || !gitContext.repoRoot) {
-      throw new BadRequestException(
-        'Git 작업공간에서만 브랜치를 만들 수 있습니다.',
-      );
-    }
-
-    try {
-      await this.runGitCommand(
-        ['rev-parse', '--verify', '--quiet', nextBranchName],
-        gitContext.repoRoot,
-        [0, 1],
-      ).then((result) => {
-        if (result.code === 0) {
-          throw new BadRequestException('이미 존재하는 브랜치 이름입니다.');
-        }
-      });
-    } catch (error) {
-      if (error instanceof BadRequestException) {
-        throw error;
-      }
-    }
-
-    const startPoint =
-      gitContext.branch ||
-      (await this.resolveDefaultBaseBranch(gitContext)) ||
-      'HEAD';
-
-    await this.runGitCommand(
-      ['checkout', '-b', nextBranchName, startPoint],
-      gitContext.repoRoot,
-    );
-
-    const remoteUrl = await this.resolveRemoteUrl({
-      ...gitContext,
-      branch: nextBranchName,
-    });
-    const defaultBaseBranch = await this.resolveDefaultBaseBranch(gitContext);
-
-    return {
-      ok: true,
-      branch: nextBranchName,
-      compareUrl: this.buildCompareUrl(
-        remoteUrl,
-        defaultBaseBranch,
-        nextBranchName,
-      ),
-    };
-  }
-
-  async pushBranch(): Promise<WorkspacePushResult> {
-    const gitContext = await this.resolveGitContext();
-
-    if (!gitContext.enabled || !gitContext.repoRoot || !gitContext.branch) {
-      throw new BadRequestException('Push할 활성 브랜치를 찾지 못했습니다.');
-    }
-
-    await this.runGitCommand(
-      ['push', '-u', 'origin', gitContext.branch],
-      gitContext.repoRoot,
-    );
-
-    const [trackingBranch, remoteUrl, defaultBaseBranch] = await Promise.all([
-      this.resolveTrackingBranch(gitContext),
-      this.resolveRemoteUrl(gitContext),
-      this.resolveDefaultBaseBranch(gitContext),
-    ]);
-
-    return {
-      ok: true,
-      branch: gitContext.branch,
-      trackingBranch,
-      remoteUrl,
-      compareUrl: this.buildCompareUrl(
-        remoteUrl,
-        defaultBaseBranch,
-        gitContext.branch,
-      ),
-    };
   }
 }

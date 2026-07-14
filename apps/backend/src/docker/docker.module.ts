@@ -20,6 +20,14 @@ import {
   GetComposeProvisioningTemplateUseCase,
   CreateComposeServiceUseCase,
   RemoveComposeServiceUseCase,
+  ListComposeServicesUseCase,
+  GetTopologySnapshotUseCase,
+  SaveTopologyLayoutUseCase,
+  GetDockerCleanupCandidatesUseCase,
+  PruneDanglingImagesUseCase,
+  PruneBuildCacheUseCase,
+  PruneExitedContainersUseCase,
+  PruneDanglingVolumesUseCase,
 } from './application/use-cases';
 import { PortForwardingService } from './application/services/port-forwarding.service';
 import { ComposeService } from './application/services/compose.service';
@@ -71,6 +79,14 @@ import { UpnpModule } from '../upnp/upnp.module';
     GetComposeProvisioningTemplateUseCase,
     CreateComposeServiceUseCase,
     RemoveComposeServiceUseCase,
+    ListComposeServicesUseCase,
+    GetTopologySnapshotUseCase,
+    SaveTopologyLayoutUseCase,
+    GetDockerCleanupCandidatesUseCase,
+    PruneDanglingImagesUseCase,
+    PruneBuildCacheUseCase,
+    PruneExitedContainersUseCase,
+    PruneDanglingVolumesUseCase,
 
     // Services
     PortForwardingService,

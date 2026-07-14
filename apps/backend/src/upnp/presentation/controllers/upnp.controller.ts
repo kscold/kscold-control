@@ -31,7 +31,7 @@ export class UpnpController {
   ) {}
 
   /**
-   * List all UPnP port mappings on the router
+   * 라우터의 UPnP 포트 매핑 전체 목록
    * GET /upnp/mappings
    */
   @Get('mappings')
@@ -41,7 +41,7 @@ export class UpnpController {
   }
 
   /**
-   * Add a new port mapping
+   * 새 포트 매핑 추가
    * POST /upnp/mappings
    */
   @Post('mappings')
@@ -51,7 +51,7 @@ export class UpnpController {
   }
 
   /**
-   * Remove a port mapping
+   * 포트 매핑 삭제
    * DELETE /upnp/mappings/:publicPort
    */
   @Delete('mappings/:publicPort')
@@ -67,7 +67,7 @@ export class UpnpController {
   }
 
   /**
-   * Get external IP from router via UPnP
+   * UPnP로 라우터에서 외부 IP 조회
    * GET /upnp/external-ip
    */
   @Get('external-ip')
