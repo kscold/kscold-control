@@ -50,7 +50,7 @@ describe('DockerController', () => {
     listContainersUseCase.execute.mockResolvedValueOnce([]);
 
     await controller.listContainers({
-      user: { id: 'user-1', roles: ['admin'] },
+      user: { id: 'user-1', roles: [ROLES.OPERATOR] },
     } as any);
 
     expect(listContainersUseCase.execute).toHaveBeenCalledWith('user-1');
@@ -61,6 +61,16 @@ describe('DockerController', () => {
 
     await controller.listContainers({
       user: { id: 'user-1', roles: [ROLES.SUPER_ADMIN] },
+    } as any);
+
+    expect(listContainersUseCase.execute).toHaveBeenCalledWith(undefined);
+  });
+
+  it('레거시 admin은 전체 컨테이너를 조회한다', async () => {
+    listContainersUseCase.execute.mockResolvedValueOnce([]);
+
+    await controller.listContainers({
+      user: { id: 'user-1', roles: [ROLES.ADMIN] },
     } as any);
 
     expect(listContainersUseCase.execute).toHaveBeenCalledWith(undefined);
