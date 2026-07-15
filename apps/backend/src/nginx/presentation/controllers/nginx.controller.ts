@@ -30,7 +30,8 @@ import {
   VerifyDnsUseCase,
   VerifyAllDnsUseCase,
 } from '../../application/use-cases';
-import { CreateNginxSiteRequestDto } from '../dto/create-nginx-site.request.dto';
+import { CreateNginxSiteDto } from '../../application/dto';
+import { CreateNginxSiteRequestDto } from '../dto';
 import type { JwtRequest } from '../../../common/types/jwt-request.type';
 import { AuditLogService } from '../../../audit/application/services/audit-log.service';
 
@@ -68,15 +69,16 @@ export class NginxController {
     @Body() dto: CreateNginxSiteRequestDto,
     @Request() req: JwtRequest,
   ) {
-    const result = await this.createSiteUseCase.execute(dto);
+    const command = CreateNginxSiteDto.from(dto);
+    const result = await this.createSiteUseCase.execute(command);
     await this.auditLogService.record({
       domain: 'nginx',
       action: 'site.create',
-      summary: `Nginx 사이트 ${dto.name}(${dto.domain})를 생성했습니다.`,
+      summary: `Nginx 사이트 ${command.name}(${command.domain})를 생성했습니다.`,
       actorId: req.user?.id ?? req.user?.sub ?? null,
       actorEmail: req.user?.email ?? null,
       targetType: 'site',
-      targetId: dto.name,
+      targetId: command.name,
       metadata: {
         after: this.toSiteSnapshot(result),
         testResult: result.testResult.success,
@@ -93,7 +95,8 @@ export class NginxController {
     @Request() req: JwtRequest,
   ) {
     const beforeSite = await this.getSiteSnapshot(name);
-    const result = await this.updateSiteUseCase.execute(name, dto);
+    const command = CreateNginxSiteDto.from(dto);
+    const result = await this.updateSiteUseCase.execute(name, command);
     await this.auditLogService.record({
       domain: 'nginx',
       action: 'site.update',

@@ -14,8 +14,9 @@ import {
 } from '../../domain/repositories/nginx-runtime.repository';
 import type {
   NginxSite,
-  CreateNginxSiteDto,
+  NginxSiteConfiguration,
 } from '../../domain/types/nginx-site.type';
+import { CreateNginxSiteDto } from '../dto';
 
 @Injectable()
 export class NginxSiteService {
@@ -35,14 +36,14 @@ export class NginxSiteService {
   async createSite(
     dto: CreateNginxSiteDto,
   ): Promise<NginxSite & { testResult: { success: boolean; output: string } }> {
-    const normalizedDto = this.validateAndNormalizeDto(dto);
-    // Check if site already exists
-    const existing = this.configRepo.read(normalizedDto.name);
+    const configuration = this.validateAndNormalizeInput(dto);
+    // 기존 설정 존재 여부는 파일 쓰기 전에 확인해야 덮어쓰기를 막을 수 있음.
+    const existing = this.configRepo.read(configuration.name);
     if (existing) {
-      throw new Error(`Site "${normalizedDto.name}" already exists`);
+      throw new Error(`Site "${configuration.name}" already exists`);
     }
 
-    const site = this.configRepo.write(normalizedDto.name, normalizedDto);
+    const site = this.configRepo.write(configuration.name, configuration);
     const testResult = await this.autoTestAndReload();
     return { ...site, testResult };
   }
@@ -54,7 +55,7 @@ export class NginxSiteService {
     this.assertSafeSiteName(name);
     const site = this.configRepo.write(
       name,
-      this.validateAndNormalizeDto({ ...dto, name }),
+      this.validateAndNormalizeInput(CreateNginxSiteDto.from({ ...dto, name })),
     );
     const testResult = await this.autoTestAndReload();
     return { ...site, testResult };
@@ -99,8 +100,10 @@ export class NginxSiteService {
     return testResult;
   }
 
-  private validateAndNormalizeDto(dto: CreateNginxSiteDto): CreateNginxSiteDto {
-    const normalized = {
+  private validateAndNormalizeInput(
+    dto: CreateNginxSiteDto,
+  ): NginxSiteConfiguration {
+    const normalized: NginxSiteConfiguration = {
       ...dto,
       name: dto.name.trim(),
       domain: dto.domain.trim(),

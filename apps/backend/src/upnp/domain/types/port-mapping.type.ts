@@ -9,7 +9,8 @@ export interface PortMapping {
   local: boolean;
 }
 
-export interface CreateMappingDto {
+/** 라우터에 추가할 포트 매핑 도메인 구성값임. */
+export interface PortMappingDraft {
   publicPort: number;
   privatePort: number;
   protocol?: 'TCP' | 'UDP';

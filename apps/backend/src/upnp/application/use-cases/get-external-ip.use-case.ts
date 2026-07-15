@@ -5,7 +5,7 @@ import {
   UPNP_GATEWAY_REPOSITORY,
 } from '../../domain/repositories/upnp-gateway.repository';
 
-/** UPnP를 통한 외부 IP 조회 */
+/** UPnP를 통한 외부 IP 조회 유스케이스임. */
 @Injectable()
 export class GetExternalIpUseCase {
   private readonly logger = new Logger(GetExternalIpUseCase.name);

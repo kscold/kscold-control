@@ -5,7 +5,7 @@ import {
   UPNP_GATEWAY_REPOSITORY,
 } from '../../domain/repositories/upnp-gateway.repository';
 
-/** UPnP 포트 매핑 삭제 */
+/** UPnP 포트 매핑 삭제 유스케이스임. */
 @Injectable()
 export class RemovePortMappingUseCase {
   private readonly logger = new Logger(RemovePortMappingUseCase.name);

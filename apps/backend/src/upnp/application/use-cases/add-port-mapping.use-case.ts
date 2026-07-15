@@ -4,9 +4,9 @@ import {
   type IUpnpGatewayRepository,
   UPNP_GATEWAY_REPOSITORY,
 } from '../../domain/repositories/upnp-gateway.repository';
-import type { CreateMappingDto } from '../../domain/types/port-mapping.type';
+import { AddPortMappingDto } from '../dto';
 
-/** UPnP 포트 매핑 추가 */
+/** UPnP 포트 매핑 추가 유스케이스임. */
 @Injectable()
 export class AddPortMappingUseCase {
   private readonly logger = new Logger(AddPortMappingUseCase.name);
@@ -16,9 +16,9 @@ export class AddPortMappingUseCase {
     private readonly gateway: IUpnpGatewayRepository,
   ) {}
 
-  async execute(dto: CreateMappingDto): Promise<{ success: boolean }> {
+  async execute(dto: AddPortMappingDto): Promise<{ success: boolean }> {
     try {
-      await this.gateway.addMapping(dto);
+      await this.gateway.addMapping(dto.toDraft());
       this.logger.log(
         `Port mapping added: ${dto.publicPort} -> ${dto.privatePort} (${dto.protocol || 'TCP'})`,
       );
