@@ -1,7 +1,7 @@
-// Jest setup file for custom matchers and global test configuration
+import 'reflect-metadata';
 import '@jest/globals';
 
-// Add custom matchers
+// 테스트 전역 설정과 사용자 정의 매처 등록용 파일임.
 expect.extend({
   toHaveBeenCalledBefore(received: any, other: any) {
     const receivedCalls = received.mock?.invocationCallOrder || [];
