@@ -1,8 +1,8 @@
-import type { PortMapping, CreateMappingDto } from '../types/port-mapping.type';
+import type { PortMapping, PortMappingDraft } from '../types/port-mapping.type';
 
 export interface IUpnpGatewayRepository {
   getMappings(): Promise<PortMapping[]>;
-  addMapping(dto: CreateMappingDto): Promise<void>;
+  addMapping(draft: PortMappingDraft): Promise<void>;
   removeMapping(publicPort: number, protocol: string): Promise<void>;
   getExternalIp(): Promise<string>;
 }

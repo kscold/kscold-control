@@ -4,7 +4,7 @@ import * as path from 'path';
 import type { INginxConfigRepository } from '../../domain/repositories/nginx-config.repository';
 import type {
   NginxSite,
-  CreateNginxSiteDto,
+  NginxSiteConfiguration,
 } from '../../domain/types/nginx-site.type';
 
 const NGINX_CONF_DIR = path.resolve(
@@ -63,27 +63,27 @@ export class NginxConfigRepositoryImpl implements INginxConfigRepository {
     return { ...this.parseConfig(raw, name), enabled, raw };
   }
 
-  write(name: string, dto: CreateNginxSiteDto): NginxSite {
+  write(name: string, configuration: NginxSiteConfiguration): NginxSite {
     this.assertSafeName(name);
     const enabledPath = path.join(NGINX_CONF_DIR, `${name}.conf`);
     const disabledPath = path.join(NGINX_CONF_DIR, `${name}.conf.disabled`);
 
-    // For new sites, check existence
+    // 기존 비활성 설정이 있으면 같은 파일을 갱신해야 상태가 바뀌지 않음.
     const existingPath = fs.existsSync(enabledPath)
       ? enabledPath
       : fs.existsSync(disabledPath)
         ? disabledPath
         : null;
 
-    // If updating existing, write to existing path; otherwise create enabled
+    // 기존 파일이 없을 때만 활성 설정 파일을 새로 생성함.
     const filePath = existingPath || enabledPath;
-    const config = this.generateConfig(dto);
+    const config = this.generateConfig(configuration);
     fs.writeFileSync(filePath, config, 'utf-8');
 
     return {
-      ...dto,
-      sslCert: dto.sslCert || '',
-      sslKey: dto.sslKey || '',
+      ...configuration,
+      sslCert: configuration.sslCert || '',
+      sslKey: configuration.sslKey || '',
       enabled: true,
     };
   }
@@ -134,14 +134,18 @@ export class NginxConfigRepositoryImpl implements INginxConfigRepository {
     };
   }
 
-  private generateConfig(dto: CreateNginxSiteDto): string {
-    const sslCert = dto.sslCert || `/etc/nginx/ssl/${dto.domain}/fullchain.pem`;
-    const sslKey = dto.sslKey || `/etc/nginx/ssl/${dto.domain}/privkey.pem`;
+  private generateConfig(configuration: NginxSiteConfiguration): string {
+    const sslCert =
+      configuration.sslCert ||
+      `/etc/nginx/ssl/${configuration.domain}/fullchain.pem`;
+    const sslKey =
+      configuration.sslKey ||
+      `/etc/nginx/ssl/${configuration.domain}/privkey.pem`;
 
-    const wsBlock = dto.websocket
+    const wsBlock = configuration.websocket
       ? `
     location /socket.io/ {
-        proxy_pass ${dto.upstream};
+        proxy_pass ${configuration.upstream};
         proxy_http_version 1.1;
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection "upgrade";
@@ -161,17 +165,17 @@ export class NginxConfigRepositoryImpl implements INginxConfigRepository {
         proxy_set_header X-Forwarded-Proto $scheme;
         proxy_cache_bypass $http_upgrade;`;
 
-    if (!dto.ssl) {
+    if (!configuration.ssl) {
       return `server {
     listen 80;
-    server_name ${dto.domain};
+    server_name ${configuration.domain};
 
     location /.well-known/acme-challenge/ {
         root /var/www/certbot;
     }
 
     location / {
-        proxy_pass ${dto.upstream};${proxyHeaders}
+        proxy_pass ${configuration.upstream};${proxyHeaders}
     }${wsBlock}
 }
 `;
@@ -180,7 +184,7 @@ export class NginxConfigRepositoryImpl implements INginxConfigRepository {
     return `# HTTP → HTTPS 리다이렉트
 server {
     listen 80;
-    server_name ${dto.domain};
+    server_name ${configuration.domain};
 
     location /.well-known/acme-challenge/ {
         root /var/www/certbot;
@@ -195,7 +199,7 @@ server {
 server {
     listen 443 ssl;
     http2 on;
-    server_name ${dto.domain};
+    server_name ${configuration.domain};
 
     ssl_certificate ${sslCert};
     ssl_certificate_key ${sslKey};
@@ -207,7 +211,7 @@ server {
     client_max_body_size 20M;
 
     location / {
-        proxy_pass ${dto.upstream};${proxyHeaders}
+        proxy_pass ${configuration.upstream};${proxyHeaders}
     }${wsBlock}
 }
 `;

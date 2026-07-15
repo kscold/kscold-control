@@ -11,7 +11,8 @@ export interface NginxSite {
   raw?: string;
 }
 
-export interface CreateNginxSiteDto {
+/** Nginx 설정 파일을 생성·갱신하는 도메인 구성값임. */
+export interface NginxSiteConfiguration {
   name: string;
   domain: string;
   upstream: string;

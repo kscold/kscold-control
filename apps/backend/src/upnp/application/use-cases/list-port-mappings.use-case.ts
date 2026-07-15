@@ -6,7 +6,7 @@ import {
 } from '../../domain/repositories/upnp-gateway.repository';
 import type { PortMapping } from '../../domain/types/port-mapping.type';
 
-/** UPnP 포트 매핑 목록 조회 */
+/** UPnP 포트 매핑 목록 조회 유스케이스임. */
 @Injectable()
 export class ListPortMappingsUseCase {
   private readonly logger = new Logger(ListPortMappingsUseCase.name);

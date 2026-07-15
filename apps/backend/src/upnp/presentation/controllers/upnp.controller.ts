@@ -18,7 +18,8 @@ import {
   RemovePortMappingUseCase,
   GetExternalIpUseCase,
 } from '../../application/use-cases';
-import { CreateMappingRequestDto } from '../dto/create-mapping.request.dto';
+import { AddPortMappingDto } from '../../application/dto';
+import { CreateMappingRequestDto } from '../dto';
 
 @Controller('upnp')
 @UseGuards(AuthGuard('jwt'), PermissionsGuard)
@@ -47,7 +48,7 @@ export class UpnpController {
   @Post('mappings')
   @RequirePermissions(PERMISSIONS.SYSTEM_WRITE)
   addMapping(@Body() dto: CreateMappingRequestDto) {
-    return this.addPortMappingUseCase.execute(dto);
+    return this.addPortMappingUseCase.execute(AddPortMappingDto.from(dto));
   }
 
   /**

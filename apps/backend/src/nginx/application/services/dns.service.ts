@@ -17,11 +17,9 @@ export class DnsService {
   private cachedPublicIp: string | null = null;
   private ipCacheTime = 0;
 
-  /**
-   * Get the public IP address of this server
-   */
+  /** 서버의 공인 IP 주소 조회함. */
   async getPublicIp(): Promise<string> {
-    // Cache for 5 minutes
+    // 외부 조회 결과를 5분간 재사용해 반복 네트워크 요청 줄임.
     if (this.cachedPublicIp && Date.now() - this.ipCacheTime < 300000) {
       return this.cachedPublicIp;
     }
@@ -47,9 +45,7 @@ export class DnsService {
     }
   }
 
-  /**
-   * Generate required DNS records for a domain
-   */
+  /** 도메인에 필요한 DNS 레코드 구성함. */
   async getRequiredRecords(domain: string): Promise<DnsRecord[]> {
     const publicIp = await this.getPublicIp();
     const parts = domain.split('.');
@@ -76,9 +72,7 @@ export class DnsService {
     return records;
   }
 
-  /**
-   * Verify DNS records for a domain
-   */
+  /** 도메인의 DNS 레코드가 현재 공인 IP를 가리키는지 확인함. */
   async verifyDns(domain: string): Promise<DnsCheckResult> {
     const publicIp = await this.getPublicIp();
     const records = await this.getRequiredRecords(domain);
@@ -142,9 +136,7 @@ export class DnsService {
     };
   }
 
-  /**
-   * Verify DNS for multiple domains at once
-   */
+  /** 여러 도메인의 DNS 레코드를 동시에 확인함. */
   async verifyAll(domains: string[]): Promise<DnsCheckResult[]> {
     return Promise.all(domains.map((d) => this.verifyDns(d)));
   }

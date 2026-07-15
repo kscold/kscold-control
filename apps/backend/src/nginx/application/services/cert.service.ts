@@ -21,14 +21,14 @@ const LETSENCRYPT_DIR = '/etc/letsencrypt';
 const LETSENCRYPT_LIB_DIR = '/var/lib/letsencrypt';
 const RENEWAL_STATUS_FILE = path.join(SSL_DIR, '.renewal-status.json');
 
-/** 인증서 자동 갱신 마지막 실행 결과 */
+/** 인증서 자동 갱신 마지막 실행 결과임. */
 export interface RenewalStatus {
-  lastRunAt: string | null; // ISO
+  lastRunAt: string | null; // ISO 8601 형식 시각임.
   trigger: 'schedule' | 'manual' | null;
   success: boolean | null;
-  renewedDomains: string[]; // 이번 실행에서 실제 갱신된 도메인
+  renewedDomains: string[]; // 이번 실행에서 실제 갱신된 도메인 목록임.
   message: string;
-  // 실행 시점 기준 인증서 요약 (만료 임박 가시화)
+  // 실행 시점 기준 인증서 요약이며 만료 임박 상태 표시에 사용함.
   certs: Array<{ domain: string; daysLeft: number | null }>;
 }
 
@@ -36,7 +36,7 @@ export interface RenewalStatus {
 export class CertService {
   private readonly logger = new Logger(CertService.name);
 
-  /** 만료 며칠 전부터 "임박"으로 경고할지 */
+  /** 만료 임박 경고를 시작할 남은 일수임. */
   private readonly NEAR_EXPIRY_DAYS = 21;
 
   constructor(
@@ -49,9 +49,9 @@ export class CertService {
   }
 
   /**
-   * SSL 인증서 자동 갱신 — 매일 04:10 (KST).
-   * certbot renew는 만료 30일 이내 인증서만 실제 갱신하므로 매일 실행해도 안전하다.
-   * 갱신된 인증서는 renewAll() 내부에서 ssl/로 복사되고 nginx가 reload된다.
+   * SSL 인증서를 매일 04:10(KST)에 자동 갱신함.
+   * certbot renew는 만료 30일 이내 인증서만 실제 갱신하므로 매일 실행해도 안전함.
+   * 갱신한 인증서는 renewAll()에서 ssl/로 복사한 뒤 Nginx를 다시 불러옴.
    */
   @Cron('10 4 * * *', { name: 'ssl-auto-renew', timeZone: 'Asia/Seoul' })
   async handleScheduledRenewal(): Promise<void> {
@@ -60,7 +60,7 @@ export class CertService {
   }
 
   /**
-   * 갱신 실행 + 마지막 결과 영속화. 수동/스케줄 공용.
+   * 갱신 실행 결과를 영속화하는 수동·스케줄 공용 흐름임.
    */
   async runRenewal(
     trigger: 'schedule' | 'manual',
@@ -69,7 +69,7 @@ export class CertService {
     const result = await this.renewAll();
     const after = await this.listCerts();
 
-    // certbot 출력에서 실제 갱신된 도메인 추출 (없으면 만료일이 늘어난 도메인으로 추정)
+    // certbot 출력 우선, 만료일 증가 보조 확인 순서로 갱신 도메인 추출함.
     const renewedDomains = this.detectRenewedDomains(
       result.output,
       before,
@@ -108,14 +108,14 @@ export class CertService {
     return result;
   }
 
-  /** 마지막 자동/수동 갱신 실행 결과 조회 */
+  /** 마지막 자동·수동 갱신 실행 결과 조회함. */
   getRenewalStatus(): RenewalStatus {
     try {
       if (fs.existsSync(RENEWAL_STATUS_FILE)) {
         return JSON.parse(fs.readFileSync(RENEWAL_STATUS_FILE, 'utf8'));
       }
     } catch {
-      // 무시하고 기본값 반환
+      // 상태 파일 파싱 실패 시 기본 상태 반환함.
     }
     return {
       lastRunAt: null,
@@ -143,13 +143,13 @@ export class CertService {
     before: CertInfo[],
     after: CertInfo[],
   ): string[] {
-    // certbot은 갱신 시 "Congratulations, all renewals succeeded: .../live/<domain>/..." 출력
+    // certbot 성공 출력의 live 경로에서 갱신 도메인 이름 추출함.
     const fromOutput = new Set<string>();
     const re = /live\/([^/\s]+)\/fullchain\.pem.*\(success\)/g;
     let m: RegExpExecArray | null;
     while ((m = re.exec(output)) !== null) fromOutput.add(m[1]);
 
-    // 보강: 만료일(daysLeft)이 증가한 도메인
+    // 출력에 없는 경우도 만료일 증가 여부로 보조 확인함.
     const beforeMap = new Map(before.map((c) => [c.domain, c.daysLeft ?? -1]));
     for (const c of after) {
       const prev = beforeMap.get(c.domain) ?? -1;
@@ -160,16 +160,14 @@ export class CertService {
     return [...fromOutput];
   }
 
-  /**
-   * List all SSL certificates in the ssl directory
-   */
+  /** ssl 디렉터리의 도메인별 SSL 인증서 목록 조회함. */
   async listCerts(): Promise<CertInfo[]> {
     const certs: CertInfo[] = [];
 
     if (!fs.existsSync(SSL_DIR)) return certs;
 
-    // ssl/ 안에는 도메인 폴더 외에 certbot/letsencrypt 메타 디렉토리가
-    // 섞여 있을 수 있어 제외한다. (도메인은 항상 '.'을 포함)
+    // ssl/에는 certbot·letsencrypt 메타 디렉터리도 섞일 수 있어 제외함.
+    // 관리 도메인 폴더는 항상 점을 하나 이상 포함한다는 규칙 사용함.
     const LETSENCRYPT_META = new Set([
       'accounts',
       'archive',
@@ -205,8 +203,8 @@ export class CertService {
   }
 
   /**
-   * Issue a new SSL certificate using certbot via Docker
-   * Uses webroot mode with the shared certbot-webroot volume
+   * Docker certbot의 webroot 모드로 새 SSL 인증서 발급함.
+   * Nginx와 공유하는 certbot-webroot 볼륨으로 ACME 검증 파일 제공함.
    */
   async issueCert(
     domain: string,
@@ -272,9 +270,7 @@ export class CertService {
     }
   }
 
-  /**
-   * Renew all certificates
-   */
+  /** 등록된 모든 인증서 갱신함. */
   async renewAll(): Promise<{ success: boolean; output: string }> {
     const webrootVolume = 'kscold-control_certbot-webroot';
 
@@ -309,7 +305,7 @@ export class CertService {
           try {
             await this.copyCertFromCertbot(cert.domain);
           } catch {
-            // Individual cert copy failures shouldn't stop renewal
+            // 일부 인증서 복사 실패가 전체 갱신 결과를 막지 않게 계속 진행함.
           }
         }
       }
@@ -321,9 +317,7 @@ export class CertService {
     }
   }
 
-  /**
-   * Issue cert using standalone mode (for domains not yet proxied by nginx)
-   */
+  /** Nginx 프록시가 아직 없는 도메인은 standalone 모드로 인증서 발급함. */
   async issueCertStandalone(
     domain: string,
     email: string,
@@ -339,7 +333,7 @@ export class CertService {
     try {
       await this.runtimeRepo.stop();
     } catch {
-      // nginx might not be running
+      // Nginx가 이미 중지 상태일 수 있으므로 중지 실패는 무시함.
     }
 
     const args = [
@@ -391,18 +385,16 @@ export class CertService {
     }
   }
 
-  /**
-   * Copy certbot-issued certs to our ssl directory structure
-   */
+  /** certbot이 발급한 인증서를 서비스 ssl 디렉터리 구조로 복사함. */
   private async copyCertFromCertbot(domain: string): Promise<void> {
     const domainDir = path.join(SSL_DIR, domain);
     if (!fs.existsSync(domainDir)) {
       fs.mkdirSync(domainDir, { recursive: true });
     }
 
-    // Docker certbot runs as root, so it can read /etc/letsencrypt even when
-    // macOS file permissions would block the Node process. Pipe via stdout
-    // so write happens in the Node process (which owns the ssl/ files).
+    // Docker certbot은 root 권한으로 /etc/letsencrypt를 읽을 수 있음.
+    // macOS 파일 권한으로 Node 프로세스 접근이 막힐 수 있어 표준 출력으로 전달받음.
+    // ssl 파일 소유자인 Node 프로세스가 최종 파일 쓰기를 수행하게 함.
     const liveDir = path.join(LETSENCRYPT_DIR, 'live', domain);
     const dockerHost = process.env.DOCKER_HOST || 'unix:///var/run/docker.sock';
 
@@ -428,9 +420,7 @@ export class CertService {
     }
   }
 
-  /**
-   * Get certificate details using openssl
-   */
+  /** openssl로 인증서 발급자와 유효 기간 조회함. */
   private async getCertInfo(
     certPath: string,
   ): Promise<Omit<CertInfo, 'domain' | 'exists'>> {

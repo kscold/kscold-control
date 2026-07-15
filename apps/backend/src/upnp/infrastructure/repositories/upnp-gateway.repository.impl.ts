@@ -5,7 +5,7 @@ import * as dgram from 'dgram';
 import type { IUpnpGatewayRepository } from '../../domain/repositories/upnp-gateway.repository';
 import type {
   PortMapping,
-  CreateMappingDto,
+  PortMappingDraft,
   GatewayInfo,
 } from '../../domain/types/port-mapping.type';
 
@@ -15,7 +15,7 @@ export class UpnpGatewayRepositoryImpl implements IUpnpGatewayRepository {
   private gatewayCache: GatewayInfo | null = null;
   private gatewayCacheTime = 0;
 
-  // ── SSDP Discovery ─────────────────────────────────────
+  // ── SSDP 게이트웨이 탐색 ─────────────────────────────────
 
   private async discoverGatewayUrl(): Promise<string> {
     const searchTargets = [
@@ -29,7 +29,7 @@ export class UpnpGatewayRepositoryImpl implements IUpnpGatewayRepository {
         const loc = await this.ssdpSearch(st);
         if (loc) return loc;
       } catch {
-        // try next
+        // 현재 탐색 대상 실패 시 다음 대상으로 계속 시도함.
       }
     }
     throw new Error('Gateway not found via SSDP');
@@ -64,7 +64,7 @@ export class UpnpGatewayRepositoryImpl implements IUpnpGatewayRepository {
           try {
             socket.close();
           } catch {
-            /* ignore */
+            /* 소켓 종료 중 오류는 무시함. */
           }
           reject(new Error(`SSDP timeout for ${st}`));
         }
@@ -72,7 +72,7 @@ export class UpnpGatewayRepositoryImpl implements IUpnpGatewayRepository {
     });
   }
 
-  // ── HTTP / SOAP ─────────────────────────────────────────
+  // ── HTTP·SOAP 통신 ───────────────────────────────────────
 
   private httpGet(host: string, port: number, path: string): Promise<string> {
     return new Promise((resolve, reject) => {
@@ -126,7 +126,7 @@ export class UpnpGatewayRepositoryImpl implements IUpnpGatewayRepository {
     });
   }
 
-  // ── Network Utility ─────────────────────────────────────
+  // ── 네트워크 보조 함수 ────────────────────────────────────
 
   private getLocalIp(): string {
     const { networkInterfaces } = require('os');
@@ -139,11 +139,11 @@ export class UpnpGatewayRepositoryImpl implements IUpnpGatewayRepository {
     return '192.168.0.1';
   }
 
-  // ── IUpnpGatewayRepository Implementation ──────────────
+  // ── UPnP 게이트웨이 포트 구현 ─────────────────────────────
 
   /**
-   * Discover UPnP gateway and parse actual controlURL from description XML.
-   * Cached for 2 minutes to avoid repeated SSDP floods.
+   * UPnP 게이트웨이를 탐색하고 설명 XML에서 실제 controlURL을 추출함.
+   * 반복 SSDP 브로드캐스트를 줄이기 위해 결과를 2분간 캐시함.
    */
   private async discoverGateway(): Promise<GatewayInfo> {
     if (this.gatewayCache && Date.now() - this.gatewayCacheTime < 120000) {
@@ -161,7 +161,7 @@ export class UpnpGatewayRepositoryImpl implements IUpnpGatewayRepository {
         `Description XML from ${locationUrl}:\n${descXml.slice(0, 500)}`,
       );
 
-      // Find WANIPConnection or WANPPPConnection service block
+      // WANIPConnection 또는 WANPPPConnection 서비스 블록 우선 탐색함.
       const serviceBlockRegex = /<service>([\s\S]*?)<\/service>/gi;
       let match: RegExpExecArray | null;
       while ((match = serviceBlockRegex.exec(descXml)) !== null) {
@@ -198,7 +198,7 @@ export class UpnpGatewayRepositoryImpl implements IUpnpGatewayRepository {
       );
     }
 
-    // Fallback: try common iptime / general router paths
+    // 설명 XML에 서비스 정보가 없으면 일반 라우터 경로를 순서대로 시도함.
     const fallbackPaths = [
       '/UpnP/Control/WANIPConn1',
       '/ctl/IPConn',
@@ -229,11 +229,11 @@ export class UpnpGatewayRepositoryImpl implements IUpnpGatewayRepository {
           return info;
         }
       } catch {
-        /* try next */
+        /* 현재 후보 실패 시 다음 후보를 시도함. */
       }
     }
 
-    // Last resort fallback
+    // 모든 후보 실패 시 기존 기본 경로를 마지막 대체값으로 사용함.
     const info: GatewayInfo = {
       host,
       port,
@@ -269,8 +269,7 @@ export class UpnpGatewayRepositoryImpl implements IUpnpGatewayRepository {
           publicPort: pubPort,
           privatePort: parseInt(get('NewInternalPort'), 10),
           protocol: (get('NewProtocol') || 'TCP').toUpperCase() as
-            | 'TCP'
-            | 'UDP',
+            'TCP' | 'UDP',
           description: get('NewPortMappingDescription'),
           enabled: get('NewEnabled') !== '0',
           ttl: parseInt(get('NewLeaseDuration') || '0', 10),
@@ -284,9 +283,9 @@ export class UpnpGatewayRepositoryImpl implements IUpnpGatewayRepository {
     return results;
   }
 
-  async addMapping(dto: CreateMappingDto): Promise<void> {
+  async addMapping(draft: PortMappingDraft): Promise<void> {
     const gw = await this.discoverGateway();
-    const protocol = (dto.protocol || 'TCP').toUpperCase();
+    const protocol = (draft.protocol || 'TCP').toUpperCase();
     const internalClient = this.getLocalIp();
 
     const xml = await this.soapCall(
@@ -296,12 +295,12 @@ export class UpnpGatewayRepositoryImpl implements IUpnpGatewayRepository {
       `${gw.serviceType}#AddPortMapping`,
       `<u:AddPortMapping xmlns:u="${gw.serviceType}">` +
         `<NewRemoteHost></NewRemoteHost>` +
-        `<NewExternalPort>${dto.publicPort}</NewExternalPort>` +
+        `<NewExternalPort>${draft.publicPort}</NewExternalPort>` +
         `<NewProtocol>${protocol}</NewProtocol>` +
-        `<NewInternalPort>${dto.privatePort}</NewInternalPort>` +
+        `<NewInternalPort>${draft.privatePort}</NewInternalPort>` +
         `<NewInternalClient>${internalClient}</NewInternalClient>` +
         `<NewEnabled>1</NewEnabled>` +
-        `<NewPortMappingDescription>${dto.description || 'kscold-control'}</NewPortMappingDescription>` +
+        `<NewPortMappingDescription>${draft.description || 'kscold-control'}</NewPortMappingDescription>` +
         `<NewLeaseDuration>0</NewLeaseDuration>` +
         `</u:AddPortMapping>`,
     );
@@ -312,7 +311,7 @@ export class UpnpGatewayRepositoryImpl implements IUpnpGatewayRepository {
     }
 
     this.logger.log(
-      `Port mapping added: ${dto.publicPort} -> ${dto.privatePort} (${protocol}) for ${internalClient}`,
+      `Port mapping added: ${draft.publicPort} -> ${draft.privatePort} (${protocol}) for ${internalClient}`,
     );
   }
 
