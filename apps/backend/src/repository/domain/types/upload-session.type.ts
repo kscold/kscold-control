@@ -1,14 +1,8 @@
 export type RepositoryUploadSessionStatus =
-  | 'pending'
-  | 'uploading'
-  | 'partial_failed'
-  | 'completed';
+  'pending' | 'uploading' | 'partial_failed' | 'completed';
 
 export type RepositoryUploadBatchStatus =
-  | 'pending'
-  | 'uploading'
-  | 'failed'
-  | 'completed';
+  'pending' | 'uploading' | 'failed' | 'completed';
 
 export interface RepositoryUploadBatchFile {
   relativePath: string;

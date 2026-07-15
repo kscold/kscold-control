@@ -5,7 +5,11 @@ import { TerminalSessionService } from '../../../terminal/application/services/t
 export class GetOrCreateOpenAISessionUseCase {
   constructor(private readonly terminalSession: TerminalSessionService) {}
 
-  execute(userId: string, provider: 'api' | 'codex', requestedSessionId?: string) {
+  execute(
+    userId: string,
+    provider: 'api' | 'codex',
+    requestedSessionId?: string,
+  ) {
     return this.terminalSession.getOrCreateSession(
       userId,
       requestedSessionId,

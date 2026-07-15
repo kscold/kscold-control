@@ -44,9 +44,7 @@ export class LogsController {
   ) {}
 
   @Post('frontend-error')
-  reportFrontendError(
-    @Body() body: FrontendErrorRequestDto,
-  ) {
+  reportFrontendError(@Body() body: FrontendErrorRequestDto) {
     this.logFrontendErrorUseCase.execute(body);
     return { ok: true };
   }
@@ -71,15 +69,22 @@ export class LogsController {
           ? 'all'
           : parseInt(lines ?? '', 10) || lineCount
         : undefined;
-    const logs = await this.getLogsUseCase.execute(type, lineCount, containerId, {
-      containerName,
-      tail: dockerTail,
-      timestamps:
-        type === 'docker' ? timestamps === 'true' || timestamps === '1' : false,
-      since: type === 'docker' ? since : undefined,
-      until: type === 'docker' ? until : undefined,
-      filter: type === 'docker' ? (filter ?? 'all') : 'all',
-    });
+    const logs = await this.getLogsUseCase.execute(
+      type,
+      lineCount,
+      containerId,
+      {
+        containerName,
+        tail: dockerTail,
+        timestamps:
+          type === 'docker'
+            ? timestamps === 'true' || timestamps === '1'
+            : false,
+        since: type === 'docker' ? since : undefined,
+        until: type === 'docker' ? until : undefined,
+        filter: type === 'docker' ? (filter ?? 'all') : 'all',
+      },
+    );
     return {
       type,
       lines: type === 'docker' ? (dockerTail ?? lineCount) : lineCount,
@@ -126,7 +131,8 @@ export class LogsController {
       return { items: [] };
     }
 
-    const items = await this.getDockerArchiveSourcesUseCase.execute(containerId);
+    const items =
+      await this.getDockerArchiveSourcesUseCase.execute(containerId);
     return { items };
   }
 

@@ -1,9 +1,5 @@
 export type AuditDomain =
-  | 'repository'
-  | 'docker'
-  | 'nginx'
-  | 'rbac'
-  | 'security';
+  'repository' | 'docker' | 'nginx' | 'rbac' | 'security';
 
 export interface AuditDiffSummary {
   changeCount: number;
