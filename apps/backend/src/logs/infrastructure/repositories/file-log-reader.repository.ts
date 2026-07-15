@@ -39,9 +39,9 @@ export class FileLogReaderRepository implements ILogReader {
   private getLogPath(logType?: string): string {
     switch (logType) {
       case 'backend':
-        return join(process.cwd(), 'apps/backend/logs/out.log');
+        return this.findBackendLog('out.log');
       case 'pm2':
-        return join(process.cwd(), 'apps/backend/logs/error.log');
+        return this.findBackendLog('error.log');
       case 'nginx-access':
         return this.findNginxLog('access.log');
       case 'nginx-error':
@@ -49,6 +49,21 @@ export class FileLogReaderRepository implements ILogReader {
       default:
         throw new Error(`Invalid file log type: ${logType}`);
     }
+  }
+
+  /**
+   * PM2 starts the production backend from apps/backend, while local commands
+   * usually start at the repository root. Resolve both layouts deliberately.
+   */
+  private findBackendLog(filename: 'out.log' | 'error.log'): string {
+    const cwd = process.cwd();
+    const candidates = [
+      join(cwd, 'logs', filename),
+      join(cwd, 'apps/backend/logs', filename),
+    ];
+    return (
+      candidates.find((candidate) => fs.existsSync(candidate)) ?? candidates[0]
+    );
   }
 
   /**

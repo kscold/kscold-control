@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { api } from '@/shared/api/client';
-import type { DockerContainer } from '../model/logs.types';
+import { logsService } from '../api/logs.service';
+import type { DockerContainer } from './logs.types';
 
 const PREFERRED_CONTAINER_ORDER = [
   'kscold-nginx',
@@ -19,10 +19,8 @@ export function useDockerContainers() {
 
   const loadDockerContainers = async () => {
     try {
-      const { data } = await api.get<DockerContainer[]>(
-        '/logs/docker/containers',
-      );
-      const sorted = [...data].sort((left, right) => {
+      const containers = await logsService.listDockerContainers();
+      const sorted = [...containers].sort((left, right) => {
         const leftPriority = PREFERRED_CONTAINER_ORDER.indexOf(
           left.name as (typeof PREFERRED_CONTAINER_ORDER)[number],
         );

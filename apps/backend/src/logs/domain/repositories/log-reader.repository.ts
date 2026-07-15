@@ -1,4 +1,5 @@
 import type {
+  BlogLogType,
   Pm2LogResult,
   DockerContainerSummary,
   DockerLogArchiveSource,
@@ -29,6 +30,10 @@ export interface IPm2LogReader extends ILogReader {
   getPm2Logs(lines: number): Promise<Pm2LogResult>;
 }
 
+export interface IBlogLogReader {
+  readBlogLogs(logType: BlogLogType, lines: number): Promise<string[]>;
+}
+
 export interface ISystemStatusReader {
   getNginxStatus(): Promise<NginxStatus>;
   getSystemInfo(): Promise<SystemInfo | null>;
@@ -37,4 +42,5 @@ export interface ISystemStatusReader {
 export const FILE_LOG_READER = Symbol('FILE_LOG_READER');
 export const DOCKER_LOG_READER = Symbol('DOCKER_LOG_READER');
 export const PM2_LOG_READER = Symbol('PM2_LOG_READER');
+export const BLOG_LOG_READER = Symbol('BLOG_LOG_READER');
 export const SYSTEM_STATUS_READER = Symbol('SYSTEM_STATUS_READER');

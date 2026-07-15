@@ -1,9 +1,9 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { exec } from 'child_process';
-import { promisify } from 'util';
 import {
+  BLOG_LOG_READER,
   FILE_LOG_READER,
   DOCKER_LOG_READER,
+  type IBlogLogReader,
   type ILogReader,
   type IDockerLogReader,
 } from '../../domain/repositories/log-reader.repository';
@@ -11,16 +11,6 @@ import type {
   LogType,
   DockerLogReadOptions,
 } from '../../domain/types/log.type';
-
-const execAsync = promisify(exec);
-
-const BLOG_LOG_MAP: Record<string, string> = {
-  'blog-backend': '/var/log/kscold-blog-backend.log',
-  'blog-backend-err': '/var/log/kscold-blog-backend-err.log',
-  'blog-access': '/var/log/kscold-blog/access.log',
-  'blog-frontend': '/var/log/kscold-blog-frontend.log',
-  'blog-frontend-err': '/var/log/kscold-blog-frontend-err.log',
-};
 
 /** 로그 조회 — 타입별(백엔드/nginx/pm2/docker/blog) 어댑터로 라우팅 (GET /logs) */
 @Injectable()
@@ -30,6 +20,8 @@ export class GetLogsUseCase {
     private readonly fileLogReader: ILogReader,
     @Inject(DOCKER_LOG_READER)
     private readonly dockerLogReader: IDockerLogReader,
+    @Inject(BLOG_LOG_READER)
+    private readonly blogLogReader: IBlogLogReader,
   ) {}
 
   async execute(
@@ -60,28 +52,9 @@ export class GetLogsUseCase {
       case 'blog-access':
       case 'blog-frontend':
       case 'blog-frontend-err':
-        return this.readBlogContainerLog(logType, lines);
+        return this.blogLogReader.readBlogLogs(logType, lines);
       default:
         return [`Unknown log type: ${logType}`];
-    }
-  }
-
-  private async readBlogContainerLog(
-    logType: string,
-    lines: number,
-  ): Promise<string[]> {
-    const filePath = BLOG_LOG_MAP[logType];
-    if (!filePath) return [`Unknown blog log type: ${logType}`];
-
-    const dockerHost = process.env.DOCKER_HOST || 'unix:///var/run/docker.sock';
-    const tail = lines > 0 ? lines : 200;
-    const cmd = `DOCKER_HOST=${dockerHost} docker exec ubuntu-blog tail -n ${tail} ${filePath}`;
-
-    try {
-      const { stdout } = await execAsync(cmd, { maxBuffer: 10 * 1024 * 1024 });
-      return stdout.split('\n').filter((line) => line.trim());
-    } catch (error: any) {
-      return [`Error reading blog log (${logType}): ${error.message}`];
     }
   }
 }

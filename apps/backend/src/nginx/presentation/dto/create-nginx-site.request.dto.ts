@@ -5,10 +5,10 @@ import {
   IsString,
   Matches,
 } from 'class-validator';
-import type { CreateNginxSiteDto } from '../../domain/types/nginx-site.type';
+import type { CreateNginxSiteInput } from '../../application/dto/create-nginx-site.input';
 
 /** POST/PUT /nginx/sites 요청 본문 — 런타임 검증 포함 */
-export class CreateNginxSiteRequestDto implements CreateNginxSiteDto {
+export class CreateNginxSiteRequestDto implements CreateNginxSiteInput {
   @IsString()
   @IsNotEmpty()
   @Matches(/^[a-zA-Z0-9][a-zA-Z0-9._-]*$/, {

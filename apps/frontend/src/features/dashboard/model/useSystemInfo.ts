@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
-import { api } from '@/shared/api/client';
-import type { SystemInfo } from '../model/dashboard.types';
+import { dashboardService } from '../api/dashboard.service';
+import type { SystemInfo } from './dashboard.types';
 
 export function useSystemInfo() {
   const [systemInfo, setSystemInfo] = useState<SystemInfo | null>(null);
@@ -12,8 +12,7 @@ export function useSystemInfo() {
     try {
       setLoading(true);
       setError(null);
-      const { data } = await api.get<SystemInfo>('/system/info');
-      setSystemInfo(data);
+      setSystemInfo(await dashboardService.getSystemInfo());
       setLastLoadedAt(Date.now());
     } catch (e) {
       console.error(e);

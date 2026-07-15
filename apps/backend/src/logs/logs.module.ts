@@ -14,6 +14,7 @@ import {
 } from './application/use-cases';
 import {
   FILE_LOG_READER,
+  BLOG_LOG_READER,
   DOCKER_LOG_READER,
   PM2_LOG_READER,
   SYSTEM_STATUS_READER,
@@ -22,6 +23,7 @@ import { FileLogReaderRepository } from './infrastructure/repositories/file-log-
 import { DockerLogReaderRepository } from './infrastructure/repositories/docker-log-reader.repository';
 import { Pm2LogReaderRepository } from './infrastructure/repositories/pm2-log-reader.repository';
 import { SystemStatusReaderRepository } from './infrastructure/repositories/system-status-reader.repository';
+import { DockerBlogLogReaderRepository } from './infrastructure/repositories/docker-blog-log-reader.repository';
 
 @Module({
   imports: [AuthModule],
@@ -37,6 +39,7 @@ import { SystemStatusReaderRepository } from './infrastructure/repositories/syst
     GetNginxStatusUseCase,
     GetSystemInfoUseCase,
     { provide: FILE_LOG_READER, useClass: FileLogReaderRepository },
+    { provide: BLOG_LOG_READER, useClass: DockerBlogLogReaderRepository },
     { provide: DOCKER_LOG_READER, useClass: DockerLogReaderRepository },
     { provide: PM2_LOG_READER, useClass: Pm2LogReaderRepository },
     { provide: SYSTEM_STATUS_READER, useClass: SystemStatusReaderRepository },

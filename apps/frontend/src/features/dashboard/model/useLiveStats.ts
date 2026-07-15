@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
-import { api } from '@/shared/api/client';
-import type { LiveStats } from '../model/dashboard.types';
+import { dashboardService } from '../api/dashboard.service';
+import type { LiveStats } from './dashboard.types';
 
 export function useLiveStats() {
   const [liveStats, setLiveStats] = useState<LiveStats | null>(null);
@@ -10,8 +10,7 @@ export function useLiveStats() {
   const loadLiveStats = useCallback(async () => {
     try {
       setLoading(true);
-      const { data } = await api.get<LiveStats>('/system/stats');
-      setLiveStats(data);
+      setLiveStats(await dashboardService.getLiveStats());
     } catch (e) {
       console.error(e);
     } finally {

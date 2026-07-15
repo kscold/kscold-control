@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
-import { api } from '@/shared/api/client';
-import type { ContainerInfo } from '../model/dashboard.types';
+import { dashboardService } from '../api/dashboard.service';
+import type { ContainerInfo } from './dashboard.types';
 
 export function useDashboardContainers() {
   const [containers, setContainers] = useState<ContainerInfo[]>([]);
@@ -10,8 +10,7 @@ export function useDashboardContainers() {
   const loadContainers = useCallback(async () => {
     try {
       setLoading(true);
-      const { data } = await api.get<ContainerInfo[]>('/docker/containers');
-      setContainers(data);
+      setContainers(await dashboardService.listContainers());
     } catch (e) {
       console.error(e);
     } finally {
