@@ -31,6 +31,7 @@
     "test:claude-smoke": "node ./scripts/claude-smoke.mjs",
     "test:repository-live-smoke": "node ./scripts/repository-live-smoke.mjs",
     "test:e2e:control": "bash ./scripts/run-control-e2e.sh",
+    "check:architecture": "node ./scripts/check-architecture.mjs",
     "lint": "turbo run lint",
     "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md}\"",
     "clean": "turbo run clean && rm -rf node_modules"

@@ -42,7 +42,7 @@ export class SystemController {
 
   @Get('backup/mongodb/:containerName/list')
   @RequirePermissions(PERMISSIONS.SYSTEM_READ)
-  listBackups(@Param('containerName') containerName: string) {
+  async listBackups(@Param('containerName') containerName: string) {
     return this.listBackupsUseCase.execute(containerName);
   }
 }

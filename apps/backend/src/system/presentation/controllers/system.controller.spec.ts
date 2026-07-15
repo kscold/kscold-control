@@ -57,11 +57,11 @@ describe('SystemController', () => {
     expect(backupMongodbUseCase.execute).toHaveBeenCalledWith('mongo-1');
   });
 
-  it('백업 목록 조회는 컨테이너 이름을 그대로 전달한다', () => {
+  it('백업 목록 조회는 컨테이너 이름을 그대로 전달한다', async () => {
     const backups = [{ fileName: 'backup.gz', size: 1000 }];
-    listBackupsUseCase.execute.mockReturnValueOnce(backups);
+    listBackupsUseCase.execute.mockResolvedValueOnce(backups);
 
-    expect(controller.listBackups('mongo-1')).toEqual(backups);
+    await expect(controller.listBackups('mongo-1')).resolves.toEqual(backups);
     expect(listBackupsUseCase.execute).toHaveBeenCalledWith('mongo-1');
   });
 });

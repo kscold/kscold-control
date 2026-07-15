@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
-import { API_URL, api } from '@/shared/api/client';
 import { useAuthStore } from '@/shared/model';
+import { logsService } from '../api/logs.service';
 import type {
   DockerLogArchiveSource,
   DockerLogFilter,
@@ -16,12 +16,7 @@ interface UseLogsOptions {
 }
 
 type StreamStatus =
-  | 'idle'
-  | 'connecting'
-  | 'live'
-  | 'reconnecting'
-  | 'ended'
-  | 'error';
+  'idle' | 'connecting' | 'live' | 'reconnecting' | 'ended' | 'error';
 
 const DEFAULT_LINE_COUNT = 200;
 const STREAM_CATCHUP_LINE_COUNT = 500;
@@ -156,10 +151,7 @@ export function useLogs({
 
     setIsArchiveLoading(true);
     try {
-      const { data } = await api.get(
-        `/logs/docker/archive/sources?containerId=${selectedContainer}`,
-      );
-      const items = (data.items ?? []) as DockerLogArchiveSource[];
+      const items = await logsService.listArchiveSources(selectedContainer);
       setArchiveSources(items);
 
       if (
@@ -217,7 +209,7 @@ export function useLogs({
     setIsLoading(true);
     try {
       if (logType === 'pm2') {
-        const { data } = await api.get(`/logs/pm2?lines=${effectiveLineCount}`);
+        const data = await logsService.getPm2Logs(effectiveLineCount);
         const combined = [
           '=== STDOUT ===',
           ...data.out,
@@ -228,18 +220,9 @@ export function useLogs({
         setLogs(combined);
       } else if (logType === 'docker' && selectedContainer) {
         const params = buildDockerParams();
-        const endpoint =
-          selectedSourceId === LIVE_SOURCE_ID
-            ? `/logs?type=docker&${params.toString()}`
-            : `/logs/docker/archive?${params.toString()}`;
-
-        const { data } = await api.get(endpoint);
-        setLogs(data.logs);
+        setLogs(await logsService.getDockerLogs(params, selectedSourceId));
       } else if (logType !== 'docker') {
-        const { data } = await api.get(
-          `/logs?type=${logType}&lines=${effectiveLineCount}`,
-        );
-        setLogs(data.logs);
+        setLogs(await logsService.getLogs(logType, effectiveLineCount));
       }
     } catch (error) {
       console.error('Failed to load logs:', error);
@@ -261,8 +244,7 @@ export function useLogs({
         until: null,
         sourceId: LIVE_SOURCE_ID,
       });
-      const { data } = await api.get(`/logs?type=docker&${params.toString()}`);
-      const incoming = (data.logs ?? []) as string[];
+      const incoming = await logsService.getDockerLogs(params, LIVE_SOURCE_ID);
       setLogs((current) => appendUniqueLines(current, incoming, lineCount));
     } catch (error) {
       console.error('Failed to load catch-up logs:', error);
@@ -368,9 +350,7 @@ export function useLogs({
 
       setStreamStatus(reconnectAttempts > 0 ? 'reconnecting' : 'connecting');
       setStreamError(null);
-      source = new EventSource(
-        `${API_URL}/api/logs/docker/stream?${params.toString()}`,
-      );
+      source = new EventSource(logsService.createDockerStreamUrl(params));
 
       const handleReady = () => {
         reconnectAttempts = 0;

@@ -35,5 +35,8 @@ jobs:
         run: pnpm lint
         continue-on-error: true
 
+      - name: Check architecture boundaries
+        run: pnpm check:architecture
+
       - name: Build
         run: pnpm build

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
-import { api } from '@/shared/api/client';
-import type { ClaudeRuntimeDiagnostics } from '../model/terminal.types';
+import { claudeRuntimeService } from '../api/claude-runtime.service';
+import type { ClaudeRuntimeDiagnostics } from './terminal.types';
 
 interface UseClaudeRuntimeDiagnosticsOptions {
   enabled?: boolean;
@@ -18,12 +18,7 @@ export function useClaudeRuntimeDiagnostics({
     setError(null);
 
     try {
-      const { data } = await api.get<ClaudeRuntimeDiagnostics>(
-        '/claude-chat/diagnostics',
-        {
-          params: forceRefresh ? { refresh: '1' } : undefined,
-        },
-      );
+      const data = await claudeRuntimeService.getDiagnostics(forceRefresh);
       setReport(data);
       return data;
     } catch (err) {

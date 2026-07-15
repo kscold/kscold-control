@@ -5,13 +5,13 @@ import {
   useNodesState,
   useEdgesState,
 } from '@xyflow/react';
-import { api } from '@/shared/api/client';
 import type {
   ContainerData,
   NginxSiteData,
   UpnpMappingData,
   ContainerProcesses,
 } from '@/entities/container';
+import { topologyService } from '../api/topology.service';
 import { getStackMeta } from '../lib/topology.utils';
 
 export function useTopology() {
@@ -30,11 +30,15 @@ export function useTopology() {
       const results: Record<string, ContainerProcesses> = {};
       await Promise.allSettled(
         running.map(async (c) => {
+          if (!c.dockerId) {
+            results[c.id] = { pm2: [], services: [] };
+            return;
+          }
+
           try {
-            const res = await api.get(
-              `/docker/containers/${c.dockerId}/processes`,
+            results[c.id] = await topologyService.getContainerProcesses(
+              c.dockerId,
             );
-            results[c.id] = res.data;
           } catch {
             results[c.id] = { pm2: [], services: [] };
           }
@@ -390,17 +394,8 @@ export function useTopology() {
   const loadTopology = useCallback(async () => {
     setLoading(true);
     try {
-      const [containersRes, sitesRes, upnpRes] = await Promise.allSettled([
-        api.get('/docker/containers/all'),
-        api.get('/nginx/sites'),
-        api.get('/upnp/mappings'),
-      ]);
-      const containers: ContainerData[] =
-        containersRes.status === 'fulfilled' ? containersRes.value.data : [];
-      const sites: NginxSiteData[] =
-        sitesRes.status === 'fulfilled' ? sitesRes.value.data : [];
-      const upnpMappings: UpnpMappingData[] =
-        upnpRes.status === 'fulfilled' ? upnpRes.value.data : [];
+      const { containers, sites, upnpMappings } =
+        await topologyService.getSources();
 
       // 1차: 그래프 구조 렌더링 (process 없이 즉시 표시)
       buildGraph(containers, sites, upnpMappings, {});
