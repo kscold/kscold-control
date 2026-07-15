@@ -1,8 +1,8 @@
 import { InvalidResourceConfigException } from '../../../common/exceptions';
 
 /**
- * Resource Configuration Value Object
- * Immutable domain value for container resources
+ * 컨테이너 자원 설정 값 객체임.
+ * CPU와 메모리 제한을 불변 값으로 묶고, Docker 호출 전에 범위 검증함.
  */
 export class ResourceConfig {
   constructor(
@@ -13,10 +13,10 @@ export class ResourceConfig {
   }
 
   /**
-   * Validate resource configuration
+   * 자원 설정의 범위와 단위 형식 검증함.
    */
   private validate(): void {
-    // Validate CPU
+    // CPU 코어 수는 0보다 크고 현재 서비스가 지원하는 최대치 이하여야 함.
     if (this.cpus <= 0) {
       throw new InvalidResourceConfigException('CPU must be greater than 0');
     }
@@ -24,14 +24,14 @@ export class ResourceConfig {
       throw new InvalidResourceConfigException('CPU cannot exceed 16 cores');
     }
 
-    // Validate memory format
+    // 메모리는 숫자와 바이트 단위 한 글자로만 받음.
     if (!/^\d+[bkmg]$/i.test(this.memory)) {
       throw new InvalidResourceConfigException(
         'Memory must be in format: 1b, 512k, 4m, or 8g',
       );
     }
 
-    // Validate memory size
+    // 형식이 맞아도 실제 바이트 수가 허용 범위 안인지 확인함.
     const bytes = this.toBytes();
     const minMemory = 128 * 1024 * 1024; // 128MB
     const maxMemory = 64 * 1024 * 1024 * 1024; // 64GB
@@ -45,14 +45,14 @@ export class ResourceConfig {
   }
 
   /**
-   * Convert CPUs to Docker NanoCPUs format
+   * CPU 코어 수를 Docker NanoCPU 단위로 변환함.
    */
   toNanoCpus(): number {
     return this.cpus * 1e9;
   }
 
   /**
-   * Convert memory string to bytes
+   * 메모리 문자열을 바이트 단위로 변환함.
    */
   toBytes(): number {
     const units: Record<string, number> = {
@@ -74,7 +74,7 @@ export class ResourceConfig {
   }
 
   /**
-   * Format bytes to human-readable string
+   * 바이트 수를 관리 모델에서 쓰는 사람이 읽기 쉬운 단위로 변환함.
    */
   static formatBytes(bytes: number): string {
     if (bytes === 0) return '0';
@@ -85,7 +85,7 @@ export class ResourceConfig {
   }
 
   /**
-   * Create from separate values
+   * 분리된 CPU·메모리 값으로 검증된 값 객체 만듦.
    */
   static create(cpus: number, memory: string): ResourceConfig {
     return new ResourceConfig(cpus, memory);

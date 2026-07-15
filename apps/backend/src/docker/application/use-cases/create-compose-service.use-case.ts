@@ -11,16 +11,17 @@ import {
 import {
   IDockerClient,
   DOCKER_CLIENT,
-} from '../../domain/repositories/docker-client.interface';
+} from '../../domain/gateways/docker-client.gateway.interface';
 import { ImportContainerUseCase } from './import-container.use-case';
 import {
   ComposeService,
   ComposeServiceConfig,
 } from '../services/compose.service';
-import { ContainerResponseDto } from '../dto/container-response.dto';
+import { ContainerResponseDto } from '../dto';
+import { PortForwardingService } from '../services/port-forwarding.service';
 
 /**
- * compose 기반 Ubuntu 인스턴스를 생성하고 관리 대상으로 등록합니다.
+ * compose 기반 Ubuntu 인스턴스를 생성하고 관리 대상으로 등록함.
  */
 @Injectable()
 export class CreateComposeServiceUseCase {
@@ -33,6 +34,7 @@ export class CreateComposeServiceUseCase {
     private readonly dockerClient: IDockerClient,
     private readonly composeService: ComposeService,
     private readonly importContainerUseCase: ImportContainerUseCase,
+    private readonly portForwardingService: PortForwardingService,
   ) {}
 
   async execute(
@@ -50,6 +52,20 @@ export class CreateComposeServiceUseCase {
         dockerContainer.id,
         userId,
       );
+
+      /*
+       * Compose는 Docker 포트만 열어 주므로 외부 라우터 규칙은 별도로 등록해야 함.
+       * 컨테이너와 DB 등록은 이미 성공한 상태이므로, 라우터가 일시적으로 응답하지
+       * 않아도 전체 생성 작업을 롤백하지 않고 오류를 남긴 뒤 재시도 가능한 상태로 둡니다.
+       */
+      void this.portForwardingService
+        .addPortForwardingRules(config.name, config.ports)
+        .catch((error) =>
+          this.logger.error(
+            `Compose 서비스 포트 포워딩 등록에 실패했습니다: ${config.name}`,
+            error instanceof Error ? error.stack : undefined,
+          ),
+        );
 
       return { output, container };
     } catch (error) {

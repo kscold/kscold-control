@@ -1,9 +1,5 @@
 export type TopologyNodeType =
-  | 'internet'
-  | 'host'
-  | 'container'
-  | 'nginx'
-  | 'service';
+  'internet' | 'host' | 'container' | 'nginx' | 'service';
 
 export interface TopologyPosition {
   x: number;
