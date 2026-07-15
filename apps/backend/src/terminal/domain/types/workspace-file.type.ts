@@ -1,17 +1,8 @@
 export type WorkspaceFileEncoding = 'utf8' | 'base64';
 export type WorkspaceChangeKind =
-  | 'modified'
-  | 'added'
-  | 'deleted'
-  | 'untracked';
+  'modified' | 'added' | 'deleted' | 'untracked';
 export type WorkspaceReviewState =
-  | 'clean'
-  | 'modified'
-  | 'added'
-  | 'deleted'
-  | 'untracked'
-  | 'staged'
-  | 'mixed';
+  'clean' | 'modified' | 'added' | 'deleted' | 'untracked' | 'staged' | 'mixed';
 
 export interface WorkspaceFileResult {
   path: string;
