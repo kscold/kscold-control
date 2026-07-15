@@ -1,27 +1,19 @@
 import { Injectable } from '@nestjs/common';
+import { ComposeProvisioningTemplateResponseDto } from '../dto';
 import { ComposeService } from '../services/compose.service';
 
-export interface ComposeProvisioningTemplateDto {
-  name: string;
-  image: string;
-  cpus: string;
-  memLimit: string;
-  command: string;
-  ports: Record<string, number>;
-}
-
 /**
- * 새 Ubuntu 인스턴스 기본값을 안전하게 계산합니다.
+ * 새 Ubuntu 인스턴스 기본값을 안전하게 계산함.
  */
 @Injectable()
 export class GetComposeProvisioningTemplateUseCase {
   constructor(private readonly composeService: ComposeService) {}
 
-  async execute(): Promise<ComposeProvisioningTemplateDto> {
+  async execute(): Promise<ComposeProvisioningTemplateResponseDto> {
     const usedPorts = await this.composeService.getUsedHostPorts();
     const existingServices = new Set(this.composeService.listServices());
 
-    return {
+    return ComposeProvisioningTemplateResponseDto.from({
       name: this.generateName(existingServices),
       image: 'ubuntu:22.04',
       cpus: '2',
@@ -31,7 +23,7 @@ export class GetComposeProvisioningTemplateUseCase {
         '22': this.findAvailablePort(usedPorts, 2227),
         '8080': this.findAvailablePort(usedPorts, 8085),
       },
-    };
+    });
   }
 
   private generateName(existingServices: Set<string>): string {

@@ -9,9 +9,7 @@ import {
 } from '../../domain/repositories/topology-layout.repository.interface';
 
 @Injectable()
-export class TypeOrmTopologyLayoutRepository
-  implements ITopologyLayoutRepository
-{
+export class TypeOrmTopologyLayoutRepository implements ITopologyLayoutRepository {
   private readonly logger = new Logger(TypeOrmTopologyLayoutRepository.name);
   private layoutTableReady = false;
   private layoutTableInitialization: Promise<void> | null = null;
@@ -74,7 +72,7 @@ export class TypeOrmTopologyLayoutRepository
     }));
   }
 
-  /** synchronize가 꺼진 프로덕션에서도 테이블을 보증한다 (1회 지연 초기화). */
+  /** synchronize가 꺼진 운영 환경에서도 테이블 보증함. 1회 지연 초기화 방식임. */
   private async ensureLayoutTable(): Promise<void> {
     if (this.layoutTableReady) return;
 

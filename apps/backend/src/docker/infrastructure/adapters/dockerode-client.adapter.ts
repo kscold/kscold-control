@@ -1,22 +1,25 @@
 import { Injectable, OnModuleInit } from '@nestjs/common';
 import Docker from 'dockerode';
+import { PassThrough } from 'node:stream';
 import {
   IDockerClient,
   DockerContainerInfo,
   DockerContainerStats,
   DockerContainerConfig,
-} from '../../domain/repositories/docker-client.interface';
+  DockerContainerProcesses,
+} from '../../domain/gateways/docker-client.gateway.interface';
 import {
   DockerConnectionException,
   DockerOperationException,
 } from '../../../common/exceptions';
 import { ResourceConfig } from '../../domain/value-objects/resource-config.vo';
-
-const DEFAULT_DOCKER_HOST = 'unix:///Users/kscold/.colima/default/docker.sock';
+import { resolveDockerConnectionOptions } from '../lib/docker-host';
 
 /**
- * Dockerode Client Adapter
- * Wraps Dockerode to implement IDockerClient interface
+ * Dockerode를 Docker 게이트웨이 계약으로 변환하는 인프라 어댑터임.
+ *
+ * 애플리케이션은 이 어댑터가 아닌 게이트웨이 인터페이스만 의존하므로 Docker 소켓,
+ * Dockerode 응답 형태, 멀티플렉스 스트림 처리는 이 파일에 한정됨.
  */
 @Injectable()
 export class DockerodeClientAdapter implements IDockerClient, OnModuleInit {
@@ -24,10 +27,7 @@ export class DockerodeClientAdapter implements IDockerClient, OnModuleInit {
 
   onModuleInit() {
     try {
-      const socketPath = (
-        process.env.DOCKER_HOST || DEFAULT_DOCKER_HOST
-      ).replace('unix://', '');
-      this.docker = new Docker({ socketPath });
+      this.docker = new Docker(resolveDockerConnectionOptions());
     } catch (error) {
       throw new DockerConnectionException(error.message);
     }
@@ -57,13 +57,17 @@ export class DockerodeClientAdapter implements IDockerClient, OnModuleInit {
 
   async createContainer(config: DockerContainerConfig): Promise<string> {
     try {
-      // Validate resources
+      // 자원 제한은 Docker API 호출 전에 값 객체로 검증함.
       const resources = ResourceConfig.create(
         config.resources.cpus,
         config.resources.memory,
       );
 
-      // Map ports for Docker
+      /*
+       * 애플리케이션의 { 내부 포트: 호스트 포트 } 구조를 Docker API의
+       * ExposedPorts와 HostConfig.PortBindings 두 표현으로 동시에 변환함.
+       * 둘 중 하나만 설정하면 포트가 노출되지 않거나 호스트에 연결되지 않음.
+       */
       const exposedPorts: Record<string, Record<string, never>> = {};
       const portBindings: Record<string, Array<{ HostPort: string }>> = {};
 
@@ -73,7 +77,7 @@ export class DockerodeClientAdapter implements IDockerClient, OnModuleInit {
         portBindings[key] = [{ HostPort: external.toString() }];
       });
 
-      // Create container
+      // 검증·변환된 설정만 Docker 엔진에 전달함.
       const container = await this.docker.createContainer({
         name: config.name,
         Image: config.image,
@@ -190,7 +194,7 @@ export class DockerodeClientAdapter implements IDockerClient, OnModuleInit {
 
   async getContainerProcesses(
     dockerId: string,
-  ): Promise<{ pm2: any[]; services: any[] }> {
+  ): Promise<DockerContainerProcesses> {
     const container = this.docker.getContainer(dockerId);
     const pm2List: any[] = [];
     const services: any[] = [];
@@ -213,7 +217,7 @@ export class DockerodeClientAdapter implements IDockerClient, OnModuleInit {
         });
       }
     } catch {
-      // PM2 없는 컨테이너
+      // PM2를 쓰지 않는 컨테이너는 정상적인 경우이므로 하위 목록만 비워 둠.
     }
 
     try {
@@ -235,7 +239,7 @@ export class DockerodeClientAdapter implements IDockerClient, OnModuleInit {
       if (/sshd/.test(ps))
         services.push({ name: 'SSH', port: 22, icon: 'ssh' });
     } catch {
-      // ps 실패 무시
+      // 최소 이미지에는 ps가 없을 수 있으므로 서비스 추론만 생략함.
     }
 
     return { pm2: pm2List, services };
@@ -248,24 +252,45 @@ export class DockerodeClientAdapter implements IDockerClient, OnModuleInit {
     const exec = await container.exec({
       Cmd: cmd,
       AttachStdout: true,
-      AttachStderr: false,
+      AttachStderr: true,
     });
 
     const stream = await exec.start({ hijack: true, stdin: false });
 
     return new Promise((resolve) => {
+      const stdout = new PassThrough();
+      const stderr = new PassThrough();
       const chunks: Buffer[] = [];
-      stream.on('data', (chunk: Buffer) => {
-        const data = chunk.length > 8 ? chunk.slice(8) : chunk;
-        chunks.push(data);
-      });
-      stream.on('end', () => resolve(Buffer.concat(chunks).toString('utf8')));
-      stream.on('error', () => resolve(Buffer.concat(chunks).toString('utf8')));
-      setTimeout(() => resolve(Buffer.concat(chunks).toString('utf8')), 5000);
+      let completed = false;
+
+      const finish = () => {
+        if (completed) {
+          return;
+        }
+
+        completed = true;
+        clearTimeout(timeout);
+        resolve(Buffer.concat(chunks).toString('utf8'));
+      };
+      const timeout = setTimeout(finish, 5000);
+
+      stdout.on('data', (chunk: Buffer) => chunks.push(chunk));
+      stderr.on('data', (chunk: Buffer) => chunks.push(chunk));
+      stream.once('end', finish);
+      stream.once('close', finish);
+      stream.once('error', finish);
+
+      /*
+       * Docker exec 출력은 청크마다 8바이트 헤더가 항상 붙는 것이 아니라, 하나의
+       * 멀티플렉스 프레임이 여러 청크로 나뉘거나 여러 프레임이 합쳐질 수 있음.
+       * 직접 slice(8) 하면 긴 출력의 일부가 사라질 수 있으므로 Dockerode가 제공하는
+       * demuxStream으로 stdout·stderr 프레임을 올바르게 분리함.
+       */
+      this.docker.modem.demuxStream(stream, stdout, stderr);
     });
   }
 
-  // Helper methods
+  // Docker 통계 응답을 화면용 수치로 정규화하는 보조 메서드임.
 
   private calculateCpuUsage(stats: any): number {
     const cpuDelta =

@@ -1,9 +1,5 @@
-import { Injectable, Logger } from '@nestjs/common';
-import * as fs from 'fs';
-import * as path from 'path';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import { ComposeService } from './compose.service';
-import { DockerCommandService } from './docker-command.service';
-import { resolveDockerProjectRoot } from './docker-project-path.util';
 import type {
   DockerCleanupCandidateItem,
   DockerCleanupCandidates,
@@ -17,8 +13,15 @@ import {
 import {
   DOCKER_CLIENT,
   type IDockerClient,
-} from '../../domain/repositories/docker-client.interface';
-import { Inject } from '@nestjs/common';
+} from '../../domain/gateways/docker-client.gateway.interface';
+import {
+  DOCKER_CLEANUP_GATEWAY,
+  type IDockerCleanupGateway,
+} from '../../domain/gateways/docker-cleanup.gateway.interface';
+import {
+  DOCKER_ARTIFACT_GATEWAY,
+  type IDockerArtifactGateway,
+} from '../../domain/gateways/docker-artifact.gateway.interface';
 
 const ARTIFACT_PATHS = [
   'apps/backend/dist',
@@ -38,11 +41,13 @@ interface ParsedDfSections {
 @Injectable()
 export class DockerCleanupService {
   private readonly logger = new Logger(DockerCleanupService.name);
-  private readonly projectRoot = resolveDockerProjectRoot(__dirname);
 
   constructor(
     private readonly composeService: ComposeService,
-    private readonly dockerCommandService: DockerCommandService,
+    @Inject(DOCKER_CLEANUP_GATEWAY)
+    private readonly dockerCleanupGateway: IDockerCleanupGateway,
+    @Inject(DOCKER_ARTIFACT_GATEWAY)
+    private readonly dockerArtifactGateway: IDockerArtifactGateway,
     @Inject(DOCKER_CLIENT) private readonly dockerClient: IDockerClient,
   ) {}
 
@@ -51,15 +56,12 @@ export class DockerCleanupService {
       await Promise.all([
         this.collectSafely(
           'Docker 요약 사용량',
-          () =>
-            this.dockerCommandService.run(
-              `docker system df --format '{{json .}}'`,
-            ),
+          () => this.dockerCleanupGateway.getUsageSummary(),
           '',
         ),
         this.collectSafely(
           'Docker 상세 사용량',
-          () => this.dockerCommandService.run('docker system df -v'),
+          () => this.dockerCleanupGateway.getDetailedUsage(),
           '',
         ),
         this.collectSafely(
@@ -69,7 +71,7 @@ export class DockerCleanupService {
         ),
         this.collectSafely(
           '배포 부산물 파일',
-          () => this.collectArtifactFiles(),
+          () => this.dockerArtifactGateway.listArtifacts(ARTIFACT_PATHS),
           [] as DockerCleanupCandidateItem[],
         ),
       ]);
@@ -140,7 +142,7 @@ export class DockerCleanupService {
       return this.createDryRunResult(candidates);
     }
 
-    const output = await this.dockerCommandService.run('docker image prune -f');
+    const output = await this.dockerCleanupGateway.pruneDanglingImages();
     return this.createExecResult(candidates, output);
   }
 
@@ -152,9 +154,7 @@ export class DockerCleanupService {
       return this.createDryRunResult(candidates);
     }
 
-    const output = await this.dockerCommandService.run(
-      'docker container prune -f',
-    );
+    const output = await this.dockerCleanupGateway.pruneExitedContainers();
     return this.createExecResult(candidates, output);
   }
 
@@ -166,9 +166,7 @@ export class DockerCleanupService {
       return this.createDryRunResult(candidates);
     }
 
-    const output = await this.dockerCommandService.run(
-      'docker volume prune -f',
-    );
+    const output = await this.dockerCleanupGateway.pruneDanglingVolumes();
     return this.createExecResult(candidates, output);
   }
 
@@ -184,9 +182,7 @@ export class DockerCleanupService {
       };
     }
 
-    const output = await this.dockerCommandService.run(
-      'docker builder prune -f',
-    );
+    const output = await this.dockerCleanupGateway.pruneBuildCache();
     return this.createExecResult(
       category.items,
       output,
@@ -394,55 +390,6 @@ export class DockerCleanupService {
     }
 
     return candidates;
-  }
-
-  private async collectArtifactFiles(): Promise<DockerCleanupCandidateItem[]> {
-    const candidates: DockerCleanupCandidateItem[] = [];
-
-    for (const relativePath of ARTIFACT_PATHS) {
-      const targetPath = path.join(this.projectRoot, relativePath);
-      if (!fs.existsSync(targetPath)) {
-        continue;
-      }
-
-      candidates.push({
-        id: relativePath,
-        label: relativePath,
-        detail: '배포 부산물',
-        size: this.getPathSize(targetPath),
-        readOnly: true,
-      });
-    }
-
-    const backupEntries = fs
-      .readdirSync(this.projectRoot)
-      .filter((entry) => entry.includes('backup'))
-      .map((entry) => path.join(this.projectRoot, entry))
-      .filter((entryPath) => fs.existsSync(entryPath));
-
-    for (const entryPath of backupEntries) {
-      const relativePath = path.relative(this.projectRoot, entryPath);
-      candidates.push({
-        id: relativePath,
-        label: relativePath,
-        detail: '백업 부산물',
-        size: this.getPathSize(entryPath),
-        readOnly: true,
-      });
-    }
-
-    return candidates;
-  }
-
-  private getPathSize(targetPath: string): number {
-    const stat = fs.statSync(targetPath);
-    if (stat.isFile()) {
-      return stat.size;
-    }
-
-    return fs.readdirSync(targetPath).reduce((sum, entry) => {
-      return sum + this.getPathSize(path.join(targetPath, entry));
-    }, 0);
   }
 
   private async collectSafely<T>(

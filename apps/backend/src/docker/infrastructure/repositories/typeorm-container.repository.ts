@@ -5,8 +5,8 @@ import { Container } from '../../domain/entities/container.entity';
 import { IContainerRepository } from '../../domain/repositories/container.repository.interface';
 
 /**
- * TypeORM Container Repository Implementation
- * Implements IContainerRepository using TypeORM
+ * TypeORM 기반 컨테이너 영속성 저장소 구현체임.
+ * 도메인 저장소 계약을 PostgreSQL 접근 방식으로 연결함.
  */
 @Injectable()
 export class TypeOrmContainerRepository implements IContainerRepository {

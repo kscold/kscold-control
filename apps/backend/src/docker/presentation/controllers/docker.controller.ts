@@ -1,6 +1,5 @@
 import {
   Controller,
-  NotFoundException,
   Get,
   Patch,
   Post,
@@ -9,7 +8,6 @@ import {
   Param,
   UseGuards,
   Request,
-  Inject,
 } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { PermissionsGuard } from '../../../common/guards';
@@ -21,6 +19,7 @@ import type { JwtRequest } from '../../../common/types/jwt-request.type';
 import {
   CreateContainerUseCase,
   ListContainersUseCase,
+  GetContainerProcessesUseCase,
   StartContainerUseCase,
   StopContainerUseCase,
   RemoveContainerUseCase,
@@ -39,17 +38,19 @@ import {
 } from '../../application/use-cases';
 import { CreateContainerDto } from '../../application/dto';
 import {
-  IDockerClient,
-  DOCKER_CLIENT,
-} from '../../domain/repositories/docker-client.interface';
+  CreateComposeServiceRequestDto,
+  CreateContainerRequestDto,
+  DockerCleanupRequestDto,
+  ImportContainerRequestDto,
+  UpdateTopologyLayoutRequestDto,
+} from '../dto';
 
 /**
- * Docker Controller
- * Handles HTTP requests for container management
+ * Docker 컨테이너 관리 HTTP 요청 처리함.
  *
- * Clean Architecture: Controller only handles HTTP concerns,
- * all business logic is delegated to Use Cases.
- * Cross-cutting audit logging is handled via @Audit() + AuditInterceptor (AOP).
+ * 컨트롤러는 인증된 요청에서 사용자 범위와 HTTP 입출력만 다루고,
+ * 생성·삭제·Compose·정리 같은 업무 규칙은 각 애플리케이션 유스케이스로 위임함.
+ * 감사 기록은 @Audit 데코레이터와 인터셉터가 공통으로 처리함.
  */
 @Controller('docker')
 @UseGuards(AuthGuard('jwt'), PermissionsGuard)
@@ -57,6 +58,7 @@ export class DockerController {
   constructor(
     private readonly createContainerUseCase: CreateContainerUseCase,
     private readonly listContainersUseCase: ListContainersUseCase,
+    private readonly getContainerProcessesUseCase: GetContainerProcessesUseCase,
     private readonly startContainerUseCase: StartContainerUseCase,
     private readonly stopContainerUseCase: StopContainerUseCase,
     private readonly removeContainerUseCase: RemoveContainerUseCase,
@@ -72,12 +74,13 @@ export class DockerController {
     private readonly pruneBuildCacheUseCase: PruneBuildCacheUseCase,
     private readonly pruneExitedContainersUseCase: PruneExitedContainersUseCase,
     private readonly pruneDanglingVolumesUseCase: PruneDanglingVolumesUseCase,
-    @Inject(DOCKER_CLIENT) private readonly dockerClient: IDockerClient,
   ) {}
 
   /**
-   * List all containers (no user filter - for topology)
-   * GET /docker/containers/all
+   * 토폴로지용 전체 컨테이너 조회함.
+   *
+   * 이 엔드포인트는 전역 권한을 가진 화면에서만 사용하며, 일반 목록 조회와 달리
+   * 사용자 ID를 전달하지 않아 관리 대상과 외부 컨테이너를 모두 포함함.
    */
   @Get('containers/all')
   @RequirePermissions(PERMISSIONS.DOCKER_READ)
@@ -86,8 +89,10 @@ export class DockerController {
   }
 
   /**
-   * List containers (user-scoped)
-   * GET /docker/containers
+   * 로그인 사용자의 컨테이너 목록 조회함.
+   *
+   * 전역 관리자는 모든 컨테이너를, 그 외 사용자는 자신이 관리하는 컨테이너만
+   * 유스케이스에 전달해 결과 범위를 일관되게 제한함.
    */
   @Get('containers')
   @RequirePermissions(PERMISSIONS.DOCKER_READ)
@@ -99,8 +104,10 @@ export class DockerController {
   }
 
   /**
-   * Get container internal processes (PM2 + services)
-   * GET /docker/containers/:dockerId/processes
+   * 컨테이너 내부 PM2와 시스템 서비스 조회함.
+   *
+   * 표현 계층은 Docker 게이트웨이에 직접 접근하지 않고, 사용자 소유 범위를
+   * 유스케이스에 전달함. 따라서 HTTP 외 호출도 같은 권한 검증 재사용함.
    */
   @Get('containers/:dockerId/processes')
   @RequirePermissions(PERMISSIONS.DOCKER_READ)
@@ -108,17 +115,10 @@ export class DockerController {
     @Param('dockerId') dockerId: string,
     @Request() req: JwtRequest,
   ) {
-    const ownerId = getContainerOwnerScope(req);
-    if (ownerId) {
-      const ownedContainers = await this.listContainersUseCase.execute(ownerId);
-      if (
-        !ownedContainers.some((container) => container.dockerId === dockerId)
-      ) {
-        throw new NotFoundException('컨테이너를 찾을 수 없습니다.');
-      }
-    }
-
-    return this.dockerClient.getContainerProcesses(dockerId);
+    return this.getContainerProcessesUseCase.execute(
+      dockerId,
+      getContainerOwnerScope(req),
+    );
   }
 
   @Get('topology/snapshot')
@@ -143,21 +143,15 @@ export class DockerController {
   })
   async updateTopologyLayout(
     @Body()
-    body: {
-      positions?: Array<{
-        nodeId?: string;
-        x?: number;
-        y?: number;
-      }>;
-    },
+    body: UpdateTopologyLayoutRequestDto,
     @Request() req: JwtRequest,
   ) {
     await this.saveTopologyLayoutUseCase.execute(
       req.user.id,
-      (body.positions ?? []).map((position) => ({
-        nodeId: String(position.nodeId ?? ''),
-        x: Number(position.x),
-        y: Number(position.y),
+      body.positions.map((position) => ({
+        nodeId: position.nodeId,
+        x: position.x,
+        y: position.y,
       })),
     );
 
@@ -172,30 +166,30 @@ export class DockerController {
 
   @Post('cleanup/images/prune')
   @RequirePermissions(PERMISSIONS.DOCKER_DELETE)
-  async pruneDanglingImages(@Body() body?: { dryRun?: boolean }) {
+  async pruneDanglingImages(@Body() body?: DockerCleanupRequestDto) {
     return this.pruneDanglingImagesUseCase.execute(body?.dryRun ?? true);
   }
 
   @Post('cleanup/build-cache/prune')
   @RequirePermissions(PERMISSIONS.DOCKER_DELETE)
-  async pruneBuildCache(@Body() body?: { dryRun?: boolean }) {
+  async pruneBuildCache(@Body() body?: DockerCleanupRequestDto) {
     return this.pruneBuildCacheUseCase.execute(body?.dryRun ?? true);
   }
 
   @Post('cleanup/containers/prune-exited')
   @RequirePermissions(PERMISSIONS.DOCKER_DELETE)
-  async pruneExitedContainers(@Body() body?: { dryRun?: boolean }) {
+  async pruneExitedContainers(@Body() body?: DockerCleanupRequestDto) {
     return this.pruneExitedContainersUseCase.execute(body?.dryRun ?? true);
   }
 
   @Post('cleanup/volumes/prune-dangling')
   @RequirePermissions(PERMISSIONS.DOCKER_DELETE)
-  async pruneDanglingVolumes(@Body() body?: { dryRun?: boolean }) {
+  async pruneDanglingVolumes(@Body() body?: DockerCleanupRequestDto) {
     return this.pruneDanglingVolumesUseCase.execute(body?.dryRun ?? true);
   }
 
   /**
-   * Create a new container
+   * 새 컨테이너 생성함.
    * POST /docker/containers
    */
   @Post('containers')
@@ -216,15 +210,19 @@ export class DockerController {
     },
   })
   async createContainer(
-    @Body() dto: CreateContainerDto,
+    @Body() dto: CreateContainerRequestDto,
     @Request() req: JwtRequest,
   ) {
-    dto.userId = req.user.id;
-    return this.createContainerUseCase.execute(dto);
+    return this.createContainerUseCase.execute(
+      CreateContainerDto.from({
+        ...dto,
+        userId: req.user.id,
+      }),
+    );
   }
 
   /**
-   * Import an external Docker container into management
+   * 외부 Docker 컨테이너를 현재 사용자의 관리 대상으로 가져옴.
    * POST /docker/containers/import
    */
   @Post('containers/import')
@@ -249,14 +247,14 @@ export class DockerController {
     },
   })
   async importContainer(
-    @Body() body: { dockerId: string },
+    @Body() body: ImportContainerRequestDto,
     @Request() req: JwtRequest,
   ) {
     return this.importContainerUseCase.execute(body.dockerId, req.user.id);
   }
 
   /**
-   * Start a container
+   * 컨테이너 시작함.
    * POST /docker/containers/:id/start
    */
   @Post('containers/:id/start')
@@ -274,7 +272,7 @@ export class DockerController {
   }
 
   /**
-   * Stop a container
+   * 컨테이너 중지함.
    * POST /docker/containers/:id/stop
    */
   @Post('containers/:id/stop')
@@ -292,7 +290,7 @@ export class DockerController {
   }
 
   /**
-   * Remove a container
+   * 컨테이너 제거함.
    * DELETE /docker/containers/:id
    */
   @Delete('containers/:id')
@@ -309,10 +307,10 @@ export class DockerController {
     return { success: true, message: 'Container removed successfully' };
   }
 
-  // ===== Compose Endpoints =====
+  // ===== Compose 서비스 엔드포인트 =====
 
   /**
-   * List compose services
+   * Compose 서비스 목록 조회함.
    * GET /docker/compose/services
    */
   @Get('compose/services')
@@ -328,7 +326,7 @@ export class DockerController {
   }
 
   /**
-   * Add a new instance to docker-compose.yml and start it
+   * docker-compose.yml에 새 인스턴스를 추가하고 시작함.
    * POST /docker/compose/services
    */
   @Post('compose/services')
@@ -347,14 +345,7 @@ export class DockerController {
   })
   async addComposeService(
     @Body()
-    body: {
-      name: string;
-      image: string;
-      ports: Record<string, number>;
-      cpus: string;
-      memLimit: string;
-      command?: string;
-    },
+    body: CreateComposeServiceRequestDto,
     @Request() req: JwtRequest,
   ) {
     const result = await this.createComposeServiceUseCase.execute(
@@ -369,7 +360,7 @@ export class DockerController {
   }
 
   /**
-   * Remove a compose service
+   * Compose 서비스 제거함.
    * DELETE /docker/compose/services/:name
    */
   @Delete('compose/services/:name')

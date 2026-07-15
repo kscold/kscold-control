@@ -11,11 +11,11 @@ import {
   type INginxConfigRepository,
 } from '../../../nginx/domain/repositories/nginx-config.repository';
 import { ListContainersUseCase } from '../use-cases';
-import type { ContainerResponseDto } from '../dto/container-response.dto';
+import type { ContainerResponseDto } from '../dto';
 import {
   DOCKER_CLIENT,
   type IDockerClient,
-} from '../../domain/repositories/docker-client.interface';
+} from '../../domain/gateways/docker-client.gateway.interface';
 import {
   ITopologyLayoutRepository,
   TOPOLOGY_LAYOUT_REPOSITORY,
@@ -138,7 +138,7 @@ export class DockerTopologyService {
       this.nginxConfigRepository.list(),
     ]);
     // server_name(도메인)이 없는 설정(예: ip-blocklist.conf 같은 공용 include)은
-    // 토폴로지의 사이트 노드가 아니므로 제외한다. (이름 없는 빈 노드로 렌더되던 버그)
+    // 토폴로지의 사이트 노드가 아니므로 제외함. 이름 없는 빈 노드 렌더링 방지 목적임.
     const sites = this.mergeSites(configuredSites, containers).filter(
       (site) => site.domain && site.domain.trim().length > 0,
     );
@@ -474,7 +474,8 @@ export class DockerTopologyService {
     userId: string,
     nodes: TopologySnapshotNode[],
   ): Promise<void> {
-    const rows = await this.topologyLayoutRepository.findPositionsByUser(userId);
+    const rows =
+      await this.topologyLayoutRepository.findPositionsByUser(userId);
     const positions = new Map<string, { x: number; y: number }>(
       rows.map((row) => [row.nodeId, { x: row.x, y: row.y }]),
     );

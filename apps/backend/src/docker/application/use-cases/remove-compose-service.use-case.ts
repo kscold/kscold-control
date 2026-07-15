@@ -12,7 +12,7 @@ import { ComposeService } from '../services/compose.service';
 import { PortForwardingService } from '../services/port-forwarding.service';
 
 /**
- * compose 기반 Ubuntu 인스턴스를 안전하게 제거합니다.
+ * compose 기반 Ubuntu 인스턴스를 안전하게 제거함.
  */
 @Injectable()
 export class RemoveComposeServiceUseCase {

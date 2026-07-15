@@ -6,12 +6,12 @@ import {
 import {
   IDockerClient,
   DOCKER_CLIENT,
-} from '../../domain/repositories/docker-client.interface';
+} from '../../domain/gateways/docker-client.gateway.interface';
 import { ContainerNotFoundException } from '../../../common/exceptions';
 
 /**
- * Stop Container Use Case
- * Stops a running container (supports both managed and external)
+ * 컨테이너 중지 유스케이스임.
+ * 사용자 소유 관리 컨테이너와 전역 관리자의 외부 컨테이너 제어를 함께 처리함.
  */
 @Injectable()
 export class StopContainerUseCase {
@@ -23,7 +23,7 @@ export class StopContainerUseCase {
   ) {}
 
   async execute(id: string, ownerId?: string): Promise<void> {
-    // 1. Resolve managed containers by either DB UUID or Docker ID.
+    // 화면은 DB UUID 또는 Docker ID를 보낼 수 있으므로 둘 다 관리 대상에서 찾습니다.
     const container =
       (await this.containerRepo.findById(id)) ??
       (await this.containerRepo.findByDockerId(id));
@@ -42,7 +42,7 @@ export class StopContainerUseCase {
       throw new ContainerNotFoundException(id);
     }
 
-    // Super admins may operate unmanaged external containers by Docker ID.
+    // 전역 관리자는 관리 DB에 없는 외부 컨테이너도 Docker ID로 직접 제어할 수 있음.
     try {
       await this.dockerClient.stopContainer(id);
     } catch {

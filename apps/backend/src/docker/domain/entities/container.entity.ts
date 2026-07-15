@@ -10,8 +10,8 @@ import {
 import { User } from '../../../rbac/domain/entities/user.entity';
 
 /**
- * Container Domain Entity
- * Represents a Docker container in the system
+ * 관리 대상 Docker 컨테이너의 도메인 엔티티임.
+ * Docker 엔진의 실시간 상태와 별개로 소유자, 생성 요청, 관리 이력 저장함.
  */
 @Entity('containers')
 export class Container {
@@ -19,13 +19,13 @@ export class Container {
   id: string;
 
   @Column({ unique: true })
-  dockerId: string; // Docker container ID from Dockerode
+  dockerId: string; // Docker 엔진이 부여한 컨테이너 식별자
 
   @Column()
   name: string;
 
   @Column()
-  image: string; // e.g., ubuntu:22.04, node:18
+  image: string; // 예: ubuntu:22.04, node:18
 
   @Column({ default: 'created' })
   status: 'created' | 'running' | 'stopped' | 'exited' | 'error';
@@ -35,13 +35,13 @@ export class Container {
 
   @Column({ type: 'jsonb' })
   resources: {
-    cpus: number; // Number of CPU cores
-    memory: string; // Memory limit (e.g., "4g")
-    disk?: string; // Disk limit (optional, e.g., "20g")
+    cpus: number; // CPU 코어 수
+    memory: string; // 메모리 제한, 예: "4g"
+    disk?: string; // 디스크 제한, 선택값, 예: "20g"
   };
 
   @Column({ type: 'jsonb', nullable: true })
-  environment: Record<string, string>; // Environment variables
+  environment: Record<string, string>; // 컨테이너 환경 변수
 
   @ManyToOne(() => User, (user) => user.containers, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'userId' })
