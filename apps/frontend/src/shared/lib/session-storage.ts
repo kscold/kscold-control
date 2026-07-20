@@ -1,10 +1,10 @@
 /**
- * Session storage keys for tab-scoped AI/terminal sessions.
+ * 탭 단위로 관리되는 AI/터미널 세션의 세션 스토리지 키.
  *
- * These live in the `shared` layer because they are a cross-cutting concern:
- * the auth store clears them on logout, and multiple features (terminal,
- * claude-chat, openai-chat) read/write them. Features must import from here
- * instead of reaching into each other's `lib` (FSD: no cross-slice imports).
+ * 여러 레이어가 함께 쓰는 관심사라 `shared` 레이어에 둔다:
+ * 인증 스토어가 로그아웃 시 이 값들을 지우고, 여러 feature(terminal,
+ * claude-chat, openai-chat)가 읽고 쓴다. 각 feature는 다른 feature의 `lib`를
+ * 직접 참조하지 말고 여기서 import 해야 한다 (FSD: 슬라이스 간 참조 금지).
  */
 export const TERMINAL_SESSION_STORAGE_KEY = 'terminal_session_id';
 export const CLAUDE_SESSION_STORAGE_KEY = 'claude_chat_session_id';

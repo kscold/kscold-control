@@ -3,8 +3,7 @@ import { rbacService } from '@/entities/user';
 import type { Role, Permission } from '@/entities/user';
 
 /**
- * useRoles Hook
- * Fetches and manages roles and permissions state
+ * 역할과 권한을 조회하고 그 상태를 관리하는 훅
  */
 export function useRoles() {
   const [roles, setRoles] = useState<Role[]>([]);

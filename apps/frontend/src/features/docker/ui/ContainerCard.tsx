@@ -16,8 +16,7 @@ interface ContainerCardProps {
 }
 
 /**
- * ContainerCard Component
- * Displays individual container information and actions
+ * 컨테이너 하나의 정보와 조작 버튼을 보여주는 카드
  */
 export function ContainerCard({
   container,
@@ -57,7 +56,7 @@ export function ContainerCard({
   };
 
   const handleConnectProxy = () => {
-    // Find the first internal port to use as upstream
+    // upstream으로 사용할 첫 번째 내부 포트를 찾는다
     const ports = Object.keys(container.ports);
     const mainPort = ports.find((p) => p !== '22') || ports[0] || '8080';
     const upstream = `http://${container.name}:${mainPort}`;

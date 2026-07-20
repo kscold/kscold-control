@@ -5,8 +5,7 @@ interface PermissionsListProps {
 }
 
 /**
- * PermissionsList Component
- * Displays grid of all available permissions
+ * 사용 가능한 전체 권한을 그리드로 보여준다
  */
 export function PermissionsList({ permissions }: PermissionsListProps) {
   return (

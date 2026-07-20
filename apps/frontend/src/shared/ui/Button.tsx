@@ -1,8 +1,7 @@
 import { ButtonProps } from './types';
 
 /**
- * Reusable Button Component
- * Provides consistent styling and variants across the app
+ * 앱 전반에서 일관된 스타일과 variant를 제공하는 재사용 버튼 컴포넌트
  */
 export function Button({
   variant = 'primary',

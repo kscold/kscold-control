@@ -7,8 +7,7 @@ interface CreateUserModalProps {
 }
 
 /**
- * CreateUserModal Component
- * Modal for creating new users
+ * 새 사용자를 생성하는 모달
  */
 export function CreateUserModal({
   show,

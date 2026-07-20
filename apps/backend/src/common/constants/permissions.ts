@@ -1,7 +1,7 @@
 /**
- * Permission name constants
- * Single source of truth for all permission strings used across the application.
- * Use these instead of hard-coding strings to prevent typos and ease refactoring.
+ * 권한 이름 상수
+ * 애플리케이션 전체에서 쓰는 권한 문자열의 단일 기준점이다.
+ * 문자열을 직접 적지 말고 이 상수를 쓰면 오타를 막고 이름 변경도 쉬워진다.
  */
 export const PERMISSIONS = {
   // Claude
@@ -18,10 +18,10 @@ export const PERMISSIONS = {
   SESSION_READ: 'session:read',
   SESSION_WRITE: 'session:write',
 
-  // User management
+  // User (사용자 관리)
   USER_MANAGE: 'user:manage',
 
-  // System (network / UPnP / Nginx)
+  // System (네트워크 / UPnP / Nginx)
   SYSTEM_READ: 'system:read',
   SYSTEM_WRITE: 'system:write',
 

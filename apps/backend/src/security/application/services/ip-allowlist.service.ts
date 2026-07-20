@@ -2,8 +2,8 @@ import { Injectable, Logger } from '@nestjs/common';
 import * as net from 'net';
 
 /**
- * Decides whether an IP is allowed to be banned.
- * Protects against accidental self-lockout or banning internal traffic.
+ * IP를 차단해도 되는지 판단한다.
+ * 실수로 자기 자신을 잠그거나 내부 트래픽을 차단하는 사고를 막는다.
  */
 @Injectable()
 export class IpAllowlistService {
@@ -61,7 +61,7 @@ export class IpAllowlistService {
 
   private isSameIp(a: string, b: string): boolean {
     if (a === b) return true;
-    // v4-mapped v6 (::ffff:1.2.3.4) comparisons
+    // v4를 v6로 매핑한 형태(::ffff:1.2.3.4) 비교
     const stripA = a.replace(/^::ffff:/, '');
     const stripB = b.replace(/^::ffff:/, '');
     return stripA === stripB;
@@ -97,7 +97,7 @@ export class IpAllowlistService {
   }
 
   private v6ToBytes(ip: string): number[] {
-    // naive expansion
+    // 단순 전개
     const expanded = this.expandV6(ip);
     const bytes: number[] = [];
     for (const group of expanded.split(':')) {

@@ -11,20 +11,16 @@ import {
 } from './types';
 
 /**
- * RBAC API Service
- * Centralizes all RBAC-related API calls
- *
- * Replaces direct API calls in:
- * - RbacDashboard.tsx
+ * RBAC 관련 API 호출을 한곳에 모아둔 서비스
  */
 export class RbacService extends BaseApiService {
   private readonly basePath = '/rbac';
 
-  // ========== User Management ==========
+  // ========== 사용자 관리 ==========
 
   /**
-   * Get all users with their roles
-   * @returns List of users
+   * 전체 사용자를 역할 정보와 함께 조회한다
+   * @returns 사용자 목록
    */
   async getUsers(): Promise<User[]> {
     try {
@@ -37,9 +33,9 @@ export class RbacService extends BaseApiService {
   }
 
   /**
-   * Create a new user
-   * @param request User creation data
-   * @returns Created user
+   * 새 사용자를 생성한다
+   * @param request 사용자 생성 데이터
+   * @returns 생성된 사용자
    */
   async createUser(request: CreateUserRequest): Promise<User> {
     try {
@@ -52,10 +48,10 @@ export class RbacService extends BaseApiService {
   }
 
   /**
-   * Update user details
-   * @param id User ID
-   * @param request Update data
-   * @returns Updated user
+   * 사용자 정보를 수정한다
+   * @param id 사용자 ID
+   * @param request 수정할 데이터
+   * @returns 수정된 사용자
    */
   async updateUser(id: string, request: UpdateUserRequest): Promise<User> {
     try {
@@ -71,8 +67,8 @@ export class RbacService extends BaseApiService {
   }
 
   /**
-   * Delete a user
-   * @param id User ID
+   * 사용자를 삭제한다
+   * @param id 사용자 ID
    */
   async deleteUser(id: string): Promise<void> {
     try {
@@ -84,10 +80,10 @@ export class RbacService extends BaseApiService {
   }
 
   /**
-   * Assign roles to a user
-   * @param userId User ID
-   * @param request Role assignment data
-   * @returns Updated user
+   * 사용자에게 역할을 할당한다
+   * @param userId 사용자 ID
+   * @param request 역할 할당 데이터
+   * @returns 수정된 사용자
    */
   async assignRoles(
     userId: string,
@@ -106,10 +102,10 @@ export class RbacService extends BaseApiService {
   }
 
   /**
-   * Update terminal command limit for a user
-   * @param userId User ID
-   * @param request Terminal limit data
-   * @returns Updated user
+   * 사용자의 터미널 명령어 사용 제한을 수정한다
+   * @param userId 사용자 ID
+   * @param request 터미널 제한 데이터
+   * @returns 수정된 사용자
    */
   async updateTerminalLimit(
     userId: string,
@@ -128,8 +124,8 @@ export class RbacService extends BaseApiService {
   }
 
   /**
-   * Reset terminal command count for a user
-   * @param userId User ID
+   * 사용자의 터미널 명령어 사용 횟수를 초기화한다
+   * @param userId 사용자 ID
    */
   async resetTerminalCommandCount(userId: string): Promise<void> {
     try {
@@ -140,11 +136,11 @@ export class RbacService extends BaseApiService {
     }
   }
 
-  // ========== Role Management ==========
+  // ========== 역할 관리 ==========
 
   /**
-   * Get all roles with their permissions
-   * @returns List of roles
+   * 전체 역할을 권한 정보와 함께 조회한다
+   * @returns 역할 목록
    */
   async getRoles(): Promise<Role[]> {
     try {
@@ -157,9 +153,9 @@ export class RbacService extends BaseApiService {
   }
 
   /**
-   * Create a new role
-   * @param request Role creation data
-   * @returns Created role
+   * 새 역할을 생성한다
+   * @param request 역할 생성 데이터
+   * @returns 생성된 역할
    */
   async createRole(request: CreateRoleRequest): Promise<Role> {
     try {
@@ -172,10 +168,10 @@ export class RbacService extends BaseApiService {
   }
 
   /**
-   * Update role details
-   * @param id Role ID
-   * @param request Update data
-   * @returns Updated role
+   * 역할 정보를 수정한다
+   * @param id 역할 ID
+   * @param request 수정할 데이터
+   * @returns 수정된 역할
    */
   async updateRole(id: string, request: UpdateRoleRequest): Promise<Role> {
     try {
@@ -191,8 +187,8 @@ export class RbacService extends BaseApiService {
   }
 
   /**
-   * Delete a role
-   * @param id Role ID
+   * 역할을 삭제한다
+   * @param id 역할 ID
    */
   async deleteRole(id: string): Promise<void> {
     try {
@@ -203,11 +199,11 @@ export class RbacService extends BaseApiService {
     }
   }
 
-  // ========== Permission Management ==========
+  // ========== 권한 관리 ==========
 
   /**
-   * Get all available permissions
-   * @returns List of permissions
+   * 사용 가능한 전체 권한을 조회한다
+   * @returns 권한 목록
    */
   async getPermissions(): Promise<Permission[]> {
     try {
@@ -222,5 +218,5 @@ export class RbacService extends BaseApiService {
   }
 }
 
-// Export singleton instance
+// 싱글턴 인스턴스로 내보낸다
 export const rbacService = new RbacService();

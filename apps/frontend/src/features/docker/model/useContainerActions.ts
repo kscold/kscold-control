@@ -4,8 +4,7 @@ import { useModalStore } from '@/shared/model';
 import type { Container } from '@/entities/container';
 
 /**
- * useContainerActions Hook
- * Handles container actions (start, stop, delete, import)
+ * 컨테이너 조작을 처리하는 훅 (시작, 중지, 삭제, 가져오기)
  */
 export function useContainerActions(onSuccess?: () => void) {
   const [loading, setLoading] = useState(false);

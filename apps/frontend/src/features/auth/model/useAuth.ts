@@ -3,10 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/shared/model';
 
 /**
- * useAuth Hook
- * Handles authentication logic (login, logout, validation)
- *
- * Extracted from LoginPage.tsx lines 6-26
+ * 로그인, 로그아웃, 입력 검증 등 인증 로직을 담당하는 훅
  */
 export function useAuth() {
   const [email, setEmail] = useState('');
@@ -17,7 +14,7 @@ export function useAuth() {
   const navigate = useNavigate();
 
   /**
-   * Handle login form submission
+   * 로그인 폼 제출을 처리한다
    */
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();

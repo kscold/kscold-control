@@ -29,8 +29,7 @@ const getRoleBadgeColor = (roleName: string) => {
 };
 
 /**
- * UserList Component
- * Displays list of users with inline editing capabilities
+ * 사용자 목록을 인라인 편집 기능과 함께 보여준다
  */
 export function UserList({
   users,

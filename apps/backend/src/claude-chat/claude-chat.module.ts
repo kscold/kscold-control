@@ -44,7 +44,7 @@ import { ClaudeChatGateway } from './presentation/gateways/claude-chat.gateway';
     ClaudeDiagnosticsService,
     ClaudeProcessManagerService,
     ClaudeSessionMapperService,
-    // Use-cases (세션/메시지 로직은 terminal의 TerminalSessionService에 위임)
+    // Use-cases (세션/메시지 로직은 terminal의 SESSION_MANAGER 포트에 위임)
     GetClaudeDiagnosticsUseCase,
     GetOrCreateClaudeSessionUseCase,
     GetClaudeHistoryUseCase,

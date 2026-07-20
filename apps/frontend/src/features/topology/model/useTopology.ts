@@ -106,7 +106,7 @@ export function useTopology() {
         }
       };
 
-      // ══════ Row 0: Internet ══════
+      // ══════ 0번째 줄: 인터넷 ══════
       newNodes.push({
         id: 'internet',
         type: 'internet',
@@ -115,7 +115,7 @@ export function useTopology() {
         draggable: true,
       });
 
-      // ══════ Row 1: Mac Mini Host ══════
+      // ══════ 1번째 줄: Mac Mini 호스트 ══════
       newNodes.push({
         id: 'host',
         type: 'host',

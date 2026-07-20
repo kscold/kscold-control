@@ -3,11 +3,16 @@ import type { Session } from '../../domain/entities/session.entity';
 import type { Message } from '../../domain/entities/message.entity';
 import type { ISessionRepository } from '../../domain/repositories/session.repository.interface';
 import type { IMessageRepository } from '../../domain/repositories/message.repository.interface';
+import type { ISessionManager } from '../../domain/ports/session-manager.port';
 import { SESSION_REPOSITORY } from '../../domain/repositories/session.repository.interface';
 import { MESSAGE_REPOSITORY } from '../../domain/repositories/message.repository.interface';
 
+/**
+ * 터미널 세션/메시지 관리 구현체
+ * ISessionManager 포트의 구현이며, 외부 모듈은 SESSION_MANAGER 토큰으로 이 구현을 주입받는다.
+ */
 @Injectable()
-export class TerminalSessionService {
+export class TerminalSessionService implements ISessionManager {
   private readonly logger = new Logger(TerminalSessionService.name);
 
   constructor(
@@ -82,7 +87,7 @@ export class TerminalSessionService {
   }
 
   /**
-   * Close a session: deactivate it and return the session id.
+   * 세션 닫기 — 세션을 비활성화한다.
    */
   async closeSession(sessionId: string, userId: string): Promise<void> {
     await this.requireSessionOwner(sessionId, userId);
@@ -90,8 +95,8 @@ export class TerminalSessionService {
   }
 
   /**
-   * Delete a session and all its messages.
-   * Returns null if session not found or doesn't belong to user.
+   * 세션과 소속 메시지 전체를 삭제한다.
+   * 세션이 없거나 해당 유저의 것이 아니면 null을 반환한다.
    */
   async deleteSession(
     sessionId: string,

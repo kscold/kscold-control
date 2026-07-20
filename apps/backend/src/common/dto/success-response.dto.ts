@@ -1,7 +1,4 @@
-/**
- * Success Response DTO
- * Standard format for successful responses
- */
+/** 성공 응답의 표준 형식이다. */
 export class SuccessResponseDto<T = any> {
   success: boolean;
   data: T;
@@ -24,10 +21,7 @@ export class SuccessResponseDto<T = any> {
   }
 }
 
-/**
- * Operation Success DTO
- * For simple success/failure operations (delete, update, etc.)
- */
+/** 삭제·수정처럼 성공 여부만 알리면 되는 단순 작업용 응답이다. */
 export class OperationSuccessDto {
   success: boolean;
   message?: string;

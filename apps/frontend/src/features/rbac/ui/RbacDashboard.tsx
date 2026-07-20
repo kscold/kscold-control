@@ -11,9 +11,7 @@ import {
 import type { User } from '@/entities/user';
 
 /**
- * RbacDashboard Component
- * Main RBAC management dashboard
- * Refactored with FSD architecture
+ * RBAC 관리 메인 대시보드
  */
 export function RbacDashboard() {
   const { users, loading: usersLoading, reload: reloadUsers } = useUsers();

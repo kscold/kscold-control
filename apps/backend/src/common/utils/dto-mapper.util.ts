@@ -1,18 +1,18 @@
 /**
- * DTO Mapper utility
- * Provides helper methods for mapping entities to DTOs
+ * DTO 매핑 유틸리티
+ * 엔티티를 DTO로 변환할 때 쓰는 공통 헬퍼를 제공한다.
  *
- * This is a base utility. Specific mappers should be created
- * for each domain (e.g., ContainerMapper, UserMapper)
+ * 여기에는 공통 기능만 두고, 도메인별 매퍼(예: ContainerMapper, UserMapper)는
+ * 각 도메인에서 따로 만든다.
  */
 export class DtoMapper {
   /**
-   * Exclude specified keys from an object
-   * Useful for removing sensitive fields (e.g., password)
+   * 객체에서 지정한 키를 제외한다.
+   * 비밀번호처럼 민감한 필드를 응답에서 걷어낼 때 쓴다.
    *
-   * @param obj Source object
-   * @param keys Keys to exclude
-   * @returns New object without excluded keys
+   * @param obj 원본 객체
+   * @param keys 제외할 키 목록
+   * @returns 해당 키가 빠진 새 객체
    */
   static exclude<T, K extends keyof T>(obj: T, keys: K[]): Omit<T, K> {
     const result = { ...obj };
@@ -21,10 +21,10 @@ export class DtoMapper {
   }
 
   /**
-   * Pick only specified keys from an object
-   * @param obj Source object
-   * @param keys Keys to include
-   * @returns New object with only specified keys
+   * 객체에서 지정한 키만 골라낸다.
+   * @param obj 원본 객체
+   * @param keys 포함할 키 목록
+   * @returns 해당 키만 담은 새 객체
    */
   static pick<T, K extends keyof T>(obj: T, keys: K[]): Pick<T, K> {
     const result = {} as Pick<T, K>;
@@ -35,10 +35,10 @@ export class DtoMapper {
   }
 
   /**
-   * Map an array of entities to DTOs
-   * @param entities Array of entities
-   * @param mapperFn Mapper function
-   * @returns Array of DTOs
+   * 엔티티 배열을 DTO 배열로 변환한다.
+   * @param entities 엔티티 배열
+   * @param mapperFn 변환 함수
+   * @returns DTO 배열
    */
   static mapArray<TEntity, TDto>(
     entities: TEntity[],
@@ -48,9 +48,9 @@ export class DtoMapper {
   }
 
   /**
-   * Convert Date to ISO string (safe for JSON serialization)
-   * @param date Date object or string
-   * @returns ISO string or null
+   * Date를 ISO 문자열로 변환한다. (JSON 직렬화에 안전한 형태)
+   * @param date Date 객체 또는 문자열
+   * @returns ISO 문자열, 값이 없으면 null
    */
   static toISOString(date: Date | string | null | undefined): string | null {
     if (!date) return null;

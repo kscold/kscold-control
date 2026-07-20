@@ -19,14 +19,16 @@ import { JwtService } from '@nestjs/jwt';
 
 import { PERMISSIONS } from '../../../common/constants/permissions';
 
-// Application Services (realtime infrastructure)
+// 애플리케이션 서비스 (실시간 인프라)
 import {
   PtyManagerService,
   SessionMapperService,
-  WsPermissionService,
 } from '../../application/services';
 
-// Application Use-Cases (domain/session orchestration)
+// 권한 확인은 rbac 모듈의 책임
+import { WsPermissionService } from '../../../rbac/application/services/ws-permission.service';
+
+// 애플리케이션 유스케이스 (도메인/세션 오케스트레이션)
 import {
   CheckTerminalCommandLimitUseCase,
   ClearTerminalHistoryUseCase,
@@ -42,10 +44,10 @@ import {
 } from '../../application/use-cases';
 
 /**
- * Terminal Gateway
- * Presentation layer - handles WebSocket connections only
- * Delegates business logic to application use-cases;
- * keeps realtime plumbing (PTY, client-session mapping, emits) here
+ * 터미널 게이트웨이
+ * Presentation 계층 — 웹소켓 연결만 담당한다.
+ * 비즈니스 로직은 애플리케이션 유스케이스에 위임하고,
+ * 실시간 처리(PTY, 클라이언트-세션 매핑, emit)만 이곳에 둔다.
  */
 @Injectable()
 @WebSocketGateway({

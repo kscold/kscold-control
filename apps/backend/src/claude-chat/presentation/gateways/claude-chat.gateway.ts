@@ -18,7 +18,8 @@ import {
 import { JwtService } from '@nestjs/jwt';
 
 import { PERMISSIONS } from '../../../common/constants/permissions';
-import { WsPermissionService } from '../../../terminal/application/services/ws-permission.service';
+// 권한 확인은 rbac 모듈의 책임
+import { WsPermissionService } from '../../../rbac/application/services/ws-permission.service';
 import {
   ClaudeProcessManagerService,
   ClaudeStreamEvent,

@@ -10,40 +10,40 @@ import { DockerDashboardSkeleton } from '@/features/docker';
 import { TopologySkeleton } from '@/features/topology';
 
 const LoginPage = lazy(() =>
-  import('@/pages/LoginPage').then((m) => ({ default: m.LoginPage })),
+  import('@/pages/login').then((m) => ({ default: m.LoginPage })),
 );
 const DashboardPage = lazy(() =>
-  import('@/pages/DashboardPage').then((m) => ({ default: m.DashboardPage })),
+  import('@/pages/dashboard').then((m) => ({ default: m.DashboardPage })),
 );
-const ClaudePage = lazy(() =>
-  import('@/pages/ClaudePage').then((m) => ({ default: m.ClaudePage })),
+const WorkspacePage = lazy(() =>
+  import('@/pages/workspace').then((m) => ({ default: m.WorkspacePage })),
 );
 const DockerPage = lazy(() =>
-  import('@/pages/DockerPage').then((m) => ({ default: m.DockerPage })),
+  import('@/pages/docker').then((m) => ({ default: m.DockerPage })),
 );
 const RbacPage = lazy(() =>
-  import('@/pages/RbacPage').then((m) => ({ default: m.RbacPage })),
+  import('@/pages/rbac').then((m) => ({ default: m.RbacPage })),
 );
 const LogsPage = lazy(() =>
-  import('@/pages/LogsPage').then((m) => ({ default: m.LogsPage })),
+  import('@/pages/logs').then((m) => ({ default: m.LogsPage })),
 );
 const NginxPage = lazy(() =>
-  import('@/pages/NginxPage').then((m) => ({ default: m.NginxPage })),
+  import('@/pages/nginx').then((m) => ({ default: m.NginxPage })),
 );
 const NetworkPage = lazy(() =>
-  import('@/pages/NetworkPage').then((m) => ({ default: m.NetworkPage })),
+  import('@/pages/network').then((m) => ({ default: m.NetworkPage })),
 );
 const TopologyPage = lazy(() =>
-  import('@/pages/TopologyPage').then((m) => ({ default: m.TopologyPage })),
+  import('@/pages/topology').then((m) => ({ default: m.TopologyPage })),
 );
 const RepositoryPage = lazy(() =>
-  import('@/pages/RepositoryPage').then((m) => ({ default: m.RepositoryPage })),
+  import('@/pages/repository').then((m) => ({ default: m.RepositoryPage })),
 );
 const AuditPage = lazy(() =>
-  import('@/pages/AuditPage').then((m) => ({ default: m.AuditPage })),
+  import('@/pages/audit').then((m) => ({ default: m.AuditPage })),
 );
 const SecurityPage = lazy(() =>
-  import('@/pages/SecurityPage').then((m) => ({ default: m.SecurityPage })),
+  import('@/pages/security').then((m) => ({ default: m.SecurityPage })),
 );
 
 function AuthPageLoader() {
@@ -132,7 +132,7 @@ export default function App() {
             element={
               <ErrorBoundary>
                 <Suspense fallback={<RoutePageSkeleton />}>
-                  <ClaudePage />
+                  <WorkspacePage />
                 </Suspense>
               </ErrorBoundary>
             }

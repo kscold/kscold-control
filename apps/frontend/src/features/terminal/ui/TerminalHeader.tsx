@@ -8,10 +8,7 @@ interface TerminalHeaderProps {
 }
 
 /**
- * TerminalHeader Component
- * Terminal header with status and action buttons
- *
- * Extracted from ClaudeTerminal.tsx lines 211-279
+ * 상태 표시와 동작 버튼을 담은 터미널 헤더
  */
 export function TerminalHeader({
   session,

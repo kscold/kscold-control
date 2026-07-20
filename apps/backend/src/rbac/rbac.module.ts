@@ -1,7 +1,7 @@
 import { Module, OnModuleInit } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
-// Domain Layer
+// Domain 계층
 import { User } from './domain/entities/user.entity';
 import { Role } from './domain/entities/role.entity';
 import { Permission } from './domain/entities/permission.entity';
@@ -9,7 +9,7 @@ import { USER_REPOSITORY } from './domain/repositories/user.repository.interface
 import { ROLE_REPOSITORY } from './domain/repositories/role.repository.interface';
 import { PERMISSION_REPOSITORY } from './domain/repositories/permission.repository.interface';
 
-// Application Layer
+// Application 계층
 import {
   CreateUserUseCase,
   UpdateUserUseCase,
@@ -20,32 +20,33 @@ import {
   ManageTerminalLimitUseCase,
 } from './application/use-cases';
 import { RbacSeedService } from './application/services/rbac-seed.service';
+import { WsPermissionService } from './application/services/ws-permission.service';
 
-// Infrastructure Layer
+// Infrastructure 계층
 import {
   TypeOrmUserRepository,
   TypeOrmRoleRepository,
 } from './infrastructure/repositories';
 import { TypeOrmPermissionRepository } from './infrastructure/repositories/typeorm-permission.repository';
 
-// Presentation Layer
+// Presentation 계층
 import { RbacController } from './presentation/controllers/rbac.controller';
 
 /**
- * RBAC Module
- * Clean Architecture implementation
+ * RBAC 모듈
+ * 클린 아키텍처 구성
  *
- * Dependencies:
- * - Domain: Entities, Repository Interfaces (no dependencies)
- * - Application: Use Cases, DTOs, Services (depends on Domain)
- * - Infrastructure: Repository implementations (depends on Application)
- * - Presentation: Controllers (depends on Application)
+ * 의존 관계:
+ * - Domain: 엔티티, 리포지토리 인터페이스 (의존 없음)
+ * - Application: 유스케이스, DTO, 서비스 (Domain에 의존)
+ * - Infrastructure: 리포지토리 구현체 (Application에 의존)
+ * - Presentation: 컨트롤러 (Application에 의존)
  */
 @Module({
   imports: [TypeOrmModule.forFeature([User, Role, Permission])],
   controllers: [RbacController],
   providers: [
-    // Use Cases
+    // 유스케이스
     CreateUserUseCase,
     UpdateUserUseCase,
     DeleteUserUseCase,
@@ -54,10 +55,12 @@ import { RbacController } from './presentation/controllers/rbac.controller';
     ListRolesUseCase,
     ManageTerminalLimitUseCase,
 
-    // Application Services
+    // 애플리케이션 서비스
     RbacSeedService,
+    // 웹소켓 권한 확인 — terminal / claude-chat / openai-chat 게이트웨이가 사용
+    WsPermissionService,
 
-    // Repository Implementations (DI)
+    // 리포지토리 구현체 (DI)
     {
       provide: USER_REPOSITORY,
       useClass: TypeOrmUserRepository,
@@ -72,11 +75,14 @@ import { RbacController } from './presentation/controllers/rbac.controller';
     },
   ],
   exports: [
-    // Export repository tokens for other modules (e.g., TerminalModule)
+    // 다른 모듈(예: TerminalModule)을 위한 리포지토리 토큰 공개
     USER_REPOSITORY,
     ROLE_REPOSITORY,
 
-    // Export use cases for potential reuse in other modules
+    // 웹소켓 권한 확인 서비스 공개 (terminal / claude-chat / openai-chat 게이트웨이)
+    WsPermissionService,
+
+    // 다른 모듈에서 재사용할 수 있도록 유스케이스 공개
     CreateUserUseCase,
     UpdateUserUseCase,
     DeleteUserUseCase,
@@ -90,7 +96,7 @@ export class RbacModule implements OnModuleInit {
   constructor(private readonly rbacSeedService: RbacSeedService) {}
 
   async onModuleInit() {
-    // Seed initial RBAC data on application startup
+    // 애플리케이션 기동 시 RBAC 초기 데이터 시딩
     await this.rbacSeedService.seedInitialData();
   }
 }

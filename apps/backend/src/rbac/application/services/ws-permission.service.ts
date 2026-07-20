@@ -2,12 +2,14 @@ import { Injectable, Inject } from '@nestjs/common';
 import {
   IUserRepository,
   USER_REPOSITORY,
-} from '../../../rbac/domain/repositories/user.repository.interface';
+} from '../../domain/repositories/user.repository.interface';
 import { PermissionExtractor } from '../../../common/utils/permission-extractor.util';
 
 /**
- * WsPermissionService
- * Application Layer - 권한 확인 로직을 Presentation(Gateway)에서 분리
+ * 웹소켓 권한 확인 서비스
+ * Application 계층 — 권한 확인 로직을 Presentation(Gateway)에서 분리
+ * 권한/유저는 rbac 모듈의 책임이므로 이 서비스는 rbac이 소유하고,
+ * terminal / claude-chat / openai-chat 게이트웨이가 RbacModule을 통해 주입받는다.
  */
 @Injectable()
 export class WsPermissionService {

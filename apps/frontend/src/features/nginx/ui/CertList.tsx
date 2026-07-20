@@ -166,7 +166,7 @@ export function CertList({
         </div>
       )}
 
-      {/* SSL Issue Modal */}
+      {/* SSL 발급 모달 */}
       {showCertModal && (
         <SslIssueModal
           certForm={certForm}

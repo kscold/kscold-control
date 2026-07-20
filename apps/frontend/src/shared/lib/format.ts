@@ -1,6 +1,6 @@
 /**
- * Generic formatting helpers shared across features.
- * Lives in the `shared` layer so features don't cross-import each other.
+ * 여러 feature가 함께 쓰는 범용 포맷 헬퍼.
+ * feature끼리 서로 import 하지 않도록 `shared` 레이어에 둔다.
  */
 
 export function formatBytes(bytes: number): string {

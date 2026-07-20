@@ -250,7 +250,7 @@ function renderHighlighted(code: string, language: string | null): string {
     try {
       return hljs.highlight(code, { language, ignoreIllegals: true }).value;
     } catch {
-      // fall through to auto
+      // 실패하면 아래 자동 감지로 넘어간다
     }
   }
   try {

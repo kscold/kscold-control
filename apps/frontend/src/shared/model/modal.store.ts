@@ -8,7 +8,7 @@ interface ModalState {
   onConfirm?: () => void;
   onCancel?: () => void;
 
-  // Actions
+  // 액션
   showAlert: (message: string, title?: string) => void;
   showConfirm: (message: string, onConfirm: () => void, title?: string) => void;
   close: () => void;

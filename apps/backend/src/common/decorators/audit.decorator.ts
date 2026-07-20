@@ -19,7 +19,11 @@ export interface AuditCtx {
 
 export interface AuditMeta {
   domain: AuditDomain;
-  action: string;
+  /**
+   * 고정 문자열 또는 컨텍스트 기반 팩토리.
+   * 실행 결과에 따라 동작이 갈리는 경우(예: 토글 → enable/disable)에 팩토리를 사용한다.
+   */
+  action: string | ((ctx: AuditCtx) => string);
   /** 고정 문자열 또는 컨텍스트 기반 팩토리 */
   summary: string | ((ctx: AuditCtx) => string);
   targetType?: string;

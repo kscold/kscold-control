@@ -1,8 +1,7 @@
 import { InputProps } from './types';
 
 /**
- * Reusable Input Component
- * Provides consistent form input styling
+ * 폼 입력 스타일을 통일하는 재사용 입력 컴포넌트
  */
 export function Input({
   type = 'text',

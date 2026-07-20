@@ -1,10 +1,7 @@
 import { IsInt, IsOptional, Min, Max } from 'class-validator';
 import { Type } from 'class-transformer';
 
-/**
- * Pagination Request DTO
- * Used for paginated list endpoints
- */
+/** 페이지네이션이 적용된 목록 조회 엔드포인트의 요청 전송 객체다. */
 export class PaginationDto {
   @IsOptional()
   @Type(() => Number)
@@ -24,10 +21,7 @@ export class PaginationDto {
   }
 }
 
-/**
- * Paginated Response DTO
- * Standard format for paginated responses
- */
+/** 페이지네이션 응답의 표준 형식이다. */
 export class PaginatedResponseDto<T> {
   data: T[];
   meta: {

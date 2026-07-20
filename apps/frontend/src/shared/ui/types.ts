@@ -1,9 +1,8 @@
 /**
- * UI Types
- * Types specific to UI components and interactions
+ * UI 컴포넌트와 사용자 인터랙션에서 쓰이는 타입 모음
  */
 
-// ============= Button Types =============
+// ============= 버튼 타입 =============
 
 export type ButtonVariant =
   | 'primary'
@@ -27,7 +26,7 @@ export interface ButtonProps {
   className?: string;
 }
 
-// ============= Input Types =============
+// ============= 입력 타입 =============
 
 export type InputType =
   | 'text'
@@ -49,7 +48,7 @@ export interface InputProps {
   className?: string;
 }
 
-// ============= Modal Types =============
+// ============= 모달 타입 =============
 
 export interface ModalProps {
   isOpen: boolean;
@@ -70,7 +69,7 @@ export interface ConfirmModalProps {
   cancelText?: string;
 }
 
-// ============= Badge Types =============
+// ============= 배지 타입 =============
 
 export type BadgeVariant =
   | 'success'
@@ -85,7 +84,7 @@ export interface BadgeProps {
   className?: string;
 }
 
-// ============= Card Types =============
+// ============= 카드 타입 =============
 
 export interface CardProps {
   title?: string;
@@ -96,7 +95,7 @@ export interface CardProps {
   onClick?: () => void;
 }
 
-// ============= Spinner Types =============
+// ============= 스피너 타입 =============
 
 export type SpinnerSize = 'sm' | 'md' | 'lg';
 
@@ -106,7 +105,7 @@ export interface SpinnerProps {
   fullScreen?: boolean;
 }
 
-// ============= Table Types =============
+// ============= 테이블 타입 =============
 
 export interface TableColumn<T> {
   key: keyof T | string;
@@ -124,7 +123,7 @@ export interface TableProps<T> {
   emptyMessage?: string;
 }
 
-// ============= Form Types =============
+// ============= 폼 타입 =============
 
 export interface FormField {
   name: string;
@@ -139,7 +138,7 @@ export interface FormErrors {
   [field: string]: string;
 }
 
-// ============= Alert Types =============
+// ============= 알림 타입 =============
 
 export type AlertType = 'success' | 'error' | 'warning' | 'info';
 
