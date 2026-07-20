@@ -130,7 +130,7 @@ export class RepositoryController {
   @UseInterceptors(
     FilesInterceptor('files', 1000, {
       limits: {
-        fileSize: 50 * 1024 * 1024, // 50MB per file
+        fileSize: 50 * 1024 * 1024, // 파일당 50MB
         fieldSize: 10 * 1024 * 1024,
         fields: 5000,
         files: 1000,

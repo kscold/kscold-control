@@ -1,5 +1,5 @@
 /**
- * Login Form State
+ * 로그인 폼 상태
  */
 export interface LoginFormState {
   email: string;
@@ -9,7 +9,7 @@ export interface LoginFormState {
 }
 
 /**
- * Auth User (from store)
+ * 스토어에 저장된 인증 사용자 정보
  */
 export interface AuthUser {
   id: string;

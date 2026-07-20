@@ -1,8 +1,7 @@
 import { CardProps } from './types';
 
 /**
- * Reusable Card Component
- * Provides consistent card styling for content containers
+ * 콘텐츠 컨테이너의 카드 스타일을 통일하는 재사용 카드 컴포넌트
  */
 export function Card({
   title,

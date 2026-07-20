@@ -17,7 +17,7 @@ export interface User {
   id: string;
   email: string;
   roles: Role[];
-  permissions?: string[]; // Flat list of permission names
+  permissions?: string[]; // 권한 이름을 평탄하게 나열한 목록
   terminalCommandCount?: number;
-  terminalCommandLimit?: number; // -1 = unlimited
+  terminalCommandLimit?: number; // -1이면 무제한
 }

@@ -39,7 +39,7 @@ export function NginxDashboard() {
     if (tab === 'dns') dnsHook.loadDnsAll();
   }, [tab]);
 
-  // Auto-open create modal when navigated from container card
+  // 컨테이너 카드에서 넘어온 경우 생성 모달을 자동으로 연다
   useEffect(() => {
     const upstream = searchParams.get('upstream');
     const name = searchParams.get('name');
@@ -66,7 +66,7 @@ export function NginxDashboard() {
 
   return (
     <div className="h-full overflow-auto p-4 sm:p-6 bg-gray-950">
-      {/* Header */}
+      {/* 헤더 */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-4">
         <h2 className="text-xl sm:text-2xl font-bold text-white flex items-center gap-2">
           <Globe size={22} className="text-green-400" />
@@ -94,7 +94,7 @@ export function NginxDashboard() {
         </div>
       </div>
 
-      {/* Tabs */}
+      {/* 탭 */}
       <div className="mb-4 -mx-4 overflow-x-auto px-4 sm:mx-0 sm:overflow-visible sm:px-0">
         <div className="inline-flex gap-1 bg-gray-900 p-1 rounded-lg">
           <button
@@ -133,7 +133,7 @@ export function NginxDashboard() {
         </div>
       </div>
 
-      {/* Test output */}
+      {/* 설정 테스트 결과 출력 */}
       {configHook.testOutput && (
         <div
           className={`mb-4 p-3 rounded-lg border text-sm font-mono whitespace-pre-wrap ${
@@ -164,7 +164,7 @@ export function NginxDashboard() {
         </div>
       )}
 
-      {/* ===== PROXY TAB ===== */}
+      {/* ===== 프록시 탭 ===== */}
       {tab === 'proxy' && (
         <SiteList
           sites={sitesHook.sites}
@@ -181,7 +181,7 @@ export function NginxDashboard() {
         />
       )}
 
-      {/* ===== SSL TAB ===== */}
+      {/* ===== SSL 탭 ===== */}
       {tab === 'ssl' && (
         <CertList
           certs={certsHook.certs}
@@ -198,7 +198,7 @@ export function NginxDashboard() {
         />
       )}
 
-      {/* ===== DNS TAB ===== */}
+      {/* ===== DNS 탭 ===== */}
       {tab === 'dns' && (
         <DnsChecker
           dnsResults={dnsHook.dnsResults}
@@ -214,7 +214,7 @@ export function NginxDashboard() {
         />
       )}
 
-      {/* ===== Create/Edit Proxy Modal ===== */}
+      {/* ===== 프록시 생성/수정 모달 ===== */}
       {sitesHook.showModal && (
         <SiteFormModal
           editingName={sitesHook.editingName}
@@ -226,7 +226,7 @@ export function NginxDashboard() {
         />
       )}
 
-      {/* ===== SSL Issue Modal (from proxy tab cert button) ===== */}
+      {/* ===== SSL 발급 모달 (프록시 탭의 인증서 버튼에서 열림) ===== */}
       {tab === 'proxy' && certsHook.showCertModal && (
         <SslIssueModal
           certForm={certsHook.certForm}

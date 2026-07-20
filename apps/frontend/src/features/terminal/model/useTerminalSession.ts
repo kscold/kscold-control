@@ -2,10 +2,7 @@ import { useState } from 'react';
 import type { TerminalSession } from '../model/terminal.types';
 
 /**
- * useTerminalSession Hook
- * Manages terminal session state and localStorage
- *
- * Extracted from ClaudeTerminal.tsx lines 22-23, 82-92, 188-206
+ * 터미널 세션 상태와 localStorage 저장을 관리하는 훅
  */
 export function useTerminalSession(storageKey: string) {
   const [session, setSession] = useState<TerminalSession>({
@@ -20,14 +17,14 @@ export function useTerminalSession(storageKey: string) {
   });
 
   /**
-   * Get saved session ID from localStorage
+   * localStorage에 저장된 세션 ID를 가져온다
    */
   const getSavedSessionId = (): string | null => {
     return localStorage.getItem(storageKey);
   };
 
   /**
-   * Update session when connected
+   * 연결이 완료되면 세션 정보를 갱신한다
    */
   const handleSessionReady = (data: {
     sessionId: string;
@@ -50,14 +47,14 @@ export function useTerminalSession(storageKey: string) {
   };
 
   /**
-   * Update connection status
+   * 연결 상태를 갱신한다
    */
   const setConnected = (connected: boolean) => {
     setSession((prev) => ({ ...prev, isConnected: connected }));
   };
 
   /**
-   * Update command count
+   * 명령어 사용 횟수를 갱신한다
    */
   const updateCommandCount = (count: number, limit: number) => {
     setSession((prev) => ({
@@ -68,7 +65,7 @@ export function useTerminalSession(storageKey: string) {
   };
 
   /**
-   * Clear session (logout or session close)
+   * 세션을 초기화한다 (로그아웃 또는 세션 종료 시)
    */
   const clearSession = () => {
     localStorage.removeItem(storageKey);

@@ -1,8 +1,7 @@
 import { SpinnerProps } from './types';
 
 /**
- * Reusable Spinner Component
- * Loading indicator with size variants
+ * 크기 variant를 지원하는 재사용 로딩 스피너 컴포넌트
  */
 export function Spinner({
   size = 'md',
@@ -50,8 +49,7 @@ export function Spinner({
 }
 
 /**
- * Loading State Component
- * Full page loading indicator with message
+ * 메시지와 함께 전체 화면 로딩 상태를 보여주는 컴포넌트
  */
 export function LoadingState({ message = 'Loading...' }: { message?: string }) {
   return (

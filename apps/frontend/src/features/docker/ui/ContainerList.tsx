@@ -11,8 +11,7 @@ interface ContainerListProps {
 }
 
 /**
- * ContainerList Component
- * Displays grid of container cards or empty state
+ * 컨테이너 카드를 그리드로 보여주거나, 없으면 빈 상태를 보여준다
  */
 export function ContainerList({
   containers,

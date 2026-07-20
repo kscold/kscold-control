@@ -1,10 +1,7 @@
 import { useAuth } from '../model/useAuth';
 
 /**
- * LoginForm Component
- * Login form UI with validation and error handling
- *
- * Extracted from LoginPage.tsx lines 28-86
+ * 입력 검증과 에러 처리를 포함한 로그인 폼 UI
  */
 export function LoginForm() {
   const {

@@ -12,18 +12,14 @@ interface TerminalProps {
 }
 
 /**
- * Terminal Component
- * Main terminal component with XTerm.js and Socket.io
- *
- * Refactored from ClaudeTerminal.tsx (284 LOC → ~80 LOC)
- * Uses FSD architecture with custom hooks
+ * XTerm.js와 Socket.io로 동작하는 메인 터미널 컴포넌트
  */
 export function Terminal({ terminalId, onSwitchToClaude }: TerminalProps) {
   const { token } = useAuthStore();
   const { showConfirm } = useModalStore();
   const storageKey = getTerminalSessionStorageKey(terminalId);
 
-  // Session management
+  // 세션 관리
   const {
     session,
     getSavedSessionId,
@@ -33,14 +29,14 @@ export function Terminal({ terminalId, onSwitchToClaude }: TerminalProps) {
     clearSession,
   } = useTerminalSession(storageKey);
 
-  // XTerm.js setup (must be called before socket)
+  // XTerm.js 초기화 (소켓보다 먼저 호출해야 한다)
   const { terminalRef, xterm } = useTerminalSetup({
     onData: (data) => socket.sendInput(data),
     onResize: (cols, rows) => socket.resize(cols, rows),
     onInterrupt: () => socket.interrupt(),
   });
 
-  // Socket.io connection
+  // Socket.io 연결
   const socket = useTerminalSocket({
     token,
     xterm,
@@ -52,7 +48,7 @@ export function Terminal({ terminalId, onSwitchToClaude }: TerminalProps) {
   });
 
   /**
-   * Execute claude command
+   * claude 명령어를 실행한다
    */
   const handleClaudeCommand = () => {
     if (onSwitchToClaude) {
@@ -63,7 +59,7 @@ export function Terminal({ terminalId, onSwitchToClaude }: TerminalProps) {
   };
 
   /**
-   * Close terminal session with confirmation
+   * 확인 절차를 거쳐 터미널 세션을 종료한다
    */
   const handleCloseSession = () => {
     showConfirm(

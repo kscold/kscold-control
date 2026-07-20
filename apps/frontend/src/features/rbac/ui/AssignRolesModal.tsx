@@ -9,8 +9,7 @@ interface AssignRolesModalProps {
 }
 
 /**
- * AssignRolesModal Component
- * Modal for assigning roles to users
+ * 사용자에게 역할을 할당하는 모달
  */
 export function AssignRolesModal({
   user,

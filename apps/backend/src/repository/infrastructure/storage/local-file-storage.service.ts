@@ -359,7 +359,7 @@ export class LocalFileStorageService implements IFileStorage, OnModuleInit {
       throw new Error(`version archive not found: ${safeVersion}`);
     }
 
-    // tar stores entries as ./path. Try both ./path and path.
+    // tar는 항목을 ./경로 형태로 저장하므로 ./경로와 경로 두 가지를 모두 시도한다.
     const normalized = relativePath.replace(/^\.\//, '').replace(/^\/+/, '');
     const candidates = [`./${normalized}`, normalized];
 

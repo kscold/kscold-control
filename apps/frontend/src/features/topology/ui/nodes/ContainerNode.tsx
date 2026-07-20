@@ -35,7 +35,7 @@ export const ContainerNode = memo(function ContainerNode({ data }: NodeProps) {
         className="!bg-green-500 !w-2.5 !h-2.5"
       />
 
-      {/* Header */}
+      {/* 헤더 */}
       <div
         className={`${meta.headerBg} rounded-t-xl px-3 py-2 flex items-center gap-2`}
       >
@@ -53,12 +53,12 @@ export const ContainerNode = memo(function ContainerNode({ data }: NodeProps) {
         </span>
       </div>
 
-      {/* Image */}
+      {/* 이미지 */}
       <div className="px-3 pt-2 pb-1">
         <p className="text-[9px] text-gray-500 font-mono truncate">{d.image}</p>
       </div>
 
-      {/* Tech Stack Badges */}
+      {/* 기술 스택 배지 */}
       {meta.stacks.length > 0 && (
         <div className="px-3 pb-2 flex flex-wrap gap-1">
           {meta.stacks.map((s, i) => (
@@ -91,7 +91,7 @@ export const ContainerNode = memo(function ContainerNode({ data }: NodeProps) {
         </div>
       )}
 
-      {/* Port Mappings */}
+      {/* 포트 매핑 */}
       {d.ports && Object.keys(d.ports).length > 0 && (
         <div className="px-3 py-1.5 border-t border-gray-800">
           <p className="text-[8px] text-gray-600 uppercase tracking-wider mb-1">
@@ -133,7 +133,7 @@ export const ContainerNode = memo(function ContainerNode({ data }: NodeProps) {
         </div>
       )}
 
-      {/* PM2 Processes */}
+      {/* PM2 프로세스 */}
       {pm2List.length > 0 && (
         <div className="px-3 py-1.5 border-t border-gray-800">
           <div className="flex items-center gap-1 mb-1.5">
@@ -162,7 +162,7 @@ export const ContainerNode = memo(function ContainerNode({ data }: NodeProps) {
         </div>
       )}
 
-      {/* System Services */}
+      {/* 시스템 서비스 */}
       {runtimeServices.length > 0 && (
         <div className="px-3 py-1.5 border-t border-gray-800">
           <div className="flex items-center gap-1 mb-1.5">
@@ -183,7 +183,7 @@ export const ContainerNode = memo(function ContainerNode({ data }: NodeProps) {
         </div>
       )}
 
-      {/* Stopped state */}
+      {/* 중지 상태 */}
       {!isRunning && (
         <div className="px-3 py-2 border-t border-gray-800 text-center">
           <p className="text-[9px] text-gray-600">컨테이너 중지됨</p>

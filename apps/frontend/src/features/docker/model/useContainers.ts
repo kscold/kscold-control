@@ -3,8 +3,7 @@ import { dockerService } from '@/entities/container';
 import type { Container } from '@/entities/container';
 
 /**
- * useContainers Hook
- * Fetches and manages container list state
+ * 컨테이너 목록을 조회하고 그 상태를 관리하는 훅
  */
 export function useContainers() {
   const [containers, setContainers] = useState<Container[]>([]);
@@ -27,7 +26,7 @@ export function useContainers() {
 
   useEffect(() => {
     loadContainers();
-    // Auto-refresh every 5 seconds
+    // 5초마다 자동 새로고침
     const interval = setInterval(loadContainers, 5000);
     return () => clearInterval(interval);
   }, []);

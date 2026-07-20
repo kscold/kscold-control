@@ -32,7 +32,7 @@ export function PortMappingList({
 
   return (
     <div className="grid gap-2">
-      {/* Header */}
+      {/* 헤더 */}
       {mappings.length > 0 && (
         <div className="grid grid-cols-[auto_80px_1fr_80px_1fr_1fr_auto] gap-3 px-4 py-2 text-xs text-gray-500 font-medium">
           <span></span>

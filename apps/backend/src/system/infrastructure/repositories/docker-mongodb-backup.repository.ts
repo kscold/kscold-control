@@ -85,7 +85,7 @@ export class DockerMongodbBackupRepository implements IMongodbBackupRepository {
             const { stdout } = await execFileAsync('du', ['-sh', backupPath]);
             size = stdout.trim().split(/\s+/)[0] ?? '-';
           } catch {
-            // A size lookup must not hide an otherwise valid backup.
+            // 크기 조회에 실패했다고 해서 멀쩡한 백업을 목록에서 빠뜨려선 안 된다.
           }
           return { date: entry.name, path: backupPath, size };
         }),

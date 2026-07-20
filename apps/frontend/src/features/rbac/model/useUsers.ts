@@ -3,8 +3,7 @@ import { rbacService } from '@/entities/user';
 import type { User } from '@/entities/user';
 
 /**
- * useUsers Hook
- * Fetches and manages users list state
+ * 사용자 목록을 조회하고 그 상태를 관리하는 훅
  */
 export function useUsers() {
   const [users, setUsers] = useState<User[]>([]);

@@ -19,8 +19,7 @@ interface CreateContainerModalProps {
 }
 
 /**
- * CreateContainerModal Component
- * Modal for creating new Docker instances via compose
+ * compose로 새 Docker 인스턴스를 생성하는 모달
  */
 export function CreateContainerModal({
   show,
