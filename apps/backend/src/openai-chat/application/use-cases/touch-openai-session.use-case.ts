@@ -1,11 +1,16 @@
-import { Injectable } from '@nestjs/common';
-import { TerminalSessionService } from '../../../terminal/application/services/terminal-session.service';
+import { Inject, Injectable } from '@nestjs/common';
+import { SESSION_MANAGER } from '../../../terminal/domain/ports/session-manager.port';
+import type { ISessionManager } from '../../../terminal/domain/ports/session-manager.port';
 
+/** OpenAI 챗 세션의 최근 활동 시각 갱신 */
 @Injectable()
 export class TouchOpenAISessionUseCase {
-  constructor(private readonly terminalSession: TerminalSessionService) {}
+  constructor(
+    @Inject(SESSION_MANAGER)
+    private readonly sessionManager: ISessionManager,
+  ) {}
 
   execute(sessionId: string, userId: string) {
-    return this.terminalSession.updateActivity(sessionId, userId);
+    return this.sessionManager.updateActivity(sessionId, userId);
   }
 }
