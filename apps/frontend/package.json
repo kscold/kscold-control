@@ -40,12 +40,12 @@
     "@types/react-dom": "^18.2.19",
     "@vitejs/plugin-react": "^5.0.0",
     "jsdom": "^26.1.0",
-    "postcss": "^8.5.19",
+    "postcss": "^8.5.20",
     "prettier": "^3.9.5",
-    "tailwindcss": "^4.1.0",
+    "tailwindcss": "^4.3.3",
     "typescript": "^5.2.2",
     "vite": "^6.0.0",
     "vitest": "^4.1.10",
-    "@tailwindcss/postcss": "^4.1.0"
+    "@tailwindcss/postcss": "^4.3.3"
   }
 }
