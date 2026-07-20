@@ -24,8 +24,6 @@ interface AuditRequest extends JwtRequest {
 }
 
 /**
- * AuditInterceptor
- *
  * @Audit() 데코레이터가 붙은 핸들러 실행 후 감사 로그를 자동으로 기록합니다.
  * 컨트롤러에서 AuditLogService 를 직접 주입하거나 호출할 필요가 없습니다.
  *
@@ -65,6 +63,8 @@ export class AuditInterceptor implements NestInterceptor {
           extra: req._auditExtra ?? {},
         };
 
+        const action =
+          typeof meta.action === 'function' ? meta.action(ctx) : meta.action;
         const summary =
           typeof meta.summary === 'function' ? meta.summary(ctx) : meta.summary;
         const targetId =
@@ -77,7 +77,7 @@ export class AuditInterceptor implements NestInterceptor {
         void this.auditLogService
           .record({
             domain: meta.domain,
-            action: meta.action,
+            action,
             summary,
             actorId,
             actorEmail,
@@ -87,7 +87,7 @@ export class AuditInterceptor implements NestInterceptor {
           })
           .catch((err: Error) => {
             this.logger.error(
-              `감사 로그 기록 실패 — action: ${meta.action}, reason: ${err.message}`,
+              `감사 로그 기록 실패 — action: ${action}, reason: ${err.message}`,
               err.stack,
             );
           });

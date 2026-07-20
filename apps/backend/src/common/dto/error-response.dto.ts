@@ -1,7 +1,4 @@
-/**
- * Error Response DTO
- * Standard format for error responses
- */
+/** 에러 응답의 표준 형식이다. */
 export class ErrorResponseDto {
   success: boolean;
   error: {
@@ -38,10 +35,7 @@ export class ErrorResponseDto {
   }
 }
 
-/**
- * Validation Error DTO
- * For validation errors with field-specific messages
- */
+/** 필드별 오류 메시지를 담는 검증 실패 응답이다. */
 export class ValidationErrorDto extends ErrorResponseDto {
   constructor(errors: Record<string, string[]>) {
     super('VALIDATION_ERROR', 'Validation failed', errors);
