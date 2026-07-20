@@ -6,8 +6,7 @@ interface RoleListProps {
 }
 
 /**
- * RoleList Component
- * Displays list of roles with their permissions
+ * 역할 목록을 각 역할의 권한과 함께 보여준다
  */
 export function RoleList({ roles }: RoleListProps) {
   return (

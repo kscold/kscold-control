@@ -1,4 +1,4 @@
-// Session storage keys live in the shared layer (cross-cutting concern).
+// 세션 스토리지 키는 여러 레이어가 공유하는 관심사라 shared 레이어에 둔다.
 export {
   CLAUDE_SESSION_STORAGE_KEY,
   getClaudeSessionStorageKey,

@@ -3,7 +3,7 @@ import type { FitAddon } from '@xterm/addon-fit';
 import type { Socket } from 'socket.io-client';
 
 /**
- * Terminal Session State
+ * 터미널 세션 상태
  */
 export interface TerminalSession {
   sessionId: string | null;
@@ -183,7 +183,7 @@ export interface ClaudeRuntimeDiagnostics {
 }
 
 /**
- * Terminal Socket Events
+ * 터미널 소켓 이벤트 정의
  */
 export interface TerminalSocketEvents {
   'terminal:session-ready': (data: {
@@ -206,7 +206,7 @@ export interface TerminalSocketEvents {
 }
 
 /**
- * Terminal Refs
+ * 터미널이 참조하는 인스턴스 모음
  */
 export interface TerminalRefs {
   xterm: XTermTerminal | null;

@@ -15,19 +15,14 @@ import type {
 } from '../model/topology.types';
 
 /**
- * Docker API Service
- * Centralizes all Docker-related API calls
- *
- * Replaces direct API calls in:
- * - DockerDashboard.tsx
- * - DashboardPage.tsx
+ * Docker 관련 API 호출을 한곳에 모아둔 서비스
  */
 export class DockerService extends BaseApiService {
   private readonly basePath = '/docker';
 
   /**
-   * Get all containers
-   * @returns List of containers
+   * 전체 컨테이너를 조회한다
+   * @returns 컨테이너 목록
    */
   async listContainers(): Promise<Container[]> {
     try {
@@ -42,9 +37,9 @@ export class DockerService extends BaseApiService {
   }
 
   /**
-   * Create a new container
-   * @param config Container configuration
-   * @returns Created container
+   * 새 컨테이너를 생성한다
+   * @param config 컨테이너 설정
+   * @returns 생성된 컨테이너
    */
   async createContainer(config: CreateContainerRequest): Promise<Container> {
     try {
@@ -60,8 +55,8 @@ export class DockerService extends BaseApiService {
   }
 
   /**
-   * Start a container
-   * @param id Container ID
+   * 컨테이너를 시작한다
+   * @param id 컨테이너 ID
    */
   async startContainer(id: string): Promise<void> {
     try {
@@ -73,8 +68,8 @@ export class DockerService extends BaseApiService {
   }
 
   /**
-   * Stop a container
-   * @param id Container ID
+   * 컨테이너를 중지한다
+   * @param id 컨테이너 ID
    */
   async stopContainer(id: string): Promise<void> {
     try {
@@ -86,8 +81,8 @@ export class DockerService extends BaseApiService {
   }
 
   /**
-   * Delete a container
-   * @param id Container ID
+   * 컨테이너를 삭제한다
+   * @param id 컨테이너 ID
    */
   async deleteContainer(id: string): Promise<void> {
     try {
@@ -99,9 +94,9 @@ export class DockerService extends BaseApiService {
   }
 
   /**
-   * Get container statistics
-   * @param id Container ID
-   * @returns Container stats
+   * 컨테이너 리소스 사용량 통계를 조회한다
+   * @param id 컨테이너 ID
+   * @returns 컨테이너 통계
    */
   async getContainerStats(id: string): Promise<ContainerStatsResponse> {
     try {
@@ -116,10 +111,10 @@ export class DockerService extends BaseApiService {
   }
 
   /**
-   * Stream container logs
-   * @param id Container ID
-   * @param lines Number of lines to retrieve
-   * @returns Log lines
+   * 컨테이너 로그를 가져온다
+   * @param id 컨테이너 ID
+   * @param lines 가져올 로그 줄 수
+   * @returns 로그 줄 목록
    */
   async getContainerLogs(id: string, lines: number = 100): Promise<string[]> {
     try {
@@ -135,9 +130,9 @@ export class DockerService extends BaseApiService {
   }
 
   /**
-   * Import an external container into management
-   * @param dockerId Docker container ID
-   * @returns Imported container
+   * 외부 컨테이너를 관리 대상으로 가져온다
+   * @param dockerId Docker 컨테이너 ID
+   * @returns 가져온 컨테이너
    */
   async importContainer(dockerId: string): Promise<Container> {
     try {
@@ -153,7 +148,7 @@ export class DockerService extends BaseApiService {
   }
 
   /**
-   * Create a new compose service (instance)
+   * 새 compose 서비스(인스턴스)를 생성한다
    */
   async createComposeService(config: {
     name: string;
@@ -191,7 +186,7 @@ export class DockerService extends BaseApiService {
   }
 
   /**
-   * Remove a compose service
+   * compose 서비스를 제거한다
    */
   async removeComposeService(name: string): Promise<void> {
     try {
@@ -276,5 +271,5 @@ export class DockerService extends BaseApiService {
   }
 }
 
-// Export singleton instance
+// 싱글턴 인스턴스로 내보낸다
 export const dockerService = new DockerService();

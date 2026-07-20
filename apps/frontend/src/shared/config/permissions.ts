@@ -1,6 +1,6 @@
 /**
- * Permission constants - mirrors backend PERMISSIONS
- * Use instead of hardcoded permission strings in UI components.
+ * 권한 상수 - 백엔드의 PERMISSIONS와 동일하게 유지한다
+ * UI 컴포넌트에서 권한을 문자열로 하드코딩하지 말고 이 상수를 사용한다.
  */
 export const PERMISSIONS = {
   CLAUDE_EXECUTE: 'claude:execute',

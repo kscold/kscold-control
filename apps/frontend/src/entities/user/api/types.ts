@@ -16,7 +16,7 @@ export interface AssignRolesRequest {
 }
 
 export interface UpdateTerminalLimitRequest {
-  limit: number; // -1 = unlimited
+  limit: number; // -1이면 무제한
 }
 
 export interface CreateRoleRequest {

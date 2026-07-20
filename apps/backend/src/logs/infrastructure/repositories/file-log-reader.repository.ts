@@ -52,8 +52,8 @@ export class FileLogReaderRepository implements ILogReader {
   }
 
   /**
-   * PM2 starts the production backend from apps/backend, while local commands
-   * usually start at the repository root. Resolve both layouts deliberately.
+   * 운영 환경에서 PM2는 apps/backend를 작업 디렉터리로 백엔드를 띄우지만,
+   * 로컬에서는 보통 저장소 루트에서 실행한다. 두 경우를 모두 명시적으로 탐색한다.
    */
   private findBackendLog(filename: 'out.log' | 'error.log'): string {
     const cwd = process.cwd();

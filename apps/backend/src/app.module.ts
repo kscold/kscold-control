@@ -19,7 +19,7 @@ import { RepositoryModule } from './repository/repository.module';
 import { AuditModule } from './audit/audit.module';
 import { SecurityModule } from './security/security.module';
 
-// Domain Entities (Clean Architecture)
+// 도메인 엔티티 (클린 아키텍처)
 import { User } from './rbac/domain/entities/user.entity';
 import { Role } from './rbac/domain/entities/role.entity';
 import { Permission } from './rbac/domain/entities/permission.entity';
@@ -44,7 +44,7 @@ import { AuditInterceptor } from './common/interceptors';
     // React 빌드 파일 서빙 (프로덕션)
     ServeStaticModule.forRoot({
       rootPath: join(__dirname, '..', '..', 'frontend', 'dist'),
-      // Express 5 / path-to-regexp v8: '/api/(.*)' is invalid.
+      // Express 5 / path-to-regexp v8에서는 '/api/(.*)' 형식을 쓸 수 없다.
       exclude: ['/api/{*any}'], // API 라우트만 제외, SPA 라우팅(/docker, /claude 등)은 index.html로
       serveRoot: '/',
     }),

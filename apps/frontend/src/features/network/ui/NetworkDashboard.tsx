@@ -40,7 +40,7 @@ export function NetworkDashboard() {
 
   return (
     <div className="h-full overflow-auto p-4 sm:p-6 bg-gray-950">
-      {/* Header */}
+      {/* 헤더 */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-4">
         <h2 className="text-xl sm:text-2xl font-bold text-white flex items-center gap-2">
           <Network size={22} className="text-purple-400" />
@@ -65,7 +65,7 @@ export function NetworkDashboard() {
         </div>
       </div>
 
-      {/* Static forwarding notice */}
+      {/* 고정 포트포워딩 안내 */}
       <div className="mb-4 p-3 rounded-xl border border-blue-900/40 bg-blue-950/20 flex flex-col sm:flex-row sm:items-center gap-3">
         <div className="flex items-start gap-2 flex-1 min-w-0">
           <Info size={15} className="text-blue-400 flex-shrink-0 mt-0.5" />
@@ -89,7 +89,7 @@ export function NetworkDashboard() {
         </a>
       </div>
 
-      {/* External IP + Info */}
+      {/* 외부 IP 및 안내 정보 */}
       <div className="flex flex-wrap gap-3 mb-4">
         <div className="bg-gray-900 border border-gray-700 rounded-xl px-4 py-3 flex items-center gap-3">
           <Server size={16} className="text-purple-400" />
@@ -122,7 +122,7 @@ export function NetworkDashboard() {
         </div>
       </div>
 
-      {/* Error */}
+      {/* 에러 표시 */}
       {error && (
         <div className="mb-4 p-3 rounded-lg border bg-yellow-950 border-yellow-700 text-yellow-300 text-sm flex items-center gap-2">
           <AlertTriangle size={16} />
@@ -138,7 +138,7 @@ export function NetworkDashboard() {
         </div>
       )}
 
-      {/* Mappings List */}
+      {/* 포트 매핑 목록 */}
       <PortMappingList
         mappings={mappings}
         loading={loading}
@@ -146,7 +146,7 @@ export function NetworkDashboard() {
         onDelete={handleDelete}
       />
 
-      {/* Create Modal */}
+      {/* 생성 모달 */}
       {showModal && (
         <CreateMappingModal
           form={form}

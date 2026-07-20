@@ -5,8 +5,8 @@ import {
 } from '@nestjs/common';
 
 /**
- * Business Exception Classes
- * Used when business rules are violated
+ * 비즈니스 예외 클래스 모음
+ * 업무 규칙을 위반했을 때 사용한다.
  */
 
 export class InsufficientPermissionsException extends ForbiddenException {

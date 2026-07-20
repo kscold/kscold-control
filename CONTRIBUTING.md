@@ -83,7 +83,7 @@ Common scopes: `frontend`, `backend`, `infra`, `ci`, `deps`.
 
 - **Backend** follows **Clean Architecture**: `domain → application → presentation`. Keep business logic out of controllers/gateways.
 - **Frontend** follows **Feature-Sliced Design (FSD)**:
-  - Import direction is one-way: `app → pages → features → entities → shared`.
+  - Import direction is one-way: `app → pages → widgets → features → entities → shared`.
   - **Never** import upward (e.g. `shared` must not import from `features`).
   - **Never** import sideways between slices (e.g. `features/docker` must not import from `features/dashboard`). Put shared code in `shared/`.
   - Import slices through their public API (`index.ts`), not internal files.

@@ -19,7 +19,7 @@ export function ChatMessageList({
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    // Auto-scroll when new messages arrive or during streaming
+    // 새 메시지가 도착하거나 스트리밍 중일 때 자동으로 스크롤한다
     const container = containerRef.current;
     if (!container) return;
 

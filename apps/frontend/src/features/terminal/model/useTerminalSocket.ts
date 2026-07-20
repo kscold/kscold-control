@@ -24,10 +24,7 @@ interface UseTerminalSocketProps {
 }
 
 /**
- * useTerminalSocket Hook
- * Manages Socket.io connection and event handlers
- *
- * Extracted from ClaudeTerminal.tsx lines 62-143
+ * Socket.io 연결과 터미널 이벤트 핸들러를 관리하는 훅
  */
 export function useTerminalSocket({
   token,
@@ -73,7 +70,7 @@ export function useTerminalSocket({
 
     socketRef.current = socket;
 
-    // Connection events
+    // 연결 관련 이벤트
     socket.on('connect', () => {
       handlersRef.current.onConnected();
     });
@@ -85,7 +82,7 @@ export function useTerminalSocket({
       );
     });
 
-    // Session ready
+    // 세션 준비 완료
     socket.on(
       'terminal:session-ready',
       (data: {
@@ -105,7 +102,7 @@ export function useTerminalSocket({
       },
     );
 
-    // Session history (restored on reconnect)
+    // 세션 히스토리 (재연결 시 복원됨)
     socket.on(
       'terminal:history',
       (data: {
@@ -115,21 +112,21 @@ export function useTerminalSocket({
           timestamp: string;
         }>;
       }) => {
-        // Clear terminal first
+        // 먼저 터미널을 비운다
         xterm.clear();
 
-        // Write history header
+        // 히스토리 헤더 출력
         xterm.writeln(
           `${TERMINAL_COLORS.cyan}━━━ 이전 세션 복원됨 ━━━${TERMINAL_COLORS.reset}\r\n`,
         );
 
-        // Replay all messages
+        // 모든 메시지를 순서대로 다시 출력
         data.messages.forEach((msg) => {
           if (msg.role === 'system') {
-            // Output from terminal
+            // 터미널에서 나온 출력
             xterm.write(msg.content);
           }
-          // User input is already shown in the terminal output, so we don't need to display it separately
+          // 사용자 입력은 이미 터미널 출력에 포함돼 있으므로 따로 표시하지 않는다
         });
 
         xterm.writeln(
@@ -138,27 +135,27 @@ export function useTerminalSocket({
       },
     );
 
-    // Terminal output
+    // 터미널 출력
     socket.on('terminal:output', (data: { type: string; content: string }) => {
       xterm.write(data.content);
       handlersRef.current.onOutput?.(data.content);
     });
 
-    // Error handling
+    // 에러 처리
     socket.on('terminal:error', (data: { message: string }) => {
       xterm.writeln(
         `\r\n${TERMINAL_COLORS.red}에러: ${data.message}${TERMINAL_COLORS.reset}\r\n`,
       );
     });
 
-    // Terminal exit
+    // 터미널 종료
     socket.on('terminal:exit', (data: { code: number }) => {
       xterm.writeln(
         `\r\n${TERMINAL_COLORS.yellow}터미널 종료 (코드 ${data.code})${TERMINAL_COLORS.reset}\r\n`,
       );
     });
 
-    // Command count updates
+    // 명령어 사용 횟수 갱신
     socket.on(
       'terminal:command-count',
       (data: { count: number; limit: number; remaining: number }) => {
@@ -171,7 +168,7 @@ export function useTerminalSocket({
       },
     );
 
-    // Command limit reached
+    // 명령어 사용 제한 도달
     socket.on(
       'terminal:limit-reached',
       (data: { limit: number; count: number }) => {
@@ -193,7 +190,7 @@ export function useTerminalSocket({
   }, [token, xterm, savedSessionId, showAlert]);
 
   /**
-   * Send input to terminal
+   * 터미널로 입력을 전송한다
    */
   const sendInput = (data: string) => {
     if (socketRef.current) {
@@ -202,7 +199,7 @@ export function useTerminalSocket({
   };
 
   /**
-   * Resize terminal
+   * 터미널 크기를 조절한다
    */
   const resize = (cols: number, rows: number) => {
     if (socketRef.current) {
@@ -211,7 +208,7 @@ export function useTerminalSocket({
   };
 
   /**
-   * Send interrupt signal (Ctrl+C)
+   * 인터럽트 시그널(Ctrl+C)을 전송한다
    */
   const interrupt = () => {
     if (socketRef.current) {
@@ -220,7 +217,7 @@ export function useTerminalSocket({
   };
 
   /**
-   * Close session
+   * 세션을 종료한다
    */
   const closeSession = () => {
     if (socketRef.current) {
@@ -229,7 +226,7 @@ export function useTerminalSocket({
   };
 
   /**
-   * Clear terminal history (when user types 'clear')
+   * 터미널 히스토리를 비운다 (사용자가 'clear'를 입력했을 때)
    */
   const clearHistory = () => {
     if (socketRef.current) {
@@ -238,7 +235,7 @@ export function useTerminalSocket({
   };
 
   /**
-   * Delete session and history permanently
+   * 세션과 히스토리를 영구 삭제한다
    */
   const deleteSession = (sessionId: string) => {
     if (socketRef.current) {

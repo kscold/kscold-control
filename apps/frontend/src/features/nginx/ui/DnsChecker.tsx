@@ -50,7 +50,7 @@ export function DnsChecker({
 }: DnsCheckerProps) {
   return (
     <>
-      {/* Public IP + Refresh */}
+      {/* 공인 IP 표시 및 새로고침 */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 mb-4">
         <div className="bg-gray-900 border border-gray-700 rounded-xl px-4 py-3 flex items-center gap-3">
           <Server size={16} className="text-blue-400" />
@@ -82,7 +82,7 @@ export function DnsChecker({
         </button>
       </div>
 
-      {/* Single domain check */}
+      {/* 단일 도메인 조회 */}
       <div className="bg-gray-900 border border-gray-700 rounded-xl p-4 mb-4">
         <p className="text-sm text-gray-400 mb-2">개별 도메인 DNS 확인</p>
         <div className="flex gap-2">
@@ -146,7 +146,7 @@ export function DnsChecker({
         )}
       </div>
 
-      {/* All sites DNS status */}
+      {/* 전체 사이트 DNS 상태 */}
       <div className="mb-3 flex items-center gap-2">
         <h3 className="text-sm font-semibold text-gray-300">
           프록시 사이트 DNS 상태
@@ -185,7 +185,7 @@ export function DnsChecker({
                 </span>
               </div>
 
-              {/* Records table */}
+              {/* 레코드 테이블 */}
               <div className="bg-gray-950 rounded-lg overflow-hidden">
                 <div className="grid grid-cols-[auto_60px_100px_1fr_auto_auto] gap-2 px-3 py-1.5 text-xs text-gray-500 border-b border-gray-800">
                   <span></span>
@@ -231,7 +231,7 @@ export function DnsChecker({
                 ))}
               </div>
 
-              {/* Gabia guide for missing/mismatch records */}
+              {/* 레코드가 없거나 불일치할 때 보여주는 가비아 설정 안내 */}
               {!result.allOk && (
                 <div className="mt-3 bg-blue-950/30 border border-blue-900/50 rounded-lg p-3 text-xs text-blue-300">
                   <p className="font-semibold mb-1">가비아 DNS 설정 안내:</p>

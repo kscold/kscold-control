@@ -3,8 +3,7 @@ import { rbacService } from '@/entities/user';
 import { useModalStore } from '@/shared/model';
 
 /**
- * useUserActions Hook
- * Handles all user-related actions (CRUD, roles, terminal limits)
+ * 사용자 관련 동작을 모두 처리하는 훅 (CRUD, 역할, 터미널 제한)
  */
 export function useUserActions(onSuccess?: () => void) {
   const [loading, setLoading] = useState(false);

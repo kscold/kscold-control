@@ -21,8 +21,7 @@ const DEFAULT_CONFIG: ContainerConfig = {
 };
 
 /**
- * useCreateContainer Hook
- * Manages container creation via docker-compose integration
+ * docker-compose 연동으로 컨테이너를 생성하는 과정을 관리하는 훅
  */
 export function useCreateContainer(onSuccess?: () => void) {
   const [isCreating, setIsCreating] = useState(false);
@@ -78,7 +77,7 @@ export function useCreateContainer(onSuccess?: () => void) {
     try {
       setIsCreating(true);
 
-      // Use compose service for creation (adds to docker-compose.yml + starts)
+      // compose 서비스로 생성한다 (docker-compose.yml에 추가한 뒤 기동)
       await dockerService.createComposeService({
         name: config.name,
         image: config.image,

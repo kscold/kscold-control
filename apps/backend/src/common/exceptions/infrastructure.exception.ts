@@ -4,8 +4,8 @@ import {
 } from '@nestjs/common';
 
 /**
- * Infrastructure Exception Classes
- * Used when external services or infrastructure fail
+ * 인프라 예외 클래스 모음
+ * 외부 서비스나 인프라 연동이 실패했을 때 사용한다.
  */
 
 export class DockerConnectionException extends ServiceUnavailableException {

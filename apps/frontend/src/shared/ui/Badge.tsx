@@ -1,8 +1,7 @@
 import { BadgeProps } from './types';
 
 /**
- * Reusable Badge Component
- * Used for status indicators and labels
+ * 상태 표시와 라벨에 쓰이는 재사용 배지 컴포넌트
  */
 export function Badge({
   variant = 'default',
@@ -26,8 +25,7 @@ export function Badge({
 }
 
 /**
- * Status Badge Component
- * Specialized badge for Docker container statuses
+ * Docker 컨테이너 상태 전용 배지 컴포넌트
  */
 export function StatusBadge({ status }: { status: string }) {
   const getVariant = (status: string): BadgeProps['variant'] => {
