@@ -52,14 +52,15 @@ kscold-control/
 │           │   ├── terminal/
 │           │   ├── docker/
 │           │   └── ...
-│           └── pages/
+│           ├── widgets/          # Compositions of multiple features
+│           └── pages/            # One slice per route
 ├── nginx/                    # Nginx config templates
 ├── scripts/                  # Utility shell scripts
 └── .env.example              # Environment variable reference
 ```
 
 **Backend** — Domain → Application → Presentation (Clean Architecture)  
-**Frontend** — Feature-Sliced Design (FSD): entities / features / pages  
+**Frontend** — Feature-Sliced Design (FSD): entities / features / widgets / pages  
 **Realtime** — Socket.io namespaces: `/terminal` · `/claude-chat` · `/openai-chat`  
 **Package manager** — pnpm workspaces + Turborepo
 
