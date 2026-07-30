@@ -8,6 +8,8 @@ import {
 } from 'node:fs';
 import path from 'node:path';
 import process from 'node:process';
+import { getHomeDirectory } from './runtime-directory.util';
+import { shellQuote } from './shell-quote.util';
 
 type ClaudeBinarySource =
   | 'env'
@@ -25,9 +27,7 @@ interface ClaudeBinaryCandidate {
 
 export interface ClaudeBinaryResolution {
   binaryPath: string | null;
-  binaryDir: string | null;
   launchCommand: string;
-  shellQuotedBinaryPath: string | null;
   source: ClaudeBinarySource;
 }
 
@@ -38,10 +38,6 @@ function isExecutable(targetPath: string): boolean {
   } catch {
     return false;
   }
-}
-
-function shellQuote(value: string): string {
-  return `'${value.replace(/'/g, `'"'"'`)}'`;
 }
 
 function readExtensionCandidates(
@@ -91,7 +87,7 @@ function resolveClaudeFromPath(): string | null {
 }
 
 export function getClaudeBinaryCandidates(
-  homeDir = process.env.HOME || '/Users/kscold',
+  homeDir = getHomeDirectory(),
 ): ClaudeBinaryCandidate[] {
   const envPath =
     process.env.CLAUDE_CODE_BIN || process.env.CLAUDE_BINARY_PATH || null;
@@ -119,7 +115,7 @@ export function getClaudeBinaryCandidates(
 }
 
 export function resolveClaudeBinary(
-  homeDir = process.env.HOME || '/Users/kscold',
+  homeDir = getHomeDirectory(),
 ): ClaudeBinaryResolution {
   const resolvedCandidate = getClaudeBinaryCandidates(homeDir).find(
     (candidate) => isExecutable(candidate.binaryPath),
@@ -128,18 +124,14 @@ export function resolveClaudeBinary(
   if (!resolvedCandidate) {
     return {
       binaryPath: null,
-      binaryDir: null,
       launchCommand: 'claude',
-      shellQuotedBinaryPath: null,
       source: 'missing',
     };
   }
 
   return {
     binaryPath: resolvedCandidate.binaryPath,
-    binaryDir: path.dirname(resolvedCandidate.binaryPath),
     launchCommand: shellQuote(resolvedCandidate.binaryPath),
-    shellQuotedBinaryPath: shellQuote(resolvedCandidate.binaryPath),
     source: resolvedCandidate.source,
   };
 }

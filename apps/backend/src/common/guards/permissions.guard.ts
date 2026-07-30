@@ -5,14 +5,16 @@ import {
   ForbiddenException,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
+import { PERMISSIONS_KEY } from '../decorators/permissions.decorator';
 
 @Injectable()
 export class PermissionsGuard implements CanActivate {
   constructor(private reflector: Reflector) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
+    // 메타데이터 키는 데코레이터가 정의한 상수를 그대로 쓴다 (문자열 하드코딩 금지)
     const requiredPermissions = this.reflector.get<string[]>(
-      'permissions',
+      PERMISSIONS_KEY,
       context.getHandler(),
     );
 
