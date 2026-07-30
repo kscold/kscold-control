@@ -30,14 +30,6 @@ const DOCKER_LINE_OPTIONS: LogLineCount[] = [
   10000,
   'all',
 ];
-const QUICK_CONTAINER_NAMES = [
-  'kscold-nginx',
-  'kscold-infra-db',
-  'ubuntu-blog',
-  'ubuntu-slacord',
-  'ubuntu-congbang',
-  'ubuntu-galjido',
-] as const;
 const DOCKER_SINCE_OPTIONS: Array<{ value: DockerLogSince; label: string }> = [
   { value: 'none', label: '전체 기간' },
   { value: '15m', label: '최근 15분' },
@@ -211,10 +203,11 @@ export function LogsViewer() {
   });
 
   const isDockerLog = logType === 'docker';
+  // 퀵 필터는 실행 중인 컨테이너만 보여준다.
+  // 컨테이너 이름을 하드코딩하면 인프라가 바뀔 때마다 목록이 낡으므로
+  // (제거된 galjido 가 남아 있었다) 현재 상태를 기준으로 판단한다.
   const quickContainers = dockerContainers.filter((container) =>
-    QUICK_CONTAINER_NAMES.includes(
-      container.name as (typeof QUICK_CONTAINER_NAMES)[number],
-    ),
+    container.status.startsWith('Up'),
   );
   const lineOptions = isDockerLog ? DOCKER_LINE_OPTIONS : DEFAULT_LINE_OPTIONS;
   const sourceLabel =

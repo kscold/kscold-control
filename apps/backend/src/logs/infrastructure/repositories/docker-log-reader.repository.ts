@@ -10,6 +10,7 @@ import { promisify } from 'util';
 import { IDockerLogReader } from '../../domain/repositories/log-reader.repository';
 import {
   DockerContainerSummary,
+  DockerContainerRole,
   DockerLogArchiveSource,
   DockerLogReadOptions,
 } from '../../domain/types/log.type';
@@ -252,12 +253,27 @@ export class DockerLogReaderRepository implements IDockerLogReader {
         .filter((line) => line.trim())
         .map((line) => {
           const [id, name, status] = line.split('|');
-          return { id, name, status };
+          return { id, name, status, role: this.resolveRole(name) };
         });
     } catch (error) {
       this.logger.error('Failed to get docker containers:', error.message);
       return [];
     }
+  }
+
+  /**
+   * 컨테이너 역할을 판별한다.
+   *
+   * 이름 목록을 프론트에 하드코딩하면 컨테이너가 늘거나 사라질 때마다 낡는다.
+   * (실제로 제거된 galjido 가 UI 목록에 남고 신규 컨테이너는 빠져 있었다)
+   * 분류는 서버가 책임지고, 화면은 내려받은 역할로 정렬·필터만 한다.
+   */
+  private resolveRole(name: string): DockerContainerRole {
+    const isInfra =
+      name.includes('nginx') ||
+      name.includes('infra-db') ||
+      name.includes('qdrant');
+    return isInfra ? 'infra' : 'app';
   }
 
   private async inspectContainerLogFile(

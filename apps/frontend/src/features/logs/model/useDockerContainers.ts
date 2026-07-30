@@ -2,14 +2,22 @@ import { useState } from 'react';
 import { logsService } from '../api/logs.service';
 import type { DockerContainer } from './logs.types';
 
-const PREFERRED_CONTAINER_ORDER = [
-  'kscold-nginx',
-  'kscold-infra-db',
-  'ubuntu-blog',
-  'ubuntu-slacord',
-  'ubuntu-congbang',
-  'ubuntu-galjido',
-] as const;
+/**
+ * 인프라 컨테이너를 앞에 두고 같은 역할끼리는 이름순으로 정렬한다.
+ *
+ * 과거에는 컨테이너 이름을 하드코딩한 목록으로 순서를 정했는데,
+ * 제거된 컨테이너(galjido)가 남고 신규 컨테이너는 빠져 목록이 낡아 있었다.
+ * 역할 분류는 서버가 내려주므로 컨테이너가 바뀌어도 이 코드는 그대로 둔다.
+ */
+function compareByRoleThenName(
+  left: DockerContainer,
+  right: DockerContainer,
+): number {
+  const rank = (container: DockerContainer) =>
+    container.role === 'infra' ? 0 : 1;
+  const diff = rank(left) - rank(right);
+  return diff !== 0 ? diff : left.name.localeCompare(right.name);
+}
 
 export function useDockerContainers() {
   const [dockerContainers, setDockerContainers] = useState<DockerContainer[]>(
@@ -20,22 +28,7 @@ export function useDockerContainers() {
   const loadDockerContainers = async () => {
     try {
       const containers = await logsService.listDockerContainers();
-      const sorted = [...containers].sort((left, right) => {
-        const leftPriority = PREFERRED_CONTAINER_ORDER.indexOf(
-          left.name as (typeof PREFERRED_CONTAINER_ORDER)[number],
-        );
-        const rightPriority = PREFERRED_CONTAINER_ORDER.indexOf(
-          right.name as (typeof PREFERRED_CONTAINER_ORDER)[number],
-        );
-
-        if (leftPriority !== -1 || rightPriority !== -1) {
-          if (leftPriority === -1) return 1;
-          if (rightPriority === -1) return -1;
-          return leftPriority - rightPriority;
-        }
-
-        return left.name.localeCompare(right.name);
-      });
+      const sorted = [...containers].sort(compareByRoleThenName);
 
       setDockerContainers(sorted);
 
