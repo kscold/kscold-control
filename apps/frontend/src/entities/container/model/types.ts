@@ -39,12 +39,3 @@ export interface ComposeProvisioningTemplate {
   ports: Record<string, number>;
 }
 
-export interface CreateContainerConfig {
-  name: string;
-  image: string;
-  cpus: number;
-  memory: string;
-  sshPort: number;
-  httpPort: number;
-  environment?: Record<string, string>;
-}

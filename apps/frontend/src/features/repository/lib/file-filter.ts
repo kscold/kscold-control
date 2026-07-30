@@ -208,10 +208,6 @@ export function getExcludeReason(
   return null;
 }
 
-export function shouldExcludePath(relativePath: string, size = 0): boolean {
-  return getExcludeReason(relativePath, size) !== null;
-}
-
 export function filterFiles<
   T extends { relativePath: string; file: { size: number } },
 >(files: T[]): { kept: T[]; stats: FilterStats } {
