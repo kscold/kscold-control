@@ -8,5 +8,8 @@ export * from './assign-roles.use-case';
 // Role Use Cases
 export * from './list-roles.use-case';
 
+// Permission Use Cases
+export * from './list-permissions.use-case';
+
 // Terminal Limit Use Cases
 export * from './manage-terminal-limit.use-case';

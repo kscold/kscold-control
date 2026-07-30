@@ -24,6 +24,7 @@ import {
   ListUsersUseCase,
   AssignRolesUseCase,
   ListRolesUseCase,
+  ListPermissionsUseCase,
   ManageTerminalLimitUseCase,
 } from '../../application/use-cases';
 import {
@@ -80,6 +81,7 @@ export class RbacController {
     private readonly listUsersUseCase: ListUsersUseCase,
     private readonly assignRolesUseCase: AssignRolesUseCase,
     private readonly listRolesUseCase: ListRolesUseCase,
+    private readonly listPermissionsUseCase: ListPermissionsUseCase,
     private readonly manageTerminalLimitUseCase: ManageTerminalLimitUseCase,
   ) {}
 
@@ -89,6 +91,15 @@ export class RbacController {
   @RequirePermissions(PERMISSIONS.RBAC_MANAGE)
   async getRoles() {
     return this.listRolesUseCase.execute();
+  }
+
+  // ==================== Permission Endpoints ====================
+
+  /** 역할에 부여할 수 있는 전체 권한 목록 (DB 기준) */
+  @Get('permissions')
+  @RequirePermissions(PERMISSIONS.RBAC_MANAGE)
+  async getPermissions() {
+    return this.listPermissionsUseCase.execute();
   }
 
   // ==================== User Endpoints ====================
