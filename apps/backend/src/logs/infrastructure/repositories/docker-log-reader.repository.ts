@@ -7,9 +7,11 @@ import {
 import * as fs from 'fs';
 import * as path from 'path';
 import { promisify } from 'util';
+import { shellQuote } from '../../../common/utils';
 import { IDockerLogReader } from '../../domain/repositories/log-reader.repository';
 import {
   DockerContainerSummary,
+  DockerContainerRole,
   DockerLogArchiveSource,
   DockerLogReadOptions,
 } from '../../domain/types/log.type';
@@ -99,8 +101,8 @@ export class DockerLogReaderRepository implements IDockerLogReader {
       }
 
       const readerCommand = source.compressed
-        ? `gzip -cd -- ${this.quoteShell(source.path)}`
-        : `cat -- ${this.quoteShell(source.path)}`;
+        ? `gzip -cd -- ${shellQuote(source.path)}`
+        : `cat -- ${shellQuote(source.path)}`;
       const remoteCommand =
         options.tail === 'all'
           ? readerCommand
@@ -144,7 +146,7 @@ export class DockerLogReaderRepository implements IDockerLogReader {
       const directory = path.posix.dirname(logInfo.logPath);
       const basename = path.posix.basename(logInfo.logPath);
       const listCommand = [
-        `cd ${this.quoteShell(directory)}`,
+        `cd ${shellQuote(directory)}`,
         `for file in ${basename}*; do`,
         '  [ -f "$file" ] || continue',
         `  stat -c '%n|%s|%Y' "$file"`,
@@ -252,12 +254,27 @@ export class DockerLogReaderRepository implements IDockerLogReader {
         .filter((line) => line.trim())
         .map((line) => {
           const [id, name, status] = line.split('|');
-          return { id, name, status };
+          return { id, name, status, role: this.resolveRole(name) };
         });
     } catch (error) {
       this.logger.error('Failed to get docker containers:', error.message);
       return [];
     }
+  }
+
+  /**
+   * 컨테이너 역할을 판별한다.
+   *
+   * 이름 목록을 프론트에 하드코딩하면 컨테이너가 늘거나 사라질 때마다 낡는다.
+   * (실제로 제거된 galjido 가 UI 목록에 남고 신규 컨테이너는 빠져 있었다)
+   * 분류는 서버가 책임지고, 화면은 내려받은 역할로 정렬·필터만 한다.
+   */
+  private resolveRole(name: string): DockerContainerRole {
+    const isInfra =
+      name.includes('nginx') ||
+      name.includes('infra-db') ||
+      name.includes('qdrant');
+    return isInfra ? 'infra' : 'app';
   }
 
   private async inspectContainerLogFile(
@@ -303,27 +320,20 @@ export class DockerLogReaderRepository implements IDockerLogReader {
     return normalized;
   }
 
-  private quoteShell(value: string): string {
-    return `'${value.replace(/'/g, `'\\''`)}'`;
-  }
-
   private async runDockerHostShell(
     command: string,
     maxBuffer: number,
     localPath?: string,
   ): Promise<string> {
     if (localPath && fs.existsSync(localPath)) {
-      const { stdout } = await execAsync(
-        `/bin/sh -lc ${this.quoteShell(command)}`,
-        {
-          maxBuffer,
-        },
-      );
+      const { stdout } = await execAsync(`/bin/sh -lc ${shellQuote(command)}`, {
+        maxBuffer,
+      });
       return stdout;
     }
 
     const { stdout } = await execAsync(
-      `colima ssh -- sudo sh -lc ${this.quoteShell(command)}`,
+      `colima ssh -- sudo sh -lc ${shellQuote(command)}`,
       { maxBuffer },
     );
     return stdout;

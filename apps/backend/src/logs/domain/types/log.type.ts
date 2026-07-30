@@ -19,10 +19,18 @@ export interface Pm2LogResult {
   error: string[];
 }
 
+/** 컨테이너 역할 — 로그 화면의 정렬·즐겨찾기 기준으로 쓰인다 */
+export type DockerContainerRole = 'infra' | 'app';
+
 export interface DockerContainerSummary {
   id: string;
   name: string;
   status: string;
+  /**
+   * 인프라(nginx·DB 등) 인지 애플리케이션인지.
+   * 프론트가 이름 목록을 하드코딩하지 않도록 서버가 분류해서 내려준다.
+   */
+  role: DockerContainerRole;
 }
 
 export interface DockerLogReadOptions {

@@ -4,7 +4,7 @@ import {
   getDiskProgressTone,
 } from '../lib/dashboard.colors';
 import type { SystemInfo } from '../model/dashboard.types';
-import { formatBytes } from '../lib/dashboard.utils';
+import { formatBytes } from '@/shared/lib';
 import { MetricCard } from './MetricCard';
 import { StackedUsageBar } from './StackedUsageBar';
 

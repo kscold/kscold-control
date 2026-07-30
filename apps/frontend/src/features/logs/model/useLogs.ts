@@ -8,6 +8,7 @@ import type {
   LogLineCount,
   LogType,
 } from '../model/logs.types';
+import { LIVE_SOURCE_ID } from '../lib/logs.constants';
 
 interface UseLogsOptions {
   selectedContainer: string;
@@ -21,7 +22,6 @@ type StreamStatus =
 const DEFAULT_LINE_COUNT = 200;
 const STREAM_CATCHUP_LINE_COUNT = 500;
 const DOCKER_TAIL_STEPS: LogLineCount[] = [200, 500, 1000, 5000, 10000, 'all'];
-const LIVE_SOURCE_ID = 'live';
 const STREAM_RECONNECT_MAX_ATTEMPTS = 10;
 
 function capStreamLines(lines: string[], lineCount: LogLineCount) {

@@ -62,63 +62,6 @@ const HOST_Y = 180;
 const INFRA_Y = 410;
 const SITE_Y = 800;
 const APP_Y = 1160;
-const INFERRED_SITE_HINTS: NginxSite[] = [
-  {
-    name: 'control',
-    domain: 'control.kscold.com',
-    upstream: 'http://host.docker.internal:4000',
-    ssl: true,
-    sslCert: '',
-    sslKey: '',
-    websocket: true,
-    enabled: true,
-    source: 'inferred',
-  },
-  {
-    name: 'slacord',
-    domain: 'slacord.cloud',
-    upstream: 'http://ubuntu-slacord:3002',
-    ssl: true,
-    sslCert: '',
-    sslKey: '',
-    websocket: true,
-    enabled: true,
-    source: 'inferred',
-  },
-  {
-    name: 'blog-main',
-    domain: 'kscold.com',
-    upstream: 'http://ubuntu-blog:3000',
-    ssl: true,
-    sslCert: '',
-    sslKey: '',
-    websocket: true,
-    enabled: true,
-    source: 'inferred',
-  },
-  {
-    name: 'congbang',
-    domain: 'congbang.kscold.com',
-    upstream: 'http://ubuntu-congbang:3000',
-    ssl: true,
-    sslCert: '',
-    sslKey: '',
-    websocket: true,
-    enabled: true,
-    source: 'inferred',
-  },
-  {
-    name: 'galjido',
-    domain: 'galjido.kscold.com',
-    upstream: 'http://ubuntu-galjido:8080',
-    ssl: true,
-    sslCert: '',
-    sslKey: '',
-    websocket: false,
-    enabled: true,
-    source: 'inferred',
-  },
-];
 
 @Injectable()
 export class DockerTopologyService {
@@ -137,11 +80,9 @@ export class DockerTopologyService {
       this.listContainersUseCase.execute(undefined),
       this.nginxConfigRepository.list(),
     ]);
-    // server_name(도메인)이 없는 설정(예: ip-blocklist.conf 같은 공용 include)은
-    // 토폴로지의 사이트 노드가 아니므로 제외함. 이름 없는 빈 노드 렌더링 방지 목적임.
-    const sites = this.mergeSites(configuredSites, containers).filter(
-      (site) => site.domain && site.domain.trim().length > 0,
-    );
+    // 사이트가 아닌 공용 include(ip-blocklist.conf 등) 제외는
+    // 사이트 개념을 소유한 nginx 설정 리포지토리에서 이미 처리한다.
+    const sites = this.mergeSites(configuredSites, containers);
 
     const processMap = await this.fetchProcesses(containers);
     const composeServices = new Set(this.composeService.listServices());
@@ -492,9 +433,16 @@ export class DockerTopologyService {
     });
   }
 
+  /**
+   * nginx 설정에서 읽은 사이트 목록을 도메인 기준으로 정규화한다.
+   *
+   * 과거에는 설정 파싱이 실패할 때를 대비한 하드코딩 폴백(INFERRED_SITE_HINTS)이 있었으나,
+   * 파싱이 정상 동작해 항상 무시되는 죽은 코드였고 폐기된 도메인(galjido)이 남아 있어 제거했다.
+   * 사이트 정보의 단일 출처는 nginx 설정 파일이다.
+   */
   private mergeSites(
     configuredSites: NginxSite[],
-    containers: ContainerResponseDto[],
+    _containers: ContainerResponseDto[],
   ): NginxSite[] {
     const merged = new Map<string, NginxSite>();
 
@@ -505,32 +453,7 @@ export class DockerTopologyService {
       });
     });
 
-    INFERRED_SITE_HINTS.forEach((hint) => {
-      if (!this.isHintRelevant(hint, containers)) {
-        return;
-      }
-
-      if (merged.has(hint.domain)) {
-        return;
-      }
-
-      merged.set(hint.domain, hint);
-    });
-
     return Array.from(merged.values());
-  }
-
-  private isHintRelevant(
-    hint: NginxSite,
-    containers: ContainerResponseDto[],
-  ): boolean {
-    if (this.isLocalControlUpstream(hint.upstream)) {
-      return true;
-    }
-
-    return containers.some((container) =>
-      this.matchesUpstreamHost(hint.upstream, container.name),
-    );
   }
 
   private async fetchProcesses(

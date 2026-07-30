@@ -18,6 +18,8 @@ import type {
   LogLineCount,
   LogType,
 } from '../model/logs.types';
+import { LIVE_SOURCE_ID } from '../lib/logs.constants';
+import { formatBytes, formatShortDateTime } from '@/shared/lib';
 
 const DEFAULT_LINE_OPTIONS: LogLineCount[] = [50, 100, 200, 500, 1000];
 const DOCKER_LINE_OPTIONS: LogLineCount[] = [
@@ -30,14 +32,6 @@ const DOCKER_LINE_OPTIONS: LogLineCount[] = [
   10000,
   'all',
 ];
-const QUICK_CONTAINER_NAMES = [
-  'kscold-nginx',
-  'kscold-infra-db',
-  'ubuntu-blog',
-  'ubuntu-slacord',
-  'ubuntu-congbang',
-  'ubuntu-galjido',
-] as const;
 const DOCKER_SINCE_OPTIONS: Array<{ value: DockerLogSince; label: string }> = [
   { value: 'none', label: '전체 기간' },
   { value: '15m', label: '최근 15분' },
@@ -62,56 +56,9 @@ const NGINX_FILTER_OPTIONS: Array<{
   { value: 'nginx-access', label: 'Access' },
   { value: 'nginx-error', label: 'Nginx Error' },
 ];
-const LIVE_SOURCE_ID = 'live';
 
 function formatLineOption(option: LogLineCount) {
   return option === 'all' ? '전체' : `${option} 줄`;
-}
-
-function formatBytes(size: number) {
-  if (size <= 0) {
-    return '0 B';
-  }
-
-  const units = ['B', 'KB', 'MB', 'GB'];
-  const exponent = Math.min(
-    Math.floor(Math.log(size) / Math.log(1024)),
-    units.length - 1,
-  );
-  const value = size / 1024 ** exponent;
-  return `${value.toFixed(value >= 10 || exponent === 0 ? 0 : 1)} ${units[exponent]}`;
-}
-
-function formatSourceTimestamp(value: string) {
-  const parsed = new Date(value);
-  if (Number.isNaN(parsed.getTime())) {
-    return value;
-  }
-
-  return parsed.toLocaleString('ko-KR', {
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
-}
-
-function formatScopeTimestamp(value: string | null) {
-  if (!value) {
-    return null;
-  }
-
-  const parsed = new Date(value);
-  if (Number.isNaN(parsed.getTime())) {
-    return value;
-  }
-
-  return parsed.toLocaleString('ko-KR', {
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
 }
 
 function getDockerBadgeTone(name: string) {
@@ -145,8 +92,8 @@ function getWindowLabel(
     );
   }
 
-  const start = formatScopeTimestamp(window.since) ?? '시작 미지정';
-  const end = formatScopeTimestamp(window.until) ?? '현재 시점';
+  const start = formatShortDateTime(window.since, '시작 미지정');
+  const end = formatShortDateTime(window.until, '현재 시점');
   return `${start} ~ ${end}`;
 }
 
@@ -211,10 +158,11 @@ export function LogsViewer() {
   });
 
   const isDockerLog = logType === 'docker';
+  // 퀵 필터는 실행 중인 컨테이너만 보여준다.
+  // 컨테이너 이름을 하드코딩하면 인프라가 바뀔 때마다 목록이 낡으므로
+  // (제거된 galjido 가 남아 있었다) 현재 상태를 기준으로 판단한다.
   const quickContainers = dockerContainers.filter((container) =>
-    QUICK_CONTAINER_NAMES.includes(
-      container.name as (typeof QUICK_CONTAINER_NAMES)[number],
-    ),
+    container.status.startsWith('Up'),
   );
   const lineOptions = isDockerLog ? DOCKER_LINE_OPTIONS : DEFAULT_LINE_OPTIONS;
   const sourceLabel =
@@ -442,7 +390,7 @@ export function LogsViewer() {
                   <div className="mt-2 flex flex-wrap gap-3 text-violet-100/80">
                     <span>{formatBytes(selectedArchiveSource.size)}</span>
                     <span>
-                      {formatSourceTimestamp(selectedArchiveSource.modifiedAt)}
+                      {formatShortDateTime(selectedArchiveSource.modifiedAt)}
                     </span>
                     <span>
                       {selectedArchiveSource.compressed

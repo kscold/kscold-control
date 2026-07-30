@@ -1,21 +1,10 @@
 import { Trash2, Clock, Ban, Zap } from 'lucide-react';
 import type { IpBan } from '../model/security.types';
+import { formatShortDateTime } from '@/shared/lib';
 
 interface Props {
   bans: IpBan[];
   onRemove: (id: string) => Promise<void>;
-}
-
-function formatDate(iso: string | null): string {
-  if (!iso) return '영구';
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return iso;
-  return d.toLocaleString('ko-KR', {
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
 }
 
 function sourceBadge(source: IpBan['source']) {
@@ -81,10 +70,11 @@ export function BanList({ bans, onRemove }: Props) {
                 )}
                 <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-500">
                   <span className="inline-flex items-center gap-1">
-                    <Zap size={11} /> 추가: {formatDate(ban.createdAt)}
+                    <Zap size={11} /> 추가: {formatShortDateTime(ban.createdAt)}
                   </span>
                   <span className="inline-flex items-center gap-1">
-                    <Clock size={11} /> 만료: {formatDate(ban.expiresAt)}
+                    <Clock size={11} /> 만료:{' '}
+                    {formatShortDateTime(ban.expiresAt, '영구')}
                   </span>
                 </div>
               </div>

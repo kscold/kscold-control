@@ -1,7 +1,7 @@
 import { useEffect, useRef, useCallback } from 'react';
 import { io, Socket } from 'socket.io-client';
 import type { OpenAIProvider } from '../model/openai-chat.types';
-import { API_URL } from '../lib/openai-chat.constants';
+import { API_URL } from '@/shared/config';
 
 interface UseOpenAIChatSocketOptions {
   token: string | null;

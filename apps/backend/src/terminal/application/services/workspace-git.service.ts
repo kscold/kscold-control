@@ -9,6 +9,7 @@ import { promises as fs } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { promisify } from 'node:util';
+import { isPathInsideRoot } from '../../../common/utils';
 import { PtyManagerService } from './pty-manager.service';
 import type {
   GitCommandResult,
@@ -73,10 +74,7 @@ export class WorkspaceGitService {
       ? path.resolve(normalized)
       : path.resolve(workspaceRoot, normalized);
 
-    if (
-      absolutePath !== workspaceRoot &&
-      !absolutePath.startsWith(`${workspaceRoot}${path.sep}`)
-    ) {
+    if (!isPathInsideRoot(workspaceRoot, absolutePath)) {
       throw new ForbiddenException(
         '작업 디렉터리 바깥 파일에는 접근할 수 없습니다.',
       );
@@ -119,11 +117,8 @@ export class WorkspaceGitService {
         fs.realpath(workspaceRoot),
         fs.realpath(existingPath),
       ]);
-      const isInsideRoot =
-        realExistingPath === realRoot ||
-        realExistingPath.startsWith(`${realRoot}${path.sep}`);
-
-      if (!isInsideRoot) {
+      // 심볼릭 링크까지 따라간 실제 경로로 다시 한 번 루트 포함 여부를 확인한다.
+      if (!isPathInsideRoot(realRoot, realExistingPath)) {
         throw new ForbiddenException(
           '작업 디렉터리 바깥 파일에는 접근할 수 없습니다.',
         );
@@ -134,10 +129,7 @@ export class WorkspaceGitService {
       }
 
       const realTarget = await fs.realpath(resolvedPath.absolutePath);
-      const isTargetInsideRoot =
-        realTarget === realRoot ||
-        realTarget.startsWith(`${realRoot}${path.sep}`);
-      if (!isTargetInsideRoot) {
+      if (!isPathInsideRoot(realRoot, realTarget)) {
         throw new ForbiddenException(
           '작업 디렉터리 바깥 파일에는 접근할 수 없습니다.',
         );

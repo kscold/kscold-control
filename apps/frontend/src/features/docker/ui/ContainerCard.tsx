@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { usePermissions } from '@/shared/lib/use-permissions';
 import { PERMISSIONS } from '@/shared/config/permissions';
 import type { Container } from '@/entities/container';
+import { backupService } from '../api/backup.service';
 
 const MONGO_CONTAINERS = ['ubuntu-blog', 'ubuntu-congbang'];
 
@@ -38,13 +39,7 @@ export function ContainerCard({
     setBackupState('loading');
     setBackupMsg('');
     try {
-      const token = localStorage.getItem('accessToken');
-      const res = await fetch(`/api/system/backup/mongodb/${container.name}`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message || '백업 실패');
+      const data = await backupService.backupMongodb(container.name);
       setBackupState('done');
       setBackupMsg(`완료 (${data.size})`);
       setTimeout(() => setBackupState('idle'), 4000);

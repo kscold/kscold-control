@@ -4,8 +4,11 @@ import path from 'node:path';
 import * as pty from 'node-pty';
 import { IPtyManager } from '../../domain/repositories/pty-manager.interface';
 import {
+  getHomeDirectory,
+  getWorkingDirectory as resolveWorkingDirectory,
   prependClaudeBinaryDir,
   resolveClaudeBinary,
+  shellQuote,
 } from '../../../common/utils';
 
 /**
@@ -19,32 +22,24 @@ export class PtyManagerService implements IPtyManager {
   // sessionId -> PTY process mapping
   private readonly processes = new Map<string, pty.IPty>();
 
-  private getHomeDirectory(): string {
-    return process.env.HOME || '/Users/kscold';
-  }
-
   getShellPath(): string {
     return '/bin/zsh';
   }
 
   getWorkingDirectory(): string {
-    return process.env.CLAUDE_WORKING_DIR || this.getHomeDirectory();
+    return resolveWorkingDirectory();
   }
 
   getClaudeBinaryPath(): string | null {
-    return resolveClaudeBinary(this.getHomeDirectory()).binaryPath;
+    return resolveClaudeBinary(getHomeDirectory()).binaryPath;
   }
 
   getClaudeLaunchCommand(): string {
-    return resolveClaudeBinary(this.getHomeDirectory()).launchCommand;
-  }
-
-  private shellQuote(value: string): string {
-    return `'${value.replace(/'/g, `'"'"'`)}'`;
+    return resolveClaudeBinary(getHomeDirectory()).launchCommand;
   }
 
   private sourceIfExists(targetPath: string): string {
-    return `if [ -f ${this.shellQuote(targetPath)} ]; then source ${this.shellQuote(targetPath)}; fi`;
+    return `if [ -f ${shellQuote(targetPath)} ]; then source ${shellQuote(targetPath)}; fi`;
   }
 
   private ensureZshBootstrapDirectory(
@@ -57,8 +52,8 @@ export class PtyManagerService implements IPtyManager {
 
     const claudeEnvLines = claudeBinaryPath
       ? [
-          `export CLAUDE_CODE_BIN=${this.shellQuote(claudeBinaryPath)}`,
-          `export PATH=${this.shellQuote(prependClaudeBinaryDir(claudeBinaryPath))}`,
+          `export CLAUDE_CODE_BIN=${shellQuote(claudeBinaryPath)}`,
+          `export PATH=${shellQuote(prependClaudeBinaryDir(claudeBinaryPath))}`,
         ]
       : [];
 
@@ -74,7 +69,7 @@ export class PtyManagerService implements IPtyManager {
     const fileContents: Record<string, string> = {
       '.zshenv': [
         this.sourceIfExists(path.join(homeDir, '.zshenv')),
-        `export CLAUDE_WORKING_DIR=${this.shellQuote(workingDir)}`,
+        `export CLAUDE_WORKING_DIR=${shellQuote(workingDir)}`,
         ...claudeEnvLines,
         '',
       ].join('\n'),
@@ -109,7 +104,7 @@ export class PtyManagerService implements IPtyManager {
       return this.processes.get(sessionId)!;
     }
 
-    const homeDir = this.getHomeDirectory();
+    const homeDir = getHomeDirectory();
     const workingDir = this.getWorkingDirectory();
     const shellPath = this.getShellPath();
     const claudeBinaryPath = this.getClaudeBinaryPath();

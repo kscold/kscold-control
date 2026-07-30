@@ -35,7 +35,16 @@ export class NginxConfigRepositoryImpl implements INginxConfigRepository {
       const raw = fs.readFileSync(filePath, 'utf-8');
       const name = file.replace('.conf.disabled', '').replace('.conf', '');
 
-      sites.push({ ...this.parseConfig(raw, name), enabled, raw });
+      const site = { ...this.parseConfig(raw, name), enabled, raw };
+
+      // conf.d 에는 사이트가 아닌 공용 include 도 있다.
+      // 예: security 모듈이 생성하는 ip-blocklist.conf (IP 차단 목록).
+      // server_name 이 없으면 사이트가 아니므로 목록에서 제외한다.
+      // 이 판별은 사이트 개념을 소유한 이 계층의 책임이며,
+      // 소비자(토폴로지 등)가 각자 걸러내면 규칙이 흩어져 누락이 생긴다.
+      if (!site.domain?.trim()) continue;
+
+      sites.push(site);
     }
 
     return sites;
