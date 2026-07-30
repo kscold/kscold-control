@@ -3,6 +3,7 @@ import { execFile } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { promisify } from 'node:util';
+import { getHomeDirectory } from '../../../common/utils';
 import type {
   IMongodbBackupRepository,
   MongodbBackupEntry,
@@ -11,7 +12,7 @@ import type {
 
 const execFileAsync = promisify(execFile);
 const BACKUP_ROOT = path.join(
-  process.env.HOME || '/Users/kscold',
+  getHomeDirectory(),
   'Desktop',
   'server-logs',
   'mongodb-backups',

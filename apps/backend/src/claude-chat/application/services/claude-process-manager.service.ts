@@ -2,6 +2,8 @@ import { Injectable, Logger } from '@nestjs/common';
 import { spawn, ChildProcess } from 'child_process';
 import { createInterface } from 'readline';
 import {
+  getHomeDirectory,
+  getWorkingDirectory as resolveWorkingDirectory,
   prependClaudeBinaryDir,
   resolveClaudeBinary,
 } from '../../../common/utils';
@@ -38,16 +40,12 @@ export class ClaudeProcessManagerService {
   private readonly logger = new Logger(ClaudeProcessManagerService.name);
   private readonly processes = new Map<string, ClaudeProcess>();
 
-  private getHomeDirectory(): string {
-    return process.env.HOME || '/Users/kscold';
-  }
-
   getWorkingDirectory(): string {
-    return process.env.CLAUDE_WORKING_DIR || this.getHomeDirectory();
+    return resolveWorkingDirectory();
   }
 
   getClaudeBinaryPath(): string | null {
-    return resolveClaudeBinary(this.getHomeDirectory()).binaryPath;
+    return resolveClaudeBinary(getHomeDirectory()).binaryPath;
   }
 
   getTotalCostUsd(sessionId: string): number {
@@ -91,7 +89,7 @@ export class ClaudeProcessManagerService {
 
     args.push(prompt);
 
-    const homeDir = this.getHomeDirectory();
+    const homeDir = getHomeDirectory();
     const workingDir = this.getWorkingDirectory();
     const claudeBinaryPath = this.getClaudeBinaryPath();
     const command = claudeBinaryPath || 'claude';

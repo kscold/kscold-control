@@ -4,6 +4,7 @@ import * as os from 'os';
 import * as path from 'path';
 import { Readable } from 'stream';
 import { spawn } from 'child_process';
+import { isPathInsideRoot } from '../../../common/utils';
 import {
   FileTreeNode,
   IFileStorage,
@@ -63,14 +64,12 @@ export class LocalFileStorageService implements IFileStorage, OnModuleInit {
   /**
    * 경로 순회 공격 방어: target 이 projectDir 하위인지 확인.
    * 위반 시 Error 를 throw 합니다.
+   *
+   * 정규화 + 루트 포함 검사는 공용 유틸(isPathInsideRoot)로 통일하고,
+   * 예외 타입/메시지는 이 저장소 계층이 쓰던 것을 그대로 유지한다.
    */
   private assertSafeFilePath(projectDir: string, target: string): void {
-    const root = path.resolve(projectDir);
-    const resolvedTarget = path.resolve(target);
-    if (
-      resolvedTarget !== root &&
-      !resolvedTarget.startsWith(`${root}${path.sep}`)
-    ) {
+    if (!isPathInsideRoot(projectDir, target)) {
       throw new Error(
         `Path traversal blocked: ${path.relative(projectDir, target)}`,
       );

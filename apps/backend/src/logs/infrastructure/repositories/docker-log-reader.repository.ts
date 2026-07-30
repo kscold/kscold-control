@@ -7,6 +7,7 @@ import {
 import * as fs from 'fs';
 import * as path from 'path';
 import { promisify } from 'util';
+import { shellQuote } from '../../../common/utils';
 import { IDockerLogReader } from '../../domain/repositories/log-reader.repository';
 import {
   DockerContainerSummary,
@@ -100,8 +101,8 @@ export class DockerLogReaderRepository implements IDockerLogReader {
       }
 
       const readerCommand = source.compressed
-        ? `gzip -cd -- ${this.quoteShell(source.path)}`
-        : `cat -- ${this.quoteShell(source.path)}`;
+        ? `gzip -cd -- ${shellQuote(source.path)}`
+        : `cat -- ${shellQuote(source.path)}`;
       const remoteCommand =
         options.tail === 'all'
           ? readerCommand
@@ -145,7 +146,7 @@ export class DockerLogReaderRepository implements IDockerLogReader {
       const directory = path.posix.dirname(logInfo.logPath);
       const basename = path.posix.basename(logInfo.logPath);
       const listCommand = [
-        `cd ${this.quoteShell(directory)}`,
+        `cd ${shellQuote(directory)}`,
         `for file in ${basename}*; do`,
         '  [ -f "$file" ] || continue',
         `  stat -c '%n|%s|%Y' "$file"`,
@@ -319,27 +320,20 @@ export class DockerLogReaderRepository implements IDockerLogReader {
     return normalized;
   }
 
-  private quoteShell(value: string): string {
-    return `'${value.replace(/'/g, `'\\''`)}'`;
-  }
-
   private async runDockerHostShell(
     command: string,
     maxBuffer: number,
     localPath?: string,
   ): Promise<string> {
     if (localPath && fs.existsSync(localPath)) {
-      const { stdout } = await execAsync(
-        `/bin/sh -lc ${this.quoteShell(command)}`,
-        {
-          maxBuffer,
-        },
-      );
+      const { stdout } = await execAsync(`/bin/sh -lc ${shellQuote(command)}`, {
+        maxBuffer,
+      });
       return stdout;
     }
 
     const { stdout } = await execAsync(
-      `colima ssh -- sudo sh -lc ${this.quoteShell(command)}`,
+      `colima ssh -- sudo sh -lc ${shellQuote(command)}`,
       { maxBuffer },
     );
     return stdout;
