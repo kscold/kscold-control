@@ -8,12 +8,8 @@ import {
   Filter,
 } from 'lucide-react';
 import { repositoryService } from '@/entities/project';
-import {
-  filterFiles,
-  formatBytes,
-  chunkFiles,
-  type FilterStats,
-} from '../lib/file-filter';
+import { filterFiles, chunkFiles, type FilterStats } from '../lib/file-filter';
+import { formatBytes } from '@/shared/lib';
 import type {
   ClientFile,
   CreateUploadSessionInput,

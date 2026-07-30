@@ -1,6 +1,6 @@
 import { useEffect, useRef, useCallback } from 'react';
 import { io, Socket } from 'socket.io-client';
-import { API_URL } from '../lib/claude-chat.constants';
+import { API_URL } from '@/shared/config';
 
 interface UseClaudeChatSocketOptions {
   token: string | null;

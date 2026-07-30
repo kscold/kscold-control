@@ -1,4 +1,5 @@
-import { API_URL, api } from '@/shared/api/client';
+import { api } from '@/shared/api/client';
+import { API_URL } from '@/shared/config';
 import type {
   DockerContainer,
   DockerLogArchiveSource,
