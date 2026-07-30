@@ -139,6 +139,30 @@ describe('DockerTopologyService', () => {
                 websocket: true,
                 enabled: true,
               },
+              // 사이트 정보의 단일 출처는 nginx 설정이다.
+              // 아래 두 사이트는 과거 서비스 내부 하드코딩 폴백에서 주입됐으나,
+              // 실제 운영에서는 설정 파일(slacord.conf, kscold.com.conf)에 존재하므로
+              // 목도 현실과 동일하게 맞춘다.
+              {
+                name: 'slacord',
+                domain: 'slacord.cloud',
+                upstream: 'http://ubuntu-slacord:3002',
+                ssl: true,
+                sslCert: '',
+                sslKey: '',
+                websocket: true,
+                enabled: true,
+              },
+              {
+                name: 'blog-main',
+                domain: 'kscold.com',
+                upstream: 'http://ubuntu-blog:3000',
+                ssl: true,
+                sslCert: '',
+                sslKey: '',
+                websocket: true,
+                enabled: true,
+              },
             ]),
           } satisfies Partial<INginxConfigRepository>,
         },
