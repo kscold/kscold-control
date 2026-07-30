@@ -8,7 +8,7 @@ import type {
   LiveStats,
   SystemInfo,
 } from '../model/dashboard.types';
-import { formatBytes } from '../lib/dashboard.utils';
+import { formatBytes } from '@/shared/lib';
 import { DiskUsageCard } from './DiskUsageCard';
 import { MetricCard } from './MetricCard';
 import { DockerStorageDetailsCard } from './DockerStorageDetailsCard';

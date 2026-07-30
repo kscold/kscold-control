@@ -9,21 +9,13 @@ import {
 } from 'lucide-react';
 import type { CertInfo, CertRenewalStatus } from '../model/nginx.types';
 import { SslIssueModal } from './SslIssueModal';
+import { formatFullDateTime } from '@/shared/lib';
 
 const getDaysLeftColor = (days?: number) => {
   if (days === undefined) return 'text-gray-400';
   if (days <= 7) return 'text-red-400';
   if (days <= 30) return 'text-yellow-400';
   return 'text-green-400';
-};
-
-const formatRunAt = (iso: string | null) => {
-  if (!iso) return '실행 이력 없음';
-  try {
-    return new Date(iso).toLocaleString('ko-KR');
-  } catch {
-    return iso;
-  }
 };
 
 interface CertListProps {
@@ -80,7 +72,8 @@ export function CertList({
               </span>
             )}
             <span className="text-gray-400">
-              마지막 실행: {formatRunAt(renewalStatus.lastRunAt)}
+              마지막 실행:{' '}
+              {formatFullDateTime(renewalStatus.lastRunAt, '실행 이력 없음')}
               {renewalStatus.trigger &&
                 ` (${renewalStatus.trigger === 'schedule' ? '자동' : '수동'})`}
             </span>

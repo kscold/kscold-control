@@ -3,7 +3,7 @@ import { RefreshCw } from 'lucide-react';
 import { useSystemInfo } from '../model/useSystemInfo';
 import { useLiveStats } from '../model/useLiveStats';
 import { useDashboardContainers } from '../model/useDashboardContainers';
-import { formatUptime } from '../lib/dashboard.utils';
+import { formatUptime } from '@/shared/lib';
 import { DashboardOverviewSkeleton } from './DashboardOverviewSkeleton';
 import { SystemStatsCard } from './SystemStatsCard';
 import { QuickActions } from './QuickActions';

@@ -1,8 +1,6 @@
 import axios from 'axios';
 import { useAuthStore } from '../model/auth.store';
-
-// API 기본 URL
-export const API_URL = import.meta.env.VITE_API_URL || '';
+import { API_URL } from '../config';
 
 // 인증 토큰을 자동으로 붙이는 axios 인스턴스
 export const api = axios.create({

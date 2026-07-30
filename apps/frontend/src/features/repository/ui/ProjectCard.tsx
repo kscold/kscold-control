@@ -1,6 +1,6 @@
 import { FolderGit2, Trash2, Download, FileText } from 'lucide-react';
 import { repositoryService } from '@/entities/project';
-import { formatBytes } from '../lib/file-filter';
+import { formatBytes } from '@/shared/lib';
 import type { RepositoryProject } from '@/entities/project';
 
 interface ProjectCardProps {

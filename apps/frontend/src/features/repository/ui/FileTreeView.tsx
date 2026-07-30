@@ -8,6 +8,7 @@ import {
   File,
 } from 'lucide-react';
 import type { FileTreeNode } from '@/entities/project';
+import { formatBytes } from '@/shared/lib';
 
 interface FileTreeViewProps {
   tree: FileTreeNode | null;
@@ -100,7 +101,7 @@ function TreeNode({
         <span className="truncate">{node.name}</span>
         {!isFolder && node.size != null && (
           <span className="ml-auto text-[10px] text-gray-600">
-            {formatFileSize(node.size)}
+            {formatBytes(node.size)}
           </span>
         )}
       </div>
@@ -164,10 +165,4 @@ function getFileIcon(name: string) {
     'xml',
   ]);
   return codeExts.has(ext) ? FileCode : File;
-}
-
-function formatFileSize(bytes: number): string {
-  if (bytes < 1024) return `${bytes}B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)}K`;
-  return `${(bytes / 1024 / 1024).toFixed(1)}M`;
 }

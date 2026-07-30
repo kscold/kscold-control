@@ -6,7 +6,8 @@ import type {
   Pm2Process,
   SystemService,
 } from '@/entities/container';
-import { formatMemory, pm2Dot } from '../../lib/topology.utils';
+import { pm2Dot } from '../../lib/topology.utils';
+import { formatBytes } from '@/shared/lib';
 
 export const ContainerNode = memo(function ContainerNode({ data }: NodeProps) {
   const d = data as unknown as ContainerNodeData;
@@ -152,7 +153,7 @@ export const ContainerNode = memo(function ContainerNode({ data }: NodeProps) {
               </span>
               <div className="flex gap-1 text-[8px] text-gray-500 flex-shrink-0">
                 {p.cpu > 0 && <span>{p.cpu.toFixed(0)}%</span>}
-                {p.memory > 0 && <span>{formatMemory(p.memory)}</span>}
+                {p.memory > 0 && <span>{formatBytes(p.memory)}</span>}
                 {p.restarts > 0 && (
                   <span className="text-yellow-600">↺{p.restarts}</span>
                 )}

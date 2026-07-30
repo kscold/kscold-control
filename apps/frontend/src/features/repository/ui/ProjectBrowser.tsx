@@ -11,7 +11,7 @@ import {
   FileCode2,
 } from 'lucide-react';
 import { useProjectTree } from '../model/useProjectTree';
-import { formatBytes } from '../lib/file-filter';
+import { formatBytes } from '@/shared/lib';
 import { FileTreeView } from './FileTreeView';
 import { CodeViewer } from './CodeViewer';
 import { UploadDropzone } from './UploadDropzone';

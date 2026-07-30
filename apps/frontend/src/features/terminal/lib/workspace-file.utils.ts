@@ -98,3 +98,24 @@ export function getLineOffset(content: string, lineNumber: number): number {
   }
   return offset;
 }
+
+/**
+ * localStorage 에 JSON 배열로 저장해 둔 파일 경로 목록을 읽어 온다.
+ * 값이 없거나 파싱에 실패하면 빈 배열을 돌려준다.
+ */
+export function parseStoredPaths(rawValue: string | null): string[] {
+  if (!rawValue) {
+    return [];
+  }
+
+  try {
+    const parsed = JSON.parse(rawValue);
+    if (!Array.isArray(parsed)) {
+      return [];
+    }
+
+    return parsed.filter((value): value is string => typeof value === 'string');
+  } catch {
+    return [];
+  }
+}

@@ -1,6 +1,6 @@
 import { Filter } from 'lucide-react';
 
-export type DockerFilterType = 'all' | 'managed' | 'external';
+type DockerFilterType = 'all' | 'managed' | 'external';
 
 interface DockerContainerFiltersProps {
   filter: DockerFilterType;

@@ -1,7 +1,3 @@
-import type { Terminal as XTermTerminal } from '@xterm/xterm';
-import type { FitAddon } from '@xterm/addon-fit';
-import type { Socket } from 'socket.io-client';
-
 /**
  * 터미널 세션 상태
  */
@@ -180,36 +176,4 @@ export interface ClaudeRuntimeDiagnostics {
     version: ClaudeRuntimeCheck;
     interactive: ClaudeRuntimeCheck;
   };
-}
-
-/**
- * 터미널 소켓 이벤트 정의
- */
-export interface TerminalSocketEvents {
-  'terminal:session-ready': (data: {
-    sessionId: string;
-    isReconnect: boolean;
-    workingDirectory?: string | null;
-    shellPath?: string | null;
-    claudeBinaryPath?: string | null;
-    claudeLaunchCommand?: string | null;
-  }) => void;
-  'terminal:output': (data: { type: string; content: string }) => void;
-  'terminal:error': (data: { message: string }) => void;
-  'terminal:exit': (data: { code: number }) => void;
-  'terminal:command-count': (data: {
-    count: number;
-    limit: number;
-    remaining: number;
-  }) => void;
-  'terminal:limit-reached': (data: { limit: number; count: number }) => void;
-}
-
-/**
- * 터미널이 참조하는 인스턴스 모음
- */
-export interface TerminalRefs {
-  xterm: XTermTerminal | null;
-  socket: Socket | null;
-  fitAddon: FitAddon | null;
 }

@@ -1,8 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { History, Trash2, Loader2, PackageOpen, RotateCcw } from 'lucide-react';
 import { repositoryService } from '@/entities/project';
-import { formatBytes } from '../lib/file-filter';
-import { formatFullDateTime } from '@/shared/lib/date-format';
+import { formatBytes, formatFullDateTime } from '@/shared/lib';
 import type { ProjectVersion } from '@/entities/project';
 
 interface VersionListProps {

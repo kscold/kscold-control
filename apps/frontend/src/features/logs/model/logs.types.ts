@@ -21,10 +21,14 @@ export type DockerLogSince =
   | 'custom';
 export type DockerLogFilter = 'all' | 'errors' | 'nginx-access' | 'nginx-error';
 
+/** 컨테이너 역할 — 서버가 분류해서 내려준다 */
+export type DockerContainerRole = 'infra' | 'app';
+
 export interface DockerContainer {
   id: string;
   name: string;
   status: string;
+  role?: DockerContainerRole;
 }
 
 export interface DockerLogArchiveSource {

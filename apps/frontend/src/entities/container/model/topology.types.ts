@@ -45,12 +45,6 @@ export interface UpnpMappingData {
   local: boolean;
 }
 
-export interface ServiceNodeData {
-  label: string;
-  port: number;
-  icon: string;
-}
-
 export interface ContainerNodeData {
   label: string;
   image: string;

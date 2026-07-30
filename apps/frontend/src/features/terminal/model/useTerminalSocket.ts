@@ -1,7 +1,8 @@
 import { useRef, useEffect } from 'react';
 import { io, Socket } from 'socket.io-client';
 import type { Terminal } from '@xterm/xterm';
-import { API_URL, TERMINAL_COLORS } from '../lib/terminal.constants';
+import { TERMINAL_COLORS } from '../lib/terminal.constants';
+import { API_URL } from '@/shared/config';
 import { useModalStore } from '@/shared/model';
 
 interface UseTerminalSocketProps {

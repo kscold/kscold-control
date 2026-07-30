@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import { isPathInsideRoot } from '../../../common/utils';
 import type { IDockerArtifactGateway } from '../../domain/gateways/docker-artifact.gateway.interface';
 import type { DockerCleanupCandidateItem } from '../../domain/types/docker-cleanup.type';
 import { resolveDockerProjectRoot } from '../lib/docker-project-root';
@@ -73,18 +74,13 @@ export class DockerArtifactAdapter implements IDockerArtifactGateway {
    * 프로젝트 루트 밖의 경로는 정리 후보에 포함하지 않음.
    *
    * 현재 호출자는 고정된 경로 목록을 사용하지만, 게이트웨이는 독립적으로 안전해야 함.
-   * path.resolve로 정규화한 뒤 상대 경로를 다시 계산해 ../ 또는 절대 경로 우회를
-   * 막음.
+   * 정규화 + 루트 포함 검사는 공용 유틸(isPathInsideRoot)에 위임해 ../ 또는 절대
+   * 경로 우회를 막음. 예외 타입/메시지는 기존 그대로 유지함.
    */
   private resolveProjectPath(relativePath: string): string {
     const targetPath = path.resolve(this.projectRoot, relativePath);
-    const relativeToRoot = path.relative(this.projectRoot, targetPath);
 
-    if (
-      relativeToRoot === '..' ||
-      relativeToRoot.startsWith(`..${path.sep}`) ||
-      path.isAbsolute(relativeToRoot)
-    ) {
+    if (!isPathInsideRoot(this.projectRoot, targetPath)) {
       throw new Error(
         `프로젝트 루트 밖의 파일은 조사할 수 없습니다: ${relativePath}`,
       );

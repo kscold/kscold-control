@@ -1,4 +1,4 @@
-import { formatBytes } from '../lib/dashboard.utils';
+import { formatBytes } from '@/shared/lib';
 
 interface StackedUsageBarSegment {
   label: string;

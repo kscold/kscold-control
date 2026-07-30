@@ -1,21 +1,9 @@
-import { IsNumber, Min } from 'class-validator';
-
 /**
- * Set Terminal Command Limit DTO
- * Application layer DTO for managing terminal command limits
- */
-export class SetTerminalLimitDto {
-  @IsNumber()
-  @Min(-1) // -1 means unlimited
-  limit: number;
-}
-
-/**
- * Terminal Command Status Response
+ * 터미널 명령 사용 현황 응답 DTO
  */
 export class TerminalCommandStatusDto {
   allowed: boolean;
-  remaining: number; // -1 means unlimited
+  remaining: number; // -1이면 무제한
   current?: number;
   limit?: number;
 }

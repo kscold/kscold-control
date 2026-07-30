@@ -5,8 +5,7 @@ import {
   CLAUDE_SESSION_STORAGE_KEY,
   TERMINAL_SESSION_STORAGE_KEY,
 } from '../lib/session-storage';
-
-const API_URL = import.meta.env.VITE_API_URL || '';
+import { API_URL } from '../config';
 
 interface User {
   id: string;

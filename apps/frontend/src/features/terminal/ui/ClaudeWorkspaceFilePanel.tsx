@@ -28,7 +28,9 @@ import type {
 import {
   getLineOffset,
   getWorkspaceFileDisplayPath,
+  parseStoredPaths,
 } from '../lib/workspace-file.utils';
+import { formatBytes } from '@/shared/lib';
 
 type WorkspaceViewMode = 'diff' | 'editor';
 
@@ -83,12 +85,6 @@ interface ClaudeWorkspaceFilePanelProps {
   onCommit: () => void;
   onCreateBranch: () => void;
   onPushBranch: () => void;
-}
-
-function formatFileSize(bytes: number) {
-  if (bytes < 1024) return `${bytes}B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)}K`;
-  return `${(bytes / 1024 / 1024).toFixed(1)}M`;
 }
 
 function getReviewStateClassName(state: WorkspaceReviewState | null) {
@@ -164,21 +160,6 @@ function getAncestorPaths(filePath: string) {
   }
 
   return ancestors;
-}
-
-function parseStoredPaths(rawValue: string | null): string[] {
-  if (!rawValue) return [];
-
-  try {
-    const parsed = JSON.parse(rawValue);
-    if (!Array.isArray(parsed)) {
-      return [];
-    }
-
-    return parsed.filter((value): value is string => typeof value === 'string');
-  } catch {
-    return [];
-  }
 }
 
 function buildPullRequestUrl(
@@ -1034,7 +1015,7 @@ export function ClaudeWorkspaceFilePanel({
               <div className="mt-1 flex flex-wrap gap-2 text-[11px] text-slate-500">
                 {activeFile && (
                   <span>
-                    {lineCount} lines · {formatFileSize(activeFile.size)}
+                    {lineCount} lines · {formatBytes(activeFile.size)}
                   </span>
                 )}
                 {diff?.reviewState && diff.reviewState !== 'clean' && (

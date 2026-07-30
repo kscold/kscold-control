@@ -1,44 +1,42 @@
 import * as pty from 'node-pty';
 
 /**
- * PTY Manager Interface
- * Domain interface for managing PTY processes
+ * PTY 매니저 인터페이스
+ * PTY 프로세스를 관리하는 도메인 인터페이스
  */
 export interface IPtyManager {
   /**
-   * Create a new PTY process for a session
+   * 세션용 PTY 프로세스를 새로 생성한다
    */
   createPty(sessionId: string): pty.IPty;
 
   /**
-   * Get existing PTY process for a session
+   * 세션의 기존 PTY 프로세스를 가져온다
    */
   getPty(sessionId: string): pty.IPty | undefined;
 
   /**
-   * Check if PTY exists for a session
+   * 세션에 PTY가 존재하는지 확인한다
    */
   hasPty(sessionId: string): boolean;
 
   /**
-   * Kill PTY process for a session
+   * 세션의 PTY 프로세스를 종료한다
    */
   killPty(sessionId: string): void;
 
   /**
-   * Write data to PTY process
+   * PTY 프로세스에 데이터를 쓴다
    */
   write(sessionId: string, data: string): void;
 
   /**
-   * Resize PTY terminal
+   * PTY 터미널 크기를 조정한다
    */
   resize(sessionId: string, cols: number, rows: number): void;
 
   /**
-   * Send interrupt signal (Ctrl+C)
+   * 인터럽트 시그널(Ctrl+C)을 보낸다
    */
   interrupt(sessionId: string): void;
 }
-
-export const PTY_MANAGER = Symbol('PTY_MANAGER');

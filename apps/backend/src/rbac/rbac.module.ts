@@ -17,6 +17,7 @@ import {
   ListUsersUseCase,
   AssignRolesUseCase,
   ListRolesUseCase,
+  ListPermissionsUseCase,
   ManageTerminalLimitUseCase,
 } from './application/use-cases';
 import { RbacSeedService } from './application/services/rbac-seed.service';
@@ -53,6 +54,7 @@ import { RbacController } from './presentation/controllers/rbac.controller';
     ListUsersUseCase,
     AssignRolesUseCase,
     ListRolesUseCase,
+    ListPermissionsUseCase,
     ManageTerminalLimitUseCase,
 
     // 애플리케이션 서비스
