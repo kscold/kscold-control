@@ -10,5 +10,3 @@ export const ROLES = {
   TERMINAL_ONLY: 'terminal_only',
   GUEST: 'guest',
 } as const;
-
-export type RoleName = (typeof ROLES)[keyof typeof ROLES];
