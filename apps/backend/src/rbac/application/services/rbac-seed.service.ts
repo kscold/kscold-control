@@ -13,6 +13,7 @@ import {
 } from '../../domain/repositories/role.repository.interface';
 import { ROLES } from '../../../common/constants/roles';
 import { PERMISSIONS } from '../../../common/constants/permissions';
+import { PasswordHasher } from '../../../common/utils/password-hasher.util';
 
 /**
  * RBAC Seed Service
@@ -158,21 +159,61 @@ export class RbacSeedService {
       await this.roleRepository.save(role);
     }
 
-    // Assign admin@kscold.dev to super_admin role
+    await this.ensureAdminUser();
+
+    this.logger.log('초기 데이터 시딩 완료');
+  }
+
+  /**
+   * 관리자 계정을 보장한다.
+   *
+   * 계정이 이미 있으면 super_admin 역할만 확인해 부여하고,
+   * 없으면 ADMIN_PASSWORD 로 새로 만든다.
+   * 최초 부트스트랩 경로가 별도 스크립트에만 있으면 실행 시점이 갈려
+   * 상수에 없는 역할·권한이 DB에 생기므로, 부팅 시딩으로 일원화한다.
+   */
+  private async ensureAdminUser(): Promise<void> {
     const adminEmail = process.env.ADMIN_EMAIL ?? 'admin@kscold.dev';
-    const adminUser =
-      await this.userRepository.findByEmailWithRoles(adminEmail);
-    if (adminUser) {
-      const superAdmin = await this.roleRepository.findByName(
-        ROLES.SUPER_ADMIN,
-      );
-      if (superAdmin && !adminUser.roles.find((r) => r.id === superAdmin.id)) {
-        adminUser.roles.push(superAdmin);
-        await this.userRepository.save(adminUser);
-        this.logger.log('admin@kscold.dev assigned to super_admin role');
-      }
+    const superAdmin = await this.roleRepository.findByName(ROLES.SUPER_ADMIN);
+    if (!superAdmin) {
+      this.logger.warn('super_admin 역할이 없어 관리자 계정 처리를 건너뜁니다');
+      return;
     }
 
-    this.logger.log('Initial data seeded successfully');
+    const existing = await this.userRepository.findByEmailWithRoles(adminEmail);
+    if (existing) {
+      if (!existing.roles?.find((role) => role.id === superAdmin.id)) {
+        existing.roles = [...(existing.roles ?? []), superAdmin];
+        await this.userRepository.save(existing);
+        this.logger.log(`${adminEmail} 계정에 super_admin 역할을 부여했습니다`);
+      }
+      return;
+    }
+
+    // 계정이 없을 때만, 그리고 최초 부트스트랩으로 명시했을 때만 생성한다.
+    //
+    // 부팅마다 무조건 생성하면 이미 다른 관리자 계정으로 운영 중인 환경에
+    // 쓰지 않는 계정이 생긴다(실제로 그런 일이 있었다).
+    // 따라서 SEED_ADMIN_BOOTSTRAP=true 를 명시한 경우에만 생성한다.
+    const bootstrapEnabled = process.env.SEED_ADMIN_BOOTSTRAP === 'true';
+    if (!bootstrapEnabled) {
+      return;
+    }
+
+    const adminPassword = process.env.ADMIN_PASSWORD;
+    if (!adminPassword) {
+      this.logger.warn(
+        `ADMIN_PASSWORD 가 없어 ${adminEmail} 계정을 생성하지 않았습니다`,
+      );
+      return;
+    }
+
+    const created = this.userRepository.create({
+      email: adminEmail,
+      password: await PasswordHasher.hash(adminPassword),
+      roles: [superAdmin],
+    });
+    await this.userRepository.save(created);
+    this.logger.log(`관리자 계정을 생성했습니다: ${adminEmail}`);
   }
 }
