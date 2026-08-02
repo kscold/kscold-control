@@ -52,7 +52,7 @@ export function useNginxCerts() {
       }
     } catch (e: any) {
       showAlert(
-        e.response?.data?.message || '인증서 발급 중 오류가 발생했습니다.',
+        e instanceof Error ? e.message : '인증서 발급 중 오류가 발생했습니다.',
       );
     } finally {
       setIssuing(false);

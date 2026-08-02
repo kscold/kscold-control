@@ -22,7 +22,7 @@ export function useUserActions(onSuccess?: () => void) {
       return true;
     } catch (error: any) {
       console.error('Failed to create user:', error);
-      showAlert(error.response?.data?.message || '사용자 생성 실패');
+      showAlert(error instanceof Error ? error.message : '사용자 생성 실패');
       return false;
     } finally {
       setLoading(false);
