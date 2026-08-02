@@ -3,7 +3,6 @@ import { BaseApiService } from '@/shared/api/base.service';
 import { Container, ComposeProvisioningTemplate } from '../model/types';
 import {
   CreateContainerRequest,
-  ContainerStatsResponse,
 } from './types';
 import type {
   DockerCleanupCandidates,
@@ -90,42 +89,6 @@ export class DockerService extends BaseApiService {
     } catch (error) {
       this.logError('DockerService', 'deleteContainer', error);
       this.handleError(error, `Failed to delete container ${id}`);
-    }
-  }
-
-  /**
-   * 컨테이너 리소스 사용량 통계를 조회한다
-   * @param id 컨테이너 ID
-   * @returns 컨테이너 통계
-   */
-  async getContainerStats(id: string): Promise<ContainerStatsResponse> {
-    try {
-      const { data } = await api.get<ContainerStatsResponse>(
-        `${this.basePath}/containers/${id}/stats`,
-      );
-      return data;
-    } catch (error) {
-      this.logError('DockerService', 'getContainerStats', error);
-      this.handleError(error, `Failed to get stats for container ${id}`);
-    }
-  }
-
-  /**
-   * 컨테이너 로그를 가져온다
-   * @param id 컨테이너 ID
-   * @param lines 가져올 로그 줄 수
-   * @returns 로그 줄 목록
-   */
-  async getContainerLogs(id: string, lines: number = 100): Promise<string[]> {
-    try {
-      const { data } = await api.get<string[]>(
-        `${this.basePath}/containers/${id}/logs`,
-        { params: { lines } },
-      );
-      return data;
-    } catch (error) {
-      this.logError('DockerService', 'getContainerLogs', error);
-      this.handleError(error, `Failed to get logs for container ${id}`);
     }
   }
 

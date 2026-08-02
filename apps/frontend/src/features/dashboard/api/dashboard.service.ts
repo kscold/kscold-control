@@ -1,16 +1,7 @@
 import { api } from '@/shared/api/client';
-import type {
-  ContainerInfo,
-  LiveStats,
-  SystemInfo,
-} from '../model/dashboard.types';
+import type { LiveStats, SystemInfo } from '../model/dashboard.types';
 
 export const dashboardService = {
-  async listContainers(): Promise<ContainerInfo[]> {
-    const { data } = await api.get<ContainerInfo[]>('/docker/containers');
-    return data;
-  },
-
   async getLiveStats(): Promise<LiveStats> {
     const { data } = await api.get<LiveStats>('/system/stats');
     return data;

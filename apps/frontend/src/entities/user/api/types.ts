@@ -19,14 +19,3 @@ export interface UpdateTerminalLimitRequest {
   limit: number; // -1이면 무제한
 }
 
-export interface CreateRoleRequest {
-  name: string;
-  description?: string;
-  permissionIds: string[];
-}
-
-export interface UpdateRoleRequest {
-  name?: string;
-  description?: string;
-  permissionIds?: string[];
-}

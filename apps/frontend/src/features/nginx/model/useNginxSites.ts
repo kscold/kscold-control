@@ -90,7 +90,9 @@ export function useNginxSites() {
       setShowModal(false);
       await loadSites();
     } catch (e: any) {
-      showAlert(e.response?.data?.message || '저장 중 오류가 발생했습니다.');
+      showAlert(
+        e instanceof Error ? e.message : '저장 중 오류가 발생했습니다.',
+      );
     }
   };
 

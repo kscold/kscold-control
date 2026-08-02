@@ -11,9 +11,3 @@ export interface CreateContainerRequest {
   environment?: Record<string, string>;
 }
 
-export interface ContainerStatsResponse {
-  cpuUsage: number;
-  memoryUsage: number;
-  networkIn: number;
-  networkOut: number;
-}
