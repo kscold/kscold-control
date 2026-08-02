@@ -223,7 +223,7 @@ export class LogsController {
     send('ready', {
       containerId,
       containerName,
-      userId: req.user?.id ?? req.user?.sub ?? null,
+      userId: req.user?.id ?? null,
       connectedAt: new Date().toISOString(),
     });
 
