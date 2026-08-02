@@ -1,5 +1,6 @@
 import { useEffect, useRef, useCallback } from 'react';
 import { io, Socket } from 'socket.io-client';
+import type { ClaudeHistoryPayload } from './claude-chat.types';
 import { API_URL } from '@/shared/config';
 
 interface UseClaudeChatSocketOptions {
@@ -10,7 +11,7 @@ interface UseClaudeChatSocketOptions {
     isReconnect: boolean;
     workingDirectory?: string | null;
   }) => void;
-  onHistory: (data: { messages: any[] }) => void;
+  onHistory: (data: ClaudeHistoryPayload) => void;
   onMessageStart: () => void;
   onTextDelta: (data: { text: string }) => void;
   onToolUse: (data: { tool: string; input: string; status: string }) => void;

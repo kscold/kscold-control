@@ -153,7 +153,10 @@ export class PortForwardingService {
     http?: string;
     domain: string;
   } {
-    const result: any = { domain: this.domain };
+    // 반환 타입이 이미 선언돼 있으므로 지역 변수에 any 를 둘 이유가 없다.
+    const result: { ssh?: string; http?: string; domain: string } = {
+      domain: this.domain,
+    };
 
     // SSH 내부 포트 22가 공개된 경우에만 접속 명령 제공함.
     if (ports['22']) {

@@ -21,7 +21,6 @@ interface AuthState {
   login: (email: string, password: string) => Promise<void>;
   logout: () => void;
   validateToken: () => Promise<boolean>;
-  hasPermission: (permission: string) => boolean;
 }
 
 function clearSessionStorageByPrefix(prefix: string) {
@@ -76,15 +75,6 @@ export const useAuthStore = create<AuthState>()(
           set({ isValidating: false });
           return false;
         }
-      },
-
-      hasPermission: (permission: string) => {
-        const { user } = get();
-        if (!user) return false;
-        if (user.roles.includes('admin') || user.roles.includes('super_admin')) {
-          return true;
-        }
-        return user.permissions.includes(permission);
       },
     }),
     {

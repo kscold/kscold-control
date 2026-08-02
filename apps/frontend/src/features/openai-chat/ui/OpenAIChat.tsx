@@ -15,7 +15,10 @@ import {
 } from 'lucide-react';
 import { useAuthStore } from '@/shared/model';
 import { MarkdownRenderer } from '@/shared/ui';
-import type { OpenAIProvider } from '../model/openai-chat.types';
+import type {
+  OpenAIHistoryPayload,
+  OpenAIProvider,
+} from '../model/openai-chat.types';
 import { getOpenAISessionStorageKey } from '../lib/openai-chat.constants';
 import { useOpenAIChatSession } from '../model/useOpenAIChatSession';
 import { useOpenAIChatMessages } from '../model/useOpenAIChatMessages';
@@ -82,7 +85,7 @@ export function OpenAIChat({
     savedSessionId,
     onSessionReady: handleSessionReady,
     onHistory: useCallback(
-      (data: { messages: any[] }) => loadHistory(data.messages),
+      (data: OpenAIHistoryPayload) => loadHistory(data.messages),
       [loadHistory],
     ),
     onMessageStart: startStreaming,
