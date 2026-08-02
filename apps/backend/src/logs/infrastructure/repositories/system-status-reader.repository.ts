@@ -20,9 +20,15 @@ export class SystemStatusReaderRepository implements ISystemStatusReader {
         await execAsync('pgrep nginx');
         return { running: true, version };
       } catch {
+        // pgrep 실패는 프로세스가 없다는 뜻이므로 정상적인 결과다.
         return { running: false, version };
       }
-    } catch {
+    } catch (error) {
+      // 여기까지 오면 nginx 명령 자체를 실행하지 못한 것이다.
+      // "중지됨"과 결과가 같아 구분이 안 되므로 원인을 남긴다.
+      this.logger.warn(
+        `nginx 상태를 확인하지 못했습니다: ${(error as Error).message}`,
+      );
       return { running: false };
     }
   }
