@@ -7,6 +7,8 @@ import {
   DockerContainerStats,
   DockerContainerConfig,
   DockerContainerProcesses,
+  DockerPm2Process,
+  DockerDetectedService,
 } from '../../domain/gateways/docker-client.gateway.interface';
 import {
   DockerConnectionException,
@@ -196,8 +198,8 @@ export class DockerodeClientAdapter implements IDockerClient, OnModuleInit {
     dockerId: string,
   ): Promise<DockerContainerProcesses> {
     const container = this.docker.getContainer(dockerId);
-    const pm2List: any[] = [];
-    const services: any[] = [];
+    const pm2List: DockerPm2Process[] = [];
+    const services: DockerDetectedService[] = [];
 
     try {
       const pm2Json = await this.execCommand(container, [

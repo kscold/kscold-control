@@ -1,5 +1,6 @@
 import { useState, useCallback, useRef } from 'react';
 import { ChatMessage, ToolUse } from '../model/claude-chat.types';
+import type { ClaudeHistoryMessage } from '../model/claude-chat.types';
 
 export function appendUniqueToolUse(
   existingTools: ToolUse[],
@@ -112,29 +113,23 @@ export function useClaudeChatMessages() {
     [],
   );
 
-  const loadHistory = useCallback(
-    (
-      history: Array<{
-        role: string;
-        content: string;
-        metadata?: any;
-        timestamp: string;
-      }>,
-    ) => {
-      const loaded: ChatMessage[] = history
-        .filter((m) => m.role === 'user' || m.role === 'assistant')
-        .map((m, i) => ({
-          id: `history-${i}`,
-          role: m.role as 'user' | 'assistant',
-          content: m.content,
-          costUsd: m.metadata?.costUsd,
-          durationMs: m.metadata?.durationMs,
-          timestamp: new Date(m.timestamp),
-        }));
-      setMessages(loaded);
-    },
-    [],
-  );
+  const loadHistory = useCallback((history: ClaudeHistoryMessage[]) => {
+    const loaded: ChatMessage[] = history
+      // 'system'(터미널 출력) 메시지는 챗 UI에서 제외 — 타입 가드로 좁혀 캐스팅을 없앤다
+      .filter(
+        (m): m is ClaudeHistoryMessage & { role: 'user' | 'assistant' } =>
+          m.role === 'user' || m.role === 'assistant',
+      )
+      .map((m, i) => ({
+        id: `history-${i}`,
+        role: m.role,
+        content: m.content,
+        costUsd: m.metadata?.costUsd,
+        durationMs: m.metadata?.durationMs,
+        timestamp: new Date(m.timestamp),
+      }));
+    setMessages(loaded);
+  }, []);
 
   const clear = useCallback(() => {
     setMessages([]);

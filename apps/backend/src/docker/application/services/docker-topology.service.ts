@@ -15,16 +15,15 @@ import type { ContainerResponseDto } from '../dto';
 import {
   DOCKER_CLIENT,
   type IDockerClient,
+  type DockerContainerProcesses,
 } from '../../domain/gateways/docker-client.gateway.interface';
 import {
   ITopologyLayoutRepository,
   TOPOLOGY_LAYOUT_REPOSITORY,
 } from '../../domain/repositories/topology-layout.repository.interface';
 
-type RuntimeProcesses = {
-  pm2: any[];
-  services: Array<{ name: string; port: number; icon: string }>;
-};
+/** 컨테이너 런타임 프로세스 정보 — 도커 게이트웨이가 정규화해 돌려주는 형태 */
+type RuntimeProcesses = DockerContainerProcesses;
 
 interface StackMeta {
   label: string;

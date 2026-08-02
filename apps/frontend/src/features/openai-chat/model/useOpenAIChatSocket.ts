@@ -1,6 +1,9 @@
 import { useEffect, useRef, useCallback } from 'react';
 import { io, Socket } from 'socket.io-client';
-import type { OpenAIProvider } from '../model/openai-chat.types';
+import type {
+  OpenAIHistoryPayload,
+  OpenAIProvider,
+} from '../model/openai-chat.types';
 import { API_URL } from '@/shared/config';
 
 interface UseOpenAIChatSocketOptions {
@@ -14,7 +17,7 @@ interface UseOpenAIChatSocketOptions {
     model: string;
     apiConfigured: boolean;
   }) => void;
-  onHistory: (data: { messages: any[] }) => void;
+  onHistory: (data: OpenAIHistoryPayload) => void;
   onMessageStart: () => void;
   onTextDelta: (data: { text: string }) => void;
   onMessageEnd: (data: {

@@ -1,6 +1,7 @@
 import {
   Inject,
   Injectable,
+  Logger,
   NotFoundException,
   BadRequestException,
 } from '@nestjs/common';
@@ -29,6 +30,8 @@ export interface UploadResult {
 
 @Injectable()
 export class UploadFilesUseCase {
+  private readonly logger = new Logger(UploadFilesUseCase.name);
+
   constructor(
     @Inject(PROJECT_REPOSITORY)
     private readonly projectRepository: IProjectRepository,
@@ -76,8 +79,14 @@ export class UploadFilesUseCase {
       totalSize: stats.totalSize,
     });
 
-    // 업로드 완료 시점을 하나의 버전으로 스냅샷 (실패해도 업로드 결과엔 영향 없음)
-    this.fileStorage.createSnapshot(project.name).catch(() => undefined);
+    // 업로드 완료 시점을 하나의 버전으로 스냅샷 남긴다.
+    // 스냅샷 실패가 업로드 자체를 되돌릴 이유는 없지만, 조용히 넘어가면
+    // 사용자는 성공으로 알고 있는데 되돌릴 버전이 없는 상태가 되므로 반드시 기록한다.
+    this.fileStorage.createSnapshot(project.name).catch((error: Error) => {
+      this.logger.warn(
+        `업로드 후 스냅샷 생성 실패 (업로드 자체는 완료됨): ${project.name} — ${error.message}`,
+      );
+    });
 
     return {
       project: updated,

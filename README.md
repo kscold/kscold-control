@@ -92,7 +92,7 @@ Open [http://localhost:3000](http://localhost:3000).
 ### Seed admin account
 
 ```bash
-cd apps/backend && npx ts-node src/seed.ts
+# 초기 데이터(권한·역할·관리자 계정)는 서버 기동 시 자동으로 시딩된다
 ```
 
 ---

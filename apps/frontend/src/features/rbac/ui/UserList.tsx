@@ -15,6 +15,8 @@ interface UserListProps {
 
 const getRoleBadgeColor = (roleName: string) => {
   switch (roleName) {
+    // admin 은 백엔드에서 super_admin 과 동일한 전역 권한을 가지므로 같은 색으로 표시한다
+    case ROLES.ADMIN:
     case ROLES.SUPER_ADMIN:
       return 'bg-purple-600';
     case ROLES.OPERATOR:

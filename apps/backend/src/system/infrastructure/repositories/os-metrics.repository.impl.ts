@@ -297,7 +297,12 @@ export class OsMetricsRepositoryImpl implements IOsMetricsRepository {
             ...candidate,
             size: (parseInt(stdout.trim().split(/\s+/)[0], 10) || 0) * 1024,
           };
-        } catch {
+        } catch (error) {
+          // 조회 실패를 0으로 돌려주면 디스크 사용량이 실제보다 적게 보인다.
+          // 값은 0으로 두되 원인은 남겨 과소 표시를 알아챌 수 있게 한다.
+          this.logger.warn(
+            `디스크 사용량 조회 실패: ${candidate.path} — ${(error as Error).message}`,
+          );
           return { ...candidate, size: 0 };
         }
       }),

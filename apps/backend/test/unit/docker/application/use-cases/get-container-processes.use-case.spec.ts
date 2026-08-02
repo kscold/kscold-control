@@ -40,8 +40,18 @@ describe('GetContainerProcessesUseCase', () => {
   });
 
   it('일반 사용자는 자신의 관리 컨테이너 프로세스만 조회한다', async () => {
+    // 게이트웨이가 정규화해 돌려주는 실제 형태와 동일하게 맞춘다
     const processes = {
-      pm2: [{ name: 'api' }],
+      pm2: [
+        {
+          name: 'api',
+          status: 'online',
+          pid: 1234,
+          cpu: 0,
+          memory: 1048576,
+          restarts: 0,
+        },
+      ],
       services: [{ name: 'api', port: 4000, icon: 'api' }],
     };
     containerRepository.findByDockerId.mockResolvedValue({

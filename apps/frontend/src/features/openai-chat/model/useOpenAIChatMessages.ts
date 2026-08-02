@@ -1,6 +1,7 @@
 import { useState, useCallback, useRef } from 'react';
 import type {
   OpenAIChatMessage,
+  OpenAIHistoryMessage,
   OpenAIProvider,
 } from '../model/openai-chat.types';
 
@@ -67,7 +68,7 @@ export function useOpenAIChatMessages() {
     [],
   );
 
-  const loadHistory = useCallback((history: any[]) => {
+  const loadHistory = useCallback((history: OpenAIHistoryMessage[]) => {
     setMessages(
       history.map((m) => ({
         id: m.id ?? Date.now().toString() + Math.random(),

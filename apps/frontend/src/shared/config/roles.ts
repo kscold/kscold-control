@@ -3,6 +3,12 @@
  * UI 컴포넌트에서 역할 이름을 문자열로 하드코딩하지 말고 이 상수를 사용한다.
  */
 export const ROLES = {
+  /**
+   * 레거시 최고 관리자 역할.
+   * 백엔드가 super_admin 과 동일한 전역 권한으로 취급하므로(role-access.util.ts)
+   * 화면에서도 같은 등급으로 다뤄야 한다.
+   */
+  ADMIN: 'admin',
   SUPER_ADMIN: 'super_admin',
   READ_ONLY: 'read_only',
   OPERATOR: 'operator',

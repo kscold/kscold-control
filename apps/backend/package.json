@@ -7,7 +7,6 @@
     "build": "nest build",
     "start": "node dist/main",
     "start:prod": "NODE_ENV=production node dist/main",
-    "seed": "ts-node src/seed.ts",
     "format": "prettier --write \"{src,test}/**/*.ts\"",
     "lint": "eslint src test/setup.ts test/unit",
     "test": "jest",
