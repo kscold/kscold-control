@@ -3,6 +3,7 @@ import { useAuthStore } from '@/shared/model';
 import { useClaudeChatSession } from '../model/useClaudeChatSession';
 import { useClaudeChatMessages } from '../model/useClaudeChatMessages';
 import { useClaudeChatSocket } from '../model/useClaudeChatSocket';
+import type { ClaudeHistoryPayload } from '../model/claude-chat.types';
 import { getClaudeSessionStorageKey } from '../lib/claude-chat.constants';
 import { ChatHeader } from './ChatHeader';
 import { ChatMessageList } from './ChatMessageList';
@@ -57,7 +58,7 @@ export function ClaudeChat({
     savedSessionId: initialSessionId,
     onSessionReady: handleSessionReady,
     onHistory: useCallback(
-      (data: { messages: any[] }) => {
+      (data: ClaudeHistoryPayload) => {
         loadHistory(data.messages);
       },
       [loadHistory],
