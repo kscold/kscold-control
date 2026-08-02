@@ -6,8 +6,6 @@ import {
   UpdateUserRequest,
   AssignRolesRequest,
   UpdateTerminalLimitRequest,
-  CreateRoleRequest,
-  UpdateRoleRequest,
 } from './types';
 
 /**
@@ -149,53 +147,6 @@ export class RbacService extends BaseApiService {
     } catch (error) {
       this.logError('RbacService', 'getRoles', error);
       this.handleError(error, 'Failed to load roles');
-    }
-  }
-
-  /**
-   * 새 역할을 생성한다
-   * @param request 역할 생성 데이터
-   * @returns 생성된 역할
-   */
-  async createRole(request: CreateRoleRequest): Promise<Role> {
-    try {
-      const { data } = await api.post<Role>(`${this.basePath}/roles`, request);
-      return data;
-    } catch (error) {
-      this.logError('RbacService', 'createRole', error);
-      this.handleError(error, 'Failed to create role');
-    }
-  }
-
-  /**
-   * 역할 정보를 수정한다
-   * @param id 역할 ID
-   * @param request 수정할 데이터
-   * @returns 수정된 역할
-   */
-  async updateRole(id: string, request: UpdateRoleRequest): Promise<Role> {
-    try {
-      const { data } = await api.put<Role>(
-        `${this.basePath}/roles/${id}`,
-        request,
-      );
-      return data;
-    } catch (error) {
-      this.logError('RbacService', 'updateRole', error);
-      this.handleError(error, 'Failed to update role');
-    }
-  }
-
-  /**
-   * 역할을 삭제한다
-   * @param id 역할 ID
-   */
-  async deleteRole(id: string): Promise<void> {
-    try {
-      await api.delete(`${this.basePath}/roles/${id}`);
-    } catch (error) {
-      this.logError('RbacService', 'deleteRole', error);
-      this.handleError(error, 'Failed to delete role');
     }
   }
 
