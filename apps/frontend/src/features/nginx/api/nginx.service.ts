@@ -7,6 +7,10 @@ import type {
   CertRenewalStatus,
   DnsCheckResult,
   UpstreamOption,
+  NginxCommandResult,
+  NginxSiteMutationResult,
+  NginxSiteDeleteResult,
+  NginxSiteToggleResult,
 } from '../model/nginx.types';
 
 export class NginxApiService extends BaseApiService {
@@ -22,9 +26,12 @@ export class NginxApiService extends BaseApiService {
     }
   }
 
-  async createSite(dto: CreateNginxSiteDto): Promise<any> {
+  async createSite(dto: CreateNginxSiteDto): Promise<NginxSiteMutationResult> {
     try {
-      const { data } = await api.post(`${this.basePath}/sites`, dto);
+      const { data } = await api.post<NginxSiteMutationResult>(
+        `${this.basePath}/sites`,
+        dto,
+      );
       return data;
     } catch (error) {
       this.logError('NginxApiService', 'createSite', error);
@@ -32,9 +39,15 @@ export class NginxApiService extends BaseApiService {
     }
   }
 
-  async updateSite(name: string, dto: CreateNginxSiteDto): Promise<any> {
+  async updateSite(
+    name: string,
+    dto: CreateNginxSiteDto,
+  ): Promise<NginxSiteMutationResult> {
     try {
-      const { data } = await api.put(`${this.basePath}/sites/${name}`, dto);
+      const { data } = await api.put<NginxSiteMutationResult>(
+        `${this.basePath}/sites/${name}`,
+        dto,
+      );
       return data;
     } catch (error) {
       this.logError('NginxApiService', 'updateSite', error);
@@ -42,9 +55,11 @@ export class NginxApiService extends BaseApiService {
     }
   }
 
-  async deleteSite(name: string): Promise<any> {
+  async deleteSite(name: string): Promise<NginxSiteDeleteResult> {
     try {
-      const { data } = await api.delete(`${this.basePath}/sites/${name}`);
+      const { data } = await api.delete<NginxSiteDeleteResult>(
+        `${this.basePath}/sites/${name}`,
+      );
       return data;
     } catch (error) {
       this.logError('NginxApiService', 'deleteSite', error);
@@ -52,9 +67,11 @@ export class NginxApiService extends BaseApiService {
     }
   }
 
-  async toggleSite(name: string): Promise<any> {
+  async toggleSite(name: string): Promise<NginxSiteToggleResult> {
     try {
-      const { data } = await api.post(`${this.basePath}/sites/${name}/toggle`);
+      const { data } = await api.post<NginxSiteToggleResult>(
+        `${this.basePath}/sites/${name}/toggle`,
+      );
       return data;
     } catch (error) {
       this.logError('NginxApiService', 'toggleSite', error);
@@ -62,9 +79,9 @@ export class NginxApiService extends BaseApiService {
     }
   }
 
-  async testConfig(): Promise<{ success: boolean; output: string }> {
+  async testConfig(): Promise<NginxCommandResult> {
     try {
-      const { data } = await api.post<{ success: boolean; output: string }>(
+      const { data } = await api.post<NginxCommandResult>(
         `${this.basePath}/test`,
       );
       return data;
@@ -74,9 +91,9 @@ export class NginxApiService extends BaseApiService {
     }
   }
 
-  async reloadNginx(): Promise<{ success: boolean; output: string }> {
+  async reloadNginx(): Promise<NginxCommandResult> {
     try {
-      const { data } = await api.post<{ success: boolean; output: string }>(
+      const { data } = await api.post<NginxCommandResult>(
         `${this.basePath}/reload`,
       );
       return data;
@@ -112,9 +129,12 @@ export class NginxApiService extends BaseApiService {
     domain: string;
     email: string;
     mode: string;
-  }): Promise<any> {
+  }): Promise<NginxCommandResult> {
     try {
-      const { data } = await api.post(`${this.basePath}/certs/issue`, form);
+      const { data } = await api.post<NginxCommandResult>(
+        `${this.basePath}/certs/issue`,
+        form,
+      );
       return data;
     } catch (error) {
       this.logError('NginxApiService', 'issueCert', error);
@@ -122,9 +142,11 @@ export class NginxApiService extends BaseApiService {
     }
   }
 
-  async renewAll(): Promise<any> {
+  async renewAll(): Promise<NginxCommandResult> {
     try {
-      const { data } = await api.post(`${this.basePath}/certs/renew`);
+      const { data } = await api.post<NginxCommandResult>(
+        `${this.basePath}/certs/renew`,
+      );
       return data;
     } catch (error) {
       this.logError('NginxApiService', 'renewAll', error);
