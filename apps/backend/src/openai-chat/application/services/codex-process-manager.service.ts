@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { spawn, ChildProcess } from 'child_process';
 import { createInterface } from 'readline';
+import { getWorkingDirectory } from '../../../common/utils';
 
 export interface CodexStreamEvent {
   type: 'text-delta' | 'message-end' | 'error' | 'process-exit';
@@ -20,8 +21,12 @@ export class CodexProcessManagerService {
   private readonly logger = new Logger(CodexProcessManagerService.name);
   private readonly processes = new Map<string, CodexProcess>();
 
+  /**
+   * Codex 프로세스가 실행될 작업 디렉토리.
+   * 폴백이 달라 혼동되지 않도록 다른 프로세스 관리자와 같은 공용 유틸을 쓴다.
+   */
   getWorkingDirectory(): string {
-    return process.env.CLAUDE_WORKING_DIR || process.env.HOME || '/tmp';
+    return getWorkingDirectory();
   }
 
   isProcessing(sessionId: string): boolean {
