@@ -48,7 +48,7 @@ export class AuditInterceptor implements NestInterceptor {
     if (!meta) return next.handle();
 
     const req = context.switchToHttp().getRequest<AuditRequest>();
-    const actorId = req.user?.id ?? req.user?.sub ?? null;
+    const actorId = req.user?.id ?? null;
     const actorEmail = req.user?.email ?? null;
 
     return next.handle().pipe(

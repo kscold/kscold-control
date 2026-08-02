@@ -35,7 +35,7 @@ export class NginxApiService extends BaseApiService {
       return data;
     } catch (error) {
       this.logError('NginxApiService', 'createSite', error);
-      throw error;
+      this.handleError(error, '사이트 생성에 실패했습니다.');
     }
   }
 
@@ -51,7 +51,7 @@ export class NginxApiService extends BaseApiService {
       return data;
     } catch (error) {
       this.logError('NginxApiService', 'updateSite', error);
-      throw error;
+      this.handleError(error, '사이트 수정에 실패했습니다.');
     }
   }
 
@@ -138,7 +138,7 @@ export class NginxApiService extends BaseApiService {
       return data;
     } catch (error) {
       this.logError('NginxApiService', 'issueCert', error);
-      throw error;
+      this.handleError(error, '인증서 발급에 실패했습니다.');
     }
   }
 
@@ -150,7 +150,7 @@ export class NginxApiService extends BaseApiService {
       return data;
     } catch (error) {
       this.logError('NginxApiService', 'renewAll', error);
-      throw error;
+      this.handleError(error, '인증서 갱신에 실패했습니다.');
     }
   }
 
@@ -185,7 +185,7 @@ export class NginxApiService extends BaseApiService {
       return data;
     } catch (error) {
       this.logError('NginxApiService', 'verifyDns', error);
-      throw error;
+      this.handleError(error, 'DNS 확인에 실패했습니다.');
     }
   }
 

@@ -108,7 +108,9 @@ export class RepositoryController {
     @Body() dto: CreateProjectDto,
     @Request() req: JwtRequest,
   ) {
-    return this.createProjectUseCase.execute(dto, req.user?.sub ?? null);
+    // HTTP 요청의 사용자 식별자는 id 다. sub 는 소켓 토큰에만 있어 여기서는 항상 비어 있었고,
+    // 그 결과 생성된 프로젝트의 소유자가 저장되지 않아 비관리자가 자기 프로젝트를 볼 수 없었다.
+    return this.createProjectUseCase.execute(dto, req.user?.id ?? null);
   }
 
   @Delete('projects/:id')

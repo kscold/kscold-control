@@ -38,7 +38,9 @@ export function useNginxDns() {
       const data = await nginxService.verifyDns(singleDnsCheck.trim());
       setSingleDnsResult(data);
     } catch (e: any) {
-      showAlert('DNS 확인 실패: ' + (e.response?.data?.message || e.message));
+      showAlert(
+        'DNS 확인 실패: ' + (e instanceof Error ? e.message : String(e)),
+      );
     } finally {
       setSingleDnsLoading(false);
     }

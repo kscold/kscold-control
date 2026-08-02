@@ -86,7 +86,7 @@ export class SecurityController {
   })
   async createBan(@Body() dto: CreateIpBanDto, @Req() req: SecurityRequest) {
     const requesterIp = extractIp(req);
-    const actorId = req.user?.id ?? req.user?.sub ?? null;
+    const actorId = req.user?.id ?? null;
 
     const ban = await this.createIpBan.execute({
       ip: dto.ip,

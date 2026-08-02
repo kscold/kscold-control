@@ -95,7 +95,9 @@ export function useCreateContainer(onSuccess?: () => void) {
     } catch (error: any) {
       console.error('Failed to create instance:', error);
       showAlert(
-        error.response?.data?.message || '인스턴스 생성에 실패했습니다.',
+        error instanceof Error
+          ? error.message
+          : '인스턴스 생성에 실패했습니다.',
       );
     } finally {
       setIsCreating(false);
