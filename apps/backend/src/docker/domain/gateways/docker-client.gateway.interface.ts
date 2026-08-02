@@ -49,15 +49,36 @@ export interface DockerContainerConfig {
   environment?: Record<string, string>;
 }
 
+/** 컨테이너 안에서 PM2 가 관리하는 프로세스 한 건 */
+export interface DockerPm2Process {
+  name: string;
+  status: string;
+  pid: number | null;
+  /** CPU 사용률(%) */
+  cpu: number;
+  /** 메모리 사용량(바이트) */
+  memory: number;
+  /** 재시작 횟수 */
+  restarts: number;
+}
+
+/** 컨테이너 안에서 감지된 서비스 한 건 (토폴로지 연결용) */
+export interface DockerDetectedService {
+  name: string;
+  port: number;
+  icon: string;
+}
+
 /**
  * 컨테이너 내부 프로세스를 토폴로지와 상세 화면에서 공통으로 쓰는 형태임.
  *
- * PM2 항목의 세부 필드는 컨테이너마다 달라 원본 값을 보존하고, 서비스 항목은
- * 토폴로지 연결에 필요한 이름·포트·아이콘으로 정규화함.
+ * PM2 원본 응답에서 화면에 필요한 필드만 뽑아 정규화하므로 구조가 고정돼 있다.
+ * 도메인 계약에 any 를 두면 인프라의 불확실성이 상위 계층까지 새어 나가므로
+ * 실제 정규화 결과를 그대로 타입으로 표현한다.
  */
 export interface DockerContainerProcesses {
-  pm2: any[];
-  services: Array<{ name: string; port: number; icon: string }>;
+  pm2: DockerPm2Process[];
+  services: DockerDetectedService[];
 }
 
 /**
