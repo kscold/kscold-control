@@ -21,4 +21,8 @@ export const PERMISSIONS = {
   REPOSITORY_DELETE: 'repository:delete',
   SECURITY_READ: 'security:read',
   SECURITY_MANAGE: 'security:manage',
+  SECRETS_READ: 'secrets:read',
+  SECRETS_REVEAL: 'secrets:reveal',
+  SECRETS_WRITE: 'secrets:write',
+  SECRETS_DEPLOY: 'secrets:deploy',
 } as const;

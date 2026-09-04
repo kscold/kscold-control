@@ -19,6 +19,7 @@ interface AuthState {
   user: User | null;
   isValidating: boolean;
   login: (email: string, password: string) => Promise<void>;
+  register: (email: string, password: string) => Promise<void>;
   logout: () => void;
   validateToken: () => Promise<boolean>;
 }
@@ -49,6 +50,11 @@ export const useAuthStore = create<AuthState>()(
           password,
         });
         set({ token: data.accessToken, user: data.user });
+      },
+
+      register: async (email: string, password: string) => {
+        await axios.post(`${API_URL}/api/auth/register`, { email, password });
+        await get().login(email, password);
       },
 
       logout: () => {

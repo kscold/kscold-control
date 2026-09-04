@@ -5,25 +5,65 @@ import { useAuth } from '../model/useAuth';
  */
 export function LoginForm() {
   const {
+    mode,
     email,
     password,
+    confirmPassword,
     error,
     isLoading,
     setEmail,
     setPassword,
-    handleLogin,
+    setConfirmPassword,
+    changeMode,
+    handleSubmit,
   } = useAuth();
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-950 p-4">
-      <div className="w-full max-w-sm">
-        <div className="bg-gray-900 border border-gray-800 rounded-xl p-6 sm:p-8">
-          <h1 className="text-xl sm:text-2xl font-bold text-white text-center mb-2">
-            kscold-control
+    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[#071018] p-4">
+      <div className="absolute -left-24 top-1/4 h-80 w-80 rounded-full bg-sky-500/10 blur-3xl" />
+      <div className="absolute -right-24 bottom-1/4 h-80 w-80 rounded-full bg-amber-400/10 blur-3xl" />
+      <div className="relative w-full max-w-md">
+        <div className="rounded-[28px] border border-slate-800 bg-slate-950/80 p-6 shadow-2xl shadow-black/40 backdrop-blur sm:p-8">
+          <div className="mx-auto mb-5 h-14 w-14 overflow-hidden rounded-2xl border border-sky-400/20 bg-slate-950 shadow-lg shadow-sky-950/50">
+            <img
+              src="/favicon.svg"
+              alt="kscold-control"
+              className="h-full w-full"
+            />
+          </div>
+          <h1 className="text-center text-2xl font-bold text-white">
+            {mode === 'login' ? 'kscold-control' : '개발자 접근 요청'}
           </h1>
-          <p className="text-gray-500 text-center text-xs sm:text-sm mb-6 sm:mb-8">
-            맥 미니 인프라 관리 시스템
+          <p className="mb-6 mt-2 text-center text-sm leading-6 text-slate-500">
+            {mode === 'login'
+              ? '운영 인프라와 배포 키를 안전하게 관리합니다.'
+              : '가입 후 관리자의 승인이 완료되면 허용된 화면만 열립니다.'}
           </p>
+
+          <div className="mb-5 grid grid-cols-2 rounded-xl bg-slate-900 p-1">
+            <button
+              type="button"
+              onClick={() => changeMode('login')}
+              className={`rounded-lg py-2 text-sm ${
+                mode === 'login'
+                  ? 'bg-slate-700 text-white'
+                  : 'text-slate-500 hover:text-slate-300'
+              }`}
+            >
+              로그인
+            </button>
+            <button
+              type="button"
+              onClick={() => changeMode('register')}
+              className={`rounded-lg py-2 text-sm ${
+                mode === 'register'
+                  ? 'bg-amber-400 font-semibold text-slate-950'
+                  : 'text-slate-500 hover:text-slate-300'
+              }`}
+            >
+              회원가입 요청
+            </button>
+          </div>
 
           {error && (
             <div className="bg-red-900/30 border border-red-800 text-red-400 text-xs sm:text-sm px-3 sm:px-4 py-2.5 sm:py-3 rounded-lg mb-4">
@@ -31,7 +71,7 @@ export function LoginForm() {
             </div>
           )}
 
-          <form onSubmit={handleLogin} className="space-y-3 sm:space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className="block text-xs sm:text-sm text-gray-400 mb-1">
                 이메일
@@ -40,8 +80,8 @@ export function LoginForm() {
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full px-3 sm:px-4 py-2 sm:py-2.5 text-sm sm:text-base bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-blue-500"
-                placeholder="email"
+                className="w-full rounded-xl border border-slate-700 bg-slate-900 px-4 py-3 text-sm text-white outline-none focus:border-amber-400"
+                placeholder="developer@example.com"
                 required
               />
             </div>
@@ -54,18 +94,40 @@ export function LoginForm() {
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full px-3 sm:px-4 py-2 sm:py-2.5 text-sm sm:text-base bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-blue-500"
-                placeholder="비밀번호"
+                minLength={mode === 'register' ? 8 : undefined}
+                className="w-full rounded-xl border border-slate-700 bg-slate-900 px-4 py-3 text-sm text-white outline-none focus:border-amber-400"
+                placeholder="8자 이상 비밀번호"
                 required
               />
             </div>
 
+            {mode === 'register' && (
+              <div>
+                <label className="mb-1 block text-sm text-slate-400">
+                  비밀번호 확인
+                </label>
+                <input
+                  type="password"
+                  value={confirmPassword}
+                  onChange={(event) => setConfirmPassword(event.target.value)}
+                  minLength={8}
+                  className="w-full rounded-xl border border-slate-700 bg-slate-900 px-4 py-3 text-sm text-white outline-none focus:border-amber-400"
+                  placeholder="비밀번호를 다시 입력하세요"
+                  required
+                />
+              </div>
+            )}
+
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full py-2.5 sm:py-3 text-sm sm:text-base bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors"
+              className="w-full rounded-xl bg-amber-400 py-3 text-sm font-bold text-slate-950 transition-colors hover:bg-amber-300 disabled:opacity-50"
             >
-              {isLoading ? '로그인 중...' : '로그인'}
+              {isLoading
+                ? '처리 중...'
+                : mode === 'login'
+                  ? '로그인'
+                  : '가입하고 승인 대기'}
             </button>
           </form>
         </div>

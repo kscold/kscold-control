@@ -26,6 +26,7 @@ import {
   ListRolesUseCase,
   ListPermissionsUseCase,
   ManageTerminalLimitUseCase,
+  ApproveKeyManagerUseCase,
 } from '../../application/use-cases';
 import {
   CreateUserDto,
@@ -83,6 +84,7 @@ export class RbacController {
     private readonly listRolesUseCase: ListRolesUseCase,
     private readonly listPermissionsUseCase: ListPermissionsUseCase,
     private readonly manageTerminalLimitUseCase: ManageTerminalLimitUseCase,
+    private readonly approveKeyManagerUseCase: ApproveKeyManagerUseCase,
   ) {}
 
   // ==================== Role Endpoints ====================
@@ -195,6 +197,30 @@ export class RbacController {
     req._auditExtra = { before: await this.getUserSnapshot(userId) };
     const dto: AssignRolesDto = { userId, roleIds: requestDto.roleIds };
     return this.assignRolesUseCase.execute(dto);
+  }
+
+  @Post('users/:id/approve-key-manager')
+  @RequirePermissions(PERMISSIONS.RBAC_MANAGE)
+  @Audit({
+    domain: 'rbac',
+    action: 'user.approve-key-manager',
+    summary: (ctx) =>
+      `사용자 ${ctx.params.id}의 GoLe 키 관리 접근을 승인했습니다.`,
+    targetType: 'user',
+    targetId: (ctx) => ctx.params.id,
+    metadata: (ctx) => ({
+      before: (ctx.extra as { before?: unknown }).before ?? null,
+      after: toUserSnapshot(
+        ctx.response as Parameters<typeof toUserSnapshot>[0],
+      ),
+    }),
+  })
+  async approveKeyManager(
+    @Param('id') id: string,
+    @Request() req: RbacRequest,
+  ) {
+    req._auditExtra = { before: await this.getUserSnapshot(id) };
+    return this.approveKeyManagerUseCase.execute(id);
   }
 
   // ==================== Terminal Limit Endpoints ====================

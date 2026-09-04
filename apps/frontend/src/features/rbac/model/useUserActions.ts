@@ -84,6 +84,23 @@ export function useUserActions(onSuccess?: () => void) {
     }
   };
 
+  const approveKeyManager = async (userId: string) => {
+    try {
+      setLoading(true);
+      await rbacService.approveKeyManager(userId);
+      showAlert('GoLe 키 관리 접근을 승인했습니다.');
+      onSuccess?.();
+      return true;
+    } catch (error) {
+      showAlert(
+        error instanceof Error ? error.message : '키 관리 접근 승인 실패',
+      );
+      return false;
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const resetTerminalLimit = async (userId: string) => {
     try {
       setLoading(true);
@@ -121,6 +138,7 @@ export function useUserActions(onSuccess?: () => void) {
     updatePassword,
     deleteUser,
     assignRoles,
+    approveKeyManager,
     resetTerminalLimit,
     updateTerminalLimit,
     loading,

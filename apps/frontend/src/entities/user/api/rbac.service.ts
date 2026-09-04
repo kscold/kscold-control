@@ -99,6 +99,18 @@ export class RbacService extends BaseApiService {
     }
   }
 
+  /** 승인 대기 사용자를 GoLe 키 관리자로 전환한다. */
+  async approveKeyManager(userId: string): Promise<User> {
+    try {
+      const { data } = await api.post<User>(
+        `${this.basePath}/users/${userId}/approve-key-manager`,
+      );
+      return data;
+    } catch (error) {
+      this.handleError(error, '키 관리 접근 승인에 실패했습니다.');
+    }
+  }
+
   /**
    * 사용자의 터미널 명령어 사용 제한을 수정한다
    * @param userId 사용자 ID

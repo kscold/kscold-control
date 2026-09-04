@@ -4,6 +4,7 @@ export * from './update-user.use-case';
 export * from './delete-user.use-case';
 export * from './list-users.use-case';
 export * from './assign-roles.use-case';
+export * from './approve-key-manager.use-case';
 
 // Role Use Cases
 export * from './list-roles.use-case';

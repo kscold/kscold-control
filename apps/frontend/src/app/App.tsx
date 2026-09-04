@@ -1,55 +1,77 @@
 import { lazy, Suspense, useEffect } from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
-import { useAuthStore } from '@/shared/model/auth.store';
-import { Layout } from './Layout';
-import { Modal } from '@/shared/ui/Modal';
-import { SkeletonBlock } from '@/shared/ui/SkeletonBlock';
-import { ErrorBoundary } from './providers';
+import { Navigate, Route, Routes } from 'react-router-dom';
 import { DashboardOverviewSkeleton } from '@/features/dashboard';
 import { DockerDashboardSkeleton } from '@/features/docker';
 import { TopologySkeleton } from '@/features/topology';
+import { PERMISSIONS } from '@/shared/config/permissions';
+import { ROLES } from '@/shared/config/roles';
+import { useAuthStore } from '@/shared/model/auth.store';
+import { Modal } from '@/shared/ui/Modal';
+import { SkeletonBlock } from '@/shared/ui/SkeletonBlock';
+import { Layout } from './Layout';
+import { ErrorBoundary } from './providers';
 
 const LoginPage = lazy(() =>
-  import('@/pages/login').then((m) => ({ default: m.LoginPage })),
+  import('@/pages/login').then((module) => ({ default: module.LoginPage })),
 );
 const DashboardPage = lazy(() =>
-  import('@/pages/dashboard').then((m) => ({ default: m.DashboardPage })),
+  import('@/pages/dashboard').then((module) => ({
+    default: module.DashboardPage,
+  })),
 );
 const WorkspacePage = lazy(() =>
-  import('@/pages/workspace').then((m) => ({ default: m.WorkspacePage })),
+  import('@/pages/workspace').then((module) => ({
+    default: module.WorkspacePage,
+  })),
 );
 const DockerPage = lazy(() =>
-  import('@/pages/docker').then((m) => ({ default: m.DockerPage })),
+  import('@/pages/docker').then((module) => ({ default: module.DockerPage })),
 );
 const RbacPage = lazy(() =>
-  import('@/pages/rbac').then((m) => ({ default: m.RbacPage })),
+  import('@/pages/rbac').then((module) => ({ default: module.RbacPage })),
 );
 const LogsPage = lazy(() =>
-  import('@/pages/logs').then((m) => ({ default: m.LogsPage })),
+  import('@/pages/logs').then((module) => ({ default: module.LogsPage })),
 );
 const NginxPage = lazy(() =>
-  import('@/pages/nginx').then((m) => ({ default: m.NginxPage })),
+  import('@/pages/nginx').then((module) => ({ default: module.NginxPage })),
 );
 const NetworkPage = lazy(() =>
-  import('@/pages/network').then((m) => ({ default: m.NetworkPage })),
+  import('@/pages/network').then((module) => ({ default: module.NetworkPage })),
 );
 const TopologyPage = lazy(() =>
-  import('@/pages/topology').then((m) => ({ default: m.TopologyPage })),
+  import('@/pages/topology').then((module) => ({
+    default: module.TopologyPage,
+  })),
 );
 const RepositoryPage = lazy(() =>
-  import('@/pages/repository').then((m) => ({ default: m.RepositoryPage })),
+  import('@/pages/repository').then((module) => ({
+    default: module.RepositoryPage,
+  })),
 );
 const AuditPage = lazy(() =>
-  import('@/pages/audit').then((m) => ({ default: m.AuditPage })),
+  import('@/pages/audit').then((module) => ({ default: module.AuditPage })),
 );
 const SecurityPage = lazy(() =>
-  import('@/pages/security').then((m) => ({ default: m.SecurityPage })),
+  import('@/pages/security').then((module) => ({
+    default: module.SecurityPage,
+  })),
+);
+const KeyManagementPage = lazy(() =>
+  import('@/pages/key-management').then((module) => ({
+    default: module.KeyManagementPage,
+  })),
+);
+const PendingApprovalPage = lazy(() =>
+  import('@/pages/pending-approval').then((module) => ({
+    default: module.PendingApprovalPage,
+  })),
 );
 
 function AuthPageLoader() {
   return (
-    <div className="flex items-center justify-center h-full">
-      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500" />
+    <div className="flex h-full items-center justify-center">
+      <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-blue-500" />
     </div>
   );
 }
@@ -81,20 +103,84 @@ function RoutePageSkeleton() {
   );
 }
 
-const TOKEN_REVALIDATE_INTERVAL = 60 * 60 * 1000; // 1시간
+const TOKEN_REVALIDATE_INTERVAL = 60 * 60 * 1000;
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { token, validateToken } = useAuthStore();
 
   useEffect(() => {
     if (!token) return;
-    validateToken();
-    const id = setInterval(validateToken, TOKEN_REVALIDATE_INTERVAL);
-    return () => clearInterval(id);
-  }, []);
+    void validateToken();
+    const id = window.setInterval(
+      () => void validateToken(),
+      TOKEN_REVALIDATE_INTERVAL,
+    );
+    return () => window.clearInterval(id);
+  }, [token, validateToken]);
 
   if (!token) return <Navigate to="/login" replace />;
   return <>{children}</>;
+}
+
+function PermissionRoute({
+  permission,
+  children,
+}: {
+  permission: string;
+  children: React.ReactNode;
+}) {
+  const user = useAuthStore((state) => state.user);
+  if (user?.permissions.includes(permission)) return <>{children}</>;
+  if (user?.roles.includes(ROLES.PENDING_APPROVAL)) {
+    return <Navigate to="/pending" replace />;
+  }
+  return <Navigate to="/" replace />;
+}
+
+function HomeRoute() {
+  const user = useAuthStore((state) => state.user);
+  if (!user) return <AuthPageLoader />;
+  if (user.roles.includes(ROLES.PENDING_APPROVAL)) {
+    return <Navigate to="/pending" replace />;
+  }
+  if (user.permissions.includes(PERMISSIONS.SYSTEM_READ)) {
+    return (
+      <ErrorBoundary>
+        <Suspense fallback={<DashboardOverviewSkeleton />}>
+          <DashboardPage />
+        </Suspense>
+      </ErrorBoundary>
+    );
+  }
+
+  const firstAllowedRoute = [
+    [PERMISSIONS.SECRETS_READ, '/keys'],
+    [PERMISSIONS.TERMINAL_ACCESS, '/terminal'],
+    [PERMISSIONS.DOCKER_READ, '/docker'],
+    [PERMISSIONS.RBAC_MANAGE, '/rbac'],
+    [PERMISSIONS.REPOSITORY_READ, '/repository'],
+    [PERMISSIONS.SECURITY_READ, '/security'],
+  ].find(([permission]) => user.permissions.includes(permission));
+
+  return firstAllowedRoute ? (
+    <Navigate to={firstAllowedRoute[1]} replace />
+  ) : (
+    <Navigate to="/pending" replace />
+  );
+}
+
+function page(
+  permission: string,
+  content: React.ReactNode,
+  fallback: React.ReactNode = <RoutePageSkeleton />,
+) {
+  return (
+    <PermissionRoute permission={permission}>
+      <ErrorBoundary>
+        <Suspense fallback={fallback}>{content}</Suspense>
+      </ErrorBoundary>
+    </PermissionRoute>
+  );
 }
 
 export default function App() {
@@ -117,115 +203,66 @@ export default function App() {
             </ProtectedRoute>
           }
         >
+          <Route index element={<HomeRoute />} />
           <Route
-            index
+            path="pending"
             element={
-              <ErrorBoundary>
-                <Suspense fallback={<DashboardOverviewSkeleton />}>
-                  <DashboardPage />
-                </Suspense>
-              </ErrorBoundary>
+              <Suspense fallback={<RoutePageSkeleton />}>
+                <PendingApprovalPage />
+              </Suspense>
             }
+          />
+          <Route
+            path="keys"
+            element={page(PERMISSIONS.SECRETS_READ, <KeyManagementPage />)}
           />
           <Route
             path="terminal"
-            element={
-              <ErrorBoundary>
-                <Suspense fallback={<RoutePageSkeleton />}>
-                  <WorkspacePage />
-                </Suspense>
-              </ErrorBoundary>
-            }
+            element={page(PERMISSIONS.TERMINAL_ACCESS, <WorkspacePage />)}
           />
           <Route
             path="docker"
-            element={
-              <ErrorBoundary>
-                <Suspense fallback={<DockerDashboardSkeleton />}>
-                  <DockerPage />
-                </Suspense>
-              </ErrorBoundary>
-            }
+            element={page(
+              PERMISSIONS.DOCKER_READ,
+              <DockerPage />,
+              <DockerDashboardSkeleton />,
+            )}
           />
           <Route
             path="rbac"
-            element={
-              <ErrorBoundary>
-                <Suspense fallback={<RoutePageSkeleton />}>
-                  <RbacPage />
-                </Suspense>
-              </ErrorBoundary>
-            }
+            element={page(PERMISSIONS.RBAC_MANAGE, <RbacPage />)}
           />
           <Route
             path="logs"
-            element={
-              <ErrorBoundary>
-                <Suspense fallback={<RoutePageSkeleton />}>
-                  <LogsPage />
-                </Suspense>
-              </ErrorBoundary>
-            }
+            element={page(PERMISSIONS.SYSTEM_READ, <LogsPage />)}
           />
           <Route
             path="nginx"
-            element={
-              <ErrorBoundary>
-                <Suspense fallback={<RoutePageSkeleton />}>
-                  <NginxPage />
-                </Suspense>
-              </ErrorBoundary>
-            }
+            element={page(PERMISSIONS.SYSTEM_READ, <NginxPage />)}
           />
           <Route
             path="network"
-            element={
-              <ErrorBoundary>
-                <Suspense fallback={<RoutePageSkeleton />}>
-                  <NetworkPage />
-                </Suspense>
-              </ErrorBoundary>
-            }
+            element={page(PERMISSIONS.SYSTEM_READ, <NetworkPage />)}
           />
           <Route
             path="topology"
-            element={
-              <ErrorBoundary>
-                <Suspense fallback={<TopologySkeleton />}>
-                  <TopologyPage />
-                </Suspense>
-              </ErrorBoundary>
-            }
+            element={page(
+              PERMISSIONS.DOCKER_READ,
+              <TopologyPage />,
+              <TopologySkeleton />,
+            )}
           />
           <Route
             path="repository"
-            element={
-              <ErrorBoundary>
-                <Suspense fallback={<RoutePageSkeleton />}>
-                  <RepositoryPage />
-                </Suspense>
-              </ErrorBoundary>
-            }
+            element={page(PERMISSIONS.REPOSITORY_READ, <RepositoryPage />)}
           />
           <Route
             path="audit"
-            element={
-              <ErrorBoundary>
-                <Suspense fallback={<RoutePageSkeleton />}>
-                  <AuditPage />
-                </Suspense>
-              </ErrorBoundary>
-            }
+            element={page(PERMISSIONS.SYSTEM_READ, <AuditPage />)}
           />
           <Route
             path="security"
-            element={
-              <ErrorBoundary>
-                <Suspense fallback={<RoutePageSkeleton />}>
-                  <SecurityPage />
-                </Suspense>
-              </ErrorBoundary>
-            }
+            element={page(PERMISSIONS.SECURITY_READ, <SecurityPage />)}
           />
         </Route>
       </Routes>

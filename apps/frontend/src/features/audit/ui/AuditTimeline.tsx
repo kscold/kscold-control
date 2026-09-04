@@ -28,6 +28,8 @@ const DOMAIN_OPTIONS: Array<{ value: AuditDomain; label: string }> = [
   { value: 'docker', label: 'Docker' },
   { value: 'nginx', label: 'Nginx' },
   { value: 'rbac', label: 'RBAC' },
+  { value: 'security', label: '보안' },
+  { value: 'secrets', label: '운영 키' },
 ];
 
 function getDomainTone(domain: AuditEvent['domain']) {
@@ -154,6 +156,16 @@ export function AuditTimeline() {
     { domain: 'docker', label: 'Docker', value: summary.byDomain.docker },
     { domain: 'nginx', label: 'Nginx', value: summary.byDomain.nginx },
     { domain: 'rbac', label: 'RBAC', value: summary.byDomain.rbac },
+    {
+      domain: 'security',
+      label: '보안',
+      value: summary.byDomain.security,
+    },
+    {
+      domain: 'secrets',
+      label: '운영 키',
+      value: summary.byDomain.secrets,
+    },
   ];
   const selectedItem = useMemo(
     () => items.find((item) => item.id === selectedId) ?? null,

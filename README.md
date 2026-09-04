@@ -21,6 +21,7 @@ A self-hosted infrastructure governance panel for managing Docker containers, Ng
 | **Repository**  | Source upload, version history snapshots, diff viewer, file browser                           |
 | **Audit**       | AOP-based automatic audit log, CSV export, actor/target insights                              |
 | **Security**    | IP ban management, JWT RBAC, permission guards                                                |
+| **Key Vault**   | Approval-gated GoLe `.env`, encrypted DB backups, Secret Manager version deploys              |
 | **Logs**        | Unified viewer — backend · PM2 · Nginx · Docker · blog container logs                         |
 | **Network**     | Topology graph (React Flow), UPnP port management                                             |
 | **System**      | Real-time CPU / memory / disk, Nginx status, host info                                        |
@@ -43,6 +44,7 @@ kscold-control/
 │   │       ├── logs/             # Unified log reader
 │   │       ├── repository/       # Source version management
 │   │       ├── audit/            # AOP audit interceptor
+│   │       ├── key-management/   # GoLe Secret Manager, encrypted backups, deployment
 │   │       └── security/         # IP ban
 │   └── frontend/             # React 18 + Vite + Tailwind CSS
 │       └── src/
@@ -129,18 +131,79 @@ npm install -g @openai/codex
 
 ## Environment Variables
 
-| Variable             | Default                 | Description                              |
-| -------------------- | ----------------------- | ---------------------------------------- |
-| `DATABASE_URL`       | —                       | PostgreSQL connection string (required)  |
-| `JWT_SECRET`         | —                       | JWT signing secret (required)            |
-| `PORT`               | `4000`                  | Backend HTTP/WS port                     |
-| `FRONTEND_URL`       | `http://localhost:3000` | CORS allowed origin                      |
-| `NODE_ENV`           | `development`           | `production` disables TypeORM auto-sync  |
-| `CLAUDE_WORKING_DIR` | `$HOME`                 | Working directory for AI coding sessions |
-| `OPENAI_API_KEY`     | —                       | OpenAI API key (Chat API + Codex CLI)    |
-| `OPENAI_MODEL`       | `gpt-4o`                | OpenAI model for Chat API                |
-| `CODEX_BIN`          | `codex`                 | Path to Codex binary                     |
-| `LOG_LEVEL`          | `info`                  | Winston log level                        |
+| Variable                        | Default                 | Description                               |
+| ------------------------------- | ----------------------- | ----------------------------------------- |
+| `DATABASE_URL`                  | —                       | PostgreSQL connection string (required)   |
+| `JWT_SECRET`                    | —                       | JWT signing secret (required)             |
+| `PORT`                          | `4000`                  | Backend HTTP/WS port                      |
+| `FRONTEND_URL`                  | `http://localhost:3000` | CORS allowed origin                       |
+| `NODE_ENV`                      | `development`           | `production` disables TypeORM auto-sync   |
+| `CLAUDE_WORKING_DIR`            | `$HOME`                 | Working directory for AI coding sessions  |
+| `OPENAI_API_KEY`                | —                       | OpenAI API key (Chat API + Codex CLI)     |
+| `OPENAI_MODEL`                  | `gpt-4o`                | OpenAI model for Chat API                 |
+| `CODEX_BIN`                     | `codex`                 | Path to Codex binary                      |
+| `LOG_LEVEL`                     | `info`                  | Winston log level                         |
+| `KEY_MANAGEMENT_ENCRYPTION_KEY` | —                       | Base64-encoded 32-byte AES-GCM backup key |
+
+## GoLe Key Management API
+
+Public registration creates a `pending_approval` account with no permissions.
+An administrator approves it from **RBAC → Users → GoLe 키 관리자 승인**. The
+approved `key_manager` role receives only `secrets:read`, `secrets:reveal`,
+`secrets:write`, and `secrets:deploy`.
+
+Get a JWT and the current immutable Secret Manager version:
+
+```bash
+TOKEN="$(curl -fsS https://control.kscold.com/api/auth/login \
+  -H 'Content-Type: application/json' \
+  --data '{"email":"developer@example.com","password":"your-password"}' \
+  | jq -r '.accessToken')"
+
+curl -fsS https://control.kscold.com/api/key-management/targets \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+Change one key. `secretValue` is the literal text after `=` in the `.env` file.
+Use the version returned by the previous request; stale versions return HTTP 409.
+
+```bash
+curl -fsS -X PATCH \
+  https://control.kscold.com/api/key-management/targets/gole-production/environment/MY_KEY \
+  -H "Authorization: Bearer $TOKEN" \
+  -H 'Content-Type: application/json' \
+  --data '{"secretValue":"new-value","expectedVersion":"1"}'
+```
+
+Replace the complete `.env` without putting its content in command arguments:
+
+```bash
+jq -n --rawfile env .env --arg version '1' \
+  '{envFile: $env, expectedVersion: $version}' | \
+curl -fsS -X PUT \
+  https://control.kscold.com/api/key-management/targets/gole-production/environment \
+  -H "Authorization: Bearer $TOKEN" \
+  -H 'Content-Type: application/json' --data-binary @-
+```
+
+Every PATCH, PUT, and restore first stores the current environment in PostgreSQL
+as AES-256-GCM ciphertext. A failed backup aborts the operation before creating a
+Secret Manager version. A successful change dispatches the exact version to the
+GoLe self-hosted runner; failed readiness restores the previous VM file.
+
+```bash
+# Deployment and encrypted-backup ledger
+curl -fsS \
+  https://control.kscold.com/api/key-management/targets/gole-production/backups \
+  -H "Authorization: Bearer $TOKEN"
+
+# Restore still creates a new pre-change backup and immutable secret version
+curl -fsS -X POST \
+  https://control.kscold.com/api/key-management/targets/gole-production/backups/BACKUP_ID/restore \
+  -H "Authorization: Bearer $TOKEN" \
+  -H 'Content-Type: application/json' \
+  --data '{"expectedVersion":"2"}'
+```
 
 ---
 
@@ -153,6 +216,9 @@ export JWT_SECRET="$(openssl rand -base64 48)"
 
 # 2. Build everything
 pnpm build
+
+# Apply the encrypted-backup ledger schema
+bash scripts/migrate-key-management.sh
 
 # 3. Start with PM2
 pm2 start ecosystem.config.js --update-env

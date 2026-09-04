@@ -1,4 +1,4 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { ConflictException, Inject, Injectable } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
 import {
   IUserRepository,
@@ -23,13 +23,18 @@ export class RegisterUseCase {
 
   async execute(dto: RegisterDto) {
     const { email, password } = dto;
-    const roleName = ROLES.READ_ONLY;
+    const roleName = ROLES.PENDING_APPROVAL;
+
+    const existingUser = await this.userRepository.findByEmail(email);
+    if (existingUser) {
+      throw new ConflictException('이미 가입된 이메일입니다.');
+    }
 
     // 비밀번호 해시
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // 공개 회원가입은 항상 읽기 전용 역할로 시작한다.
-    // 요청 body로 역할을 받으면 신규 사용자가 관리자 권한을 주입할 수 있다.
+    // 공개 회원가입은 항상 승인 대기 역할로 시작한다.
+    // 요청 body로 역할을 받으면 신규 사용자가 운영 권한을 주입할 수 있다.
     let role = await this.roleRepository.findByName(roleName);
     if (!role) {
       role = this.roleRepository.create({ name: roleName });
@@ -45,6 +50,10 @@ export class RegisterUseCase {
 
     await this.userRepository.save(user);
 
-    return { email: user.email, id: user.id };
+    return {
+      email: user.email,
+      id: user.id,
+      status: ROLES.PENDING_APPROVAL,
+    };
   }
 }

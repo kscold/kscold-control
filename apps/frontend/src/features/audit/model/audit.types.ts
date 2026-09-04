@@ -1,4 +1,5 @@
-export type AuditDomain = 'all' | 'repository' | 'docker' | 'nginx' | 'rbac';
+export type AuditDomain =
+  'all' | 'repository' | 'docker' | 'nginx' | 'rbac' | 'security' | 'secrets';
 
 export interface AuditDiffSummary {
   changeCount: number;
@@ -42,6 +43,8 @@ export interface AuditSummary {
     docker: number;
     nginx: number;
     rbac: number;
+    security: number;
+    secrets: number;
   };
   topActors: AuditActorSummary[];
   topTargets: AuditTargetSummary[];

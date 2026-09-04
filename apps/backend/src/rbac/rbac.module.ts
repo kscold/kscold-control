@@ -19,6 +19,7 @@ import {
   ListRolesUseCase,
   ListPermissionsUseCase,
   ManageTerminalLimitUseCase,
+  ApproveKeyManagerUseCase,
 } from './application/use-cases';
 import { RbacSeedService } from './application/services/rbac-seed.service';
 import { WsPermissionService } from './application/services/ws-permission.service';
@@ -56,6 +57,7 @@ import { RbacController } from './presentation/controllers/rbac.controller';
     ListRolesUseCase,
     ListPermissionsUseCase,
     ManageTerminalLimitUseCase,
+    ApproveKeyManagerUseCase,
 
     // 애플리케이션 서비스
     RbacSeedService,
@@ -92,6 +94,7 @@ import { RbacController } from './presentation/controllers/rbac.controller';
     AssignRolesUseCase,
     ListRolesUseCase,
     ManageTerminalLimitUseCase,
+    ApproveKeyManagerUseCase,
   ],
 })
 export class RbacModule implements OnModuleInit {

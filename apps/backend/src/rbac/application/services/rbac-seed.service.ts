@@ -55,6 +55,10 @@ export class RbacSeedService {
       [PERMISSIONS.REPOSITORY_DELETE]: '소스 저장소 삭제',
       [PERMISSIONS.SECURITY_READ]: 'IP 차단 목록 조회',
       [PERMISSIONS.SECURITY_MANAGE]: 'IP 차단 관리',
+      [PERMISSIONS.SECRETS_READ]: '운영 환경 변수 메타데이터 및 백업 조회',
+      [PERMISSIONS.SECRETS_REVEAL]: '운영 환경 변수 평문 공개',
+      [PERMISSIONS.SECRETS_WRITE]: '운영 환경 변수 새 버전 생성',
+      [PERMISSIONS.SECRETS_DEPLOY]: '운영 환경 변수 배포 및 복원',
     };
 
     for (const name of Object.values(PERMISSIONS)) {
@@ -158,6 +162,45 @@ export class RbacSeedService {
       });
       await this.roleRepository.save(role);
     }
+
+    // 공개 가입자는 관리자가 승인하기 전까지 어떤 운영 화면도 볼 수 없다.
+    let pendingRole = await this.roleRepository.findByNameWithPermissions(
+      ROLES.PENDING_APPROVAL,
+    );
+    if (!pendingRole) {
+      pendingRole = this.roleRepository.create({
+        name: ROLES.PENDING_APPROVAL,
+        description: '관리자 승인 대기',
+        permissions: [],
+      });
+    } else {
+      pendingRole.permissions = [];
+    }
+    await this.roleRepository.save(pendingRole);
+
+    // 승인된 외부 개발자는 키 관리 화면과 API에 필요한 권한만 가진다.
+    const keyPermissionNames = new Set<string>([
+      PERMISSIONS.SECRETS_READ,
+      PERMISSIONS.SECRETS_REVEAL,
+      PERMISSIONS.SECRETS_WRITE,
+      PERMISSIONS.SECRETS_DEPLOY,
+    ]);
+    const keyManagerPermissions = allPermissions.filter((permission) =>
+      keyPermissionNames.has(permission.name),
+    );
+    let keyManagerRole = await this.roleRepository.findByNameWithPermissions(
+      ROLES.KEY_MANAGER,
+    );
+    if (!keyManagerRole) {
+      keyManagerRole = this.roleRepository.create({
+        name: ROLES.KEY_MANAGER,
+        description: 'GoLe 운영 키 조회, 수정, 배포',
+        permissions: keyManagerPermissions,
+      });
+    } else {
+      keyManagerRole.permissions = keyManagerPermissions;
+    }
+    await this.roleRepository.save(keyManagerRole);
 
     await this.ensureAdminUser();
 

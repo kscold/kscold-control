@@ -18,6 +18,7 @@ import { OpenAIChatModule } from './openai-chat/openai-chat.module';
 import { RepositoryModule } from './repository/repository.module';
 import { AuditModule } from './audit/audit.module';
 import { SecurityModule } from './security/security.module';
+import { KeyManagementModule } from './key-management/key-management.module';
 
 // 도메인 엔티티 (클린 아키텍처)
 import { User } from './rbac/domain/entities/user.entity';
@@ -29,6 +30,7 @@ import { Container } from './docker/domain/entities/container.entity';
 import { TopologyNodeLayout } from './docker/domain/entities/topology-node-layout.entity';
 import { Project } from './repository/domain/entities/project.entity';
 import { IpBan } from './security/domain/entities/ip-ban.entity';
+import { SecretBackup } from './key-management/domain/entities/secret-backup.entity';
 
 import { HttpLoggerMiddleware } from './common/middleware/http-logger.middleware';
 import { AuditInterceptor } from './common/interceptors';
@@ -63,6 +65,7 @@ import { AuditInterceptor } from './common/interceptors';
         TopologyNodeLayout,
         Project,
         IpBan,
+        SecretBackup,
       ],
       synchronize: process.env.NODE_ENV !== 'production',
       logging: process.env.NODE_ENV !== 'production',
@@ -82,6 +85,7 @@ import { AuditInterceptor } from './common/interceptors';
     OpenAIChatModule,
     RepositoryModule,
     SecurityModule,
+    KeyManagementModule,
   ],
   providers: [
     {
