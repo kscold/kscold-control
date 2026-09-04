@@ -52,7 +52,8 @@ server {
     add_header Permissions-Policy "camera=(), geolocation=(), microphone=()" always;
     add_header Content-Security-Policy "base-uri 'self'; frame-ancestors 'none'; object-src 'none'" always;
 
-    client_max_body_size 50M;
+    # Spring multipart 상한과 맞춰 거부될 요청 본문을 프록시 전에 차단한다.
+    client_max_body_size 10M;
 
     # Agent SSE는 프록시 버퍼링과 압축을 끄고 백엔드보다 긴 연결 시간을 보장한다.
     location = /api/vault/agent/chat/stream {
