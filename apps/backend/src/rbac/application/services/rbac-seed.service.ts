@@ -93,6 +93,21 @@ export class RbacSeedService {
       await this.roleRepository.save(superAdminRole);
     }
 
+    // 레거시 admin도 전역 관리자이므로 새 기능 권한을 항상 함께 동기화한다.
+    let adminRole = await this.roleRepository.findByNameWithPermissions(
+      ROLES.ADMIN,
+    );
+    if (!adminRole) {
+      adminRole = this.roleRepository.create({
+        name: ROLES.ADMIN,
+        description: '관리자 - 모든 권한',
+        permissions: allPermissions,
+      });
+    } else {
+      adminRole.permissions = allPermissions;
+    }
+    await this.roleRepository.save(adminRole);
+
     // Create Read Only role
     const readOnlyPerms = allPermissions.filter(
       (p) =>
