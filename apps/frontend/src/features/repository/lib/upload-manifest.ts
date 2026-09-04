@@ -20,7 +20,21 @@ export interface HashedClientFile {
   metadata: RepositoryUploadBatchFileMeta;
 }
 
-/** 파일 내용까지 포함한 재개 토큰을 만들어 같은 크기의 변경도 구분한다. */
+function freezeClientFile(
+  clientFile: ClientFile,
+  content: ArrayBuffer,
+): ClientFile {
+  const source = clientFile.file;
+  return {
+    relativePath: clientFile.relativePath,
+    file: new File([content], source.name, {
+      lastModified: source.lastModified,
+      type: source.type,
+    }),
+  };
+}
+
+/** 선택 시점 바이트를 고정하고, 같은 크기의 내용 변경도 구분하는 재개 토큰을 만든다. */
 export async function buildUploadManifest(files: ClientFile[]): Promise<{
   digest: string;
   files: HashedClientFile[];
@@ -42,13 +56,14 @@ export async function buildUploadManifest(files: ClientFile[]): Promise<{
     }
     paths.add(clientFile.relativePath);
     const content = await clientFile.file.arrayBuffer();
+    const frozenClientFile = freezeClientFile(clientFile, content);
     const contentHash = await sha256(content);
     const metadata = {
       relativePath: clientFile.relativePath,
-      size: clientFile.file.size,
+      size: content.byteLength,
       sha256: contentHash,
     };
-    hashedFiles.push({ clientFile, metadata });
+    hashedFiles.push({ clientFile: frozenClientFile, metadata });
     manifestParts.push(
       `${metadata.relativePath}\0${metadata.size}\0${metadata.sha256}\n`,
     );

@@ -7,7 +7,10 @@ import {
   RotateCcw,
   Filter,
 } from 'lucide-react';
-import { repositoryService } from '@/entities/project';
+import {
+  isRepositoryUploadIntegrityError,
+  repositoryService,
+} from '@/entities/project';
 import { filterFiles, chunkFiles, type FilterStats } from '../lib/file-filter';
 import {
   buildUploadManifest,
@@ -52,21 +55,31 @@ async function buildPendingUpload(
   stats: FilterStats,
 ): Promise<PendingUpload> {
   const manifest = await buildUploadManifest(kept);
-  const metadataByFile = new Map(
-    manifest.files.map((item) => [item.clientFile, item.metadata]),
+  const frozenFiles = manifest.files.map((item) => item.clientFile);
+  const metadataByPath = new Map(
+    manifest.files.map((item) => [item.clientFile.relativePath, item.metadata]),
   );
-  const rawBatches = chunkFiles(kept, 50, 8 * 1024 * 1024);
+  const frozenTotalSize = manifest.files.reduce(
+    (sum, item) => sum + item.metadata.size,
+    0,
+  );
+  const frozenStats = {
+    ...stats,
+    kept: frozenFiles.length,
+    totalSize: frozenTotalSize,
+  };
+  const rawBatches = chunkFiles(frozenFiles, 50, 8 * 1024 * 1024);
   const batches = rawBatches.map((files, index) => ({
     index,
     files,
     totalFiles: files.length,
     totalBytes: files.reduce((sum, file) => sum + file.file.size, 0),
-    fileMetas: files.map((file) => metadataByFile.get(file)!),
+    fileMetas: files.map((file) => metadataByPath.get(file.relativePath)!),
   }));
 
   return {
-    kept,
-    stats,
+    kept: frozenFiles,
+    stats: frozenStats,
     batches,
     manifestDigest: manifest.digest,
   };
@@ -378,150 +391,192 @@ export function UploadDropzone({
       serverSession.status !== 'superseded'
         ? serverSession
         : null;
+    let integrityRecoveryAttempted = false;
 
     try {
-      if (!activeSession) {
-        publishActivity({
-          phase: 'preparing',
-          progress: 3,
-          uploadedCount: 0,
-          totalFiles: pendingUpload.kept.length,
-          totalBytes: pendingUpload.stats.totalSize,
-          filteredCount: pendingUpload.stats.filtered,
-          batchCurrent: 0,
-          batchTotal: pendingUpload.batches.length,
-          message: '서버 업로드 세션을 준비하고 있습니다.',
-          error: null,
-          sessionId: null,
-          sessionStatus: null,
-          failedFiles: [],
-          transportProgress: null,
-          resumable: false,
-        });
+      while (true) {
+        try {
+          if (!activeSession) {
+            publishActivity({
+              phase: 'preparing',
+              progress: 3,
+              uploadedCount: 0,
+              totalFiles: pendingUpload.kept.length,
+              totalBytes: pendingUpload.stats.totalSize,
+              filteredCount: pendingUpload.stats.filtered,
+              batchCurrent: 0,
+              batchTotal: pendingUpload.batches.length,
+              message: '서버 업로드 세션을 준비하고 있습니다.',
+              error: null,
+              sessionId: null,
+              sessionStatus: null,
+              failedFiles: [],
+              transportProgress: null,
+              resumable: false,
+            });
 
-        activeSession = await repositoryService.createUploadSession(
-          project.id,
-          createSessionPayload(pendingUpload),
-        );
-      }
+            activeSession = await repositoryService.createUploadSession(
+              project.id,
+              createSessionPayload(pendingUpload),
+            );
+          }
 
-      setServerSession(activeSession);
+          setServerSession(activeSession);
 
-      const remainingBatches = activeSession.batches.filter(
-        (batch) => batch.status !== 'completed',
-      );
-
-      for (const batch of remainingBatches) {
-        const localBatch = pendingUpload.batches[batch.index];
-        if (!localBatch) {
-          throw new Error(
-            '선택한 폴더와 서버 업로드 세션이 다릅니다. 폴더를 다시 선택해주세요.',
+          const remainingBatches = activeSession.batches.filter(
+            (batch) => batch.status !== 'completed',
           );
-        }
 
-        setBatchInfo({
-          current: batch.index + 1,
-          total: activeSession.batchTotal,
-        });
-
-        const syncingActivity = buildActivityFromSession(
-          project,
-          activeSession,
-          {
-            phase: 'uploading',
-            batchIndex: batch.index,
-            transportProgress: 0,
-            message:
-              batch.status === 'failed'
-                ? `실패한 배치 ${batch.index + 1}/${activeSession.batchTotal} 재시도 중입니다.`
-                : `배치 ${batch.index + 1}/${activeSession.batchTotal} 업로드 중입니다.`,
-          },
-        );
-        setProgress(syncingActivity.progress);
-        publishActivity(syncingActivity);
-
-        const result = await repositoryService.uploadSessionBatch(
-          project.id,
-          activeSession.id,
-          batch.index,
-          localBatch.files,
-          {
-            onProgress: (transportProgress) => {
-              const inFlightActivity = buildActivityFromSession(
-                project,
-                activeSession!,
-                {
-                  phase: 'uploading',
-                  batchIndex: batch.index,
-                  transportProgress,
-                  message: `배치 ${batch.index + 1}/${activeSession!.batchTotal} 전송 중입니다.`,
-                },
+          for (const batch of remainingBatches) {
+            const localBatch = pendingUpload.batches[batch.index];
+            if (!localBatch) {
+              throw new Error(
+                '선택한 폴더와 서버 업로드 세션이 다릅니다. 폴더를 다시 선택해주세요.',
               );
-              setProgress(inFlightActivity.progress);
-              publishActivity(inFlightActivity);
-            },
-          },
-        );
+            }
 
-        activeSession = result.session;
-        setServerSession(activeSession);
-        if (result.failedFiles.length > 0) {
-          throw new Error(
-            `${result.failedFiles.length}개 파일을 쓰지 못했습니다. 같은 폴더로 다시 시도해주세요.`,
-          );
+            setBatchInfo({
+              current: batch.index + 1,
+              total: activeSession.batchTotal,
+            });
+
+            const syncingActivity = buildActivityFromSession(
+              project,
+              activeSession,
+              {
+                phase: 'uploading',
+                batchIndex: batch.index,
+                transportProgress: 0,
+                message:
+                  batch.status === 'failed'
+                    ? `실패한 배치 ${batch.index + 1}/${activeSession.batchTotal} 재시도 중입니다.`
+                    : `배치 ${batch.index + 1}/${activeSession.batchTotal} 업로드 중입니다.`,
+              },
+            );
+            setProgress(syncingActivity.progress);
+            publishActivity(syncingActivity);
+
+            const result = await repositoryService.uploadSessionBatch(
+              project.id,
+              activeSession.id,
+              batch.index,
+              localBatch.files,
+              {
+                onProgress: (transportProgress) => {
+                  const inFlightActivity = buildActivityFromSession(
+                    project,
+                    activeSession!,
+                    {
+                      phase: 'uploading',
+                      batchIndex: batch.index,
+                      transportProgress,
+                      message: `배치 ${batch.index + 1}/${activeSession!.batchTotal} 전송 중입니다.`,
+                    },
+                  );
+                  setProgress(inFlightActivity.progress);
+                  publishActivity(inFlightActivity);
+                },
+              },
+            );
+
+            activeSession = result.session;
+            setServerSession(activeSession);
+            if (result.failedFiles.length > 0) {
+              throw new Error(
+                `${result.failedFiles.length}개 파일을 쓰지 못했습니다. 같은 폴더로 다시 시도해주세요.`,
+              );
+            }
+
+            const batchActivity = buildActivityFromSession(
+              project,
+              activeSession,
+              {
+                phase:
+                  activeSession.status === 'completed'
+                    ? 'success'
+                    : activeSession.status === 'partial_failed'
+                      ? 'paused'
+                      : 'uploading',
+                message:
+                  activeSession.status === 'completed'
+                    ? `${activeSession.totalFiles}개 파일 업로드가 완료되었습니다.`
+                    : activeSession.status === 'partial_failed'
+                      ? '일부 파일 쓰기에 실패했습니다. 같은 폴더로 다시 시도하면 실패/미완료 배치만 이어서 전송합니다.'
+                      : `배치 ${batch.index + 1}/${activeSession.batchTotal} 업로드를 마쳤습니다.`,
+              },
+            );
+            setProgress(batchActivity.progress);
+            publishActivity(batchActivity);
+          }
+
+          if (activeSession.status !== 'completed') {
+            const finalizingActivity = buildActivityFromSession(
+              project,
+              activeSession,
+              {
+                phase: 'uploading',
+                message:
+                  '파일 무결성을 검증하고 라이브 저장소로 안전하게 전환하고 있습니다.',
+              },
+            );
+            setProgress(finalizingActivity.progress);
+            publishActivity(finalizingActivity);
+            const finalized = await repositoryService.finalizeUploadSession(
+              project.id,
+              activeSession.id,
+            );
+            activeSession = finalized.session;
+            setServerSession(activeSession);
+          }
+
+          if (activeSession.status === 'completed') {
+            const completedActivity = buildActivityFromSession(
+              project,
+              activeSession,
+              {
+                phase: 'success',
+                message: `${activeSession.totalFiles}개 파일을 검증하고 라이브 저장소에 반영했습니다.`,
+              },
+            );
+            setProgress(100);
+            publishActivity(completedActivity);
+            setPendingUpload(null);
+            onUploaded();
+          }
+          break;
+        } catch (sessionError) {
+          if (
+            isRepositoryUploadIntegrityError(sessionError) &&
+            !integrityRecoveryAttempted
+          ) {
+            integrityRecoveryAttempted = true;
+            activeSession = null;
+            setServerSession(null);
+            setError(null);
+            setProgress(3);
+            publishActivity({
+              phase: 'preparing',
+              progress: 3,
+              uploadedCount: 0,
+              totalFiles: pendingUpload.kept.length,
+              totalBytes: pendingUpload.stats.totalSize,
+              filteredCount: pendingUpload.stats.filtered,
+              batchCurrent: 0,
+              batchTotal: pendingUpload.batches.length,
+              message:
+                '서버 세션과 파일 스냅샷이 달라 새 세션으로 자동 복구하고 있습니다.',
+              error: null,
+              sessionId: null,
+              sessionStatus: null,
+              failedFiles: [],
+              transportProgress: null,
+              resumable: false,
+            });
+            continue;
+          }
+
+          throw sessionError;
         }
-
-        const batchActivity = buildActivityFromSession(project, activeSession, {
-          phase:
-            activeSession.status === 'completed'
-              ? 'success'
-              : activeSession.status === 'partial_failed'
-                ? 'paused'
-                : 'uploading',
-          message:
-            activeSession.status === 'completed'
-              ? `${activeSession.totalFiles}개 파일 업로드가 완료되었습니다.`
-              : activeSession.status === 'partial_failed'
-                ? '일부 파일 쓰기에 실패했습니다. 같은 폴더로 다시 시도하면 실패/미완료 배치만 이어서 전송합니다.'
-                : `배치 ${batch.index + 1}/${activeSession.batchTotal} 업로드를 마쳤습니다.`,
-        });
-        setProgress(batchActivity.progress);
-        publishActivity(batchActivity);
-      }
-
-      if (activeSession.status !== 'completed') {
-        const finalizingActivity = buildActivityFromSession(
-          project,
-          activeSession,
-          {
-            phase: 'uploading',
-            message:
-              '파일 무결성을 검증하고 라이브 저장소로 안전하게 전환하고 있습니다.',
-          },
-        );
-        setProgress(finalizingActivity.progress);
-        publishActivity(finalizingActivity);
-        const finalized = await repositoryService.finalizeUploadSession(
-          project.id,
-          activeSession.id,
-        );
-        activeSession = finalized.session;
-        setServerSession(activeSession);
-      }
-
-      if (activeSession.status === 'completed') {
-        const completedActivity = buildActivityFromSession(
-          project,
-          activeSession,
-          {
-            phase: 'success',
-            message: `${activeSession.totalFiles}개 파일을 검증하고 라이브 저장소에 반영했습니다.`,
-          },
-        );
-        setProgress(100);
-        publishActivity(completedActivity);
-        setPendingUpload(null);
-        onUploaded();
       }
     } catch (uploadError) {
       const message =

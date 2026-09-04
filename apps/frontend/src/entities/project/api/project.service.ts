@@ -16,6 +16,22 @@ import type {
   ProjectVersion,
 } from '../model/types';
 
+const REPOSITORY_UPLOAD_INTEGRITY_ERROR_CODE =
+  'REPOSITORY_UPLOAD_INTEGRITY_MISMATCH';
+
+export class RepositoryUploadIntegrityError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'RepositoryUploadIntegrityError';
+  }
+}
+
+export function isRepositoryUploadIntegrityError(
+  error: unknown,
+): error is RepositoryUploadIntegrityError {
+  return error instanceof RepositoryUploadIntegrityError;
+}
+
 /**
  * Repository API Service — 소스 저장소 관리
  */
@@ -169,12 +185,8 @@ export class RepositoryService extends BaseApiService {
       const formData = new FormData();
       const relativePaths: string[] = [];
 
-      // 디스크의 File 객체를 그대로 첨부하면 브라우저가 "전송 시점"에 파일의
-      // 수정시각·크기를 재검증한다. 업로드 도중 파일이 바뀌면(AI·dev 서버가
-      // 소스를 계속 수정하는 환경) net::ERR_UPLOAD_FILE_CHANGED 로 전송을 거부한다.
-      // → 전송 직전 메모리로 읽어 스냅샷(Blob)을 첨부하면 이후 디스크 변경과
-      //   무관하게 그 배치는 전송된다. 시도/재선택마다 최신 내용으로 다시 읽으므로
-      //   "같은 폴더 다시 선택 → 이어올리기"도 반복 가능하다.
+      // 선택 단계에서 원본 파일을 메모리 File로 고정했다. 여기서 다시 Blob으로
+      // 감싸면 재시도 중 로컬 파일이 바뀌어도 manifest와 같은 바이트만 전송된다.
       for (const cf of files) {
         const snapshot = await cf.file.arrayBuffer();
         formData.append('files', new Blob([snapshot]), cf.file.name);
@@ -233,7 +245,7 @@ export class RepositoryService extends BaseApiService {
       }
     }
 
-    this.handleError(lastError, '업로드 배치 전송 실패');
+    this.throwUploadSessionError(lastError, '업로드 배치 전송 실패');
   }
 
   async finalizeUploadSession(
@@ -247,8 +259,25 @@ export class RepositoryService extends BaseApiService {
       return data;
     } catch (error) {
       this.logError('RepositoryService', 'finalizeUploadSession', error);
-      this.handleError(error, '업로드 최종 반영 실패');
+      this.throwUploadSessionError(error, '업로드 최종 반영 실패');
     }
+  }
+
+  private throwUploadSessionError(
+    error: unknown,
+    defaultMessage: string,
+  ): never {
+    if (axios.isAxiosError(error)) {
+      const response = error.response?.data as
+        { code?: unknown; message?: unknown } | undefined;
+      if (response?.code === REPOSITORY_UPLOAD_INTEGRITY_ERROR_CODE) {
+        throw new RepositoryUploadIntegrityError(
+          this.getErrorMessage(error) || defaultMessage,
+        );
+      }
+    }
+
+    this.handleError(error, defaultMessage);
   }
 
   /** 일시적 전송 오류(네트워크 단절·타임아웃·5xx)만 재시도 대상으로 본다. 4xx 는 재시도 무의미. */
