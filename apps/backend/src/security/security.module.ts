@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { NginxModule } from '../nginx/nginx.module';
+import { NginxInfrastructureModule } from '../nginx/nginx-infrastructure.module';
 import { IpBan } from './domain/entities/ip-ban.entity';
 import { IP_BAN_REPOSITORY } from './domain/repositories/ip-ban.repository';
 import { NGINX_BLOCKLIST_WRITER } from './domain/repositories/nginx-blocklist.writer';
@@ -17,7 +17,7 @@ import {
 import { SecurityController } from './presentation/controllers/security.controller';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([IpBan]), NginxModule],
+  imports: [TypeOrmModule.forFeature([IpBan]), NginxInfrastructureModule],
   controllers: [SecurityController],
   providers: [
     IpBanService,
