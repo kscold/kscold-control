@@ -9,4 +9,6 @@ export const ROLES = {
   OPERATOR: 'operator',
   TERMINAL_ONLY: 'terminal_only',
   GUEST: 'guest',
+  PENDING_APPROVAL: 'pending_approval',
+  KEY_MANAGER: 'key_manager',
 } as const;

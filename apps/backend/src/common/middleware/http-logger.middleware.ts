@@ -28,7 +28,7 @@ export class HttpLoggerMiddleware implements NestMiddleware {
         responseTime: `${responseTime}ms`,
         ip: ip || req.socket.remoteAddress,
         userAgent,
-        token: token ? this.maskToken(token) : 'none',
+        token: token ? this.maskToken() : 'none',
         body: sanitizedBody,
       };
 
@@ -48,25 +48,48 @@ export class HttpLoggerMiddleware implements NestMiddleware {
   }
 
   // 민감한 정보 마스킹
-  private sanitizeBody(body: any): any {
-    if (!body || typeof body !== 'object') return body;
+  private sanitizeBody(body: unknown): unknown {
+    return this.sanitizeValue(body, new WeakSet<object>());
+  }
 
-    const sanitized = { ...body };
-    const sensitiveFields = ['password', 'token', 'secret', 'apiKey'];
+  private sanitizeValue(value: unknown, seen: WeakSet<object>): unknown {
+    if (!value || typeof value !== 'object') return value;
+    if (seen.has(value)) return '[Circular]';
+    seen.add(value);
 
-    for (const field of sensitiveFields) {
-      if (sanitized[field]) {
-        sanitized[field] = '***REDACTED***';
-      }
+    if (Array.isArray(value)) {
+      return value.map((item) => this.sanitizeValue(item, seen));
+    }
+
+    const sensitiveFields = new Set([
+      'password',
+      'token',
+      'accesstoken',
+      'refreshtoken',
+      'authorization',
+      'secret',
+      'secretvalue',
+      'apikey',
+      'envfile',
+      'encryptedpayload',
+      'authtag',
+      'iv',
+    ]);
+    const sanitized: Record<string, unknown> = {};
+
+    for (const [key, nestedValue] of Object.entries(value)) {
+      const normalizedKey = key.replace(/[-_]/g, '').toLowerCase();
+      sanitized[key] = sensitiveFields.has(normalizedKey)
+        ? '***REDACTED***'
+        : this.sanitizeValue(nestedValue, seen);
     }
 
     return sanitized;
   }
 
-  // 토큰 마스킹 (앞 10자만 표시)
-  private maskToken(token: string): string {
-    if (token.length <= 20) return '***';
-    return token.substring(0, 10) + '...' + token.substring(token.length - 5);
+  // 인증 토큰은 일부라도 로그에 남기지 않는다.
+  private maskToken(): string {
+    return '***REDACTED***';
   }
 
   private sanitizeUrl(originalUrl: string): string {

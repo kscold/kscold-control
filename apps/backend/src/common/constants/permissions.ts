@@ -39,6 +39,12 @@ export const PERMISSIONS = {
   // Security (IP 차단)
   SECURITY_READ: 'security:read',
   SECURITY_MANAGE: 'security:manage',
+
+  // Secrets (운영 환경 변수)
+  SECRETS_READ: 'secrets:read',
+  SECRETS_REVEAL: 'secrets:reveal',
+  SECRETS_WRITE: 'secrets:write',
+  SECRETS_DEPLOY: 'secrets:deploy',
 } as const;
 
 export type Permission = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];

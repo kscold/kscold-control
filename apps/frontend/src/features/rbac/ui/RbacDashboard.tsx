@@ -21,6 +21,7 @@ export function RbacDashboard() {
     updatePassword,
     deleteUser,
     assignRoles,
+    approveKeyManager,
     resetTerminalLimit,
     updateTerminalLimit,
   } = useUserActions(reloadUsers);
@@ -75,6 +76,7 @@ export function RbacDashboard() {
           onResetTerminalLimit={resetTerminalLimit}
           onUpdateTerminalLimit={updateTerminalLimit}
           onCreateUser={() => setShowCreateModal(true)}
+          onApproveKeyManager={approveKeyManager}
         />
       </div>
 
