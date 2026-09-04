@@ -118,6 +118,7 @@ try {
   run('pnpm', ['test:frontend']);
   run('pnpm', ['build']);
   run('pnpm', ['verify:release']);
+  run('pnpm', ['preflight:production']);
   run('pm2', ['startOrReload', 'ecosystem.config.js', '--update-env']);
 
   await waitForRelease('http://127.0.0.1:4000/api/health', revision);

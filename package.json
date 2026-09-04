@@ -33,6 +33,7 @@
     "test:e2e:control": "bash ./scripts/run-control-e2e.sh",
     "check:architecture": "node ./scripts/check-architecture.mjs",
     "check:runtime-contracts": "node ./scripts/check-runtime-contracts.mjs",
+    "preflight:production": "node ./scripts/preflight-control.mjs",
     "verify:release": "node ./scripts/verify-release-manifest.mjs",
     "deploy:production": "node --env-file=.env ./scripts/deploy-control.mjs",
     "lint": "turbo run lint",
