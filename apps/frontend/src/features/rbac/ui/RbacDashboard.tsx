@@ -1,13 +1,11 @@
 import { useState } from 'react';
 import { Shield } from 'lucide-react';
 import { useUsers, useRoles, useUserActions } from '../model';
-import {
-  RoleList,
-  UserList,
-  CreateUserModal,
-  AssignRolesModal,
-  PermissionsList,
-} from './';
+import { RoleList } from './RoleList';
+import { UserList } from './UserList';
+import { CreateUserModal } from './CreateUserModal';
+import { AssignRolesModal } from './AssignRolesModal';
+import { PermissionsList } from './PermissionsList';
 import type { User } from '@/entities/user';
 
 /**
