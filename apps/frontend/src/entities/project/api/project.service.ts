@@ -12,6 +12,7 @@ import type {
   CreateUploadSessionInput,
   RepositoryUploadSession,
   UploadSessionBatchResult,
+  FinalizeUploadSessionResult,
   ProjectVersion,
 } from '../model/types';
 
@@ -77,7 +78,6 @@ export class RepositoryService extends BaseApiService {
         `${this.basePath}/projects/${projectId}/upload?replace=${options.replace}`,
         formData,
         {
-          headers: { 'Content-Type': 'multipart/form-data' },
           onUploadProgress: (e) => {
             if (!options.onProgress) {
               return;
@@ -234,6 +234,21 @@ export class RepositoryService extends BaseApiService {
     }
 
     this.handleError(lastError, '업로드 배치 전송 실패');
+  }
+
+  async finalizeUploadSession(
+    projectId: string,
+    sessionId: string,
+  ): Promise<FinalizeUploadSessionResult> {
+    try {
+      const { data } = await api.post<FinalizeUploadSessionResult>(
+        `${this.basePath}/projects/${projectId}/upload-sessions/${sessionId}/finalize`,
+      );
+      return data;
+    } catch (error) {
+      this.logError('RepositoryService', 'finalizeUploadSession', error);
+      this.handleError(error, '업로드 최종 반영 실패');
+    }
   }
 
   /** 일시적 전송 오류(네트워크 단절·타임아웃·5xx)만 재시도 대상으로 본다. 4xx 는 재시도 무의미. */

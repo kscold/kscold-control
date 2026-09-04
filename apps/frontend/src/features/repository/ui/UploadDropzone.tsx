@@ -9,6 +9,10 @@ import {
 } from 'lucide-react';
 import { repositoryService } from '@/entities/project';
 import { filterFiles, chunkFiles, type FilterStats } from '../lib/file-filter';
+import {
+  buildUploadManifest,
+  REPOSITORY_UPLOAD_PROTOCOL_VERSION,
+} from '../lib/upload-manifest';
 import { formatBytes } from '@/shared/lib';
 import type {
   ClientFile,
@@ -32,6 +36,7 @@ interface PendingUploadBatch {
   fileMetas: Array<{
     relativePath: string;
     size: number;
+    sha256: string;
   }>;
 }
 
@@ -42,44 +47,28 @@ interface PendingUpload {
   manifestDigest: string;
 }
 
-function buildManifestDigest(files: ClientFile[]) {
-  const sorted = [...files].sort((left, right) =>
-    left.relativePath.localeCompare(right.relativePath),
-  );
-
-  let hash = 2166136261;
-  for (const file of sorted) {
-    const value = `${file.relativePath}:${file.file.size}|`;
-    for (let index = 0; index < value.length; index += 1) {
-      hash ^= value.charCodeAt(index);
-      hash = Math.imul(hash, 16777619);
-    }
-  }
-
-  return `m${(hash >>> 0).toString(36)}-${sorted.length}`;
-}
-
-function buildPendingUpload(
+async function buildPendingUpload(
   kept: ClientFile[],
   stats: FilterStats,
-): PendingUpload {
+): Promise<PendingUpload> {
+  const manifest = await buildUploadManifest(kept);
+  const metadataByFile = new Map(
+    manifest.files.map((item) => [item.clientFile, item.metadata]),
+  );
   const rawBatches = chunkFiles(kept, 50, 8 * 1024 * 1024);
   const batches = rawBatches.map((files, index) => ({
     index,
     files,
     totalFiles: files.length,
     totalBytes: files.reduce((sum, file) => sum + file.file.size, 0),
-    fileMetas: files.map((file) => ({
-      relativePath: file.relativePath,
-      size: file.file.size,
-    })),
+    fileMetas: files.map((file) => metadataByFile.get(file)!),
   }));
 
   return {
     kept,
     stats,
     batches,
-    manifestDigest: buildManifestDigest(kept),
+    manifestDigest: manifest.digest,
   };
 }
 
@@ -92,6 +81,7 @@ function isSessionCompatible(
   }
 
   return (
+    session.protocolVersion === REPOSITORY_UPLOAD_PROTOCOL_VERSION &&
     session.manifestDigest === pendingUpload.manifestDigest &&
     session.totalFiles === pendingUpload.kept.length &&
     session.totalBytes === pendingUpload.stats.totalSize &&
@@ -103,6 +93,7 @@ function createSessionPayload(
   pendingUpload: PendingUpload,
 ): CreateUploadSessionInput {
   return {
+    protocolVersion: REPOSITORY_UPLOAD_PROTOCOL_VERSION,
     replace: true,
     totalFiles: pendingUpload.kept.length,
     totalBytes: pendingUpload.stats.totalSize,
@@ -161,9 +152,11 @@ function buildActivityFromSession(
     options?.phase ??
     (session.status === 'completed'
       ? 'success'
-      : session.status === 'partial_failed'
+      : session.status === 'partial_failed' ||
+          session.status === 'finalization_failed' ||
+          session.status === 'superseded'
         ? 'paused'
-        : session.status === 'uploading'
+        : session.status === 'uploading' || session.status === 'finalizing'
           ? 'uploading'
           : 'preparing');
 
@@ -176,21 +169,33 @@ function buildActivityFromSession(
       : Math.floor(
           (session.uploadedCount / Math.max(session.totalFiles, 1)) * 100,
         );
+  const boundedProgress =
+    phase === 'success'
+      ? 100
+      : Math.min(progress, session.status === 'finalizing' ? 98 : 99);
 
   const defaultMessage =
     session.status === 'completed'
       ? `${session.totalFiles}개 파일 업로드가 완료되었습니다.`
-      : session.status === 'partial_failed'
-        ? '업로드가 일부 실패했습니다. 같은 폴더를 다시 선택하면 실패/미완료 배치만 이어서 보낼 수 있습니다.'
-        : session.status === 'uploading'
-          ? '업로드 세션이 진행 중입니다.'
-          : '업로드 세션을 준비하고 있습니다.';
+      : session.status === 'finalizing'
+        ? '모든 파일을 검증하고 라이브 저장소로 전환하고 있습니다.'
+        : session.status === 'finalization_failed'
+          ? session.publishedAt
+            ? '파일 반영은 끝났지만 상태 동기화를 확정하지 못했습니다. 재시도하면 안전하게 마무리합니다.'
+            : '최종 반영을 확정하지 못했습니다. 재시도하면 서버 영수증을 기준으로 안전하게 이어갑니다.'
+          : session.status === 'superseded'
+            ? '더 최신 업로드가 시작되어 이 세션은 종료되었습니다.'
+            : session.status === 'partial_failed'
+              ? '업로드가 일부 실패했습니다. 같은 폴더를 다시 선택하면 실패/미완료 배치만 이어서 보낼 수 있습니다.'
+              : session.status === 'uploading'
+                ? '업로드 세션이 진행 중입니다.'
+                : '업로드 세션을 준비하고 있습니다.';
 
   return {
     projectId: project.id,
     projectName: project.name,
     phase,
-    progress: Math.max(progress, phase === 'success' ? 100 : 3),
+    progress: Math.max(boundedProgress, phase === 'success' ? 100 : 3),
     uploadedCount: session.uploadedCount,
     totalFiles: session.totalFiles,
     totalBytes: session.totalBytes,
@@ -203,7 +208,7 @@ function buildActivityFromSession(
     sessionStatus: session.status,
     failedFiles: session.failedFiles,
     transportProgress,
-    resumable: session.status !== 'completed',
+    resumable: !['completed', 'superseded'].includes(session.status),
   };
 }
 
@@ -250,14 +255,21 @@ export function UploadDropzone({
     setLoadingSession(true);
     try {
       const latest = await repositoryService.getLatestUploadSession(project.id);
-      setServerSession(latest);
+      const resumableSession =
+        latest?.protocolVersion === REPOSITORY_UPLOAD_PROTOCOL_VERSION &&
+        latest.status !== 'superseded'
+          ? latest
+          : null;
+      setServerSession(resumableSession);
 
-      if (latest && latest.status !== 'completed') {
-        const activity = buildActivityFromSession(project, latest, {
+      if (resumableSession && resumableSession.status !== 'completed') {
+        const activity = buildActivityFromSession(project, resumableSession, {
           phase:
-            latest.status === 'partial_failed' ||
-            latest.status === 'uploading' ||
-            latest.status === 'pending'
+            resumableSession.status === 'partial_failed' ||
+            resumableSession.status === 'uploading' ||
+            resumableSession.status === 'pending' ||
+            resumableSession.status === 'finalization_failed' ||
+            resumableSession.status === 'finalizing'
               ? 'paused'
               : 'preparing',
         });
@@ -299,7 +311,6 @@ export function UploadDropzone({
 
       setScanCount(allFiles.length);
       const { kept, stats } = filterFiles(allFiles);
-      setScanning(false);
       setLastStats(stats);
       setError(null);
 
@@ -313,24 +324,36 @@ export function UploadDropzone({
         return;
       }
 
-      const nextPendingUpload = buildPendingUpload(kept, stats);
-      setPendingUpload(nextPendingUpload);
+      try {
+        const nextPendingUpload = await buildPendingUpload(kept, stats);
+        setPendingUpload(nextPendingUpload);
 
-      if (
-        serverSession &&
-        isSessionCompatible(serverSession, nextPendingUpload) &&
-        serverSession.status !== 'completed'
-      ) {
-        const activity = buildActivityFromSession(project, serverSession, {
-          phase: 'paused',
-          message:
-            '같은 폴더가 다시 선택되었습니다. 남은 배치만 이어서 업로드할 수 있습니다.',
-        });
-        publishActivity(activity);
-        setProgress(activity.progress);
-      } else {
-        publishActivity(null);
-        setProgress(0);
+        if (
+          serverSession &&
+          isSessionCompatible(serverSession, nextPendingUpload) &&
+          serverSession.status !== 'completed' &&
+          serverSession.status !== 'superseded'
+        ) {
+          const activity = buildActivityFromSession(project, serverSession, {
+            phase: 'paused',
+            message:
+              '같은 내용의 폴더가 다시 선택되었습니다. 남은 작업만 이어서 업로드할 수 있습니다.',
+          });
+          publishActivity(activity);
+          setProgress(activity.progress);
+        } else {
+          publishActivity(null);
+          setProgress(0);
+        }
+      } catch (manifestError) {
+        setPendingUpload(null);
+        setError(
+          manifestError instanceof Error
+            ? manifestError.message
+            : '파일 내용 해시를 계산하지 못했습니다.',
+        );
+      } finally {
+        setScanning(false);
       }
 
       if (inputRef.current) {
@@ -351,7 +374,8 @@ export function UploadDropzone({
     let activeSession =
       serverSession &&
       isSessionCompatible(serverSession, pendingUpload) &&
-      serverSession.status !== 'completed'
+      serverSession.status !== 'completed' &&
+      serverSession.status !== 'superseded'
         ? serverSession
         : null;
 
@@ -386,21 +410,6 @@ export function UploadDropzone({
       const remainingBatches = activeSession.batches.filter(
         (batch) => batch.status !== 'completed',
       );
-
-      if (remainingBatches.length === 0) {
-        const successActivity = buildActivityFromSession(
-          project,
-          activeSession,
-          {
-            phase: 'success',
-          },
-        );
-        setProgress(100);
-        publishActivity(successActivity);
-        setPendingUpload(null);
-        onUploaded();
-        return;
-      }
 
       for (const batch of remainingBatches) {
         const localBatch = pendingUpload.batches[batch.index];
@@ -456,6 +465,11 @@ export function UploadDropzone({
 
         activeSession = result.session;
         setServerSession(activeSession);
+        if (result.failedFiles.length > 0) {
+          throw new Error(
+            `${result.failedFiles.length}개 파일을 쓰지 못했습니다. 같은 폴더로 다시 시도해주세요.`,
+          );
+        }
 
         const batchActivity = buildActivityFromSession(project, activeSession, {
           phase:
@@ -475,8 +489,37 @@ export function UploadDropzone({
         publishActivity(batchActivity);
       }
 
+      if (activeSession.status !== 'completed') {
+        const finalizingActivity = buildActivityFromSession(
+          project,
+          activeSession,
+          {
+            phase: 'uploading',
+            message:
+              '파일 무결성을 검증하고 라이브 저장소로 안전하게 전환하고 있습니다.',
+          },
+        );
+        setProgress(finalizingActivity.progress);
+        publishActivity(finalizingActivity);
+        const finalized = await repositoryService.finalizeUploadSession(
+          project.id,
+          activeSession.id,
+        );
+        activeSession = finalized.session;
+        setServerSession(activeSession);
+      }
+
       if (activeSession.status === 'completed') {
+        const completedActivity = buildActivityFromSession(
+          project,
+          activeSession,
+          {
+            phase: 'success',
+            message: `${activeSession.totalFiles}개 파일을 검증하고 라이브 저장소에 반영했습니다.`,
+          },
+        );
         setProgress(100);
+        publishActivity(completedActivity);
         setPendingUpload(null);
         onUploaded();
       }
@@ -508,7 +551,9 @@ export function UploadDropzone({
                 message:
                   latestSession.status === 'completed'
                     ? `${latestSession.totalFiles}개 파일 업로드가 완료되었습니다.`
-                    : '업로드가 중단되었습니다. 같은 폴더를 다시 선택하면 남은 배치만 이어서 업로드할 수 있습니다.',
+                    : latestSession.status === 'finalization_failed'
+                      ? '최종 반영 상태를 확정하지 못했습니다. 같은 폴더로 재시도하면 서버 영수증을 기준으로 이어갑니다.'
+                      : '업로드가 중단되었습니다. 같은 폴더를 다시 선택하면 남은 배치만 이어서 업로드할 수 있습니다.',
               },
             );
             setProgress(pausedActivity.progress);

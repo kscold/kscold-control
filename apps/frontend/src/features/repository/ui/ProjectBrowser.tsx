@@ -143,7 +143,10 @@ export function ProjectBrowser({ project, onUploaded }: ProjectBrowserProps) {
                 </div>
                 <div className="mt-2 flex flex-wrap gap-2 text-xs opacity-90">
                   <span>
-                    서버 반영 {uploadActivity.uploadedCount}/
+                    {uploadActivity.phase === 'success'
+                      ? '반영 완료'
+                      : '서버 수신'}{' '}
+                    {uploadActivity.uploadedCount}/
                     {uploadActivity.totalFiles}
                   </span>
                   <span>

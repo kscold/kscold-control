@@ -5,6 +5,7 @@ export { UploadFilesUseCase } from './upload-files.use-case';
 export { CreateUploadSessionUseCase } from './create-upload-session.use-case';
 export { GetUploadSessionUseCase } from './get-upload-session.use-case';
 export { UploadSessionBatchUseCase } from './upload-session-batch.use-case';
+export { FinalizeUploadSessionUseCase } from './finalize-upload-session.use-case';
 export { DownloadArchiveUseCase } from './download-archive.use-case';
 export { BrowseTreeUseCase } from './browse-tree.use-case';
 export { ReadFileUseCase } from './read-file.use-case';

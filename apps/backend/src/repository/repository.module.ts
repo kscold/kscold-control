@@ -14,6 +14,7 @@ import {
   CreateUploadSessionUseCase,
   GetUploadSessionUseCase,
   UploadSessionBatchUseCase,
+  FinalizeUploadSessionUseCase,
   DownloadArchiveUseCase,
   BrowseTreeUseCase,
   ReadFileUseCase,
@@ -28,6 +29,7 @@ import { LocalUploadSessionRepository } from './infrastructure/repositories/loca
 import { LocalFileStorageService } from './infrastructure/storage/local-file-storage.service';
 
 import { RepositoryController } from './presentation/controllers/repository.controller';
+import { RepositoryUploadCoordinator } from './application/services/repository-upload-coordinator.service';
 
 import { AuthModule } from '../auth/auth.module';
 
@@ -42,6 +44,8 @@ import { AuthModule } from '../auth/auth.module';
     CreateUploadSessionUseCase,
     GetUploadSessionUseCase,
     UploadSessionBatchUseCase,
+    FinalizeUploadSessionUseCase,
+    RepositoryUploadCoordinator,
     DownloadArchiveUseCase,
     BrowseTreeUseCase,
     ReadFileUseCase,

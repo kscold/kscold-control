@@ -12,4 +12,5 @@ export interface IUploadSessionRepository {
     projectId: string,
   ): Promise<RepositoryUploadSession | null>;
   save(session: RepositoryUploadSession): Promise<RepositoryUploadSession>;
+  removeByProject(projectId: string): Promise<void>;
 }

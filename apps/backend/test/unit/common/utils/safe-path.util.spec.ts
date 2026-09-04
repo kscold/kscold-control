@@ -1,5 +1,8 @@
 import * as path from 'node:path';
-import { isPathInsideRoot } from '@/common/utils/safe-path.util';
+import {
+  hasControlCharacter,
+  isPathInsideRoot,
+} from '@/common/utils/safe-path.util';
 
 /**
  * 경로 탈출 방어의 핵심 판별부라 통합 전 4개 구현과 결과가 같아야 한다.
@@ -82,5 +85,19 @@ describe('isPathInsideRoot', () => {
         legacyRelative(caseRoot, caseTarget),
       ]);
     }
+  });
+});
+
+describe('hasControlCharacter', () => {
+  it('NULL, 개행, DEL 문자를 감지한다', () => {
+    expect(hasControlCharacter('safe\0path')).toBe(true);
+    expect(hasControlCharacter('safe\npath')).toBe(true);
+    expect(hasControlCharacter(`safe${String.fromCharCode(127)}path`)).toBe(
+      true,
+    );
+  });
+
+  it('일반 유니코드 경로는 허용한다', () => {
+    expect(hasControlCharacter('소스/파일.ts')).toBe(false);
   });
 });

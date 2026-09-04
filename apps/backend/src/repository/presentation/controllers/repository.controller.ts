@@ -5,6 +5,7 @@ import {
   Delete,
   Get,
   Param,
+  ParseIntPipe,
   Post,
   Query,
   Request,
@@ -30,6 +31,7 @@ import {
   CreateUploadSessionUseCase,
   GetUploadSessionUseCase,
   UploadSessionBatchUseCase,
+  FinalizeUploadSessionUseCase,
   DownloadArchiveUseCase,
   BrowseTreeUseCase,
   ReadFileUseCase,
@@ -40,7 +42,7 @@ import {
 } from '../../application/use-cases';
 import { CreateProjectDto } from '../../application/dto/create-project.dto';
 import type { UploadFile } from '../../application/use-cases/upload-files.use-case';
-import type { CreateUploadSessionInput } from '../../application/use-cases/create-upload-session.use-case';
+import { CreateUploadSessionRequestDto } from '../dto';
 
 interface MulterFile {
   fieldname: string;
@@ -50,10 +52,20 @@ interface MulterFile {
 }
 
 function parseRelativePaths(raw: string | string[] | undefined): string[] {
-  if (Array.isArray(raw)) return raw;
+  if (Array.isArray(raw)) {
+    if (raw.every((item) => typeof item === 'string')) return raw;
+    throw new BadRequestException('relativePaths는 문자열 배열이어야 합니다.');
+  }
   if (!raw) return [];
   try {
-    return JSON.parse(raw) as string[];
+    const parsed: unknown = JSON.parse(raw);
+    if (
+      !Array.isArray(parsed) ||
+      !parsed.every((item) => typeof item === 'string')
+    ) {
+      throw new Error('not a string array');
+    }
+    return parsed;
   } catch {
     throw new BadRequestException(
       'relativePaths 값이 올바른 JSON 배열이 아닙니다.',
@@ -72,6 +84,7 @@ export class RepositoryController {
     private readonly createUploadSessionUseCase: CreateUploadSessionUseCase,
     private readonly getUploadSessionUseCase: GetUploadSessionUseCase,
     private readonly uploadSessionBatchUseCase: UploadSessionBatchUseCase,
+    private readonly finalizeUploadSessionUseCase: FinalizeUploadSessionUseCase,
     private readonly downloadArchiveUseCase: DownloadArchiveUseCase,
     private readonly browseTreeUseCase: BrowseTreeUseCase,
     private readonly readFileUseCase: ReadFileUseCase,
@@ -139,6 +152,24 @@ export class RepositoryController {
       },
     }),
   )
+  @Audit({
+    domain: 'repository',
+    action: 'upload.legacy.complete',
+    summary: (ctx) =>
+      `프로젝트 ${ctx.params.id} 단일 요청 업로드를 반영했습니다.`,
+    targetType: 'project',
+    targetId: (ctx) => ctx.params.id,
+    metadata: (ctx) => {
+      const response = ctx.response as {
+        uploadedCount: number;
+        totalBytes: number;
+      };
+      return {
+        uploadedCount: response.uploadedCount,
+        totalBytes: response.totalBytes,
+      };
+    },
+  })
   async uploadFiles(
     @Param('id') id: string,
     @UploadedFiles() files: MulterFile[],
@@ -146,10 +177,18 @@ export class RepositoryController {
     @Query('replace') replace: string | undefined,
     @Request() req: JwtRequest,
   ) {
+    if (!files?.length) {
+      throw new BadRequestException('업로드할 파일이 없습니다.');
+    }
     const paths: string[] = parseRelativePaths(relativePathsRaw);
+    if (paths.length !== files.length) {
+      throw new BadRequestException(
+        '업로드 파일 수와 relativePaths 수가 일치하지 않습니다.',
+      );
+    }
 
     const uploadFiles: UploadFile[] = files.map((f, idx) => ({
-      relativePath: paths[idx] ?? f.originalname,
+      relativePath: paths[idx],
       buffer: f.buffer,
       size: f.size,
     }));
@@ -187,7 +226,7 @@ export class RepositoryController {
   })
   async createUploadSession(
     @Param('id') id: string,
-    @Body() body: CreateUploadSessionInput,
+    @Body() body: CreateUploadSessionRequestDto,
     @Request() req: JwtRequest,
   ) {
     return this.createUploadSessionUseCase.execute(
@@ -262,16 +301,23 @@ export class RepositoryController {
   async uploadSessionBatch(
     @Param('id') id: string,
     @Param('sessionId') sessionId: string,
-    @Param('batchIndex') batchIndexRaw: string,
+    @Param('batchIndex', ParseIntPipe) batchIndex: number,
     @UploadedFiles() files: MulterFile[],
     @Body('relativePaths') relativePathsRaw: string | string[],
     @Request() req: JwtRequest,
   ) {
-    const batchIndex = parseInt(batchIndexRaw, 10);
+    if (!files?.length) {
+      throw new BadRequestException('업로드할 배치 파일이 없습니다.');
+    }
     const paths: string[] = parseRelativePaths(relativePathsRaw);
+    if (paths.length !== files.length) {
+      throw new BadRequestException(
+        '업로드 파일 수와 relativePaths 수가 일치하지 않습니다.',
+      );
+    }
 
     const uploadFiles = files.map((file, index) => ({
-      relativePath: paths[index] ?? file.originalname,
+      relativePath: paths[index],
       buffer: file.buffer,
       size: file.size,
     }));
@@ -281,6 +327,38 @@ export class RepositoryController {
       sessionId,
       batchIndex,
       uploadFiles,
+      getProjectOwnerScope(req),
+    );
+  }
+
+  @Post('projects/:id/upload-sessions/:sessionId/finalize')
+  @RequirePermissions(PERMISSIONS.REPOSITORY_WRITE)
+  @Audit({
+    domain: 'repository',
+    action: 'upload.session.finalize',
+    summary: (ctx) =>
+      `프로젝트 ${ctx.params.id} 업로드를 검증하고 최종 반영했습니다.`,
+    targetType: 'project',
+    targetId: (ctx) => ctx.params.id,
+    metadata: (ctx) => {
+      const response = ctx.response as {
+        session: { id: string; snapshotId: string | null; totalFiles: number };
+      };
+      return {
+        sessionId: response.session.id,
+        snapshotId: response.session.snapshotId,
+        totalFiles: response.session.totalFiles,
+      };
+    },
+  })
+  async finalizeUploadSession(
+    @Param('id') id: string,
+    @Param('sessionId') sessionId: string,
+    @Request() req: JwtRequest,
+  ) {
+    return this.finalizeUploadSessionUseCase.execute(
+      id,
+      sessionId,
       getProjectOwnerScope(req),
     );
   }
