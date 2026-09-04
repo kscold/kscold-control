@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import fs from 'node:fs';
 import { promises as fsp } from 'node:fs';
 import os from 'node:os';
@@ -180,6 +181,176 @@ async function apiRequest(apiPath, token, init = {}) {
   return response.json();
 }
 
+async function apiMultipartRequest(apiPath, token, files) {
+  const formData = new FormData();
+  const relativePaths = [];
+
+  for (const file of files) {
+    formData.append(
+      'files',
+      new Blob([file.content]),
+      path.posix.basename(file.relativePath),
+    );
+    relativePaths.push(file.relativePath);
+  }
+  formData.append('relativePaths', JSON.stringify(relativePaths));
+
+  const response = await fetch(`${baseUrl}/api${apiPath}`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: formData,
+  });
+  if (!response.ok) {
+    const detail = await response.text();
+    throw new Error(`POST ${apiPath} failed: ${response.status} ${detail}`);
+  }
+  return response.json();
+}
+
+function uploadSessionPayload(files) {
+  const metadata = files
+    .map((file) => ({
+      relativePath: file.relativePath,
+      size: file.content.length,
+      sha256: createHash('sha256').update(file.content).digest('hex'),
+    }))
+    .sort((left, right) =>
+      left.relativePath < right.relativePath
+        ? -1
+        : left.relativePath > right.relativePath
+          ? 1
+          : 0,
+    );
+  const manifest = createHash('sha256');
+  for (const file of metadata) {
+    manifest.update(`${file.relativePath}\0${file.size}\0${file.sha256}\n`);
+  }
+  const totalBytes = metadata.reduce((sum, file) => sum + file.size, 0);
+
+  return {
+    protocolVersion: 2,
+    replace: true,
+    totalFiles: metadata.length,
+    totalBytes,
+    filteredCount: 0,
+    manifestDigest: `sha256:${manifest.digest('hex')}`,
+    batches: [
+      {
+        index: 0,
+        totalFiles: metadata.length,
+        totalBytes,
+        files: metadata,
+      },
+    ],
+  };
+}
+
+async function createApiUploadSession(projectId, token, files) {
+  return apiRequest(
+    `/repository/projects/${projectId}/upload-sessions`,
+    token,
+    {
+      method: 'POST',
+      body: JSON.stringify(uploadSessionPayload(files)),
+    },
+  );
+}
+
+async function readLiveText(projectId, token, relativePath) {
+  const result = await apiRequest(
+    `/repository/projects/${projectId}/file?path=${encodeURIComponent(relativePath)}`,
+    token,
+  );
+  assert.equal(result.encoding, 'utf8');
+  return result.content;
+}
+
+async function verifyAtomicApiUpload(project, token) {
+  const relativePath = 'atomic/state.txt';
+  const baseline = [
+    { relativePath, content: Buffer.from('before-source', 'utf8') },
+  ];
+  const replacement = [
+    { relativePath, content: Buffer.from('after--source', 'utf8') },
+  ];
+  const tampered = [
+    { relativePath, content: Buffer.from('wrong--source', 'utf8') },
+  ];
+  assert.equal(replacement[0].content.length, tampered[0].content.length);
+
+  const baselineSession = await createApiUploadSession(
+    project.id,
+    token,
+    baseline,
+  );
+  await apiMultipartRequest(
+    `/repository/projects/${project.id}/upload-sessions/${baselineSession.id}/batches/0`,
+    token,
+    baseline,
+  );
+  const baselineFinalized = await apiRequest(
+    `/repository/projects/${project.id}/upload-sessions/${baselineSession.id}/finalize`,
+    token,
+    { method: 'POST' },
+  );
+  assert.equal(baselineFinalized.session.status, 'completed');
+  assert.equal(
+    await readLiveText(project.id, token, relativePath),
+    'before-source',
+  );
+
+  const replacementSession = await createApiUploadSession(
+    project.id,
+    token,
+    replacement,
+  );
+  await assert.rejects(
+    () =>
+      apiMultipartRequest(
+        `/repository/projects/${project.id}/upload-sessions/${replacementSession.id}/batches/0`,
+        token,
+        tampered,
+      ),
+    /failed: 400/,
+  );
+  assert.equal(
+    await readLiveText(project.id, token, relativePath),
+    'before-source',
+  );
+
+  const failedSession = await apiRequest(
+    `/repository/projects/${project.id}/upload-sessions/${replacementSession.id}`,
+    token,
+  );
+  assert.equal(failedSession.item.status, 'partial_failed');
+  assert.equal(failedSession.item.batches[0].status, 'failed');
+
+  const staged = await apiMultipartRequest(
+    `/repository/projects/${project.id}/upload-sessions/${replacementSession.id}/batches/0`,
+    token,
+    replacement,
+  );
+  assert.equal(staged.session.status, 'finalizing');
+  assert.equal(
+    await readLiveText(project.id, token, relativePath),
+    'before-source',
+  );
+
+  const finalized = await apiRequest(
+    `/repository/projects/${project.id}/upload-sessions/${replacementSession.id}/finalize`,
+    token,
+    { method: 'POST' },
+  );
+  assert.equal(finalized.session.status, 'completed');
+  assert.equal(
+    await readLiveText(project.id, token, relativePath),
+    'after--source',
+  );
+  console.log(
+    '[repository-live-smoke] Atomic staging, integrity rejection, retry, and finalization verified.',
+  );
+}
+
 function createProjectName() {
   const stamp = new Date()
     .toISOString()
@@ -268,6 +439,8 @@ async function run() {
       }),
     });
     console.log(`[repository-live-smoke] Created project: ${project.name}`);
+
+    await verifyAtomicApiUpload(project, token);
 
     browser = await chromium.launch({ headless: true });
     const context = await browser.newContext();

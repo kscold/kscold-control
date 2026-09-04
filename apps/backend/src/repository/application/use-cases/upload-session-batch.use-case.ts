@@ -1,8 +1,8 @@
 import {
   BadRequestException,
+  ConflictException,
   Inject,
   Injectable,
-  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import {
@@ -17,9 +17,18 @@ import {
   IUploadSessionRepository,
   UPLOAD_SESSION_REPOSITORY,
 } from '../../domain/repositories/upload-session.repository.interface';
-import { RepositoryUploadSession } from '../../domain/types/upload-session.type';
+import {
+  REPOSITORY_UPLOAD_PROTOCOL_VERSION,
+  RepositoryUploadBatch,
+  RepositoryUploadSession,
+} from '../../domain/types/upload-session.type';
 import { Project } from '../../domain/entities/project.entity';
-import { assertSafeRepositoryPath } from '../utils/repository-path.util';
+import { RepositoryUploadCoordinator } from '../services/repository-upload-coordinator.service';
+import {
+  assertNoPrivateKeyMaterial,
+  assertSafeRepositoryPath,
+} from '../utils/repository-path.util';
+import { hashUploadBuffer } from '../utils/upload-manifest.util';
 
 export interface UploadSessionBatchFile {
   relativePath: string;
@@ -37,8 +46,6 @@ export interface UploadSessionBatchResult {
 
 @Injectable()
 export class UploadSessionBatchUseCase {
-  private readonly logger = new Logger(UploadSessionBatchUseCase.name);
-
   constructor(
     @Inject(PROJECT_REPOSITORY)
     private readonly projectRepository: IProjectRepository,
@@ -46,6 +53,7 @@ export class UploadSessionBatchUseCase {
     private readonly fileStorage: IFileStorage,
     @Inject(UPLOAD_SESSION_REPOSITORY)
     private readonly uploadSessionRepository: IUploadSessionRepository,
+    private readonly uploadCoordinator: RepositoryUploadCoordinator,
   ) {}
 
   async execute(
@@ -55,150 +63,185 @@ export class UploadSessionBatchUseCase {
     files: UploadSessionBatchFile[],
     ownerId?: string,
   ): Promise<UploadSessionBatchResult> {
-    const project = await this.projectRepository.findById(projectId, ownerId);
-    if (!project) {
-      throw new NotFoundException(`프로젝트를 찾을 수 없습니다: ${projectId}`);
-    }
+    return this.uploadCoordinator.runExclusive(projectId, async () => {
+      const project = await this.projectRepository.findById(projectId, ownerId);
+      if (!project) {
+        throw new NotFoundException(
+          `프로젝트를 찾을 수 없습니다: ${projectId}`,
+        );
+      }
+      if (!Number.isInteger(batchIndex) || batchIndex < 0 || !files?.length) {
+        throw new BadRequestException(
+          '업로드할 배치 또는 배치 인덱스가 올바르지 않습니다.',
+        );
+      }
 
-    if (!files?.length) {
-      throw new BadRequestException('업로드할 배치 파일이 없습니다');
-    }
-
-    const session = await this.uploadSessionRepository.findById(
-      projectId,
-      sessionId,
-    );
-    if (!session) {
-      throw new NotFoundException(
-        `업로드 세션을 찾을 수 없습니다: ${sessionId}`,
+      const session = await this.uploadSessionRepository.findById(
+        projectId,
+        sessionId,
       );
-    }
+      if (!session) {
+        throw new NotFoundException(
+          `업로드 세션을 찾을 수 없습니다: ${sessionId}`,
+        );
+      }
+      this.assertSessionCanReceiveBatch(session, project.name);
 
-    const batch = session.batches.find((item) => item.index === batchIndex);
-    if (!batch) {
-      throw new NotFoundException(
-        `업로드 배치를 찾을 수 없습니다: ${batchIndex}`,
+      const batch = session.batches.find((item) => item.index === batchIndex);
+      if (!batch) {
+        throw new NotFoundException(
+          `업로드 배치를 찾을 수 없습니다: ${batchIndex}`,
+        );
+      }
+      if (batch.status === 'completed') {
+        return this.toResult(project, session, batch);
+      }
+
+      const validationFailures = this.validateFiles(batch, files);
+      if (validationFailures.length > 0) {
+        await this.markBatchFailed(session, batch, validationFailures);
+        throw new BadRequestException(
+          `배치 파일 무결성 검증에 실패했습니다: ${validationFailures.join(', ')}`,
+        );
+      }
+
+      await this.fileStorage.prepareStagedUpload(
+        project.name,
+        session.id,
+        session.replace,
       );
-    }
+      this.markBatchUploading(session, batch);
+      await this.uploadSessionRepository.save(session);
 
-    if (batch.status === 'completed' && session.status === 'completed') {
-      return {
-        project,
-        session,
-        batchIndex,
-        uploadedCount: batch.uploadedCount,
-        failedFiles: batch.failedFiles,
-      };
-    }
+      const failedFiles: string[] = [];
+      let uploadedBytes = 0;
+      for (const file of files) {
+        try {
+          await this.fileStorage.writeStagedFile(
+            project.name,
+            session.id,
+            file.relativePath,
+            file.buffer,
+          );
+          uploadedBytes += file.size;
+        } catch {
+          failedFiles.push(file.relativePath);
+        }
+      }
 
-    const now = new Date().toISOString();
-    session.status = 'uploading';
-    session.currentBatchIndex = batchIndex;
-    session.updatedAt = now;
-    session.lastActivityAt = now;
-    batch.status = 'uploading';
-    batch.error = null;
-    batch.updatedAt = now;
-    await this.uploadSessionRepository.save(session);
-
-    if (session.replace) {
-      if (!session.replaceApplied) {
-        // 콘텐츠만 비우고 .versions 히스토리는 보존한다.
-        // (removeProject로 전체 삭제하면 이전 버전 스냅샷이 매번 사라져
-        //  버전 관리가 동작하지 않고 항상 최신본만 남는다.)
-        await this.fileStorage.clearProjectFiles(project.name);
-        await this.fileStorage.ensureProject(project.name);
-        session.replaceApplied = true;
-        // 프로젝트 전체 삭제는 세션당 한 번만 일어나야 한다.
-        // 플래그를 즉시 영속화하지 않으면, 배치 쓰기 도중 전송이 끊겼을 때
-        // 재시도 시 replaceApplied=false 상태로 남아 이미 올린 파일까지 다시 삭제된다.
+      if (failedFiles.length > 0) {
+        await this.markBatchFailed(session, batch, failedFiles);
+      } else {
+        batch.status = 'completed';
+        batch.uploadedCount = batch.totalFiles;
+        batch.uploadedBytes = uploadedBytes;
+        batch.failedFiles = [];
+        batch.error = null;
+        batch.updatedAt = new Date().toISOString();
+        this.recalculateSession(session);
         await this.uploadSessionRepository.save(session);
       }
-    } else {
-      await this.fileStorage.ensureProject(project.name);
-    }
 
-    const expectedFiles = new Map(
-      batch.files.map((file) => [file.relativePath, file.size]),
-    );
-    const receivedPaths = new Set<string>();
-    const failedFiles: string[] = [];
-    let uploadedCount = 0;
-    let uploadedBytes = 0;
-
-    for (const file of files) {
-      this.assertSafePath(file.relativePath);
-
-      if (!expectedFiles.has(file.relativePath)) {
-        failedFiles.push(file.relativePath);
-        continue;
-      }
-
-      receivedPaths.add(file.relativePath);
-
-      try {
-        await this.fileStorage.writeFile(
-          project.name,
-          file.relativePath,
-          file.buffer,
-        );
-        uploadedCount += 1;
-        uploadedBytes += expectedFiles.get(file.relativePath) ?? file.size;
-      } catch (error) {
-        failedFiles.push(file.relativePath);
-        batch.error = (error as Error).message;
-      }
-    }
-
-    batch.files
-      .filter((file) => !receivedPaths.has(file.relativePath))
-      .forEach((file) => failedFiles.push(file.relativePath));
-
-    batch.uploadedCount = uploadedCount;
-    batch.uploadedBytes = uploadedBytes;
-    batch.failedFiles = [...new Set(failedFiles)];
-    batch.status = batch.failedFiles.length > 0 ? 'failed' : 'completed';
-    batch.error =
-      batch.failedFiles.length > 0
-        ? `${batch.failedFiles.length}개 파일이 실패했습니다.`
-        : null;
-    batch.updatedAt = new Date().toISOString();
-
-    this.recalculateSession(session);
-
-    const persistedSession = await this.uploadSessionRepository.save(session);
-
-    // 성능: 매 배치마다 프로젝트 전체 트리를 재스캔(getStats)하면 O(N²)이 되어
-    // 배치 수십 개 × 파일 수천 개의 대형 프로젝트(bigzmai 등)에서 후반 배치가
-    // 급격히 느려지고 전송이 끊긴다. 전체 통계 갱신과 스냅샷 생성은 세션이
-    // 끝났을 때 1회만 수행한다. 진행 중에는 세션의 누적 카운트로 충분하다.
-    let updatedProject = project;
-    if (persistedSession.status === 'completed') {
-      const stats = await this.fileStorage.getStats(project.name);
-      updatedProject = await this.projectRepository.update(projectId, {
-        fileCount: stats.fileCount,
-        totalSize: stats.totalSize,
-      });
-
-      // 스냅샷 생성 (비동기, 실패해도 응답에 영향 없음)
-      this.fileStorage.createSnapshot(project.name).catch((err: Error) => {
-        this.logger.error(
-          `스냅샷 생성 실패 — project: ${project.name}, reason: ${err.message}`,
-          err.stack,
-        );
-      });
-    }
-
-    return {
-      project: updatedProject,
-      session: persistedSession,
-      batchIndex,
-      uploadedCount: batch.uploadedCount,
-      failedFiles: batch.failedFiles,
-    };
+      return this.toResult(project, session, batch);
+    });
   }
 
-  private recalculateSession(session: RepositoryUploadSession) {
+  private assertSessionCanReceiveBatch(
+    session: RepositoryUploadSession,
+    projectName: string,
+  ): void {
+    if (
+      session.projectName !== projectName ||
+      session.protocolVersion !== REPOSITORY_UPLOAD_PROTOCOL_VERSION
+    ) {
+      throw new ConflictException(
+        '현재 업로드 세션은 더 이상 호환되지 않습니다. 새 세션을 시작해주세요.',
+      );
+    }
+    if (session.status === 'superseded') {
+      throw new ConflictException(
+        '더 최신 업로드 세션이 있습니다. 폴더를 다시 선택해주세요.',
+      );
+    }
+    if (session.status === 'completed') return;
+    if (session.status === 'finalizing') {
+      throw new ConflictException('이미 업로드 최종 반영이 진행 중입니다.');
+    }
+  }
+
+  private validateFiles(
+    batch: RepositoryUploadBatch,
+    files: UploadSessionBatchFile[],
+  ): string[] {
+    const expected = new Map(
+      batch.files.map((file) => [file.relativePath, file]),
+    );
+    const received = new Set<string>();
+    const failures = new Set<string>();
+
+    if (files.length !== batch.totalFiles) failures.add('(파일 수 불일치)');
+    for (const file of files) {
+      assertSafeRepositoryPath(file.relativePath);
+      try {
+        assertNoPrivateKeyMaterial(file.relativePath, file.buffer);
+      } catch {
+        failures.add(file.relativePath);
+        continue;
+      }
+      const metadata = expected.get(file.relativePath);
+      if (!metadata || received.has(file.relativePath)) {
+        failures.add(file.relativePath);
+        continue;
+      }
+      received.add(file.relativePath);
+      if (
+        file.size !== file.buffer.length ||
+        file.size !== metadata.size ||
+        hashUploadBuffer(file.buffer) !== metadata.sha256
+      ) {
+        failures.add(file.relativePath);
+      }
+    }
+    for (const relativePath of expected.keys()) {
+      if (!received.has(relativePath)) failures.add(relativePath);
+    }
+    return [...failures];
+  }
+
+  private markBatchUploading(
+    session: RepositoryUploadSession,
+    batch: RepositoryUploadBatch,
+  ): void {
+    const now = new Date().toISOString();
+    session.status = 'uploading';
+    session.currentBatchIndex = batch.index;
+    session.updatedAt = now;
+    session.lastActivityAt = now;
+    session.finalizationError = null;
+    batch.status = 'uploading';
+    batch.uploadedCount = 0;
+    batch.uploadedBytes = 0;
+    batch.failedFiles = [];
+    batch.error = null;
+    batch.updatedAt = now;
+  }
+
+  private async markBatchFailed(
+    session: RepositoryUploadSession,
+    batch: RepositoryUploadBatch,
+    failedFiles: string[],
+  ): Promise<void> {
+    batch.status = 'failed';
+    batch.uploadedCount = 0;
+    batch.uploadedBytes = 0;
+    batch.failedFiles = [...new Set(failedFiles)];
+    batch.error = `${batch.failedFiles.length}개 파일의 업로드 또는 검증에 실패했습니다.`;
+    batch.updatedAt = new Date().toISOString();
+    this.recalculateSession(session);
+    await this.uploadSessionRepository.save(session);
+  }
+
+  private recalculateSession(session: RepositoryUploadSession): void {
     session.uploadedCount = session.batches.reduce(
       (sum, batch) => sum + batch.uploadedCount,
       0,
@@ -211,37 +254,30 @@ export class UploadSessionBatchUseCase {
       ...new Set(session.batches.flatMap((batch) => batch.failedFiles)),
     ];
     session.failedCount = session.failedFiles.length;
-
-    const allCompleted = session.batches.every(
+    session.currentBatchIndex = null;
+    session.completedAt = null;
+    session.status = session.batches.every(
       (batch) => batch.status === 'completed',
-    );
-    const anyFailed = session.batches.some(
-      (batch) => batch.status === 'failed' || batch.failedFiles.length > 0,
-    );
-    const anyUploaded = session.batches.some(
-      (batch) => batch.uploadedCount > 0,
-    );
-
-    if (allCompleted) {
-      session.status = 'completed';
-      session.currentBatchIndex = null;
-      session.completedAt = new Date().toISOString();
-    } else if (anyFailed) {
-      session.status = 'partial_failed';
-      session.completedAt = null;
-    } else if (anyUploaded) {
-      session.status = 'uploading';
-      session.completedAt = null;
-    } else {
-      session.status = 'pending';
-      session.completedAt = null;
-    }
-
+    )
+      ? 'finalizing'
+      : session.batches.some((batch) => batch.status === 'failed')
+        ? 'partial_failed'
+        : 'uploading';
     session.updatedAt = new Date().toISOString();
     session.lastActivityAt = session.updatedAt;
   }
 
-  private assertSafePath(relativePath: string): void {
-    assertSafeRepositoryPath(relativePath);
+  private toResult(
+    project: Project,
+    session: RepositoryUploadSession,
+    batch: RepositoryUploadBatch,
+  ): UploadSessionBatchResult {
+    return {
+      project,
+      session,
+      batchIndex: batch.index,
+      uploadedCount: batch.uploadedCount,
+      failedFiles: batch.failedFiles,
+    };
   }
 }

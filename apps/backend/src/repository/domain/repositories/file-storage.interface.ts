@@ -22,22 +22,63 @@ export interface ProjectVersion {
   filename: string;
 }
 
+export interface StagedUploadFile {
+  relativePath: string;
+  size: number;
+  sha256: string;
+}
+
+export interface RepositoryFileInspection {
+  files: StagedUploadFile[];
+  stats: ProjectStats;
+}
+
+export interface StagedUploadInspection extends RepositoryFileInspection {
+  source: 'staging' | 'published';
+}
+
+export interface FinalizedUpload {
+  stats: ProjectStats;
+  version: ProjectVersion;
+  publishedAt: string;
+}
+
 export interface IFileStorage {
   /** 프로젝트 디렉토리 생성 */
   ensureProject(projectName: string): Promise<void>;
 
-  /** 단일 파일 쓰기 (상대경로 보존) */
-  writeFile(
+  /** 완성 전 파일을 라이브 프로젝트와 분리된 세션 디렉토리에 준비 */
+  prepareStagedUpload(
     projectName: string,
+    sessionId: string,
+    replace: boolean,
+  ): Promise<void>;
+
+  /** 세션 스테이징 디렉토리에 단일 파일 기록 */
+  writeStagedFile(
+    projectName: string,
+    sessionId: string,
     relativePath: string,
     buffer: Buffer,
   ): Promise<void>;
 
-  /** 프로젝트 전체 삭제 (.versions 히스토리 포함) */
-  removeProject(projectName: string): Promise<void>;
+  /** 최종 반영 전 스테이징 파일 전체를 다시 해시해 무결성 확인 */
+  inspectStagedUpload(
+    projectName: string,
+    sessionId: string,
+  ): Promise<StagedUploadInspection>;
 
-  /** 프로젝트 콘텐츠만 비우기 — .versions 버전 히스토리는 보존 (replace 업로드용) */
-  clearProjectFiles(projectName: string): Promise<void>;
+  /** 검증된 스테이징을 새 버전으로 남긴 뒤 라이브 디렉토리로 전환 */
+  finalizeStagedUpload(
+    projectName: string,
+    sessionId: string,
+  ): Promise<FinalizedUpload>;
+
+  /** 폐기된 세션의 스테이징 데이터 정리 */
+  discardStagedUpload(projectName: string, sessionId: string): Promise<void>;
+
+  /** 프로젝트 라이브 파일과 별도 버전·업로드 작업 디렉터리 전체 삭제 */
+  removeProject(projectName: string): Promise<void>;
 
   /** 파일 트리 조회 */
   listTree(projectName: string): Promise<FileTreeNode>;
@@ -58,7 +99,7 @@ export interface IFileStorage {
   /** 프로젝트 통계 (파일 수 + 총 바이트) */
   getStats(projectName: string): Promise<ProjectStats>;
 
-  /** 현재 파일 상태를 .versions/ 에 tar.gz 스냅샷으로 저장 */
+  /** 현재 파일 상태를 별도 버전 저장소에 tar.gz 스냅샷으로 저장 */
   createSnapshot(projectName: string): Promise<ProjectVersion>;
 
   /** 버전 목록 조회 (최신순) */

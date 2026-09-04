@@ -1,132 +1,157 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
-import { promises as fs, createReadStream } from 'fs';
+import { createHash, randomUUID } from 'crypto';
+import { createReadStream as createNodeReadStream, promises as fs } from 'fs';
 import * as os from 'os';
 import * as path from 'path';
 import { Readable } from 'stream';
-import { spawn } from 'child_process';
-import { isPathInsideRoot } from '../../../common/utils';
 import {
   FileTreeNode,
+  FinalizedUpload,
   IFileStorage,
   ProjectStats,
   ProjectVersion,
+  RepositoryFileInspection,
+  StagedUploadFile,
+  StagedUploadInspection,
 } from '../../domain/repositories/file-storage.interface';
-
-const VERSIONS_DIR = '.versions';
+import {
+  containsPrivateKeyMaterial,
+  isReservedRepositoryPath,
+  isSensitiveRepositoryPath,
+} from '../../domain/policies/repository-path.policy';
+import {
+  BACKUP_DIR,
+  LEGACY_VERSIONS_DIR,
+  LocalStorageLayout,
+  RECEIPT_DIR,
+  STAGING_DIR,
+} from './local-storage-layout';
+import { LocalUploadPublisher } from './local-upload-publisher';
+import { LocalVersionStore } from './local-version-store';
 
 @Injectable()
 export class LocalFileStorageService implements IFileStorage, OnModuleInit {
   private readonly logger = new Logger(LocalFileStorageService.name);
-  private readonly baseDir: string;
+  private readonly layout: LocalStorageLayout;
+  private readonly versions: LocalVersionStore;
+  private readonly publisher: LocalUploadPublisher;
 
   constructor() {
-    // 기본값을 사용자 홈 하위로 둔다. 과거 기본값 '/var/repos'는 macOS/Linux 모두
-    // root 권한이 필요해, REPOSITORY_STORAGE_DIR 환경변수가 프로세스에 전달되지
-    // 않으면 모든 업로드가 EACCES(permission denied, mkdir '/var/repos')로 통째로
-    // 실패하는 사고가 있었다. 쓰기 가능한 안전한 기본값으로 바꾼다.
-    this.baseDir =
+    const baseDir =
       process.env.REPOSITORY_STORAGE_DIR ??
       path.join(os.homedir(), 'repository-storage');
+    this.layout = new LocalStorageLayout(baseDir);
+    this.versions = new LocalVersionStore(this.layout, this.logger);
+    this.publisher = new LocalUploadPublisher(
+      this.layout,
+      this.versions,
+      (root) => this.inspectDirectory(root),
+      this.logger,
+    );
   }
 
-  /**
-   * 부팅 시 저장소 디렉토리를 생성하고 실제 쓰기 가능 여부를 점검한다.
-   * 문제가 있으면(권한 없음 등) 업로드가 조용히 실패하지 않도록 명확한
-   * 조치 안내와 함께 에러 로그를 남긴다. (패널 전체를 죽이지는 않는다.)
-   */
   async onModuleInit(): Promise<void> {
     try {
-      await fs.mkdir(this.baseDir, { recursive: true });
-      const probe = path.join(this.baseDir, `.write-test-${process.pid}`);
-      await fs.writeFile(probe, 'ok');
-      await fs.rm(probe, { force: true });
-      this.logger.log(`저장소 디렉토리 준비 완료: ${this.baseDir}`);
-    } catch (err) {
-      const reason = (err as Error).message;
+      await this.layout.initialize();
+      await this.publisher.recoverInterruptedPublishes();
+      this.logger.log(`저장소 디렉토리 준비 완료: ${this.layout.baseDir}`);
+    } catch (error) {
       this.logger.error(
-        [
-          `저장소 디렉토리를 쓸 수 없습니다: ${this.baseDir} (${reason})`,
-          `→ 소스 업로드가 실패합니다. 쓰기 가능한 경로를 REPOSITORY_STORAGE_DIR 로 지정하고 재시작하세요.`,
-          `  예) REPOSITORY_STORAGE_DIR=${path.join(os.homedir(), 'repository-storage')}`,
-          `  PM2 사용 시: pm2 start ecosystem.config.js --update-env`,
-        ].join('\n'),
+        `저장소 디렉토리를 준비할 수 없습니다: ${this.layout.baseDir} (${this.errorMessage(error)})`,
       );
+      throw error;
     }
   }
-
-  // ── 경로 헬퍼 ──────────────────────────────────────────────────────────────
-
-  private projectPath(projectName: string): string {
-    const safe = path.basename(projectName);
-    return path.join(this.baseDir, safe);
-  }
-
-  /**
-   * 경로 순회 공격 방어: target 이 projectDir 하위인지 확인.
-   * 위반 시 Error 를 throw 합니다.
-   *
-   * 정규화 + 루트 포함 검사는 공용 유틸(isPathInsideRoot)로 통일하고,
-   * 예외 타입/메시지는 이 저장소 계층이 쓰던 것을 그대로 유지한다.
-   */
-  private assertSafeFilePath(projectDir: string, target: string): void {
-    if (!isPathInsideRoot(projectDir, target)) {
-      throw new Error(
-        `Path traversal blocked: ${path.relative(projectDir, target)}`,
-      );
-    }
-  }
-
-  // ── 기본 파일 조작 ─────────────────────────────────────────────────────────
 
   async ensureProject(projectName: string): Promise<void> {
-    const dir = this.projectPath(projectName);
-    await fs.mkdir(dir, { recursive: true });
+    const directory = this.layout.projectPath(projectName);
+    await fs.mkdir(directory, { recursive: true, mode: 0o700 });
+    await fs.chmod(directory, 0o700);
   }
 
-  async writeFile(
+  async prepareStagedUpload(
     projectName: string,
+    sessionId: string,
+    replace: boolean,
+  ): Promise<void> {
+    const stage = this.layout.stagingPath(projectName, sessionId);
+    if (await this.layout.exists(stage)) return;
+
+    await this.versions.migrateLegacyVersions(projectName);
+    await fs.mkdir(path.dirname(stage), { recursive: true, mode: 0o700 });
+    const live = this.layout.projectPath(projectName);
+    if (!replace && (await this.layout.exists(live))) {
+      const legacyVersions = path.join(live, LEGACY_VERSIONS_DIR);
+      await fs.cp(live, stage, {
+        recursive: true,
+        errorOnExist: true,
+        filter: (source) => source !== legacyVersions,
+      });
+      return;
+    }
+    await fs.mkdir(stage, { recursive: true, mode: 0o700 });
+  }
+
+  async writeStagedFile(
+    projectName: string,
+    sessionId: string,
     relativePath: string,
     buffer: Buffer,
   ): Promise<void> {
-    const dir = this.projectPath(projectName);
-    const target = path.join(dir, relativePath);
-    this.assertSafeFilePath(dir, target);
-    await fs.mkdir(path.dirname(target), { recursive: true });
-    await fs.writeFile(target, buffer);
+    const stage = this.layout.stagingPath(projectName, sessionId);
+    if (!(await this.layout.exists(stage))) {
+      throw new Error('업로드 스테이징 디렉토리가 없습니다.');
+    }
+    await this.writeBuffer(stage, relativePath, buffer);
+  }
+
+  inspectStagedUpload(
+    projectName: string,
+    sessionId: string,
+  ): Promise<StagedUploadInspection> {
+    return this.publisher.inspect(projectName, sessionId);
+  }
+
+  finalizeStagedUpload(
+    projectName: string,
+    sessionId: string,
+  ): Promise<FinalizedUpload> {
+    return this.publisher.finalize(projectName, sessionId);
+  }
+
+  discardStagedUpload(projectName: string, sessionId: string): Promise<void> {
+    return this.publisher.discard(projectName, sessionId);
   }
 
   async removeProject(projectName: string): Promise<void> {
-    const dir = this.projectPath(projectName);
-    await fs.rm(dir, { recursive: true, force: true });
+    this.layout.assertProjectName(projectName);
+    await Promise.all([
+      fs.rm(this.layout.projectPath(projectName), {
+        recursive: true,
+        force: true,
+      }),
+      fs.rm(this.layout.versionDirectory(projectName), {
+        recursive: true,
+        force: true,
+      }),
+      ...[STAGING_DIR, RECEIPT_DIR, BACKUP_DIR].map((directory) =>
+        fs.rm(this.layout.internalProjectPath(directory, projectName), {
+          recursive: true,
+          force: true,
+        }),
+      ),
+    ]);
   }
 
-  /**
-   * 프로젝트 콘텐츠만 비우고 .versions 버전 히스토리는 보존한다.
-   * replace 업로드 시 이 메서드를 사용해야 이전 버전 스냅샷이 누적된다.
-   * (removeProject는 .versions 포함 전체를 삭제하므로 버전 히스토리가 사라진다.)
-   */
-  async clearProjectFiles(projectName: string): Promise<void> {
-    const dir = this.projectPath(projectName);
-
-    let entries;
-    try {
-      entries = await fs.readdir(dir, { withFileTypes: true });
-    } catch (err) {
-      // 프로젝트 디렉토리가 아직 없으면 비울 것도 없음
-      if ((err as NodeJS.ErrnoException).code === 'ENOENT') return;
-      throw err;
-    }
-
-    for (const entry of entries) {
-      if (entry.name === VERSIONS_DIR) continue; // 버전 히스토리 보존
-      await fs.rm(path.join(dir, entry.name), { recursive: true, force: true });
-    }
+  async listTree(projectName: string): Promise<FileTreeNode> {
+    const root = this.layout.projectPath(projectName);
+    return this.walkTree(root, root, projectName);
   }
 
   async readFile(projectName: string, relativePath: string): Promise<Buffer> {
-    const dir = this.projectPath(projectName);
-    const target = path.join(dir, relativePath);
-    this.assertSafeFilePath(dir, target);
+    const root = this.layout.projectPath(projectName);
+    const target = this.layout.safeRelativePath(root, relativePath);
+    await this.layout.assertNoSymlink(root, target);
     return fs.readFile(target);
   }
 
@@ -134,296 +159,225 @@ export class LocalFileStorageService implements IFileStorage, OnModuleInit {
     projectName: string,
     relativePath: string,
   ): Promise<Readable> {
-    const dir = this.projectPath(projectName);
-    const target = path.join(dir, relativePath);
-    this.assertSafeFilePath(dir, target);
-    return createReadStream(target);
+    const root = this.layout.projectPath(projectName);
+    const target = this.layout.safeRelativePath(root, relativePath);
+    await this.layout.assertNoSymlink(root, target);
+    return createNodeReadStream(target);
   }
-
-  // ── 파일 트리 조회 (.versions 제외) ───────────────────────────────────────
-
-  async listTree(projectName: string): Promise<FileTreeNode> {
-    const root = this.projectPath(projectName);
-    return this.walk(root, root, projectName);
-  }
-
-  private async walk(
-    currentPath: string,
-    root: string,
-    name: string,
-  ): Promise<FileTreeNode> {
-    const stats = await fs.stat(currentPath);
-    const relPath = path.relative(root, currentPath) || '';
-
-    if (stats.isFile()) {
-      return { name, path: relPath, type: 'file', size: stats.size };
-    }
-
-    const entries = await fs.readdir(currentPath, { withFileTypes: true });
-    const children: FileTreeNode[] = [];
-
-    for (const entry of entries
-      .filter((e) => e.name !== VERSIONS_DIR) // .versions 숨김
-      .sort((a, b) => {
-        if (a.isDirectory() !== b.isDirectory())
-          return a.isDirectory() ? -1 : 1;
-        return a.name.localeCompare(b.name);
-      })) {
-      const child = await this.walk(
-        path.join(currentPath, entry.name),
-        root,
-        entry.name,
-      );
-      children.push(child);
-    }
-
-    return { name, path: relPath, type: 'directory', children };
-  }
-
-  // ── 통계 (.versions 제외) ─────────────────────────────────────────────────
-
-  async getStats(projectName: string): Promise<ProjectStats> {
-    const dir = this.projectPath(projectName);
-    let fileCount = 0;
-    let totalSize = 0;
-
-    const stack: string[] = [dir];
-    while (stack.length > 0) {
-      const cur = stack.pop()!;
-      let entries;
-      try {
-        entries = await fs.readdir(cur, { withFileTypes: true });
-      } catch (err) {
-        this.logger.warn(
-          `getStats: readdir 실패 — ${cur}`,
-          (err as Error).message,
-        );
-        continue;
-      }
-      for (const entry of entries) {
-        if (entry.name === VERSIONS_DIR) continue; // .versions 제외
-        const full = path.join(cur, entry.name);
-        if (entry.isDirectory()) {
-          stack.push(full);
-        } else if (entry.isFile()) {
-          fileCount++;
-          try {
-            const st = await fs.stat(full);
-            totalSize += st.size;
-          } catch (err) {
-            this.logger.warn(
-              `getStats: stat 실패 — ${full}`,
-              (err as Error).message,
-            );
-          }
-        }
-      }
-    }
-
-    return { fileCount, totalSize };
-  }
-
-  // ── 아카이브 다운로드 ──────────────────────────────────────────────────────
 
   async archiveProject(projectName: string): Promise<Readable> {
-    const dir = this.projectPath(projectName);
-    await fs.access(dir);
-
-    const tar = spawn(
-      'tar',
-      ['-czf', '-', '-C', dir, '--exclude', `./${VERSIONS_DIR}`, '.'],
-      { stdio: ['ignore', 'pipe', 'pipe'] },
-    );
-
-    tar.stderr.on('data', (chunk) => {
-      this.logger.warn(`tar stderr: ${chunk.toString()}`);
-    });
-    tar.on('error', (err) => {
-      this.logger.error('tar spawn error', err);
-    });
-
-    return tar.stdout;
+    await this.inspectDirectory(this.layout.projectPath(projectName));
+    return this.versions.createArchiveStream(projectName);
   }
 
-  // ── 버전 히스토리 ──────────────────────────────────────────────────────────
+  async getStats(projectName: string): Promise<ProjectStats> {
+    return (await this.inspectDirectory(this.layout.projectPath(projectName)))
+      .stats;
+  }
 
   async createSnapshot(projectName: string): Promise<ProjectVersion> {
-    const dir = this.projectPath(projectName);
-    const versionsDir = path.join(dir, VERSIONS_DIR);
-    await fs.mkdir(versionsDir, { recursive: true });
-
-    const now = new Date();
-    const id = now.toISOString().replace(/[:.]/g, '-');
-    const filename = `${id}.tar.gz`;
-    const dest = path.join(versionsDir, filename);
-
-    await new Promise<void>((resolve, reject) => {
-      const tar = spawn(
-        'tar',
-        ['-czf', dest, '-C', dir, '--exclude', `./${VERSIONS_DIR}`, '.'],
-        { stdio: ['ignore', 'pipe', 'pipe'] },
-      );
-      tar.on('exit', (code) => {
-        if (code === 0) resolve();
-        else reject(new Error(`tar exited with code ${code}`));
-      });
-      tar.on('error', reject);
-    });
-
-    const stat = await fs.stat(dest);
-    return { id, createdAt: now, compressedSize: stat.size, filename };
+    await this.versions.migrateLegacyVersions(projectName);
+    const live = this.layout.projectPath(projectName);
+    await this.inspectDirectory(live);
+    return this.versions.createSnapshot(projectName, live);
   }
 
-  async listVersions(projectName: string): Promise<ProjectVersion[]> {
-    const dir = this.projectPath(projectName);
-    const versionsDir = path.join(dir, VERSIONS_DIR);
-
-    let entries: string[];
-    try {
-      entries = await fs.readdir(versionsDir);
-    } catch (err) {
-      const code = (err as NodeJS.ErrnoException).code;
-      if (code !== 'ENOENT') {
-        this.logger.warn(
-          `listVersions: readdir 실패 — ${versionsDir}`,
-          (err as Error).message,
-        );
-      }
-      return [];
-    }
-
-    const versions: ProjectVersion[] = [];
-    for (const filename of entries) {
-      if (!filename.endsWith('.tar.gz')) continue;
-      const id = filename.replace(/\.tar\.gz$/, '');
-      const fullPath = path.join(versionsDir, filename);
-      try {
-        const stat = await fs.stat(fullPath);
-        versions.push({
-          id,
-          createdAt: stat.mtime,
-          compressedSize: stat.size,
-          filename,
-        });
-      } catch (err) {
-        this.logger.warn(
-          `listVersions: stat 실패 — ${fullPath}`,
-          (err as Error).message,
-        );
-      }
-    }
-
-    // 최신순 정렬
-    return versions.sort(
-      (a, b) => b.createdAt.getTime() - a.createdAt.getTime(),
-    );
+  listVersions(projectName: string): Promise<ProjectVersion[]> {
+    return this.versions.list(projectName);
   }
 
-  async cleanupVersions(projectName: string, keepCount = 1): Promise<number> {
-    const versions = await this.listVersions(projectName);
-    if (versions.length <= keepCount) return 0;
-
-    const toDelete = versions.slice(keepCount);
-    const dir = this.projectPath(projectName);
-    const versionsDir = path.join(dir, VERSIONS_DIR);
-    let deleted = 0;
-
-    for (const v of toDelete) {
-      try {
-        await fs.unlink(path.join(versionsDir, v.filename));
-        deleted++;
-      } catch (err) {
-        this.logger.warn(
-          `cleanupVersions: unlink 실패 — ${v.filename}`,
-          (err as Error).message,
-        );
-      }
-    }
-    return deleted;
+  cleanupVersions(projectName: string, keepCount = 1): Promise<number> {
+    return this.versions.cleanup(projectName, keepCount);
   }
 
-  async readFileAtVersion(
+  readFileAtVersion(
     projectName: string,
     versionId: string,
     relativePath: string,
   ): Promise<Buffer | null> {
-    const dir = this.projectPath(projectName);
-    const versionsDir = path.join(dir, VERSIONS_DIR);
-    const safeVersion = path.basename(versionId);
-    const src = path.join(versionsDir, `${safeVersion}.tar.gz`);
-
-    try {
-      await fs.access(src);
-    } catch {
-      throw new Error(`version archive not found: ${safeVersion}`);
-    }
-
-    // tar는 항목을 ./경로 형태로 저장하므로 ./경로와 경로 두 가지를 모두 시도한다.
-    const normalized = relativePath.replace(/^\.\//, '').replace(/^\/+/, '');
-    const candidates = [`./${normalized}`, normalized];
-
-    for (const target of candidates) {
-      const buffer = await this.extractSingleFileFromTar(src, target);
-      if (buffer !== null) return buffer;
-    }
-    return null;
-  }
-
-  private extractSingleFileFromTar(
-    archivePath: string,
-    entryPath: string,
-  ): Promise<Buffer | null> {
-    return new Promise((resolve) => {
-      const tar = spawn('tar', ['-xOzf', archivePath, entryPath], {
-        stdio: ['ignore', 'pipe', 'pipe'],
-      });
-
-      const chunks: Buffer[] = [];
-      let stderrOutput = '';
-
-      tar.stdout.on('data', (chunk: Buffer) => chunks.push(chunk));
-      tar.stderr.on('data', (chunk: Buffer) => {
-        stderrOutput += chunk.toString();
-      });
-      tar.on('error', () => resolve(null));
-      tar.on('exit', (code) => {
-        if (code === 0 && chunks.length > 0) {
-          resolve(Buffer.concat(chunks));
-        } else {
-          if (stderrOutput && !stderrOutput.includes('Not found in archive')) {
-            this.logger.warn(
-              `extractSingleFileFromTar: ${entryPath} — ${stderrOutput.trim()}`,
-            );
-          }
-          resolve(null);
-        }
-      });
-    });
+    return this.versions.readFile(projectName, versionId, relativePath);
   }
 
   async restoreVersion(projectName: string, versionId: string): Promise<void> {
-    const dir = this.projectPath(projectName);
-    const versionsDir = path.join(dir, VERSIONS_DIR);
-    const safe = path.basename(versionId);
-    const src = path.join(versionsDir, `${safe}.tar.gz`);
+    const archive = await this.versions.archivePath(projectName, versionId);
+    await this.versions.validateArchive(archive);
+    const targetVersion = await this.versions.getVersion(
+      projectName,
+      versionId,
+    );
 
-    // 기존 파일 삭제 (.versions 제외)
-    const entries = await fs.readdir(dir, { withFileTypes: true });
-    for (const entry of entries) {
-      if (entry.name === VERSIONS_DIR) continue;
-      await fs.rm(path.join(dir, entry.name), { recursive: true, force: true });
+    const restoreId = randomUUID();
+    const candidate = this.layout.stagingPath(projectName, restoreId);
+    await fs.mkdir(candidate, { recursive: true, mode: 0o700 });
+
+    let handedToPublisher = false;
+    try {
+      await this.versions.extract(archive, candidate);
+      await this.inspectDirectory(candidate);
+      handedToPublisher = true;
+      await this.publisher.finalize(projectName, restoreId, targetVersion);
+    } finally {
+      if (!handedToPublisher) {
+        await fs.rm(candidate, { recursive: true, force: true });
+      }
+    }
+  }
+
+  private async inspectDirectory(
+    root: string,
+  ): Promise<RepositoryFileInspection> {
+    await fs.access(root);
+    const files: StagedUploadFile[] = [];
+    const stack = [root];
+
+    while (stack.length > 0) {
+      const current = stack.pop()!;
+      const entries = await fs.readdir(current, { withFileTypes: true });
+      for (const entry of entries) {
+        if (current === root && entry.name === LEGACY_VERSIONS_DIR) continue;
+        const fullPath = path.join(current, entry.name);
+        const relativePath = path
+          .relative(root, fullPath)
+          .split(path.sep)
+          .join('/');
+        if (
+          isReservedRepositoryPath(relativePath) ||
+          isSensitiveRepositoryPath(relativePath)
+        ) {
+          throw new Error(
+            `예약 또는 민감 파일은 소스 저장소에 포함할 수 없습니다: ${relativePath}`,
+          );
+        }
+        const stat = await fs.lstat(fullPath);
+        if (stat.isSymbolicLink()) {
+          throw new Error(
+            `심볼릭 링크는 저장소에 포함할 수 없습니다: ${relativePath}`,
+          );
+        }
+        if (stat.isDirectory()) {
+          stack.push(fullPath);
+        } else if (stat.isFile()) {
+          const inspected = await this.inspectFile(fullPath);
+          if (inspected.containsPrivateKey) {
+            throw new Error(
+              `비공개 키 자료가 포함된 파일은 소스 저장소에 포함할 수 없습니다: ${relativePath}`,
+            );
+          }
+          files.push({
+            relativePath,
+            size: stat.size,
+            sha256: inspected.sha256,
+          });
+        } else {
+          throw new Error(
+            `일반 파일이 아닌 항목은 저장소에 포함할 수 없습니다: ${relativePath}`,
+          );
+        }
+      }
     }
 
-    // 복원
-    await new Promise<void>((resolve, reject) => {
-      const tar = spawn('tar', ['-xzf', src, '-C', dir], {
-        stdio: ['ignore', 'pipe', 'pipe'],
+    files.sort((left, right) =>
+      left.relativePath.localeCompare(right.relativePath),
+    );
+    return {
+      files,
+      stats: {
+        fileCount: files.length,
+        totalSize: files.reduce((sum, file) => sum + file.size, 0),
+      },
+    };
+  }
+
+  private async walkTree(
+    currentPath: string,
+    root: string,
+    name: string,
+  ): Promise<FileTreeNode> {
+    const stat = await fs.lstat(currentPath);
+    if (stat.isSymbolicLink()) {
+      throw new Error(`심볼릭 링크 조회 차단: ${name}`);
+    }
+    const relativePath = path
+      .relative(root, currentPath)
+      .split(path.sep)
+      .join('/');
+    if (stat.isFile()) {
+      return { name, path: relativePath, type: 'file', size: stat.size };
+    }
+
+    const entries = (await fs.readdir(currentPath, { withFileTypes: true }))
+      .filter(
+        (entry) =>
+          (currentPath !== root || entry.name !== LEGACY_VERSIONS_DIR) &&
+          !isReservedRepositoryPath(
+            path
+              .relative(root, path.join(currentPath, entry.name))
+              .split(path.sep)
+              .join('/'),
+          ) &&
+          !isSensitiveRepositoryPath(
+            path
+              .relative(root, path.join(currentPath, entry.name))
+              .split(path.sep)
+              .join('/'),
+          ),
+      )
+      .sort((left, right) => {
+        if (left.isDirectory() !== right.isDirectory()) {
+          return left.isDirectory() ? -1 : 1;
+        }
+        return left.name.localeCompare(right.name);
       });
-      tar.on('exit', (code) => {
-        if (code === 0) resolve();
-        else reject(new Error(`tar restore exited with code ${code}`));
-      });
-      tar.on('error', reject);
-    });
+    const children = await Promise.all(
+      entries.map((entry) =>
+        this.walkTree(path.join(currentPath, entry.name), root, entry.name),
+      ),
+    );
+    return { name, path: relativePath, type: 'directory', children };
+  }
+
+  private async writeBuffer(
+    root: string,
+    relativePath: string,
+    buffer: Buffer,
+  ): Promise<void> {
+    const target = this.layout.safeRelativePath(root, relativePath);
+    await fs.mkdir(path.dirname(target), { recursive: true });
+    await this.layout.assertNoSymlink(root, target);
+    const temporary = `${target}.${process.pid}.${randomUUID()}.tmp`;
+    try {
+      await fs.writeFile(temporary, buffer, { flag: 'wx', mode: 0o600 });
+      await fs.rename(temporary, target);
+    } finally {
+      await fs.rm(temporary, { force: true });
+    }
+  }
+
+  private async inspectFile(
+    filePath: string,
+  ): Promise<{ sha256: string; containsPrivateKey: boolean }> {
+    const hash = createHash('sha256');
+    const previewChunks: Buffer[] = [];
+    let previewBytes = 0;
+    for await (const chunk of createNodeReadStream(filePath)) {
+      const buffer = chunk as Buffer;
+      hash.update(buffer);
+      if (previewBytes < 128 * 1024) {
+        const remaining = 128 * 1024 - previewBytes;
+        const preview = buffer.subarray(0, remaining);
+        previewChunks.push(preview);
+        previewBytes += preview.length;
+      }
+    }
+    return {
+      sha256: hash.digest('hex'),
+      containsPrivateKey: containsPrivateKeyMaterial(
+        Buffer.concat(previewChunks).toString('utf8'),
+      ),
+    };
+  }
+
+  private errorMessage(error: unknown): string {
+    return error instanceof Error ? error.message : String(error);
   }
 }

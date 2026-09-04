@@ -1,5 +1,11 @@
 export type RepositoryUploadSessionStatus =
-  'pending' | 'uploading' | 'partial_failed' | 'completed';
+  | 'pending'
+  | 'uploading'
+  | 'partial_failed'
+  | 'finalizing'
+  | 'finalization_failed'
+  | 'superseded'
+  | 'completed';
 
 export type RepositoryUploadBatchStatus =
   'pending' | 'uploading' | 'failed' | 'completed';
@@ -7,6 +13,7 @@ export type RepositoryUploadBatchStatus =
 export interface RepositoryUploadBatchFile {
   relativePath: string;
   size: number;
+  sha256: string;
 }
 
 export interface RepositoryUploadBatch {
@@ -24,6 +31,7 @@ export interface RepositoryUploadBatch {
 
 export interface RepositoryUploadSession {
   id: string;
+  protocolVersion: number;
   projectId: string;
   projectName: string;
   status: RepositoryUploadSessionStatus;
@@ -44,4 +52,9 @@ export interface RepositoryUploadSession {
   updatedAt: string;
   lastActivityAt: string;
   completedAt: string | null;
+  publishedAt: string | null;
+  snapshotId: string | null;
+  finalizationError: string | null;
 }
+
+export const REPOSITORY_UPLOAD_PROTOCOL_VERSION = 2;

@@ -7,6 +7,10 @@ import {
   FILE_STORAGE,
   IFileStorage,
 } from '../../domain/repositories/file-storage.interface';
+import {
+  IUploadSessionRepository,
+  UPLOAD_SESSION_REPOSITORY,
+} from '../../domain/repositories/upload-session.repository.interface';
 
 @Injectable()
 export class DeleteProjectUseCase {
@@ -15,6 +19,8 @@ export class DeleteProjectUseCase {
     private readonly projectRepository: IProjectRepository,
     @Inject(FILE_STORAGE)
     private readonly fileStorage: IFileStorage,
+    @Inject(UPLOAD_SESSION_REPOSITORY)
+    private readonly uploadSessionRepository: IUploadSessionRepository,
   ) {}
 
   async execute(id: string, ownerId?: string): Promise<void> {
@@ -24,6 +30,7 @@ export class DeleteProjectUseCase {
     }
 
     await this.fileStorage.removeProject(project.name);
+    await this.uploadSessionRepository.removeByProject(project.id);
     await this.projectRepository.delete(id);
   }
 }
