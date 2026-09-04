@@ -1,0 +1,109 @@
+import { Controller, Get } from '@nestjs/common';
+import { createHash } from 'crypto';
+import { existsSync, readFileSync, readdirSync } from 'fs';
+import { join } from 'path';
+
+interface ReleaseManifest {
+  schemaVersion: number;
+  revision: string;
+  branch: string;
+  builtAt: string;
+  dirty: boolean;
+  artifacts: Record<string, string>;
+}
+
+@Controller('health')
+export class ReleaseController {
+  private readonly startedAt = Date.now();
+  private readonly release = this.readRelease();
+
+  @Get()
+  getHealth() {
+    return {
+      status:
+        this.release.integrity === 'verified' && !this.release.dirty
+          ? 'ok'
+          : 'degraded',
+      uptimeSeconds: Math.floor((Date.now() - this.startedAt) / 1000),
+      release: this.release,
+    };
+  }
+
+  private readRelease() {
+    const manifestPath = join(__dirname, '..', 'release-manifest.json');
+    if (!existsSync(manifestPath)) {
+      return {
+        revision: 'development',
+        builtAt: null,
+        branch: null,
+        dirty: true,
+        integrity: 'unavailable',
+      };
+    }
+
+    try {
+      const manifest = JSON.parse(
+        readFileSync(manifestPath, 'utf8'),
+      ) as ReleaseManifest;
+      const root = join(__dirname, '..', '..', '..', '..');
+      const actualPaths = [
+        ...this.listFiles(join(root, 'apps', 'backend', 'dist')),
+        ...this.listFiles(join(root, 'apps', 'frontend', 'dist')),
+      ]
+        .map((filePath) =>
+          filePath.slice(root.length + 1).replaceAll('\\', '/'),
+        )
+        .filter(
+          (relativePath) =>
+            relativePath !== 'apps/backend/dist/release-manifest.json',
+        )
+        .sort((left, right) => (left < right ? -1 : left > right ? 1 : 0));
+      const manifestPaths = Object.keys(manifest.artifacts ?? {}).sort(
+        (left, right) => (left < right ? -1 : left > right ? 1 : 0),
+      );
+      const sameFileSet =
+        actualPaths.length > 0 &&
+        actualPaths.length === manifestPaths.length &&
+        actualPaths.every(
+          (relativePath, index) => relativePath === manifestPaths[index],
+        );
+      const integrity =
+        manifest.schemaVersion === 1 &&
+        !manifest.dirty &&
+        sameFileSet &&
+        Object.entries(manifest.artifacts).every(([relativePath, expected]) => {
+          const artifact = join(root, relativePath);
+          if (!/^[a-f0-9]{64}$/.test(expected) || !existsSync(artifact)) {
+            return false;
+          }
+          return (
+            createHash('sha256')
+              .update(readFileSync(artifact))
+              .digest('hex') === expected
+          );
+        });
+      return {
+        revision: manifest.revision,
+        builtAt: manifest.builtAt,
+        branch: manifest.branch,
+        dirty: manifest.dirty,
+        integrity: integrity ? 'verified' : 'mismatch',
+      };
+    } catch {
+      return {
+        revision: 'unknown',
+        builtAt: null,
+        branch: null,
+        dirty: true,
+        integrity: 'invalid',
+      };
+    }
+  }
+
+  private listFiles(directory: string): string[] {
+    return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
+      const target = join(directory, entry.name);
+      return entry.isDirectory() ? this.listFiles(target) : [target];
+    });
+  }
+}

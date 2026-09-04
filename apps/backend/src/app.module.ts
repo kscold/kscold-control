@@ -19,6 +19,7 @@ import { RepositoryModule } from './repository/repository.module';
 import { AuditModule } from './audit/audit.module';
 import { SecurityModule } from './security/security.module';
 import { KeyManagementModule } from './key-management/key-management.module';
+import { ReleaseModule } from './release/release.module';
 
 // 도메인 엔티티 (클린 아키텍처)
 import { User } from './rbac/domain/entities/user.entity';
@@ -89,6 +90,7 @@ import {
     RepositoryModule,
     SecurityModule,
     KeyManagementModule,
+    ReleaseModule,
   ],
   providers: [
     {
