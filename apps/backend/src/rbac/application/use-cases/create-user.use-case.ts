@@ -42,9 +42,10 @@ export class CreateUserUseCase {
       roles = await this.roleRepository.findByIds(dto.roleIds);
     }
 
-    // Check if guest role is assigned
+    // 역할에 맞는 안전한 초기 터미널 한도를 계산한다.
     const guestRole = await this.roleRepository.findByName(ROLES.GUEST);
     const isGuest = roles.some((role) => role.id === guestRole?.id);
+    const isKeyManager = roles.some((role) => role.name === ROLES.KEY_MANAGER);
 
     // Create user with appropriate terminal limit
     const user = this.userRepository.create({
@@ -52,7 +53,7 @@ export class CreateUserUseCase {
       password: hashedPassword,
       roles,
       terminalCommandCount: 0,
-      terminalCommandLimit: isGuest ? 10 : -1, // Guest: 10 commands, Others: unlimited
+      terminalCommandLimit: isKeyManager ? 0 : isGuest ? 10 : -1,
     });
 
     const savedUser = await this.userRepository.save(user);

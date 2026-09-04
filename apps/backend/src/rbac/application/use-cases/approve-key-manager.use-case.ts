@@ -15,7 +15,7 @@ import {
 } from '../../domain/repositories/user.repository.interface';
 import { UserResponseDto } from '../dto/user-response.dto';
 
-/** 승인 대기 사용자를 GoLe 키 관리자 역할로 전환한다. */
+/** 승인 대기 사용자를 대시보드 조회가 가능한 GoLe 키 관리자 역할로 전환한다. */
 @Injectable()
 export class ApproveKeyManagerUseCase {
   constructor(
@@ -47,6 +47,8 @@ export class ApproveKeyManagerUseCase {
 
     // 승인 대기 역할을 포함한 기존 역할을 모두 제거해 최소 권한으로 시작한다.
     user.roles = [keyManagerRole];
+    user.terminalCommandCount = 0;
+    user.terminalCommandLimit = 0;
     const saved = await this.userRepository.save(user);
     saved.roles = [keyManagerRole];
 

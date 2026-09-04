@@ -21,6 +21,18 @@ export class SystemController {
     private readonly listBackupsUseCase: ListBackupsUseCase,
   ) {}
 
+  @Get('dashboard/stats')
+  @RequirePermissions(PERMISSIONS.DASHBOARD_READ)
+  async getDashboardStats() {
+    return this.getStatsUseCase.execute();
+  }
+
+  @Get('dashboard/info')
+  @RequirePermissions(PERMISSIONS.DASHBOARD_READ)
+  async getDashboardInfo() {
+    return this.getSystemInfoUseCase.execute();
+  }
+
   @Get('stats')
   @RequirePermissions(PERMISSIONS.SYSTEM_READ)
   async getStats() {

@@ -3,25 +3,21 @@ import {
   getCpuProgressTone,
   getMemoryProgressTone,
 } from '../lib/dashboard.colors';
-import type {
-  ContainerInfo,
-  LiveStats,
-  SystemInfo,
-} from '../model/dashboard.types';
+import type { LiveStats, SystemInfo } from '../model/dashboard.types';
 import { formatBytes } from '@/shared/lib';
 import { DiskUsageCard } from './DiskUsageCard';
 import { MetricCard } from './MetricCard';
 import { DockerStorageDetailsCard } from './DockerStorageDetailsCard';
 
 interface SystemStatsCardProps {
-  containers: ContainerInfo[];
+  containerCount: number;
   runningCount: number;
   systemInfo: SystemInfo | null;
   liveStats: LiveStats | null;
 }
 
 export function SystemStatsCard({
-  containers,
+  containerCount,
   runningCount,
   systemInfo,
   liveStats,
@@ -39,7 +35,7 @@ export function SystemStatsCard({
           label="Containers"
           value={
             <p className="text-2xl sm:text-3xl font-bold text-white">
-              {containers.length}
+              {containerCount}
             </p>
           }
           footer={

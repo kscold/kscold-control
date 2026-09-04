@@ -205,7 +205,7 @@ export class RbacController {
     domain: 'rbac',
     action: 'user.approve-key-manager',
     summary: (ctx) =>
-      `사용자 ${ctx.params.id}의 GoLe 키 관리 접근을 승인했습니다.`,
+      `사용자 ${ctx.params.id}의 대시보드 및 GoLe 키 관리 접근을 승인했습니다.`,
     targetType: 'user',
     targetId: (ctx) => ctx.params.id,
     metadata: (ctx) => ({

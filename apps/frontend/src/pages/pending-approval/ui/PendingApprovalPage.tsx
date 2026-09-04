@@ -16,9 +16,9 @@ export function PendingApprovalPage() {
     setChecking(false);
     if (
       valid &&
-      refreshedUser?.permissions.includes(PERMISSIONS.SECRETS_READ)
+      refreshedUser?.permissions.includes(PERMISSIONS.DASHBOARD_READ)
     ) {
-      navigate('/keys', { replace: true });
+      navigate('/', { replace: true });
     }
   };
 
@@ -43,8 +43,8 @@ export function PendingApprovalPage() {
           </h1>
           <p className="mt-4 max-w-xl text-sm leading-7 text-slate-400">
             {user?.email} 계정 요청이 접수됐습니다. 승인 전에는 운영 화면과
-            API에 접근할 수 없습니다. 관리자가 GoLe 키 관리자 역할을 승인하면 이
-            화면에서 바로 확인할 수 있습니다.
+            API에 접근할 수 없습니다. 관리자가 대시보드 조회와 GoLe 키 관리자
+            역할을 승인하면 이 화면에서 바로 확인할 수 있습니다.
           </p>
           <div className="mt-8 flex flex-wrap items-center gap-3">
             <button

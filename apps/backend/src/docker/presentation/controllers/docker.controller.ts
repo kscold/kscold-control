@@ -88,6 +88,19 @@ export class DockerController {
     return this.listContainersUseCase.execute(undefined);
   }
 
+  /** 대시보드에는 컨테이너 식별 정보 없이 전체 개수만 공개함. */
+  @Get('dashboard/container-summary')
+  @RequirePermissions(PERMISSIONS.DASHBOARD_READ)
+  async getDashboardContainerSummary() {
+    const containers = await this.listContainersUseCase.execute(undefined);
+    return {
+      total: containers.length,
+      running: containers.filter(
+        (container) => container.liveStatus === 'running',
+      ).length,
+    };
+  }
+
   /**
    * 로그인 사용자의 컨테이너 목록 조회함.
    *

@@ -1,4 +1,5 @@
 import { ROLES } from '@/common/constants/roles';
+import { PERMISSIONS } from '@/common/constants/permissions';
 import { DockerController } from '@/docker/presentation/controllers/docker.controller';
 
 describe('DockerController', () => {
@@ -45,6 +46,15 @@ describe('DockerController', () => {
     jest.clearAllMocks();
   });
 
+  it('대시보드 컨테이너 집계는 전용 읽기 권한만 요구한다', () => {
+    expect(
+      Reflect.getMetadata(
+        'permissions',
+        controller.getDashboardContainerSummary,
+      ),
+    ).toEqual([PERMISSIONS.DASHBOARD_READ]);
+  });
+
   it('일반 사용자는 자신의 컨테이너만 조회한다', async () => {
     listContainersUseCase.execute.mockResolvedValueOnce([]);
 
@@ -53,6 +63,20 @@ describe('DockerController', () => {
     } as any);
 
     expect(listContainersUseCase.execute).toHaveBeenCalledWith('user-1');
+  });
+
+  it('대시보드에는 전체 컨테이너 개수와 실행 개수만 반환한다', async () => {
+    listContainersUseCase.execute.mockResolvedValueOnce([
+      { id: 'one', liveStatus: 'running' },
+      { id: 'two', liveStatus: 'exited' },
+      { id: 'three', liveStatus: 'running' },
+    ]);
+
+    await expect(controller.getDashboardContainerSummary()).resolves.toEqual({
+      total: 3,
+      running: 2,
+    });
+    expect(listContainersUseCase.execute).toHaveBeenCalledWith(undefined);
   });
 
   it('슈퍼 어드민은 전체 컨테이너를 조회한다', async () => {

@@ -88,7 +88,7 @@ export function useUserActions(onSuccess?: () => void) {
     try {
       setLoading(true);
       await rbacService.approveKeyManager(userId);
-      showAlert('GoLe 키 관리 접근을 승인했습니다.');
+      showAlert('대시보드 조회와 GoLe 키 관리 접근을 승인했습니다.');
       onSuccess?.();
       return true;
     } catch (error) {

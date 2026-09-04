@@ -148,9 +148,9 @@ npm install -g @openai/codex
 ## GoLe Key Management API
 
 Public registration creates a `pending_approval` account with no permissions.
-An administrator approves it from **RBAC → Users → GoLe 키 관리자 승인**. The
-approved `key_manager` role receives only `secrets:read`, `secrets:reveal`,
-`secrets:write`, and `secrets:deploy`.
+An administrator approves it from **RBAC → Users → 대시보드 + GoLe 키 관리자 승인**. The
+approved `key_manager` role receives only `dashboard:read`, `secrets:read`,
+`secrets:reveal`, `secrets:write`, and `secrets:deploy`.
 
 Get a JWT and the current immutable Secret Manager version:
 

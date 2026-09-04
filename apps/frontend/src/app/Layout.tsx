@@ -26,7 +26,7 @@ const NAV_ITEMS = [
     end: true,
     label: '대시보드',
     icon: LayoutDashboard,
-    permission: PERMISSIONS.SYSTEM_READ,
+    permission: PERMISSIONS.DASHBOARD_READ,
   },
   {
     to: '/keys',

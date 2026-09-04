@@ -89,6 +89,7 @@ export function UserList({
           const isPending = user.roles.some(
             (role) => role.name === ROLES.PENDING_APPROVAL,
           );
+          const terminalLimit = user.terminalCommandLimit ?? -1;
           return (
             <div
               key={user.id}
@@ -127,6 +128,7 @@ export function UserList({
                           }
                           className="flex-1 px-2 py-1 text-xs bg-gray-700 text-white rounded border border-gray-600"
                         >
+                          <option value="0">차단 (0회)</option>
                           <option value="-1">무제한</option>
                           <option value="5">5회</option>
                           <option value="10">10회</option>
@@ -150,12 +152,16 @@ export function UserList({
                     ) : (
                       <div className="flex items-center gap-2">
                         <span className="text-xs text-gray-400">
-                          터미널: {user.terminalCommandCount || 0}/
-                          {user.terminalCommandLimit === -1
-                            ? '무제한'
-                            : user.terminalCommandLimit + '회'}
+                          터미널:{' '}
+                          {terminalLimit === 0
+                            ? '차단'
+                            : `${user.terminalCommandCount || 0}/${
+                                terminalLimit === -1
+                                  ? '무제한'
+                                  : `${terminalLimit}회`
+                              }`}
                         </span>
-                        {user.terminalCommandLimit !== -1 && (
+                        {terminalLimit > 0 && (
                           <button
                             onClick={() => onResetTerminalLimit(user.id)}
                             className="px-2 py-0.5 text-xs bg-blue-600 text-white rounded hover:bg-blue-700"
@@ -210,7 +216,7 @@ export function UserList({
                       onClick={() => void onApproveKeyManager(user.id)}
                       className="mt-3 inline-flex items-center gap-2 rounded-lg bg-amber-400 px-3 py-2 text-xs font-bold text-slate-950 hover:bg-amber-300"
                     >
-                      <UserCheck size={15} /> GoLe 키 관리자 승인
+                      <UserCheck size={15} /> 대시보드 + GoLe 키 관리자 승인
                     </button>
                   )}
                 </div>

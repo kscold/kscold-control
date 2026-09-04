@@ -143,7 +143,7 @@ function HomeRoute() {
   if (user.roles.includes(ROLES.PENDING_APPROVAL)) {
     return <Navigate to="/pending" replace />;
   }
-  if (user.permissions.includes(PERMISSIONS.SYSTEM_READ)) {
+  if (user.permissions.includes(PERMISSIONS.DASHBOARD_READ)) {
     return (
       <ErrorBoundary>
         <Suspense fallback={<DashboardOverviewSkeleton />}>
