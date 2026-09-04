@@ -31,7 +31,12 @@ export class SecretBackup {
   @Column({ name: 'source_version', length: 64 })
   sourceVersion: string;
 
-  @Column({ name: 'new_version', length: 64, nullable: true })
+  @Column({
+    name: 'new_version',
+    type: 'varchar',
+    length: 64,
+    nullable: true,
+  })
   newVersion: string | null;
 
   @Column({ length: 64 })
