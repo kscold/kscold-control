@@ -18,7 +18,7 @@ A self-hosted infrastructure governance panel for managing Docker containers, Ng
 | **AI Terminal** | Claude Code workspace · Claude Chat · OpenAI Chat API (GPT-4o) · OpenAI Codex CLI — multi-tab |
 | **Docker**      | Container lifecycle, real-time log streaming, archive log viewer                              |
 | **Nginx**       | Virtual host management, SSL issuance & renewal (Let's Encrypt)                               |
-| **Repository**  | Source upload, version history snapshots, diff viewer, file browser                           |
+| **Repository**  | Resumable SHA-256 uploads, atomic publish, version snapshots, diff viewer, file browser       |
 | **Audit**       | AOP-based automatic audit log, CSV export, actor/target insights                              |
 | **Security**    | IP ban management, JWT RBAC, permission guards                                                |
 | **Key Vault**   | Approval-gated GoLe `.env`, encrypted DB backups, Secret Manager version deploys              |
@@ -219,22 +219,20 @@ curl -fsS -X POST \
 ## Production Deployment
 
 ```bash
-# 1. Configure required runtime secrets
-export DATABASE_URL='postgresql://...'
-export JWT_SECRET="$(openssl rand -base64 48)"
+# 1. Configure .env (DATABASE_URL and JWT_SECRET are required)
+cp .env.example .env
 
-# 2. Build everything
-pnpm build
-
-# Apply the encrypted-backup ledger schema
+# 2. Apply the encrypted-backup ledger schema when first enabling Key Vault
 bash scripts/migrate-key-management.sh
 
-# 3. Start with PM2
-pm2 start ecosystem.config.js --update-env
-pm2 save
+# 3. Verify, build, deploy, and attest the internal/external release revision
+pnpm deploy:production
 ```
 
-The backend serves the built frontend under `/` and all API routes under `/api`.  
+The deployment command refuses a dirty/non-`main`/unpushed tree, runs architecture
+and runtime-contract checks, lint, backend/frontend tests, writes artifact hashes,
+reloads PM2, and verifies both local and public `/api/health` revisions. The backend
+serves the built frontend under `/` and all API routes under `/api`.
 A sample Nginx reverse-proxy config is at [`nginx/conf.d/app-stack.conf.example`](nginx/conf.d/app-stack.conf.example).
 
 For the optional Slacord compose service, copy `env/slacord.env.example` to

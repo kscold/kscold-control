@@ -12,7 +12,7 @@ concurrency:
 
 jobs:
   build:
-    name: Build & Lint
+    name: Verify, Test & Build
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -33,10 +33,21 @@ jobs:
 
       - name: Lint
         run: pnpm lint
-        continue-on-error: true
 
       - name: Check architecture boundaries
         run: pnpm check:architecture
 
+      - name: Check runtime contracts
+        run: pnpm check:runtime-contracts
+
+      - name: Backend tests
+        run: pnpm test:backend
+
+      - name: Frontend tests
+        run: pnpm test:frontend
+
       - name: Build
         run: pnpm build
+
+      - name: Verify release artifacts
+        run: pnpm verify:release
