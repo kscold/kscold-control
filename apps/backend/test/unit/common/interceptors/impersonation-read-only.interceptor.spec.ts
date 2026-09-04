@@ -4,11 +4,17 @@ import { of } from 'rxjs';
 import { ImpersonationReadOnlyInterceptor } from '@/common/interceptors/impersonation-read-only.interceptor';
 
 describe('ImpersonationReadOnlyInterceptor', () => {
-  const interceptor = new ImpersonationReadOnlyInterceptor();
+  const reflector = { get: jest.fn().mockReturnValue(false) };
+  const interceptor = new ImpersonationReadOnlyInterceptor(reflector as any);
+
+  beforeEach(() => {
+    reflector.get.mockReset().mockReturnValue(false);
+  });
 
   function context(method: string, impersonating: boolean) {
     return {
       getType: () => 'http',
+      getHandler: () => jest.fn(),
       switchToHttp: () => ({
         getRequest: () => ({
           method,
@@ -44,6 +50,15 @@ describe('ImpersonationReadOnlyInterceptor', () => {
     const next = { handle: jest.fn(() => of({ ok: true })) } as CallHandler;
 
     interceptor.intercept(context('POST', false), next);
+
+    expect(next.handle).toHaveBeenCalledTimes(1);
+  });
+
+  it('명시적으로 허용된 읽기 성격의 POST 요청은 통과시킨다', () => {
+    reflector.get.mockReturnValue(true);
+    const next = { handle: jest.fn(() => of({ ok: true })) } as CallHandler;
+
+    interceptor.intercept(context('POST', true), next);
 
     expect(next.handle).toHaveBeenCalledTimes(1);
   });
