@@ -14,6 +14,7 @@ import {
   RegisterUseCase,
   LoginUseCase,
   GetMeUseCase,
+  StartImpersonationUseCase,
 } from './application/use-cases';
 
 // 사용자/역할 저장소는 RbacModule이 단일 소유·export 한다 (중복 구현 제거)
@@ -49,6 +50,7 @@ import { JwtStrategy } from './infrastructure/strategies/jwt.strategy';
     RegisterUseCase,
     LoginUseCase,
     GetMeUseCase,
+    StartImpersonationUseCase,
 
     // 전략(Passport)
     JwtStrategy,

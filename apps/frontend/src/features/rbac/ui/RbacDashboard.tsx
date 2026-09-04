@@ -24,6 +24,7 @@ export function RbacDashboard() {
     approveKeyManager,
     resetTerminalLimit,
     updateTerminalLimit,
+    previewAsUser,
   } = useUserActions(reloadUsers);
 
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -77,6 +78,7 @@ export function RbacDashboard() {
           onUpdateTerminalLimit={updateTerminalLimit}
           onCreateUser={() => setShowCreateModal(true)}
           onApproveKeyManager={approveKeyManager}
+          onPreviewUser={previewAsUser}
         />
       </div>
 

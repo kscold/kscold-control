@@ -33,7 +33,10 @@ import { IpBan } from './security/domain/entities/ip-ban.entity';
 import { SecretBackup } from './key-management/domain/entities/secret-backup.entity';
 
 import { HttpLoggerMiddleware } from './common/middleware/http-logger.middleware';
-import { AuditInterceptor } from './common/interceptors';
+import {
+  AuditInterceptor,
+  ImpersonationReadOnlyInterceptor,
+} from './common/interceptors';
 
 @Module({
   imports: [
@@ -91,6 +94,10 @@ import { AuditInterceptor } from './common/interceptors';
     {
       provide: APP_INTERCEPTOR,
       useClass: AuditInterceptor,
+    },
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: ImpersonationReadOnlyInterceptor,
     },
   ],
 })
