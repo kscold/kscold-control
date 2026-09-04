@@ -32,6 +32,12 @@ server {
     http2 on;
     server_name kscold.com;
 
+    limit_req zone=kscold_auth burst=10 nodelay;
+    limit_req zone=kscold_recovery burst=3 nodelay;
+    limit_req zone=kscold_external burst=10 nodelay;
+    limit_req_status 429;
+    limit_req_log_level warn;
+
     ssl_certificate     /etc/nginx/ssl/kscold.com/fullchain.pem;
     ssl_certificate_key /etc/nginx/ssl/kscold.com/privkey.pem;
     ssl_protocols TLSv1.2 TLSv1.3;
