@@ -81,6 +81,16 @@ services:
     volumes:
       - blog-uploads:/app/uploads
       - blog-mongo-data:/data/db
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - >-
+          curl -fsS http://127.0.0.1:8080/api/health >/dev/null &&
+          curl -fsS http://127.0.0.1:3000/ >/dev/null
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
     cpus: '2'
     mem_limit: 3g
     restart: unless-stopped
