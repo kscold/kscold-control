@@ -1,6 +1,14 @@
 const databaseUrl = process.env.DATABASE_URL;
 const jwtSecret = process.env.JWT_SECRET;
 
+function definedEnvironment(keys) {
+  return Object.fromEntries(
+    keys
+      .filter((key) => process.env[key] !== undefined)
+      .map((key) => [key, process.env[key]]),
+  );
+}
+
 if (!databaseUrl) {
   throw new Error('DATABASE_URL must be set before starting kscold-control');
 }
@@ -55,6 +63,18 @@ module.exports = {
         KEY_MANAGEMENT_REQUIRED_KEYS: process.env.KEY_MANAGEMENT_REQUIRED_KEYS,
         KEY_MANAGEMENT_GCLOUD_PATH: process.env.KEY_MANAGEMENT_GCLOUD_PATH,
         KEY_MANAGEMENT_GH_PATH: process.env.KEY_MANAGEMENT_GH_PATH,
+        ...definedEnvironment([
+          'ADMIN_EMAIL',
+          'ADMIN_PASSWORD',
+          'SEED_ADMIN_BOOTSTRAP',
+          'CLAUDE_CODE_BIN',
+          'CLAUDE_BINARY_PATH',
+          'CODEX_BIN',
+          'OPENAI_API_KEY',
+          'OPENAI_MODEL',
+          'REPOSITORY_UPLOAD_SESSION_DIR',
+          'SECURITY_ALLOWLIST',
+        ]),
       },
       // 자동 재시작
       watch: false,

@@ -1,4 +1,4 @@
-import { forwardRef, Module } from '@nestjs/common';
+import { Module } from '@nestjs/common';
 import { TOPOLOGY_LAYOUT_REPOSITORY } from './domain/repositories/topology-layout.repository.interface';
 import { TypeOrmTopologyLayoutRepository } from './infrastructure/repositories/typeorm-topology-layout.repository';
 import { TypeOrmModule } from '@nestjs/typeorm';
@@ -49,7 +49,7 @@ import { DockerCleanupAdapter } from './infrastructure/adapters/docker-cleanup.a
 import { DockerController } from './presentation/controllers/docker.controller';
 
 import { AuthModule } from '../auth/auth.module';
-import { NginxModule } from '../nginx/nginx.module';
+import { NginxInfrastructureModule } from '../nginx/nginx-infrastructure.module';
 import { UpnpModule } from '../upnp/upnp.module';
 
 /**
@@ -67,7 +67,7 @@ import { UpnpModule } from '../upnp/upnp.module';
  */
 @Module({
   imports: [
-    forwardRef(() => NginxModule),
+    NginxInfrastructureModule,
     TypeOrmModule.forFeature([Container, TopologyNodeLayout]),
     AuthModule,
     UpnpModule,

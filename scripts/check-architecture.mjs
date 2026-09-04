@@ -175,11 +175,135 @@ function checkBackendTestLayout() {
   }
 }
 
+function resolveSourceImport(filePath, specifier, roots, knownFiles) {
+  let basePath;
+  if (specifier.startsWith('@/')) {
+    const sourceRoot = filePath.startsWith(`${roots.backend}${path.sep}`)
+      ? roots.backend
+      : roots.frontend;
+    basePath = path.join(sourceRoot, specifier.slice(2));
+  } else if (specifier.startsWith('.')) {
+    basePath = path.resolve(path.dirname(filePath), specifier);
+  } else {
+    return null;
+  }
+
+  const candidates = [
+    basePath,
+    `${basePath}.ts`,
+    `${basePath}.tsx`,
+    path.join(basePath, 'index.ts'),
+    path.join(basePath, 'index.tsx'),
+  ];
+
+  return candidates.find((candidate) => knownFiles.has(candidate)) ?? null;
+}
+
+/** 배럴 파일을 통한 간접 순환도 찾아 런타임 undefined 주입을 사전에 막는다. */
+function checkCircularDependencies() {
+  const roots = {
+    backend: path.join(repoRoot, 'apps/backend/src'),
+    frontend: path.join(repoRoot, 'apps/frontend/src'),
+  };
+  const files = [
+    ...sourceFiles(roots.backend),
+    ...sourceFiles(roots.frontend),
+  ].map((filePath) => path.normalize(filePath));
+  const knownFiles = new Set(files);
+  const graph = new Map(files.map((filePath) => [filePath, []]));
+
+  for (const filePath of files) {
+    for (const match of read(filePath).matchAll(
+      /(?:from\s*|import\s*\()['"]([^'"]+)['"]/g,
+    )) {
+      const imported = resolveSourceImport(
+        filePath,
+        match[1],
+        roots,
+        knownFiles,
+      );
+      if (imported) graph.get(filePath).push(imported);
+    }
+  }
+
+  let sequence = 0;
+  const stack = [];
+  const stackItems = new Set();
+  const indexes = new Map();
+  const lowLinks = new Map();
+
+  const visit = (filePath) => {
+    indexes.set(filePath, sequence);
+    lowLinks.set(filePath, sequence);
+    sequence += 1;
+    stack.push(filePath);
+    stackItems.add(filePath);
+
+    for (const imported of graph.get(filePath)) {
+      if (!indexes.has(imported)) {
+        visit(imported);
+        lowLinks.set(
+          filePath,
+          Math.min(lowLinks.get(filePath), lowLinks.get(imported)),
+        );
+      } else if (stackItems.has(imported)) {
+        lowLinks.set(
+          filePath,
+          Math.min(lowLinks.get(filePath), indexes.get(imported)),
+        );
+      }
+    }
+
+    if (lowLinks.get(filePath) !== indexes.get(filePath)) return;
+
+    const component = [];
+    let current;
+    do {
+      current = stack.pop();
+      stackItems.delete(current);
+      component.push(current);
+    } while (current !== filePath);
+
+    const hasCycle =
+      component.length > 1 || graph.get(filePath).includes(filePath);
+    const isOrmEntityRelationship = component.every((item) =>
+      relativeToRoot(item).includes('/domain/entities/'),
+    );
+
+    if (hasCycle && !isOrmEntityRelationship) {
+      report(
+        'source circular dependency',
+        component[0],
+        component.map(relativeToRoot).sort().join(' -> '),
+      );
+    }
+  };
+
+  for (const filePath of files) {
+    if (!indexes.has(filePath)) visit(filePath);
+  }
+}
+
+function checkDependencyEscapeHatches() {
+  const backendRoot = path.join(repoRoot, 'apps/backend/src');
+  for (const filePath of sourceFiles(backendRoot)) {
+    if (/\bforwardRef\s*\(/.test(read(filePath))) {
+      report(
+        'backend forwardRef escape hatch is forbidden',
+        filePath,
+        '의존성 방향을 분리된 모듈 또는 포트로 해결해야 함',
+      );
+    }
+  }
+}
+
 checkFrontendBoundaries();
 checkBackendBoundaries();
 checkDtoPlacement();
 checkDockerBoundaries();
 checkBackendTestLayout();
+checkCircularDependencies();
+checkDependencyEscapeHatches();
 
 if (violations.length > 0) {
   console.error('Architecture boundary violations found:');

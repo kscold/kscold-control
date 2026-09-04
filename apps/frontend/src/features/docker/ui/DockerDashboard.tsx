@@ -7,14 +7,12 @@ import {
   useCreateContainer,
   useDockerCleanupCandidates,
 } from '../model';
-import {
-  ContainerList,
-  CreateContainerModal,
-  DockerCleanupSection,
-  DockerContainerFilters,
-  DockerDashboardHeader,
-  DockerDashboardSkeleton,
-} from './';
+import { ContainerList } from './ContainerList';
+import { CreateContainerModal } from './CreateContainerModal';
+import { DockerCleanupSection } from './DockerCleanupSection';
+import { DockerContainerFilters } from './DockerContainerFilters';
+import { DockerDashboardHeader } from './DockerDashboardHeader';
+import { DockerDashboardSkeleton } from './DockerDashboardSkeleton';
 
 type FilterType = 'all' | 'managed' | 'external';
 

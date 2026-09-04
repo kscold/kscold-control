@@ -10,7 +10,7 @@ import {
   NGINX_CONFIG_REPOSITORY,
   type INginxConfigRepository,
 } from '../../../nginx/domain/repositories/nginx-config.repository';
-import { ListContainersUseCase } from '../use-cases';
+import { ListContainersUseCase } from '../use-cases/list-containers.use-case';
 import type { ContainerResponseDto } from '../dto';
 import {
   DOCKER_CLIENT,
