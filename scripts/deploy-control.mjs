@@ -27,7 +27,7 @@ function run(command, args) {
   }
 }
 
-async function waitForRelease(url, revision) {
+async function waitForRelease(url, version, revision) {
   let lastError;
   for (let attempt = 0; attempt < 30; attempt += 1) {
     try {
@@ -39,6 +39,7 @@ async function waitForRelease(url, revision) {
       const payload = await response.json();
       if (
         payload.status === 'ok' &&
+        payload.release?.version === version &&
         payload.release?.revision === revision &&
         payload.release?.integrity === 'verified'
       ) {
@@ -104,6 +105,9 @@ try {
 
   run('git', ['fetch', 'origin', 'main']);
   const revision = git('rev-parse', 'HEAD');
+  const { version } = JSON.parse(
+    readFileSync(path.join(root, 'package.json'), 'utf8'),
+  );
   if (revision !== git('rev-parse', 'origin/main')) {
     throw new Error('로컬 main과 origin/main이 일치하지 않습니다.');
   }
@@ -121,10 +125,16 @@ try {
   run('pnpm', ['preflight:production']);
   run('pm2', ['startOrReload', 'ecosystem.config.js', '--update-env']);
 
-  await waitForRelease('http://127.0.0.1:4000/api/health', revision);
-  await waitForRelease('https://control.kscold.com/api/health', revision);
+  await waitForRelease('http://127.0.0.1:4000/api/health', version, revision);
+  await waitForRelease(
+    'https://control.kscold.com/api/health',
+    version,
+    revision,
+  );
   run('pm2', ['save']);
-  console.log(`Production release is healthy: ${revision.slice(0, 12)}`);
+  console.log(
+    `Production release is healthy: v${version} ${revision.slice(0, 12)}`,
+  );
 } finally {
   releaseDeploymentLock(lockDescriptor);
 }

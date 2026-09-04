@@ -13,6 +13,9 @@ const manifestPath = path.join(
   'release-manifest.json',
 );
 const manifest = JSON.parse(await fs.readFile(manifestPath, 'utf8'));
+const packageMetadata = JSON.parse(
+  await fs.readFile(path.join(root, 'package.json'), 'utf8'),
+);
 const revision = execFileSync('git', ['rev-parse', 'HEAD'], {
   cwd: root,
   encoding: 'utf8',
@@ -34,7 +37,11 @@ async function listFiles(directory) {
   return files.flat();
 }
 
-if (manifest.schemaVersion !== 1 || manifest.revision !== revision) {
+if (
+  manifest.schemaVersion !== 2 ||
+  manifest.version !== packageMetadata.version ||
+  manifest.revision !== revision
+) {
   throw new Error('빌드 산출물과 현재 Git 리비전이 일치하지 않습니다.');
 }
 if (manifest.dirty || workingTree) {
@@ -84,5 +91,5 @@ for (const [relativePath, expectedHash] of Object.entries(
 }
 
 console.log(
-  `Release verified: ${revision.slice(0, 12)} (${actualPaths.length} files)`,
+  `Release verified: v${manifest.version} ${revision.slice(0, 12)} (${actualPaths.length} files)`,
 );

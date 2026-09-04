@@ -5,6 +5,7 @@ import { join } from 'path';
 
 interface ReleaseManifest {
   schemaVersion: number;
+  version: string;
   revision: string;
   branch: string;
   builtAt: string;
@@ -33,6 +34,7 @@ export class ReleaseController {
     const manifestPath = join(__dirname, '..', 'release-manifest.json');
     if (!existsSync(manifestPath)) {
       return {
+        version: 'development',
         revision: 'development',
         builtAt: null,
         branch: null,
@@ -68,7 +70,8 @@ export class ReleaseController {
           (relativePath, index) => relativePath === manifestPaths[index],
         );
       const integrity =
-        manifest.schemaVersion === 1 &&
+        manifest.schemaVersion === 2 &&
+        /^\d+\.\d+\.\d+$/.test(manifest.version) &&
         !manifest.dirty &&
         sameFileSet &&
         Object.entries(manifest.artifacts).every(([relativePath, expected]) => {
@@ -83,6 +86,7 @@ export class ReleaseController {
           );
         });
       return {
+        version: manifest.version,
         revision: manifest.revision,
         builtAt: manifest.builtAt,
         branch: manifest.branch,
@@ -91,6 +95,7 @@ export class ReleaseController {
       };
     } catch {
       return {
+        version: 'unknown',
         revision: 'unknown',
         builtAt: null,
         branch: null,
