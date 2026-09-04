@@ -4,6 +4,10 @@ import { UploadSessionBatchUseCase } from '@/repository/application/use-cases/up
 import { FinalizeUploadSessionUseCase } from '@/repository/application/use-cases/finalize-upload-session.use-case';
 import { RepositoryUploadCoordinator } from '@/repository/application/services/repository-upload-coordinator.service';
 import {
+  REPOSITORY_UPLOAD_INTEGRITY_ERROR_CODE,
+  RepositoryUploadIntegrityException,
+} from '@/repository/application/errors/repository-upload-integrity.exception';
+import {
   buildUploadManifestDigest,
   hashUploadBuffer,
 } from '@/repository/application/utils/upload-manifest.util';
@@ -177,21 +181,28 @@ describe('repository upload flow', () => {
       new RepositoryUploadCoordinator(),
     );
 
-    await expect(
-      useCase.execute(project.id, session.id, 0, [
-        {
-          relativePath: 'src/index.ts',
-          size: 4,
-          buffer: Buffer.from('evil'),
-        },
-      ]),
-    ).rejects.toBeInstanceOf(BadRequestException);
+    const execution = useCase.execute(project.id, session.id, 0, [
+      {
+        relativePath: 'src/index.ts',
+        size: 4,
+        buffer: Buffer.from('evil'),
+      },
+    ]);
+
+    await expect(execution).rejects.toBeInstanceOf(
+      RepositoryUploadIntegrityException,
+    );
+    await expect(execution).rejects.toMatchObject({
+      response: expect.objectContaining({
+        code: REPOSITORY_UPLOAD_INTEGRITY_ERROR_CODE,
+      }),
+    });
     expect(dependencies.fileStorage.writeStagedFile).not.toHaveBeenCalled();
     expect(session.status).toBe('partial_failed');
     expect(session.failedFiles).toEqual(['src/index.ts']);
   });
 
-  it('확장자를 바꾼 비공개 키 본문도 쓰기 전에 실패 파일로 기록한다', async () => {
+  it('비공개 키 검출은 자동 복구 대상 무결성 오류와 구분한다', async () => {
     const content = Buffer.from(
       '-----BEGIN OPENSSH PRIVATE KEY-----\nprivate material',
     );
@@ -204,15 +215,18 @@ describe('repository upload flow', () => {
       new RepositoryUploadCoordinator(),
     );
 
-    await expect(
-      useCase.execute(project.id, session.id, 0, [
-        {
-          relativePath: 'src/index.ts',
-          size: content.length,
-          buffer: content,
-        },
-      ]),
-    ).rejects.toBeInstanceOf(BadRequestException);
+    const execution = useCase.execute(project.id, session.id, 0, [
+      {
+        relativePath: 'src/index.ts',
+        size: content.length,
+        buffer: content,
+      },
+    ]);
+
+    await expect(execution).rejects.toBeInstanceOf(BadRequestException);
+    await expect(execution).rejects.not.toBeInstanceOf(
+      RepositoryUploadIntegrityException,
+    );
     expect(dependencies.fileStorage.writeStagedFile).not.toHaveBeenCalled();
     expect(session.status).toBe('partial_failed');
     expect(session.failedFiles).toEqual(['src/index.ts']);

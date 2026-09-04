@@ -14,6 +14,15 @@ function clientFile(relativePath: string, content: string): ClientFile {
   };
 }
 
+function readFile(file: File): Promise<ArrayBuffer> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(reader.error);
+    reader.onload = () => resolve(reader.result as ArrayBuffer);
+    reader.readAsArrayBuffer(file);
+  });
+}
+
 describe('buildUploadManifest', () => {
   beforeAll(() => {
     if (!globalThis.crypto?.subtle) {
@@ -52,6 +61,29 @@ describe('buildUploadManifest', () => {
         clientFile('same.txt', 'two'),
       ]),
     ).rejects.toThrow('중복 파일 경로');
+  });
+
+  it('선택 메타데이터와 실제 바이트가 달라도 읽은 바이트를 고정한다', async () => {
+    let source = new TextEncoder().encode('current-content');
+    const selected = {
+      relativePath: 'src/changing.ts',
+      file: {
+        name: 'changing.ts',
+        size: 3_465,
+        type: 'text/plain',
+        lastModified: 1,
+        arrayBuffer: async () => Uint8Array.from(source).buffer,
+      } as File,
+    };
+
+    const result = await buildUploadManifest([selected]);
+    source = new TextEncoder().encode('changed-after-scan');
+    const frozen = result.files[0];
+
+    expect(frozen.metadata.size).toBe('current-content'.length);
+    expect(frozen.clientFile.file.size).toBe('current-content'.length);
+    const frozenContent = await readFile(frozen.clientFile.file);
+    expect(new TextDecoder().decode(frozenContent)).toBe('current-content');
   });
 
   it('서버와 공유하는 코드 단위 경로 정렬 및 UTF-8 digest를 유지한다', async () => {

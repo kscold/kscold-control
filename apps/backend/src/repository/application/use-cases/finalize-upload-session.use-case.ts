@@ -25,6 +25,7 @@ import {
 } from '../../domain/types/upload-session.type';
 import { Project } from '../../domain/entities/project.entity';
 import { RepositoryUploadCoordinator } from '../services/repository-upload-coordinator.service';
+import { RepositoryUploadIntegrityException } from '../errors/repository-upload-integrity.exception';
 import { buildUploadManifestDigest } from '../utils/upload-manifest.util';
 
 export interface FinalizeUploadSessionResult {
@@ -235,7 +236,7 @@ export class FinalizeUploadSessionUseCase {
         staged.size !== metadata.size ||
         staged.sha256 !== metadata.sha256
       ) {
-        throw new BadRequestException(
+        throw new RepositoryUploadIntegrityException(
           `최종 파일 무결성 검증에 실패했습니다: ${relativePath}`,
         );
       }
@@ -243,12 +244,12 @@ export class FinalizeUploadSessionUseCase {
     }
 
     if (session.replace && actual.size !== expected.size) {
-      throw new BadRequestException(
+      throw new RepositoryUploadIntegrityException(
         '선언되지 않은 파일이 포함되어 최종 반영을 중단했습니다.',
       );
     }
     if (buildUploadManifestDigest(verifiedFiles) !== session.manifestDigest) {
-      throw new BadRequestException(
+      throw new RepositoryUploadIntegrityException(
         '최종 업로드 파일 목록 해시가 세션과 일치하지 않습니다.',
       );
     }

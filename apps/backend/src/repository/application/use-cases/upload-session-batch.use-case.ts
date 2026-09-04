@@ -24,6 +24,7 @@ import {
 } from '../../domain/types/upload-session.type';
 import { Project } from '../../domain/entities/project.entity';
 import { RepositoryUploadCoordinator } from '../services/repository-upload-coordinator.service';
+import { RepositoryUploadIntegrityException } from '../errors/repository-upload-integrity.exception';
 import {
   assertNoPrivateKeyMaterial,
   assertSafeRepositoryPath,
@@ -97,11 +98,16 @@ export class UploadSessionBatchUseCase {
         return this.toResult(project, session, batch);
       }
 
-      const validationFailures = this.validateFiles(batch, files);
-      if (validationFailures.length > 0) {
-        await this.markBatchFailed(session, batch, validationFailures);
-        throw new BadRequestException(
-          `배치 파일 무결성 검증에 실패했습니다: ${validationFailures.join(', ')}`,
+      const validation = this.validateFiles(batch, files);
+      if (validation.failures.length > 0) {
+        await this.markBatchFailed(session, batch, validation.failures);
+        if (validation.sensitiveFiles.length > 0) {
+          throw new BadRequestException(
+            `민감한 키 자료가 포함되어 업로드를 중단했습니다: ${validation.sensitiveFiles.join(', ')}`,
+          );
+        }
+        throw new RepositoryUploadIntegrityException(
+          `배치 파일 무결성 검증에 실패했습니다: ${validation.failures.join(', ')}`,
         );
       }
 
@@ -172,12 +178,13 @@ export class UploadSessionBatchUseCase {
   private validateFiles(
     batch: RepositoryUploadBatch,
     files: UploadSessionBatchFile[],
-  ): string[] {
+  ): { failures: string[]; sensitiveFiles: string[] } {
     const expected = new Map(
       batch.files.map((file) => [file.relativePath, file]),
     );
     const received = new Set<string>();
     const failures = new Set<string>();
+    const sensitiveFiles = new Set<string>();
 
     if (files.length !== batch.totalFiles) failures.add('(파일 수 불일치)');
     for (const file of files) {
@@ -186,6 +193,7 @@ export class UploadSessionBatchUseCase {
         assertNoPrivateKeyMaterial(file.relativePath, file.buffer);
       } catch {
         failures.add(file.relativePath);
+        sensitiveFiles.add(file.relativePath);
         continue;
       }
       const metadata = expected.get(file.relativePath);
@@ -205,7 +213,10 @@ export class UploadSessionBatchUseCase {
     for (const relativePath of expected.keys()) {
       if (!received.has(relativePath)) failures.add(relativePath);
     }
-    return [...failures];
+    return {
+      failures: [...failures],
+      sensitiveFiles: [...sensitiveFiles],
+    };
   }
 
   private markBatchUploading(
