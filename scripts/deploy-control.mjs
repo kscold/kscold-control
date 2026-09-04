@@ -122,6 +122,7 @@ try {
   run('pnpm', ['test:frontend']);
   run('pnpm', ['build']);
   run('pnpm', ['verify:release']);
+  run('pnpm', ['migrate:database']);
   run('pnpm', ['preflight:production']);
   run('pm2', ['startOrReload', 'ecosystem.config.js', '--update-env']);
 

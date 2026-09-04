@@ -38,6 +38,7 @@ import {
   AuditInterceptor,
   ImpersonationReadOnlyInterceptor,
 } from './common/interceptors';
+import { shouldSynchronizeDatabase } from './common/utils/database-synchronize.util';
 
 @Module({
   imports: [
@@ -71,7 +72,7 @@ import {
         IpBan,
         SecretBackup,
       ],
-      synchronize: process.env.NODE_ENV !== 'production',
+      synchronize: shouldSynchronizeDatabase(),
       logging: process.env.NODE_ENV !== 'production',
     }),
 

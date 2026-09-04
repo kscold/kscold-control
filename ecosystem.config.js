@@ -29,6 +29,7 @@ module.exports = {
       exec_mode: 'fork',
       env: {
         NODE_ENV: 'production',
+        TYPEORM_SYNCHRONIZE: 'false',
         PORT: 4000,
         // SECURITY: Never commit real credentials! Set these via:
         // 1. PM2 ecosystem file with env_file option, or

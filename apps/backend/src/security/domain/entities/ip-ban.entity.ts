@@ -10,6 +10,7 @@ import {
 export type IpBanSource = 'manual' | 'auto-nginx' | 'auto-ssh';
 
 @Entity('ip_bans')
+@Index('ip_bans_active_idx', ['active'], { where: '"active" = true' })
 export class IpBan {
   @PrimaryGeneratedColumn('uuid')
   id: string;

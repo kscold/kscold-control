@@ -202,9 +202,53 @@ async function apiMultipartRequest(apiPath, token, files) {
   });
   if (!response.ok) {
     const detail = await response.text();
-    throw new Error(`POST ${apiPath} failed: ${response.status} ${detail}`);
+    let payload = null;
+    try {
+      payload = JSON.parse(detail);
+    } catch {
+      payload = null;
+    }
+    const error = new Error(
+      `POST ${apiPath} failed: ${response.status} ${detail}`,
+    );
+    error.status = response.status;
+    error.payload = payload;
+    throw error;
   }
   return response.json();
+}
+
+async function waitForCompletedUploadSession(
+  projectId,
+  token,
+  previousSessionId,
+  timeoutMs = 120_000,
+) {
+  const deadline = Date.now() + timeoutMs;
+
+  while (Date.now() < deadline) {
+    const latest = await apiRequest(
+      `/repository/projects/${projectId}/upload-sessions/latest`,
+      token,
+    );
+    const session = latest.item;
+    if (session?.id !== previousSessionId && session?.status === 'completed') {
+      return session;
+    }
+    if (
+      session?.id !== previousSessionId &&
+      ['partial_failed', 'finalization_failed', 'superseded'].includes(
+        session?.status,
+      )
+    ) {
+      throw new Error(
+        `브라우저 업로드 세션이 ${session.status} 상태로 종료되었습니다: ${session.finalizationError || session.failedFiles?.join(', ') || '상세 오류 없음'}`,
+      );
+    }
+    await new Promise((resolve) => setTimeout(resolve, 500));
+  }
+
+  throw new Error('브라우저 업로드 세션 완료를 기다리다 시간 초과했습니다.');
 }
 
 function uploadSessionPayload(files) {
@@ -311,7 +355,11 @@ async function verifyAtomicApiUpload(project, token) {
         token,
         tampered,
       ),
-    /failed: 400/,
+    (error) => {
+      assert.equal(error.status, 400);
+      assert.equal(error.payload?.code, 'REPOSITORY_UPLOAD_INTEGRITY_MISMATCH');
+      return true;
+    },
   );
   assert.equal(
     await readLiveText(project.id, token, relativePath),
@@ -426,6 +474,7 @@ async function run() {
   const fixture = await createFixtureDirectory(projectName);
   let project = null;
   let browser = null;
+  let page = null;
 
   console.log(`[repository-live-smoke] Base URL: ${baseUrl}`);
   console.log(`[repository-live-smoke] Authenticated as: ${user.email}`);
@@ -444,7 +493,7 @@ async function run() {
 
     browser = await chromium.launch({ headless: true });
     const context = await browser.newContext();
-    const page = await context.newPage();
+    page = await context.newPage();
 
     await page.addInitScript((value) => {
       window.localStorage.setItem('auth-storage', value);
@@ -454,6 +503,10 @@ async function run() {
     await page.getByText(projectName, { exact: true }).click();
     await page.getByRole('button', { name: '업로드' }).click();
 
+    const latestBeforeBrowserUpload = await apiRequest(
+      `/repository/projects/${project.id}/upload-sessions/latest`,
+      token,
+    );
     await page.locator('input[type="file"]').setInputFiles(fixture.fixtureRoot);
     await page
       .getByTestId('repository-upload-ready')
@@ -470,16 +523,20 @@ async function run() {
       );
       return Boolean(node && /배치|업로드/.test(node.textContent || ''));
     });
-    await page.waitForFunction(
-      () => {
-        const node = document.querySelector(
-          '[data-testid="repository-upload-activity"]',
-        );
-        return Boolean(node && /완료되었습니다/.test(node.textContent || ''));
-      },
-      null,
-      { timeout: 120_000 },
+    const completedSession = await waitForCompletedUploadSession(
+      project.id,
+      token,
+      latestBeforeBrowserUpload.item?.id ?? null,
     );
+    assert.equal(completedSession.totalFiles, fixture.expectedPaths.length);
+    await page.waitForFunction(() => {
+      const node = document.querySelector(
+        '[data-testid="repository-upload-activity"]',
+      );
+      return Boolean(
+        node && /완료되었습니다|반영했습니다/.test(node.textContent || ''),
+      );
+    });
 
     await fsp.mkdir(path.dirname(screenshotPath), { recursive: true });
     await page.screenshot({ path: screenshotPath, fullPage: true });
@@ -507,6 +564,26 @@ async function run() {
     console.log(
       `[repository-live-smoke] Screenshot saved to ${screenshotPath}`,
     );
+  } catch (error) {
+    if (page) {
+      await fsp.mkdir(path.dirname(screenshotPath), { recursive: true });
+      const failureScreenshot = screenshotPath.replace(
+        /\.png$/i,
+        '-failed.png',
+      );
+      await page.screenshot({ path: failureScreenshot, fullPage: true });
+      const activityText = await page
+        .getByTestId('repository-upload-activity')
+        .textContent()
+        .catch(() => null);
+      console.error(
+        `[repository-live-smoke] Browser activity: ${activityText || 'not available'}`,
+      );
+      console.error(
+        `[repository-live-smoke] Failure screenshot saved to ${failureScreenshot}`,
+      );
+    }
+    throw error;
   } finally {
     if (browser) {
       await browser.close();

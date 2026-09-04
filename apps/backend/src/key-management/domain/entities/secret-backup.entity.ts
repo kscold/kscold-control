@@ -17,11 +17,12 @@ export type SecretBackupStatus =
   | 'failed';
 
 @Entity('secret_backups')
+@Index('idx_secret_backups_target_created_at', ['targetId', 'createdAt'])
 export class SecretBackup {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Index()
+  @Index('idx_secret_backups_target_id')
   @Column({ name: 'target_id', length: 80 })
   targetId: string;
 
@@ -60,7 +61,7 @@ export class SecretBackup {
   @Column({ name: 'actor_email', type: 'varchar', length: 320, nullable: true })
   actorEmail: string | null;
 
-  @Index()
+  @Index('idx_secret_backups_status')
   @Column({ length: 32, default: 'backed_up' })
   status: SecretBackupStatus;
 
