@@ -12,7 +12,11 @@ function toHex(buffer: ArrayBuffer): string {
 }
 
 async function sha256(value: BufferSource): Promise<string> {
-  return toHex(await crypto.subtle.digest('SHA-256', value));
+  const bytes = ArrayBuffer.isView(value)
+    ? new Uint8Array(value.buffer, value.byteOffset, value.byteLength)
+    : new Uint8Array(value);
+
+  return toHex(await crypto.subtle.digest('SHA-256', Uint8Array.from(bytes)));
 }
 
 export interface HashedClientFile {

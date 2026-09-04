@@ -1,4 +1,6 @@
 import Docker from 'dockerode';
+import { homedir, platform } from 'node:os';
+import * as path from 'node:path';
 import { PassThrough } from 'node:stream';
 import { DockerodeClientAdapter } from '@/docker/infrastructure/adapters/dockerode-client.adapter';
 
@@ -33,13 +35,18 @@ describe('DockerodeClientAdapter', () => {
     delete process.env.DOCKER_HOST;
   });
 
-  it('DOCKER_HOST가 없으면 Colima 기본 소켓을 사용한다', () => {
+  it('DOCKER_HOST가 없으면 운영체제 기본 소켓을 사용한다', () => {
     const adapter = new DockerodeClientAdapter();
 
     adapter.onModuleInit();
 
+    const socketPath =
+      platform() === 'darwin'
+        ? path.join(homedir(), '.colima', 'default', 'docker.sock')
+        : '/var/run/docker.sock';
+
     expect(DockerMock).toHaveBeenCalledWith({
-      socketPath: '/Users/kscold/.colima/default/docker.sock',
+      socketPath,
     });
   });
 
