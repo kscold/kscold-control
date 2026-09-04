@@ -7,21 +7,47 @@ import {
 } from '../lib/session-storage';
 import { API_URL } from '../config';
 
-interface User {
+export interface AuthUser {
   id: string;
   email: string;
   roles: string[];
   permissions: string[];
+  impersonation?: {
+    sessionId: string;
+    actorId: string;
+    actorEmail: string;
+    expiresAt: string;
+    readOnly: true;
+  };
+}
+
+export interface StartImpersonationData {
+  accessToken: string;
+  sessionId: string;
+  expiresAt: string;
+  readOnly: true;
+  user: AuthUser;
+}
+
+export interface ImpersonationSession {
+  actorToken: string;
+  actorUser: AuthUser;
+  sessionId: string;
+  expiresAt: string;
+  readOnly: true;
 }
 
 interface AuthState {
   token: string | null;
-  user: User | null;
+  user: AuthUser | null;
+  impersonation: ImpersonationSession | null;
   isValidating: boolean;
   login: (email: string, password: string) => Promise<void>;
   register: (email: string, password: string) => Promise<void>;
   logout: () => void;
   validateToken: () => Promise<boolean>;
+  beginImpersonation: (data: StartImpersonationData) => boolean;
+  endImpersonation: () => boolean;
 }
 
 function clearSessionStorageByPrefix(prefix: string) {
@@ -42,6 +68,7 @@ export const useAuthStore = create<AuthState>()(
     (set, get) => ({
       token: null,
       user: null,
+      impersonation: null,
       isValidating: false,
 
       login: async (email: string, password: string) => {
@@ -49,7 +76,11 @@ export const useAuthStore = create<AuthState>()(
           email,
           password,
         });
-        set({ token: data.accessToken, user: data.user });
+        set({
+          token: data.accessToken,
+          user: data.user,
+          impersonation: null,
+        });
       },
 
       register: async (email: string, password: string) => {
@@ -61,11 +92,29 @@ export const useAuthStore = create<AuthState>()(
         // 터미널 세션도 함께 정리
         clearSessionStorageByPrefix(TERMINAL_SESSION_STORAGE_KEY);
         clearSessionStorageByPrefix(CLAUDE_SESSION_STORAGE_KEY);
-        set({ token: null, user: null });
+        set({
+          token: null,
+          user: null,
+          impersonation: null,
+          isValidating: false,
+        });
       },
 
       validateToken: async () => {
-        const { token } = get();
+        let { token } = get();
+        const activeImpersonation = get().impersonation;
+
+        if (
+          activeImpersonation &&
+          Date.parse(activeImpersonation.expiresAt) <= Date.now()
+        ) {
+          token = activeImpersonation.actorToken;
+          set({
+            token,
+            user: activeImpersonation.actorUser,
+            impersonation: null,
+          });
+        }
         if (!token) return false;
 
         set({ isValidating: true });
@@ -76,11 +125,60 @@ export const useAuthStore = create<AuthState>()(
           set({ user: data, isValidating: false });
           return true;
         } catch {
-          // 토큰이 만료되었거나 유효하지 않음 -> 자동 로그아웃
+          const impersonation = get().impersonation;
+          if (impersonation) {
+            try {
+              const { data } = await axios.get(`${API_URL}/api/auth/me`, {
+                headers: {
+                  Authorization: `Bearer ${impersonation.actorToken}`,
+                },
+              });
+              set({
+                token: impersonation.actorToken,
+                user: data,
+                impersonation: null,
+                isValidating: false,
+              });
+              return true;
+            } catch {
+              // 원래 관리자 세션도 만료됐다면 완전히 로그아웃한다.
+            }
+          }
           get().logout();
           set({ isValidating: false });
           return false;
         }
+      },
+
+      beginImpersonation: (data) => {
+        const { token, user, impersonation } = get();
+        if (!token || !user || impersonation) return false;
+
+        set({
+          token: data.accessToken,
+          user: data.user,
+          impersonation: {
+            actorToken: token,
+            actorUser: user,
+            sessionId: data.sessionId,
+            expiresAt: data.expiresAt,
+            readOnly: data.readOnly,
+          },
+        });
+        return true;
+      },
+
+      endImpersonation: () => {
+        const impersonation = get().impersonation;
+        if (!impersonation) return false;
+
+        set({
+          token: impersonation.actorToken,
+          user: impersonation.actorUser,
+          impersonation: null,
+          isValidating: false,
+        });
+        return true;
       },
     }),
     {
@@ -88,6 +186,7 @@ export const useAuthStore = create<AuthState>()(
       partialize: (state) => ({
         token: state.token,
         user: state.user,
+        impersonation: state.impersonation,
       }),
     },
   ),

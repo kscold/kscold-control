@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { rbacService } from '@/entities/user';
-import { useModalStore } from '@/shared/model';
+import { useNavigate } from 'react-router-dom';
+import { rbacService, type User } from '@/entities/user';
+import { useAuthStore, useModalStore } from '@/shared/model';
 
 /**
  * 사용자 관련 동작을 모두 처리하는 훅 (CRUD, 역할, 터미널 제한)
@@ -8,6 +9,8 @@ import { useModalStore } from '@/shared/model';
 export function useUserActions(onSuccess?: () => void) {
   const [loading, setLoading] = useState(false);
   const { showAlert, showConfirm } = useModalStore();
+  const beginImpersonation = useAuthStore((state) => state.beginImpersonation);
+  const navigate = useNavigate();
 
   const createUser = async (email: string, password: string) => {
     if (!email || !password) {
@@ -133,6 +136,31 @@ export function useUserActions(onSuccess?: () => void) {
     }
   };
 
+  const previewAsUser = (user: User) => {
+    showConfirm(
+      `${user.email} 사용자가 보는 화면으로 15분간 전환할까요? 변경 작업과 터미널·AI 실행은 차단됩니다.`,
+      async () => {
+        try {
+          setLoading(true);
+          const preview = await rbacService.startImpersonation(user.id);
+          if (!beginImpersonation(preview)) {
+            throw new Error('이미 사용자 화면을 미리 보는 중입니다.');
+          }
+          navigate('/', { replace: true });
+        } catch (error) {
+          showAlert(
+            error instanceof Error
+              ? error.message
+              : '사용자 화면 미리보기를 시작하지 못했습니다.',
+          );
+        } finally {
+          setLoading(false);
+        }
+      },
+      '읽기 전용 QA 미리보기',
+    );
+  };
+
   return {
     createUser,
     updatePassword,
@@ -141,6 +169,7 @@ export function useUserActions(onSuccess?: () => void) {
     approveKeyManager,
     resetTerminalLimit,
     updateTerminalLimit,
+    previewAsUser,
     loading,
   };
 }

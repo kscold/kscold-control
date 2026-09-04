@@ -11,11 +11,34 @@
  * 존재하지 않는 필드를 읽어도 타입 검사를 통과한다.
  * (실제로 그 때문에 프로젝트 소유자가 저장되지 않는 문제가 있었다)
  */
+export interface ImpersonationContext {
+  sessionId: string;
+  actorId: string;
+  actorEmail: string;
+  expiresAt: string;
+  readOnly: true;
+}
+
+export interface ImpersonationActorClaim {
+  id: string;
+  email: string;
+}
+
+export interface JwtTokenClaims {
+  sub: string;
+  email: string;
+  tokenUse?: string;
+  impersonatedBy?: ImpersonationActorClaim;
+  exp?: number;
+  jti?: string;
+}
+
 export interface JwtPayload {
   id: string;
   email: string;
-  roles: string[];
+  roles: Array<string | { name: string }>;
   permissions: string[];
+  impersonation?: ImpersonationContext;
   /**
    * WebSocket 경로에서만 존재하는 토큰 subject.
    * HTTP 요청에는 없으므로 선택 필드로 둔다.

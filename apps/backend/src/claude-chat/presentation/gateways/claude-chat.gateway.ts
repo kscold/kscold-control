@@ -18,6 +18,7 @@ import {
 import { JwtService } from '@nestjs/jwt';
 
 import { PERMISSIONS } from '../../../common/constants/permissions';
+import { IMPERSONATION_TOKEN_USE } from '../../../common/constants/impersonation';
 // 권한 확인은 rbac 모듈의 책임
 import { WsPermissionService } from '../../../rbac/application/services/ws-permission.service';
 import {
@@ -74,6 +75,12 @@ export class ClaudeChatGateway
 
       const payload = this.jwtService.verify(token);
       client.user = payload;
+
+      if (payload.tokenUse === IMPERSONATION_TOKEN_USE) {
+        throw new ForbiddenException(
+          'QA 사용자 미리보기에서는 Claude를 실행할 수 없습니다',
+        );
+      }
 
       const hasPermission = await this.checkPermission(
         client,

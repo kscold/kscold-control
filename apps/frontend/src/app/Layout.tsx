@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { NavLink, Outlet } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import {
   Container,
   FileText,
@@ -7,6 +7,7 @@ import {
   GitBranch,
   Globe,
   History,
+  Eye,
   KeyRound,
   LayoutDashboard,
   LogOut,
@@ -15,6 +16,7 @@ import {
   Shield,
   ShieldAlert,
   Terminal,
+  Undo2,
   X,
 } from 'lucide-react';
 import { PERMISSIONS } from '@/shared/config/permissions';
@@ -97,12 +99,44 @@ const NAV_ITEMS = [
 ] as const;
 
 export function Layout() {
-  const { user, logout } = useAuthStore();
+  const { user, logout, impersonation, endImpersonation } = useAuthStore();
+  const navigate = useNavigate();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [remainingSeconds, setRemainingSeconds] = useState(0);
   const permissions = new Set(user?.permissions ?? []);
   const visibleItems = NAV_ITEMS.filter((item) =>
     permissions.has(item.permission),
   );
+
+  useEffect(() => {
+    if (!impersonation) {
+      setRemainingSeconds(0);
+      return;
+    }
+
+    const tick = () => {
+      const remaining = Math.max(
+        0,
+        Math.ceil((Date.parse(impersonation.expiresAt) - Date.now()) / 1000),
+      );
+      setRemainingSeconds(remaining);
+      if (remaining === 0 && endImpersonation()) {
+        navigate('/rbac', { replace: true });
+      }
+    };
+
+    tick();
+    const interval = window.setInterval(tick, 1000);
+    return () => window.clearInterval(interval);
+  }, [endImpersonation, impersonation, navigate]);
+
+  const returnToAdmin = () => {
+    if (endImpersonation()) navigate('/rbac', { replace: true });
+  };
+
+  const remainingLabel = `${Math.floor(remainingSeconds / 60)}:${String(
+    remainingSeconds % 60,
+  ).padStart(2, '0')}`;
 
   const navLinks = visibleItems.map((item) => {
     const Icon = item.icon;
@@ -188,8 +222,38 @@ export function Layout() {
         </div>
       </aside>
 
-      <main className="flex-1 overflow-hidden bg-gray-950 pt-16 md:pt-0">
-        <Outlet />
+      <main className="flex min-w-0 flex-1 flex-col overflow-hidden bg-gray-950 pt-16 md:pt-0">
+        {impersonation && (
+          <div
+            role="status"
+            className="flex flex-col gap-3 border-b border-amber-300/30 bg-[linear-gradient(90deg,rgba(120,53,15,0.7),rgba(69,26,3,0.45),rgba(15,23,42,0.95))] px-4 py-3 text-amber-50 sm:flex-row sm:items-center sm:justify-between sm:px-6"
+          >
+            <div className="flex min-w-0 items-start gap-3 sm:items-center">
+              <div className="mt-0.5 rounded-lg border border-amber-300/30 bg-amber-300/10 p-2 text-amber-200 sm:mt-0">
+                <Eye size={17} />
+              </div>
+              <div className="min-w-0">
+                <p className="truncate text-sm font-semibold">
+                  QA 미리보기 · {user?.email}
+                </p>
+                <p className="mt-0.5 text-xs text-amber-100/65">
+                  변경·터미널·AI 실행 차단 · {remainingLabel} 후 자동 복귀 ·
+                  원래 계정 {impersonation.actorUser.email}
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={returnToAdmin}
+              className="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg border border-amber-200/30 bg-amber-100/10 px-3 py-2 text-xs font-semibold text-amber-50 transition hover:bg-amber-100/20"
+            >
+              <Undo2 size={15} /> 관리자 화면으로 복귀
+            </button>
+          </div>
+        )}
+        <div className="min-h-0 flex-1 overflow-hidden">
+          <Outlet />
+        </div>
       </main>
     </div>
   );

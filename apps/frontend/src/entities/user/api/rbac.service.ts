@@ -6,6 +6,7 @@ import {
   UpdateUserRequest,
   AssignRolesRequest,
   UpdateTerminalLimitRequest,
+  ImpersonationResponse,
 } from './types';
 
 /**
@@ -108,6 +109,18 @@ export class RbacService extends BaseApiService {
       return data;
     } catch (error) {
       this.handleError(error, '키 관리 접근 승인에 실패했습니다.');
+    }
+  }
+
+  /** 최고 관리자가 대상 사용자의 화면을 15분간 읽기 전용으로 미리 본다. */
+  async startImpersonation(userId: string): Promise<ImpersonationResponse> {
+    try {
+      const { data } = await api.post<ImpersonationResponse>(
+        `/auth/impersonation/${userId}`,
+      );
+      return data;
+    } catch (error) {
+      this.handleError(error, '사용자 화면 미리보기를 시작하지 못했습니다.');
     }
   }
 

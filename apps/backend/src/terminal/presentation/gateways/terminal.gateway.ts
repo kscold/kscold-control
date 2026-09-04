@@ -18,6 +18,7 @@ import {
 import { JwtService } from '@nestjs/jwt';
 
 import { PERMISSIONS } from '../../../common/constants/permissions';
+import { IMPERSONATION_TOKEN_USE } from '../../../common/constants/impersonation';
 
 // 애플리케이션 서비스 (실시간 인프라)
 import {
@@ -96,6 +97,12 @@ export class TerminalGateway
 
       const payload = this.jwtService.verify(token);
       client.user = payload;
+
+      if (payload.tokenUse === IMPERSONATION_TOKEN_USE) {
+        throw new ForbiddenException(
+          'QA 사용자 미리보기에서는 터미널을 실행할 수 없습니다',
+        );
+      }
 
       const hasPermission = await this.checkPermission(
         client,

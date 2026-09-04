@@ -26,9 +26,13 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      // 인증 실패 - 인증 정보를 지우고 로그인 페이지로 이동한다
-      useAuthStore.getState().logout();
-      window.location.href = '/login';
+      const auth = useAuthStore.getState();
+      if (auth.impersonation && auth.endImpersonation()) {
+        window.location.href = '/rbac';
+      } else {
+        auth.logout();
+        window.location.href = '/login';
+      }
     }
     return Promise.reject(error);
   },

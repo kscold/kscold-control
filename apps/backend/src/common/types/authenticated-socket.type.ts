@@ -10,6 +10,7 @@ import type { Socket } from 'socket.io';
 export interface SocketJwtPayload {
   sub: string;
   email: string;
+  tokenUse?: string;
   [claim: string]: unknown;
 }
 

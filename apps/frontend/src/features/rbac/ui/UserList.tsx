@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Users, Edit2, Key, Trash2, UserCheck } from 'lucide-react';
+import { Users, Edit2, Eye, Key, Trash2, UserCheck } from 'lucide-react';
 import type { User } from '@/entities/user';
 import { ROLES } from '@/shared/config/roles';
 
@@ -12,6 +12,7 @@ interface UserListProps {
   onUpdateTerminalLimit: (userId: string, limit: number) => Promise<boolean>;
   onCreateUser: () => void;
   onApproveKeyManager: (userId: string) => Promise<boolean>;
+  onPreviewUser: (user: User) => void;
 }
 
 const getRoleBadgeColor = (roleName: string) => {
@@ -47,6 +48,7 @@ export function UserList({
   onUpdateTerminalLimit,
   onCreateUser,
   onApproveKeyManager,
+  onPreviewUser,
 }: UserListProps) {
   const [editingUserId, setEditingUserId] = useState<string | null>(null);
   const [editPassword, setEditPassword] = useState('');
@@ -90,6 +92,10 @@ export function UserList({
             (role) => role.name === ROLES.PENDING_APPROVAL,
           );
           const terminalLimit = user.terminalCommandLimit ?? -1;
+          const isGlobalAdmin = user.roles.some(
+            (role) =>
+              role.name === ROLES.ADMIN || role.name === ROLES.SUPER_ADMIN,
+          );
           return (
             <div
               key={user.id}
@@ -217,6 +223,16 @@ export function UserList({
                       className="mt-3 inline-flex items-center gap-2 rounded-lg bg-amber-400 px-3 py-2 text-xs font-bold text-slate-950 hover:bg-amber-300"
                     >
                       <UserCheck size={15} /> 대시보드 + GoLe 키 관리자 승인
+                    </button>
+                  )}
+                  {!isGlobalAdmin && (
+                    <button
+                      type="button"
+                      onClick={() => onPreviewUser(user)}
+                      className="mt-3 inline-flex items-center gap-2 rounded-lg border border-cyan-400/30 bg-cyan-400/10 px-3 py-2 text-xs font-semibold text-cyan-100 transition hover:bg-cyan-400/20"
+                      title="이 사용자의 권한으로 보이는 화면을 읽기 전용으로 확인"
+                    >
+                      <Eye size={15} /> QA 화면 보기
                     </button>
                   )}
                 </div>

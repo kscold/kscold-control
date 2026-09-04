@@ -152,6 +152,15 @@ An administrator approves it from **RBAC → Users → 대시보드 + GoLe 키 �
 approved `key_manager` role receives only `dashboard:read`, `secrets:read`,
 `secrets:reveal`, `secrets:write`, and `secrets:deploy`.
 
+### Read-only user preview
+
+Legacy `admin` and `super_admin` users can select **QA 화면 보기** on a
+non-admin user card to inspect the application with that user's current roles.
+The preview token expires after 15 minutes. A persistent banner returns to the
+original administrator immediately; mutating HTTP requests and all Terminal,
+Claude, and Codex WebSocket sessions are rejected server-side during preview.
+Each preview start is recorded in the RBAC audit timeline.
+
 Get a JWT and the current immutable Secret Manager version:
 
 ```bash
