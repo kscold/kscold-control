@@ -12,6 +12,9 @@ const outputPath = path.join(
   'dist',
   'release-manifest.json',
 );
+const packageMetadata = JSON.parse(
+  await fs.readFile(path.join(root, 'package.json'), 'utf8'),
+);
 
 function git(...args) {
   return execFileSync('git', args, { cwd: root, encoding: 'utf8' }).trim();
@@ -65,7 +68,8 @@ if (
   );
 }
 const manifest = {
-  schemaVersion: 1,
+  schemaVersion: 2,
+  version: packageMetadata.version,
   revision: git('rev-parse', 'HEAD'),
   branch: git('rev-parse', '--abbrev-ref', 'HEAD'),
   builtAt: new Date().toISOString(),
@@ -76,5 +80,5 @@ const manifest = {
 await fs.mkdir(path.dirname(outputPath), { recursive: true });
 await fs.writeFile(outputPath, `${JSON.stringify(manifest, null, 2)}\n`);
 console.log(
-  `Release manifest written: ${manifest.revision.slice(0, 12)} (${artifactFiles.length} files)${manifest.dirty ? ' (dirty)' : ''}`,
+  `Release manifest written: v${manifest.version} ${manifest.revision.slice(0, 12)} (${artifactFiles.length} files)${manifest.dirty ? ' (dirty)' : ''}`,
 );
