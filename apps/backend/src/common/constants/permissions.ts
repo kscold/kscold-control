@@ -4,6 +4,9 @@
  * 문자열을 직접 적지 말고 이 상수를 쓰면 오타를 막고 이름 변경도 쉬워진다.
  */
 export const PERMISSIONS = {
+  // Dashboard (운영 요약 조회)
+  DASHBOARD_READ: 'dashboard:read',
+
   // Claude
   CLAUDE_EXECUTE: 'claude:execute',
 

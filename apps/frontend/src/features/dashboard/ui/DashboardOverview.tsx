@@ -12,11 +12,8 @@ export function DashboardOverview() {
   const { systemInfo, loadSystemInfo, loading, error, lastLoadedAt } =
     useSystemInfo();
   const { liveStats, loading: liveStatsLoading } = useLiveStats();
-  const {
-    containers,
-    runningCount,
-    loading: containersLoading,
-  } = useDashboardContainers();
+  const { containerSummary, loading: containersLoading } =
+    useDashboardContainers();
 
   useEffect(() => {
     loadSystemInfo();
@@ -24,9 +21,12 @@ export function DashboardOverview() {
 
   const showSkeleton =
     !error &&
-    (loading && !systemInfo) &&
-    (liveStatsLoading && !liveStats) &&
-    (containersLoading && containers.length === 0);
+    loading &&
+    !systemInfo &&
+    liveStatsLoading &&
+    !liveStats &&
+    containersLoading &&
+    !containerSummary;
 
   if (showSkeleton) {
     return <DashboardOverviewSkeleton />;
@@ -66,8 +66,8 @@ export function DashboardOverview() {
 
       {/* 통계 카드 */}
       <SystemStatsCard
-        containers={containers}
-        runningCount={runningCount}
+        containerCount={containerSummary?.total ?? 0}
+        runningCount={containerSummary?.running ?? 0}
         systemInfo={systemInfo}
         liveStats={liveStats}
       />

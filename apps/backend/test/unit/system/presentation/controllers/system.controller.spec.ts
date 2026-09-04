@@ -1,4 +1,5 @@
 import { SystemController } from '@/system/presentation/controllers/system.controller';
+import { PERMISSIONS } from '@/common/constants/permissions';
 
 describe('SystemController', () => {
   const getStatsUseCase = { execute: jest.fn() };
@@ -17,6 +18,15 @@ describe('SystemController', () => {
     jest.clearAllMocks();
   });
 
+  it('대시보드 엔드포인트는 전용 읽기 권한만 요구한다', () => {
+    expect(
+      Reflect.getMetadata('permissions', controller.getDashboardStats),
+    ).toEqual([PERMISSIONS.DASHBOARD_READ]);
+    expect(
+      Reflect.getMetadata('permissions', controller.getDashboardInfo),
+    ).toEqual([PERMISSIONS.DASHBOARD_READ]);
+  });
+
   it('라이브 통계를 그대로 반환한다', async () => {
     const stats = {
       cpu: { usage: 12.3, count: 10, model: 'M4' },
@@ -26,6 +36,13 @@ describe('SystemController', () => {
     getStatsUseCase.execute.mockResolvedValueOnce(stats);
 
     await expect(controller.getStats()).resolves.toEqual(stats);
+  });
+
+  it('대시보드 전용 라이브 통계를 그대로 반환한다', async () => {
+    const stats = { cpu: { usage: 3 }, memory: { usedPercent: 20 } };
+    getStatsUseCase.execute.mockResolvedValueOnce(stats);
+
+    await expect(controller.getDashboardStats()).resolves.toEqual(stats);
   });
 
   it('시스템 정보를 그대로 반환한다', async () => {
@@ -40,6 +57,13 @@ describe('SystemController', () => {
     getSystemInfoUseCase.execute.mockResolvedValueOnce(systemInfo);
 
     await expect(controller.getSystemInfo()).resolves.toEqual(systemInfo);
+  });
+
+  it('대시보드 전용 시스템 정보를 그대로 반환한다', async () => {
+    const systemInfo = { hostname: 'mac-mini', uptime: 10 };
+    getSystemInfoUseCase.execute.mockResolvedValueOnce(systemInfo);
+
+    await expect(controller.getDashboardInfo()).resolves.toEqual(systemInfo);
   });
 
   it('MongoDB 백업 응답에 success=true를 붙인다', async () => {

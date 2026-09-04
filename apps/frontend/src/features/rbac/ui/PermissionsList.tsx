@@ -2,6 +2,7 @@ import {
   Container,
   FolderGit2,
   KeyRound,
+  LayoutDashboard,
   ServerCog,
   ShieldAlert,
   Terminal,
@@ -15,6 +16,15 @@ interface PermissionsListProps {
 }
 
 const PERMISSION_GROUPS = [
+  {
+    id: 'dashboard',
+    title: '대시보드',
+    description: '민감한 원본 목록 없이 운영 상태 요약 조회',
+    routes: ['대시보드'],
+    icon: LayoutDashboard,
+    accent: 'border-sky-500/30 bg-sky-500/5 text-sky-300',
+    permissions: [PERMISSIONS.DASHBOARD_READ],
+  },
   {
     id: 'terminal',
     title: '터미널 & Claude Code',
@@ -47,8 +57,8 @@ const PERMISSION_GROUPS = [
   {
     id: 'system',
     title: '시스템 운영',
-    description: '로그, Nginx, 네트워크와 대시보드',
-    routes: ['대시보드', '시스템 로그', 'Nginx 설정', '네트워크', '운영 감사'],
+    description: '로그, Nginx, 네트워크와 운영 감사',
+    routes: ['시스템 로그', 'Nginx 설정', '네트워크', '운영 감사'],
     icon: ServerCog,
     accent: 'border-emerald-500/30 bg-emerald-500/5 text-emerald-300',
     permissions: [PERMISSIONS.SYSTEM_READ, PERMISSIONS.SYSTEM_WRITE],

@@ -1,17 +1,17 @@
-import { dockerService } from '@/entities/container';
 import { useState, useCallback, useEffect, useRef } from 'react';
-import type { ContainerInfo } from './dashboard.types';
+import { dashboardService } from '../api/dashboard.service';
+import type { DashboardContainerSummary } from './dashboard.types';
 
 export function useDashboardContainers() {
-  const [containers, setContainers] = useState<ContainerInfo[]>([]);
+  const [containerSummary, setContainerSummary] =
+    useState<DashboardContainerSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const loadContainers = useCallback(async () => {
     try {
       setLoading(true);
-      // 컨테이너 리소스는 entities/container 가 소유하므로 그 서비스를 재사용한다
-      setContainers(await dockerService.listContainers());
+      setContainerSummary(await dashboardService.getContainerSummary());
     } catch (e) {
       console.error(e);
     } finally {
@@ -54,9 +54,5 @@ export function useDashboardContainers() {
     };
   }, [loadContainers]);
 
-  const runningCount = containers.filter(
-    (c) => c.liveStatus === 'running',
-  ).length;
-
-  return { containers, runningCount, loading };
+  return { containerSummary, loading };
 }

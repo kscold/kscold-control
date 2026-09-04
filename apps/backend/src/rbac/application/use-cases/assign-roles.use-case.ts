@@ -35,9 +35,15 @@ export class AssignRolesUseCase {
     const roles = await this.roleRepository.findByIds(dto.roleIds);
     user.roles = roles;
 
-    // If guest role is assigned, set terminal limit to 10
+    // 키 관리자는 역할 편집 경로에서도 터미널을 기본 차단한다.
+    const hasKeyManagerRole = roles.some(
+      (role) => role.name === ROLES.KEY_MANAGER,
+    );
     const hasGuestRole = roles.some((role) => role.name === ROLES.GUEST);
-    if (hasGuestRole && user.terminalCommandLimit === -1) {
+    if (hasKeyManagerRole) {
+      user.terminalCommandLimit = 0;
+      user.terminalCommandCount = 0;
+    } else if (hasGuestRole && user.terminalCommandLimit === -1) {
       user.terminalCommandLimit = 10;
       user.terminalCommandCount = 0;
     }

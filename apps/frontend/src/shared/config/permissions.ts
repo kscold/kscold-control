@@ -3,6 +3,7 @@
  * UI 컴포넌트에서 권한을 문자열로 하드코딩하지 말고 이 상수를 사용한다.
  */
 export const PERMISSIONS = {
+  DASHBOARD_READ: 'dashboard:read',
   CLAUDE_EXECUTE: 'claude:execute',
   DOCKER_READ: 'docker:read',
   DOCKER_READ_ALL: 'docker:read-all',
