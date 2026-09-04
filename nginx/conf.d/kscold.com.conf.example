@@ -36,6 +36,8 @@ server {
     limit_req zone=kscold_recovery burst=3 nodelay;
     limit_req zone=kscold_external burst=10 nodelay;
     limit_req zone=kscold_upload burst=4 nodelay;
+    limit_req zone=kscold_commercial burst=6 nodelay;
+    limit_req zone=kscold_engagement burst=15 nodelay;
     limit_req_status 429;
     limit_req_log_level warn;
 
