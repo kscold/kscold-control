@@ -14,6 +14,7 @@ import {
 import { AuthGuard } from '@nestjs/passport';
 import { PERMISSIONS } from '../../../common/constants/permissions';
 import { Audit } from '../../../common/decorators/audit.decorator';
+import { AllowDuringImpersonation } from '../../../common/decorators/allow-during-impersonation.decorator';
 import { RequirePermissions } from '../../../common/decorators/permissions.decorator';
 import { PermissionsGuard } from '../../../common/guards/permissions.guard';
 import type { JwtRequest } from '../../../common/types/jwt-request.type';
@@ -46,6 +47,7 @@ export class KeyManagementController {
 
   @Post('targets/:targetId/reveal')
   @RequirePermissions(PERMISSIONS.SECRETS_REVEAL)
+  @AllowDuringImpersonation()
   @Header('Cache-Control', 'no-store, no-cache, must-revalidate, private')
   @Header('Pragma', 'no-cache')
   @Audit({

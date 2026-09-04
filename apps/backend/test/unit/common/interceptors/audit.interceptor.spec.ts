@@ -24,6 +24,7 @@ describe('AuditInterceptor', () => {
       params?: Record<string, string>;
       body?: unknown;
       auditExtra?: Record<string, unknown>;
+      user?: Record<string, unknown>;
     } = {},
   ) {
     const reflector = {
@@ -32,7 +33,7 @@ describe('AuditInterceptor', () => {
     const interceptor = new AuditInterceptor(reflector, auditLogService);
 
     const request = {
-      user: { id: 'user-1', email: 'admin@example.com' },
+      user: options.user ?? { id: 'user-1', email: 'admin@example.com' },
       params: options.params ?? {},
       body: options.body ?? {},
       query: {},
@@ -182,5 +183,39 @@ describe('AuditInterceptor', () => {
 
     expect(recorded.targetId).toBeNull();
     expect(recorded.targetType).toBeNull();
+  });
+
+  it('미리보기 조회는 실제 관리자를 행위자로 기록하고 대상 사용자를 메타데이터에 남긴다', async () => {
+    const recorded = await runInterceptor(
+      {
+        domain: 'secrets',
+        action: 'secret.reveal',
+        summary: '운영 키 조회',
+        metadata: () => ({ version: '3' }),
+      },
+      {
+        user: {
+          id: 'target-user',
+          email: 'target@example.com',
+          impersonation: {
+            sessionId: 'preview-session',
+            actorId: 'admin-user',
+            actorEmail: 'admin@example.com',
+          },
+        },
+      },
+    );
+
+    expect(recorded.actorId).toBe('admin-user');
+    expect(recorded.actorEmail).toBe('admin@example.com');
+    expect(recorded.metadata).toEqual({
+      version: '3',
+      impersonation: {
+        sessionId: 'preview-session',
+        actingAsUserId: 'target-user',
+        actingAsEmail: 'target@example.com',
+        readOnly: true,
+      },
+    });
   });
 });

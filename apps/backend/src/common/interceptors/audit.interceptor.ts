@@ -48,8 +48,9 @@ export class AuditInterceptor implements NestInterceptor {
     if (!meta) return next.handle();
 
     const req = context.switchToHttp().getRequest<AuditRequest>();
-    const actorId = req.user?.id ?? null;
-    const actorEmail = req.user?.email ?? null;
+    const impersonation = req.user?.impersonation;
+    const actorId = impersonation?.actorId ?? req.user?.id ?? null;
+    const actorEmail = impersonation?.actorEmail ?? req.user?.email ?? null;
 
     return next.handle().pipe(
       tap((response) => {
@@ -71,7 +72,18 @@ export class AuditInterceptor implements NestInterceptor {
           typeof meta.targetId === 'function'
             ? meta.targetId(ctx)
             : (meta.targetId ?? null);
-        const metadata = meta.metadata ? meta.metadata(ctx) : undefined;
+        const baseMetadata = meta.metadata ? meta.metadata(ctx) : undefined;
+        const metadata = impersonation
+          ? {
+              ...baseMetadata,
+              impersonation: {
+                sessionId: impersonation.sessionId,
+                actingAsUserId: req.user.id,
+                actingAsEmail: req.user.email,
+                readOnly: true,
+              },
+            }
+          : baseMetadata;
 
         // fire-and-forget: 감사 실패가 요청을 막아서는 안 됨
         void this.auditLogService
