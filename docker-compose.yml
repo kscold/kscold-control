@@ -62,11 +62,9 @@ services:
     image: kscold/ubuntu-blog:latest
     container_name: ubuntu-blog
     command: /entrypoint.sh
-    ports:
-      - '2225:22'
-      - '8083:8080'
-      - '3002:3000'
-      - '27019:27017'
+    expose:
+      - '8080'
+      - '3000'
     environment:
       - MONGODB_URI=${BLOG_MONGODB_URI}
       - JWT_SECRET=${BLOG_JWT_SECRET}
