@@ -40,6 +40,9 @@ jobs:
       - name: Check runtime contracts
         run: pnpm check:runtime-contracts
 
+      - name: Check Nginx configuration
+        run: pnpm check:nginx
+
       - name: Backend tests
         run: pnpm test:backend
 

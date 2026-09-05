@@ -16,3 +16,9 @@ Typical local workflow:
 3. Reload nginx after verifying the config
 
 If a configuration should be shared in git, commit it as `*.conf.example`, not as `*.conf`.
+
+Before committing a shared configuration, validate the base file and every example with:
+
+```bash
+pnpm check:nginx
+```
