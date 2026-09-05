@@ -36,6 +36,7 @@
     "test:repository-live-smoke": "node ./scripts/repository-live-smoke.mjs",
     "test:e2e:control": "bash ./scripts/run-control-e2e.sh",
     "check:architecture": "node ./scripts/check-architecture.mjs",
+    "check:nginx": "bash ./scripts/check-nginx-config.sh",
     "check:runtime-contracts": "node ./scripts/check-runtime-contracts.mjs",
     "preflight:production": "node ./scripts/preflight-control.mjs",
     "migrate:database": "node ./scripts/migrate-control-db.mjs",
