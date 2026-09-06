@@ -40,5 +40,10 @@ if ! curl -s -o /dev/null "http://127.0.0.1:${BACKEND_PORT}/api/auth/me"; then
   exit 1
 fi
 
+if ! curl -fsS "http://127.0.0.1:${BACKEND_PORT}/keys" | grep -q '<div id="root"></div>'; then
+  echo "E2E 백엔드가 SPA 직접 경로를 제공하지 못했습니다. 로그: $BACKEND_LOG_FILE" >&2
+  exit 1
+fi
+
 cd "$ROOT_DIR"
 pnpm exec playwright test

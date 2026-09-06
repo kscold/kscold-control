@@ -55,6 +55,22 @@ async function waitForRelease(url, version, revision) {
   throw lastError ?? new Error(`릴리스 확인 실패: ${url}`);
 }
 
+async function verifySpaRoute(url) {
+  const response = await fetch(url, {
+    headers: { Accept: 'text/html' },
+    signal: AbortSignal.timeout(5_000),
+  });
+  if (!response.ok) {
+    throw new Error(`SPA 직접 경로 확인 실패: ${url} (HTTP ${response.status})`);
+  }
+
+  const contentType = response.headers.get('content-type') ?? '';
+  const body = await response.text();
+  if (!contentType.includes('text/html') || !body.includes('<div id="root"></div>')) {
+    throw new Error(`SPA 직접 경로가 프론트엔드 HTML을 반환하지 않습니다: ${url}`);
+  }
+}
+
 function acquireDeploymentLock() {
   try {
     const descriptor = openSync(lockPath, 'wx', 0o600);
@@ -135,6 +151,8 @@ try {
     version,
     revision,
   );
+  await verifySpaRoute('http://127.0.0.1:4000/keys');
+  await verifySpaRoute('https://control.kscold.com/keys');
   run('pm2', ['save']);
   console.log(
     `Production release is healthy: v${version} ${revision.slice(0, 12)}`,

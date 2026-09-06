@@ -55,7 +55,6 @@ import { resolveFrontendDistPath } from './common/utils/frontend-dist-path.util'
       rootPath: resolveFrontendDistPath(),
       // Express 5 / path-to-regexp v8에서는 '/api/(.*)' 형식을 쓸 수 없다.
       exclude: ['/api/{*any}'], // API 라우트만 제외, SPA 라우팅(/docker, /claude 등)은 index.html로
-      serveRoot: '/',
     }),
 
     // TypeORM + PostgreSQL
