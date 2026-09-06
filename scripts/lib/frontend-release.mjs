@@ -22,7 +22,8 @@ export function publishFrontendRelease({
     throw new Error('프론트엔드 릴리스 리비전 형식이 올바르지 않습니다.');
   }
 
-  const runtimeRoot = path.join(root, '.runtime');
+  // Express sendFile ignores paths containing hidden segments by default.
+  const runtimeRoot = path.join(root, 'runtime');
   const releaseRoot = path.join(runtimeRoot, 'frontend-releases');
   const currentPath = path.join(runtimeRoot, 'frontend-current');
   const source = path.join(root, 'apps', 'frontend', 'dist');
