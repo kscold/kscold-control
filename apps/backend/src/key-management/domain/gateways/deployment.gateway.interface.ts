@@ -18,7 +18,10 @@ export interface TriggerDeploymentInput {
 
 export interface IDeploymentGateway {
   trigger(input: TriggerDeploymentInput): Promise<void>;
-  findByRequestId(requestId: string): Promise<DeploymentRun | null>;
+  findByRequestId(
+    targetId: string,
+    requestId: string,
+  ): Promise<DeploymentRun | null>;
 }
 
 export const DEPLOYMENT_GATEWAY = Symbol('DEPLOYMENT_GATEWAY');

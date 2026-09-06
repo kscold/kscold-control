@@ -15,6 +15,7 @@ import { RequirePermissions } from '../../../common/decorators';
 import { Audit } from '../../../common/decorators/audit.decorator';
 import { PERMISSIONS } from '../../../common/constants/permissions';
 import type { JwtRequest } from '../../../common/types/jwt-request.type';
+import { KeyManagementTargetAccessService } from '../../application/services/key-management-target-access.service';
 
 // Application Layer
 import {
@@ -35,7 +36,11 @@ import {
 } from '../../application/dto';
 
 // Presentation Layer
-import { AssignRolesRequestDto, SetTerminalLimitRequestDto } from '../dto';
+import {
+  AssignRolesRequestDto,
+  SetKeyManagementTargetAccessRequestDto,
+  SetTerminalLimitRequestDto,
+} from '../dto';
 
 /** 감사 로그용 사용자 스냅샷 — 모듈 레벨 순수 함수로 분리 (데코레이터 팩토리에서 공유) */
 function toUserSnapshot(
@@ -61,7 +66,7 @@ function toUserSnapshot(
 
 /** req 에 주입하는 before 스냅샷 타입 */
 interface RbacRequest extends JwtRequest {
-  _auditExtra?: { before: ReturnType<typeof toUserSnapshot> };
+  _auditExtra?: { before: unknown };
 }
 
 /**
@@ -85,6 +90,7 @@ export class RbacController {
     private readonly listPermissionsUseCase: ListPermissionsUseCase,
     private readonly manageTerminalLimitUseCase: ManageTerminalLimitUseCase,
     private readonly approveKeyManagerUseCase: ApproveKeyManagerUseCase,
+    private readonly targetAccess: KeyManagementTargetAccessService,
   ) {}
 
   // ==================== Role Endpoints ====================
@@ -205,7 +211,7 @@ export class RbacController {
     domain: 'rbac',
     action: 'user.approve-key-manager',
     summary: (ctx) =>
-      `사용자 ${ctx.params.id}의 대시보드 및 GoLe 키 관리 접근을 승인했습니다.`,
+      `사용자 ${ctx.params.id}의 대시보드 및 운영 키 관리 접근을 승인했습니다.`,
     targetType: 'user',
     targetId: (ctx) => ctx.params.id,
     metadata: (ctx) => ({
@@ -220,7 +226,38 @@ export class RbacController {
     @Request() req: RbacRequest,
   ) {
     req._auditExtra = { before: await this.getUserSnapshot(id) };
-    return this.approveKeyManagerUseCase.execute(id);
+    return this.approveKeyManagerUseCase.execute(id, req.user.id);
+  }
+
+  @Get('key-management-target-access')
+  @RequirePermissions(PERMISSIONS.RBAC_MANAGE)
+  getKeyManagementTargetAccess() {
+    return this.targetAccess.listAccessMatrix();
+  }
+
+  @Put('users/:id/key-management-target-access')
+  @RequirePermissions(PERMISSIONS.RBAC_MANAGE)
+  @Audit({
+    domain: 'rbac',
+    action: 'user.set-key-management-target-access',
+    summary: (ctx) =>
+      `사용자 ${ctx.params.id}의 운영 키 대상 범위를 변경했습니다.`,
+    targetType: 'user',
+    targetId: (ctx) => ctx.params.id,
+    metadata: (ctx) => ({
+      before: (ctx.extra as { before?: unknown }).before ?? [],
+      after: (ctx.response as { targetIds: string[] }).targetIds,
+    }),
+  })
+  async setKeyManagementTargetAccess(
+    @Param('id') id: string,
+    @Body() dto: SetKeyManagementTargetAccessRequestDto,
+    @Request() req: RbacRequest,
+  ) {
+    req._auditExtra = {
+      before: await this.targetAccess.getUserTargetIds(id),
+    };
+    return this.targetAccess.replaceUserTargets(id, dto.targetIds, req.user.id);
   }
 
   // ==================== Terminal Limit Endpoints ====================

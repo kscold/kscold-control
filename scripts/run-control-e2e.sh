@@ -22,7 +22,6 @@ cd "$ROOT_DIR"
 pnpm --filter @kscold-control/backend build
 
 cd "$BACKEND_DIR"
-DATABASE_URL="postgresql://admin:admin123@localhost:5432/kscold-infra-db" \
 DOCKER_HOST="unix:///Users/kscold/.colima/default/docker.sock" \
 PORT="$BACKEND_PORT" \
 node -r dotenv/config dist/main.js dotenv_config_path="$ROOT_DIR/.env" \

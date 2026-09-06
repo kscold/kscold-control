@@ -26,6 +26,7 @@ import {
 import { EnvDocumentService } from './env-document.service';
 import { KeyManagementTargetService } from './key-management-target.service';
 import { SecretEncryptionService } from './secret-encryption.service';
+import type { KeyManagementTarget } from '../../domain/types/key-management-target.type';
 
 export interface KeyManagementActor {
   id: string;
@@ -46,7 +47,7 @@ export interface MutationResult {
 
 @Injectable()
 export class KeyManagementService {
-  private updateQueue: Promise<void> = Promise.resolve();
+  private readonly updateQueues = new Map<string, Promise<void>>();
 
   constructor(
     private readonly targets: KeyManagementTargetService,
@@ -60,27 +61,49 @@ export class KeyManagementService {
     private readonly backups: ISecretBackupRepository,
   ) {}
 
-  async listTargets() {
+  async listTargets(allowedTargetIds?: readonly string[]) {
+    const allowed = allowedTargetIds ? new Set(allowedTargetIds) : null;
+    const targets = (await this.targets.list()).filter(
+      (target) => !allowed || allowed.has(target.id),
+    );
     return Promise.all(
-      this.targets.list().map(async (target) => {
-        const current = await this.secretStore.readLatest(target.id);
-        const keys = this.envDocument.listKeys(current.payload);
-        return {
-          ...target,
-          version: current.version,
-          updatedAt: current.createdAt,
-          checksum: this.envDocument.checksum(current.payload),
-          keyCount: keys.length,
-          keys,
-        };
+      targets.map(async (target) => {
+        try {
+          const current = await this.secretStore.readLatest(target.id);
+          const normalized = this.envDocument.normalizeAndValidate(
+            current.payload,
+            target.requiredKeys,
+          );
+          const keys = this.envDocument.listKeys(normalized);
+          return this.toTargetResponse(target, {
+            version: current.version,
+            updatedAt: current.createdAt,
+            checksum: this.envDocument.checksum(current.payload),
+            keys,
+            connectionStatus: 'healthy',
+            connectionError: null,
+          });
+        } catch {
+          return this.toTargetResponse(target, {
+            version: null,
+            updatedAt: null,
+            checksum: null,
+            keys: [],
+            connectionStatus: 'unavailable',
+            connectionError: '운영 키 저장소 연결 상태를 확인하지 못했습니다.',
+          });
+        }
       }),
     );
   }
 
   async reveal(targetId: string) {
-    this.targets.get(targetId);
+    const target = await this.targets.get(targetId);
     const current = await this.secretStore.readLatest(targetId);
-    const envFile = this.envDocument.normalizeAndValidate(current.payload);
+    const envFile = this.envDocument.normalizeAndValidate(
+      current.payload,
+      target.requiredKeys,
+    );
     return {
       targetId,
       version: current.version,
@@ -96,7 +119,7 @@ export class KeyManagementService {
     expectedVersion: string,
     actor: KeyManagementActor,
   ): Promise<MutationResult> {
-    return this.withUpdateLock(() =>
+    return this.withUpdateLock(targetId, () =>
       this.mutate(targetId, expectedVersion, 'update', actor, () => envFile),
     );
   }
@@ -108,32 +131,35 @@ export class KeyManagementService {
     expectedVersion: string,
     actor: KeyManagementActor,
   ): Promise<MutationResult> {
-    return this.withUpdateLock(() =>
-      this.mutate(targetId, expectedVersion, 'patch', actor, (current) =>
-        this.envDocument.setKey(current, key, secretValue),
+    return this.withUpdateLock(targetId, () =>
+      this.mutate(
+        targetId,
+        expectedVersion,
+        'patch',
+        actor,
+        (current, target) =>
+          this.envDocument.setKey(
+            current,
+            key,
+            secretValue,
+            target.requiredKeys,
+          ),
       ),
     );
   }
 
   async listBackups(targetId: string, limit = 30) {
-    this.targets.get(targetId);
+    await this.targets.get(targetId);
     const backups = await this.backups.findRecent(targetId, limit);
-    const active = backups.find(
+    const active = backups.filter(
       (backup) =>
         backup.deploymentRequestId &&
         ['deployment_queued', 'deployment_running'].includes(backup.status),
     );
 
-    if (active?.deploymentRequestId) {
-      try {
-        const run = await this.deployments.findByRequestId(
-          active.deploymentRequestId,
-        );
-        if (run) await this.applyDeploymentState(active, run);
-      } catch {
-        // GitHub 상태 조회 장애가 백업 원장 자체를 가리지 않게 마지막 상태를 반환한다.
-      }
-    }
+    await Promise.all(
+      active.map((backup) => this.refreshDeploymentState(targetId, backup)),
+    );
 
     return backups.map((backup) => this.toBackupResponse(backup));
   }
@@ -144,8 +170,8 @@ export class KeyManagementService {
     expectedVersion: string,
     actor: KeyManagementActor,
   ): Promise<MutationResult> {
-    return this.withUpdateLock(async () => {
-      this.targets.get(targetId);
+    return this.withUpdateLock(targetId, async () => {
+      await this.targets.get(targetId);
       const source = await this.backups.findByIdWithPayload(backupId);
       if (!source || source.targetId !== targetId) {
         throw new NotFoundException('복원할 백업을 찾을 수 없습니다.');
@@ -177,38 +203,45 @@ export class KeyManagementService {
   }
 
   async retryDeployment(targetId: string, backupId: string) {
-    this.targets.get(targetId);
-    const backup = await this.backups.findByIdWithPayload(backupId);
-    if (
-      !backup ||
-      backup.targetId !== targetId ||
-      !backup.newVersion ||
-      backup.status !== 'failed'
-    ) {
-      throw new NotFoundException('재시도할 배포를 찾을 수 없습니다.');
-    }
+    return this.withUpdateLock(targetId, async () => {
+      await this.targets.get(targetId);
+      await this.assertNoActiveDeployment(targetId);
+      const backup = await this.backups.findByIdWithPayload(backupId);
+      if (
+        !backup ||
+        backup.targetId !== targetId ||
+        !backup.newVersion ||
+        backup.status !== 'failed'
+      ) {
+        throw new NotFoundException('재시도할 배포를 찾을 수 없습니다.');
+      }
 
-    const current = await this.secretStore.readLatest(targetId);
-    if (current.version !== backup.newVersion) {
-      throw new ConflictException(
-        '더 최신 환경 변수 버전이 있어 이전 배포를 재시도할 수 없습니다.',
-      );
-    }
+      const current = await this.secretStore.readLatest(targetId);
+      if (current.version !== backup.newVersion) {
+        throw new ConflictException(
+          '더 최신 환경 변수 버전이 있어 이전 배포를 재시도할 수 없습니다.',
+        );
+      }
 
-    const requestId = randomUUID();
-    await this.deployments.trigger({
-      targetId,
-      version: backup.newVersion,
-      requestId,
+      const requestId = randomUUID();
+      await this.deployments.trigger({
+        targetId,
+        version: backup.newVersion,
+        requestId,
+      });
+      backup.deploymentRequestId = requestId;
+      backup.deploymentRunId = null;
+      backup.deploymentUrl = null;
+      backup.errorMessage = null;
+      backup.status = 'deployment_queued';
+      await this.backups.save(backup);
+
+      return {
+        requestId,
+        state: 'queued' as const,
+        version: backup.newVersion,
+      };
     });
-    backup.deploymentRequestId = requestId;
-    backup.deploymentRunId = null;
-    backup.deploymentUrl = null;
-    backup.errorMessage = null;
-    backup.status = 'deployment_queued';
-    await this.backups.save(backup);
-
-    return { requestId, state: 'queued' as const, version: backup.newVersion };
   }
 
   private async mutate(
@@ -216,10 +249,11 @@ export class KeyManagementService {
     expectedVersion: string,
     operation: SecretBackupOperation,
     actor: KeyManagementActor,
-    createNext: (current: string) => string,
+    createNext: (current: string, target: KeyManagementTarget) => string,
     restoredFromBackupId: string | null = null,
   ): Promise<MutationResult> {
-    this.targets.get(targetId);
+    const target = await this.targets.get(targetId);
+    await this.assertNoActiveDeployment(targetId);
     const current = await this.secretStore.readLatest(targetId);
     if (current.version !== expectedVersion) {
       throw new ConflictException(
@@ -228,7 +262,8 @@ export class KeyManagementService {
     }
 
     const next = this.envDocument.normalizeAndValidate(
-      createNext(current.payload),
+      createNext(current.payload, target),
+      target.requiredKeys,
     );
     const changedKeys = this.envDocument.changedKeys(current.payload, next);
     if (changedKeys.length === 0) {
@@ -272,7 +307,11 @@ export class KeyManagementService {
         );
       }
 
-      const added = await this.secretStore.addVersion(targetId, next);
+      const added = await this.secretStore.addVersion(
+        targetId,
+        next,
+        current.version,
+      );
       backup.newVersion = added.version;
       backup.status = 'secret_created';
       await this.backups.save(backup);
@@ -319,9 +358,46 @@ export class KeyManagementService {
             : 'deployment_queued';
     backup.errorMessage =
       run.state === 'failed'
-        ? `GitHub Actions 배포 실패: ${run.conclusion ?? 'unknown'}`
+        ? `운영 배포 실패: ${run.conclusion ?? 'unknown'}`
         : null;
     await this.backups.save(backup);
+  }
+
+  private async assertNoActiveDeployment(targetId: string): Promise<void> {
+    const recent = await this.backups.findRecent(targetId, 30);
+    const active = recent.filter(
+      (backup) =>
+        backup.deploymentRequestId &&
+        ['deployment_queued', 'deployment_running'].includes(backup.status),
+    );
+    await Promise.all(
+      active.map((backup) => this.refreshDeploymentState(targetId, backup)),
+    );
+    if (
+      active.some((backup) =>
+        ['deployment_queued', 'deployment_running'].includes(backup.status),
+      )
+    ) {
+      throw new ConflictException(
+        '이 대상의 이전 배포가 진행 중입니다. 완료 후 다시 시도하세요.',
+      );
+    }
+  }
+
+  private async refreshDeploymentState(
+    targetId: string,
+    backup: SecretBackup,
+  ): Promise<void> {
+    if (!backup.deploymentRequestId) return;
+    try {
+      const run = await this.deployments.findByRequestId(
+        targetId,
+        backup.deploymentRequestId,
+      );
+      if (run) await this.applyDeploymentState(backup, run);
+    } catch {
+      // 외부 상태 조회 장애가 원장 조회를 막거나 잘못된 중복 배포를 허용하지 않게 마지막 상태를 유지한다.
+    }
   }
 
   private toBackupResponse(backup: SecretBackup) {
@@ -357,18 +433,57 @@ export class KeyManagementService {
     return '환경 변수 반영 단계에서 실패함';
   }
 
-  private async withUpdateLock<T>(operation: () => Promise<T>): Promise<T> {
-    const previous = this.updateQueue;
+  private toTargetResponse(
+    target: KeyManagementTarget,
+    state: {
+      version: string | null;
+      updatedAt: string | null;
+      checksum: string | null;
+      keys: string[];
+      connectionStatus: 'healthy' | 'unavailable';
+      connectionError: string | null;
+    },
+  ) {
+    return {
+      id: target.id,
+      displayName: target.displayName,
+      description: target.description,
+      environment: target.environment,
+      provider: target.provider,
+      deploymentProvider: target.deploymentProvider,
+      envFileName: target.envFileName,
+      instanceName: target.instanceName,
+      location: target.location,
+      requiredKeys: [...target.requiredKeys],
+      version: state.version,
+      updatedAt: state.updatedAt,
+      checksum: state.checksum,
+      keyCount: state.keys.length,
+      keys: state.keys,
+      connectionStatus: state.connectionStatus,
+      connectionError: state.connectionError,
+    };
+  }
+
+  private async withUpdateLock<T>(
+    targetId: string,
+    operation: () => Promise<T>,
+  ): Promise<T> {
+    const previous = this.updateQueues.get(targetId) ?? Promise.resolve();
     let release: () => void = () => undefined;
-    this.updateQueue = new Promise<void>((resolve) => {
+    const current = new Promise<void>((resolve) => {
       release = resolve;
     });
+    this.updateQueues.set(targetId, current);
 
     await previous;
     try {
       return await operation();
     } finally {
       release();
+      if (this.updateQueues.get(targetId) === current) {
+        this.updateQueues.delete(targetId);
+      }
     }
   }
 }

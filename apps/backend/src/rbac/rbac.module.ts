@@ -5,6 +5,8 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { User } from './domain/entities/user.entity';
 import { Role } from './domain/entities/role.entity';
 import { Permission } from './domain/entities/permission.entity';
+import { KeyManagementTargetAccess } from './domain/entities/key-management-target-access.entity';
+import { KEY_MANAGEMENT_TARGET_ACCESS_REPOSITORY } from './domain/repositories/key-management-target-access.repository.interface';
 import { USER_REPOSITORY } from './domain/repositories/user.repository.interface';
 import { ROLE_REPOSITORY } from './domain/repositories/role.repository.interface';
 import { PERMISSION_REPOSITORY } from './domain/repositories/permission.repository.interface';
@@ -23,6 +25,7 @@ import {
 } from './application/use-cases';
 import { RbacSeedService } from './application/services/rbac-seed.service';
 import { WsPermissionService } from './application/services/ws-permission.service';
+import { KeyManagementTargetAccessService } from './application/services/key-management-target-access.service';
 
 // Infrastructure 계층
 import {
@@ -30,6 +33,7 @@ import {
   TypeOrmRoleRepository,
 } from './infrastructure/repositories';
 import { TypeOrmPermissionRepository } from './infrastructure/repositories/typeorm-permission.repository';
+import { TypeOrmKeyManagementTargetAccessRepository } from './infrastructure/repositories/typeorm-key-management-target-access.repository';
 
 // Presentation 계층
 import { RbacController } from './presentation/controllers/rbac.controller';
@@ -45,7 +49,14 @@ import { RbacController } from './presentation/controllers/rbac.controller';
  * - Presentation: 컨트롤러 (Application에 의존)
  */
 @Module({
-  imports: [TypeOrmModule.forFeature([User, Role, Permission])],
+  imports: [
+    TypeOrmModule.forFeature([
+      User,
+      Role,
+      Permission,
+      KeyManagementTargetAccess,
+    ]),
+  ],
   controllers: [RbacController],
   providers: [
     // 유스케이스
@@ -61,6 +72,7 @@ import { RbacController } from './presentation/controllers/rbac.controller';
 
     // 애플리케이션 서비스
     RbacSeedService,
+    KeyManagementTargetAccessService,
     // 웹소켓 권한 확인 — terminal / claude-chat / openai-chat 게이트웨이가 사용
     WsPermissionService,
 
@@ -77,6 +89,10 @@ import { RbacController } from './presentation/controllers/rbac.controller';
       provide: PERMISSION_REPOSITORY,
       useClass: TypeOrmPermissionRepository,
     },
+    {
+      provide: KEY_MANAGEMENT_TARGET_ACCESS_REPOSITORY,
+      useClass: TypeOrmKeyManagementTargetAccessRepository,
+    },
   ],
   exports: [
     // 다른 모듈(예: TerminalModule)을 위한 리포지토리 토큰 공개
@@ -85,6 +101,7 @@ import { RbacController } from './presentation/controllers/rbac.controller';
 
     // 웹소켓 권한 확인 서비스 공개 (terminal / claude-chat / openai-chat 게이트웨이)
     WsPermissionService,
+    KeyManagementTargetAccessService,
 
     // 다른 모듈에서 재사용할 수 있도록 유스케이스 공개
     CreateUserUseCase,

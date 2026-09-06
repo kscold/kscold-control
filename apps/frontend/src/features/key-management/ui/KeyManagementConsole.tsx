@@ -5,6 +5,7 @@ import {
   Clipboard,
   CloudCog,
   Code2,
+  Database,
   Eye,
   EyeOff,
   FileClock,
@@ -52,6 +53,24 @@ function formatDate(value: string | null) {
   }).format(new Date(value));
 }
 
+function formatVersion(value: string | null) {
+  if (!value) return '-';
+  if (/^[a-f0-9]{64}$/.test(value)) return `sha256:${value.slice(0, 12)}`;
+  return `v${value}`;
+}
+
+function providerLabel(provider: string | null | undefined) {
+  if (provider === 'gcp-secret-manager') return 'GCP Secret Manager';
+  if (provider === 'ssh-env-file') return 'SSH env file';
+  return '저장소 메타데이터 동기화 중';
+}
+
+function deploymentLabel(provider: string | null | undefined) {
+  if (provider === 'github-actions') return 'GitHub Actions';
+  if (provider === 'ssh-blue-green') return 'SSH blue/green';
+  return '배포 메타데이터 동기화 중';
+}
+
 function BackupRow({
   backup,
   disabled,
@@ -69,9 +88,9 @@ function BackupRow({
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div>
           <div className="flex items-center gap-2 text-sm font-semibold text-slate-100">
-            <span>v{backup.sourceVersion}</span>
+            <span>{formatVersion(backup.sourceVersion)}</span>
             <span className="text-slate-600">to</span>
-            <span>{backup.newVersion ? `v${backup.newVersion}` : '-'}</span>
+            <span>{formatVersion(backup.newVersion)}</span>
           </div>
           <p className="mt-1 text-xs text-slate-500">
             {formatDate(backup.createdAt)} · {backup.actorEmail ?? 'system'}
@@ -134,6 +153,8 @@ function BackupRow({
 
 export function KeyManagementConsole() {
   const {
+    targets,
+    selectedTargetId,
     target,
     backups,
     revealed,
@@ -143,6 +164,7 @@ export function KeyManagementConsole() {
     error,
     setEditorValue,
     clearReveal,
+    selectTarget,
     load,
     reveal,
     save,
@@ -160,15 +182,15 @@ export function KeyManagementConsole() {
   };
 
   const confirmSave = () => {
-    if (!revealed || !hasChanges) return;
+    if (!revealed || !hasChanges || !target) return;
     showConfirm(
-      '현재 Secret Manager 값을 PostgreSQL에 암호화 백업한 뒤 새 버전을 만들고 GoLe 운영 배포를 시작합니다. 계속할까요?',
+      `현재 ${target.envFileName || '.env'} 값을 PostgreSQL에 암호화 백업한 뒤 ${providerLabel(target.provider)}에 반영하고 ${deploymentLabel(target.deploymentProvider)} 배포를 시작합니다. 계속할까요?`,
       () => {
         void save()
           .then((result) => {
             if (!result) return;
             showAlert(
-              `Secret v${result.version} 생성 및 배포 요청이 완료되었습니다.\n변경 키: ${result.changedKeys.join(', ')}`,
+              `${formatVersion(result.version)} 반영 및 배포 요청이 완료되었습니다.\n변경 키: ${result.changedKeys.join(', ')}`,
               '배포 요청 완료',
             );
           })
@@ -180,13 +202,13 @@ export function KeyManagementConsole() {
 
   const confirmRestore = (backup: SecretBackup) => {
     showConfirm(
-      `v${backup.sourceVersion} 당시 값으로 복원할까요? 현재 값도 먼저 PostgreSQL에 새 암호화 백업으로 저장됩니다.`,
+      `${formatVersion(backup.sourceVersion)} 당시 값으로 복원할까요? 현재 값도 먼저 PostgreSQL에 새 암호화 백업으로 저장됩니다.`,
       () => {
         void restore(backup.id)
           .then((result) => {
             if (result) {
               showAlert(
-                `복원용 Secret v${result.version} 생성 및 배포를 요청했습니다.`,
+                `복원용 ${formatVersion(result.version)} 반영 및 배포를 요청했습니다.`,
                 '복원 요청 완료',
               );
             }
@@ -215,11 +237,17 @@ export function KeyManagementConsole() {
     );
   }
 
+  const expectedVersion = target.version ?? 'CURRENT_VERSION';
+  const targetUnavailable = target.connectionStatus === 'unavailable';
+  const runtimeLabel =
+    [target.instanceName, target.location].filter(Boolean).join(' · ') ||
+    '런타임 메타데이터 동기화 중';
+  const envFileName = target.envFileName || '.env';
   const patchCommand = `curl -X PATCH 'https://control.kscold.com/api/key-management/targets/${target.id}/environment/MY_KEY' \\
   -H 'Authorization: Bearer $TOKEN' \\
   -H 'Content-Type: application/json' \\
-  --data '{"secretValue":"new-value","expectedVersion":"${target.version}"}'`;
-  const fullCommand = `jq -n --rawfile env .env --arg version '${target.version}' \\
+  --data '{"secretValue":"new-value","expectedVersion":"${expectedVersion}"}'`;
+  const fullCommand = `jq -n --rawfile env ${target.envFileName} --arg version '${expectedVersion}' \\
   '{envFile: $env, expectedVersion: $version}' | \\
 curl -X PUT 'https://control.kscold.com/api/key-management/targets/${target.id}/environment' \\
   -H 'Authorization: Bearer $TOKEN' \\
@@ -233,14 +261,15 @@ curl -X PUT 'https://control.kscold.com/api/key-management/targets/${target.id}/
           <div className="relative flex flex-col justify-between gap-6 lg:flex-row lg:items-end">
             <div>
               <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-amber-300/20 bg-amber-300/10 px-3 py-1 text-xs font-semibold tracking-[0.18em] text-amber-200">
-                <ShieldCheck size={14} /> PRODUCTION KEY VAULT
+                <ShieldCheck size={14} /> MULTI-TARGET PRODUCTION VAULT
               </div>
               <h1 className="text-2xl font-bold tracking-tight text-white sm:text-4xl">
-                GoLe 환경 변수 운영실
+                {target.displayName} 환경 변수 운영실
               </h1>
               <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-400">
-                수정 전 DB 암호화 백업, Secret Manager 불변 버전, GCP 배포와
-                실패 롤백을 하나의 흐름으로 처리합니다.
+                {target.description || '운영 환경 변수 대상'} · 수정 전 암호화
+                백업부터 반영, 배포 상태 추적, 복원까지 하나의 원장으로
+                처리합니다.
               </p>
             </div>
             <div className="flex flex-wrap gap-2">
@@ -267,7 +296,7 @@ curl -X PUT 'https://control.kscold.com/api/key-management/targets/${target.id}/
               ) : (
                 <button
                   type="button"
-                  disabled={isWorking}
+                  disabled={isWorking || targetUnavailable || !target.version}
                   onClick={() => void reveal()}
                   className="inline-flex items-center gap-2 rounded-xl bg-amber-400 px-4 py-2.5 text-sm font-bold text-slate-950 hover:bg-amber-300 disabled:opacity-50"
                 >
@@ -284,12 +313,96 @@ curl -X PUT 'https://control.kscold.com/api/key-management/targets/${target.id}/
           </div>
         )}
 
+        <section className="mt-5 rounded-2xl border border-slate-800 bg-slate-900/45 p-4 sm:p-5">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <Database size={17} className="text-sky-300" />
+              <h2 className="font-semibold text-white">운영 대상</h2>
+            </div>
+            <span className="font-mono text-[11px] text-slate-500">
+              PostgreSQL registry · {targets.length} targets
+            </span>
+          </div>
+          <div className="mt-4 grid gap-3 md:grid-cols-2">
+            {targets.map((item) => {
+              const selected = item.id === selectedTargetId;
+              const healthy =
+                item.connectionStatus === 'healthy' ||
+                (!item.connectionStatus && Boolean(item.version));
+              return (
+                <button
+                  key={item.id}
+                  type="button"
+                  disabled={isWorking}
+                  onClick={() => void selectTarget(item.id)}
+                  aria-pressed={selected}
+                  className={`group rounded-xl border p-4 text-left transition-colors disabled:cursor-wait disabled:opacity-60 ${
+                    selected
+                      ? 'border-amber-400/60 bg-amber-400/[0.07]'
+                      : 'border-slate-800 bg-slate-950/45 hover:border-slate-600'
+                  }`}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="truncate font-semibold text-slate-100">
+                        {item.displayName}
+                      </p>
+                      <p className="mt-1 truncate font-mono text-[11px] text-slate-500">
+                        {item.id}
+                      </p>
+                    </div>
+                    <span
+                      className={`shrink-0 rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider ${
+                        healthy
+                          ? 'bg-emerald-950/70 text-emerald-300'
+                          : 'bg-red-950/70 text-red-300'
+                      }`}
+                    >
+                      {healthy ? 'connected' : 'unavailable'}
+                    </span>
+                  </div>
+                  <div className="mt-3 flex flex-wrap gap-2 text-[11px] text-slate-400">
+                    <span className="rounded-md bg-slate-900 px-2 py-1">
+                      {providerLabel(item.provider)}
+                    </span>
+                    <span className="rounded-md bg-slate-900 px-2 py-1">
+                      {deploymentLabel(item.deploymentProvider)}
+                    </span>
+                    <span className="rounded-md bg-slate-900 px-2 py-1 font-mono">
+                      {formatVersion(item.version)}
+                    </span>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </section>
+
+        {targetUnavailable && (
+          <div className="mt-4 flex items-start gap-3 rounded-xl border border-red-900/70 bg-red-950/30 px-4 py-3 text-sm text-red-200">
+            <AlertTriangle className="mt-0.5 shrink-0" size={17} />
+            <div>
+              <p className="font-semibold">
+                {target.displayName} 연결 확인 필요
+              </p>
+              <p className="mt-1 text-xs text-red-300/80">
+                {target.connectionError} 새로고침으로 다시 확인할 수 있으며,
+                연결 전에는 공개·수정·복원이 차단됩니다.
+              </p>
+            </div>
+          </div>
+        )}
+
         <section className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
           {[
             ['Target', target.id, ServerCog],
-            ['Secret version', `v${target.version}`, FileClock],
-            ['Environment keys', `${target.keyCount} keys`, KeyRound],
-            ['GCP instance', target.instanceName, CloudCog],
+            ['Current version', formatVersion(target.version), FileClock],
+            [
+              'Environment keys',
+              `${target.keyCount ?? target.keys?.length ?? 0} keys`,
+              KeyRound,
+            ],
+            ['Runtime', runtimeLabel, CloudCog],
           ].map(([label, value, Icon]) => (
             <div
               key={String(label)}
@@ -309,10 +422,10 @@ curl -X PUT 'https://control.kscold.com/api/key-management/targets/${target.id}/
           <section className="min-w-0 overflow-hidden rounded-2xl border border-slate-800 bg-slate-900/45">
             <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 px-4 py-3 sm:px-5">
               <div>
-                <h2 className="font-semibold text-white">gole.env</h2>
+                <h2 className="font-semibold text-white">{envFileName}</h2>
                 <p className="mt-0.5 text-xs text-slate-500">
                   {revealed
-                    ? `v${revealed.version} · 60초 후 브라우저 메모리에서 제거`
+                    ? `${formatVersion(revealed.version)} · 60초 후 브라우저 메모리에서 제거`
                     : '값은 기본적으로 마스킹됩니다.'}
                 </p>
               </div>
@@ -348,7 +461,7 @@ curl -X PUT 'https://control.kscold.com/api/key-management/targets/${target.id}/
                 spellCheck={false}
                 autoComplete="off"
                 className="block h-[540px] w-full resize-y bg-[#071018] p-5 font-mono text-[13px] leading-6 text-slate-200 outline-none selection:bg-amber-400/30"
-                aria-label="GoLe 운영 환경 변수 편집기"
+                aria-label={`${target.displayName} 운영 환경 변수 편집기`}
               />
             ) : (
               <div className="min-h-[540px] bg-[#071018] p-5">
@@ -392,7 +505,9 @@ curl -X PUT 'https://control.kscold.com/api/key-management/targets/${target.id}/
                     <BackupRow
                       key={backup.id}
                       backup={backup}
-                      disabled={isWorking}
+                      disabled={
+                        isWorking || targetUnavailable || !target.version
+                      }
                       onRestore={() => confirmRestore(backup)}
                       onRetry={() => void retry(backup.id)}
                     />

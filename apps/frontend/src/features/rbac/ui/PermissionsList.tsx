@@ -87,8 +87,8 @@ const PERMISSION_GROUPS = [
   },
   {
     id: 'secrets',
-    title: 'GoLe 운영 키',
-    description: '환경 변수 조회, 복호화, 수정, 배포',
+    title: '운영 키 관리',
+    description: '다중 운영 대상 환경 변수 조회, 복호화, 수정, 배포',
     routes: ['운영 키'],
     icon: KeyRound,
     accent: 'border-amber-400/30 bg-amber-400/5 text-amber-200',

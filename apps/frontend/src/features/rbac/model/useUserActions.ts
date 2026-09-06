@@ -91,12 +91,34 @@ export function useUserActions(onSuccess?: () => void) {
     try {
       setLoading(true);
       await rbacService.approveKeyManager(userId);
-      showAlert('대시보드 조회와 GoLe 키 관리 접근을 승인했습니다.');
+      showAlert('대시보드 조회와 운영 키 관리 접근을 승인했습니다.');
       onSuccess?.();
       return true;
     } catch (error) {
       showAlert(
         error instanceof Error ? error.message : '키 관리 접근 승인 실패',
+      );
+      return false;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const updateKeyManagementTargetAccess = async (
+    userId: string,
+    targetIds: string[],
+  ) => {
+    try {
+      setLoading(true);
+      await rbacService.updateKeyManagementTargetAccess(userId, targetIds);
+      showAlert('운영 키 대상 범위를 변경했습니다.');
+      onSuccess?.();
+      return true;
+    } catch (error) {
+      showAlert(
+        error instanceof Error
+          ? error.message
+          : '운영 키 대상 범위 변경에 실패했습니다.',
       );
       return false;
     } finally {
@@ -167,6 +189,7 @@ export function useUserActions(onSuccess?: () => void) {
     deleteUser,
     assignRoles,
     approveKeyManager,
+    updateKeyManagementTargetAccess,
     resetTerminalLimit,
     updateTerminalLimit,
     previewAsUser,

@@ -1,6 +1,14 @@
 import { useState } from 'react';
-import { Users, Edit2, Eye, Key, Trash2, UserCheck } from 'lucide-react';
-import type { User } from '@/entities/user';
+import {
+  Users,
+  Edit2,
+  Eye,
+  Key,
+  KeyRound,
+  Trash2,
+  UserCheck,
+} from 'lucide-react';
+import type { KeyManagementAccessTarget, User } from '@/entities/user';
 import { ROLES } from '@/shared/config/roles';
 
 interface UserListProps {
@@ -12,6 +20,12 @@ interface UserListProps {
   onUpdateTerminalLimit: (userId: string, limit: number) => Promise<boolean>;
   onCreateUser: () => void;
   onApproveKeyManager: (userId: string) => Promise<boolean>;
+  keyManagementTargets: KeyManagementAccessTarget[];
+  keyManagementAssignments: Record<string, string[]>;
+  onUpdateKeyManagementTargets: (
+    userId: string,
+    targetIds: string[],
+  ) => Promise<boolean>;
   onPreviewUser: (user: User) => void;
 }
 
@@ -48,6 +62,9 @@ export function UserList({
   onUpdateTerminalLimit,
   onCreateUser,
   onApproveKeyManager,
+  keyManagementTargets,
+  keyManagementAssignments,
+  onUpdateKeyManagementTargets,
   onPreviewUser,
 }: UserListProps) {
   const [editingUserId, setEditingUserId] = useState<string | null>(null);
@@ -56,6 +73,10 @@ export function UserList({
     string | null
   >(null);
   const [editTerminalLimit, setEditTerminalLimit] = useState<number>(10);
+  const [editingTargetAccessId, setEditingTargetAccessId] = useState<
+    string | null
+  >(null);
+  const [draftTargetIds, setDraftTargetIds] = useState<string[]>([]);
 
   const handleSavePassword = async (userId: string) => {
     const success = await onUpdatePassword(userId, editPassword);
@@ -70,6 +91,11 @@ export function UserList({
     if (success) {
       setEditingTerminalLimitId(null);
     }
+  };
+
+  const handleSaveTargetAccess = async (userId: string) => {
+    const success = await onUpdateKeyManagementTargets(userId, draftTargetIds);
+    if (success) setEditingTargetAccessId(null);
   };
 
   return (
@@ -96,6 +122,12 @@ export function UserList({
             (role) =>
               role.name === ROLES.ADMIN || role.name === ROLES.SUPER_ADMIN,
           );
+          const isKeyManager = user.roles.some(
+            (role) => role.name === ROLES.KEY_MANAGER,
+          );
+          const assignedTargetIds = isGlobalAdmin
+            ? keyManagementTargets.map((target) => target.id)
+            : (keyManagementAssignments[user.id] ?? []);
           return (
             <div
               key={user.id}
@@ -190,6 +222,100 @@ export function UserList({
                       </div>
                     )}
                   </div>
+                  {(isGlobalAdmin || isKeyManager) && (
+                    <div className="mt-3 rounded-lg border border-cyan-400/20 bg-slate-950/35 p-2.5">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-cyan-100">
+                          <KeyRound size={14} /> 운영 키 범위
+                        </span>
+                        {isGlobalAdmin ? (
+                          <span className="text-[11px] text-slate-400">
+                            관리자 전체 접근
+                          </span>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setEditingTargetAccessId(user.id);
+                              setDraftTargetIds(assignedTargetIds);
+                            }}
+                            className="rounded border border-cyan-400/30 px-2 py-1 text-[11px] font-semibold text-cyan-100 hover:bg-cyan-400/10"
+                          >
+                            범위 변경
+                          </button>
+                        )}
+                      </div>
+                      <div className="mt-2 flex flex-wrap gap-1.5">
+                        {assignedTargetIds.length > 0 ? (
+                          keyManagementTargets
+                            .filter((target) =>
+                              assignedTargetIds.includes(target.id),
+                            )
+                            .map((target) => (
+                              <span
+                                key={target.id}
+                                className="rounded-md border border-cyan-400/20 bg-cyan-400/10 px-2 py-1 text-[11px] text-cyan-100"
+                              >
+                                {target.displayName}
+                              </span>
+                            ))
+                        ) : (
+                          <span className="text-[11px] text-amber-300">
+                            배정된 운영 키 대상 없음
+                          </span>
+                        )}
+                      </div>
+                      {editingTargetAccessId === user.id && (
+                        <div className="mt-3 space-y-2 border-t border-white/10 pt-3">
+                          {keyManagementTargets.map((target) => (
+                            <label
+                              key={target.id}
+                              className="flex cursor-pointer items-center justify-between gap-3 rounded-md border border-white/10 bg-slate-900/70 px-2.5 py-2 text-xs text-slate-200"
+                            >
+                              <span>
+                                {target.displayName}
+                                <span className="ml-2 text-[10px] uppercase text-slate-500">
+                                  {target.environment}
+                                </span>
+                              </span>
+                              <input
+                                type="checkbox"
+                                checked={draftTargetIds.includes(target.id)}
+                                onChange={(event) =>
+                                  setDraftTargetIds((current) =>
+                                    event.target.checked
+                                      ? [...current, target.id]
+                                      : current.filter(
+                                          (id) => id !== target.id,
+                                        ),
+                                  )
+                                }
+                                className="h-4 w-4 accent-cyan-400"
+                              />
+                            </label>
+                          ))}
+                          <div className="flex gap-2">
+                            <button
+                              type="button"
+                              onClick={() =>
+                                void handleSaveTargetAccess(user.id)
+                              }
+                              className="rounded bg-cyan-500 px-3 py-1.5 text-xs font-bold text-slate-950 hover:bg-cyan-400"
+                            >
+                              범위 저장
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setEditingTargetAccessId(null)}
+                              className="rounded border border-white/15 px-3 py-1.5 text-xs text-slate-300 hover:bg-white/5"
+                            >
+                              취소
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
                   {editingUserId === user.id && (
                     <div className="mt-2 flex gap-2">
                       <input
@@ -222,7 +348,7 @@ export function UserList({
                       onClick={() => void onApproveKeyManager(user.id)}
                       className="mt-3 inline-flex items-center gap-2 rounded-lg bg-amber-400 px-3 py-2 text-xs font-bold text-slate-950 hover:bg-amber-300"
                     >
-                      <UserCheck size={15} /> 대시보드 + GoLe 키 관리자 승인
+                      <UserCheck size={15} /> 대시보드 + 운영 키 관리자 승인
                     </button>
                   )}
                   {!isGlobalAdmin && (

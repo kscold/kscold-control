@@ -14,8 +14,9 @@ import {
   USER_REPOSITORY,
 } from '../../domain/repositories/user.repository.interface';
 import { UserResponseDto } from '../dto/user-response.dto';
+import { KeyManagementTargetAccessService } from '../services/key-management-target-access.service';
 
-/** 승인 대기 사용자를 대시보드 조회가 가능한 GoLe 키 관리자 역할로 전환한다. */
+/** 승인 대기 사용자를 대시보드 조회가 가능한 운영 키 관리자 역할로 전환한다. */
 @Injectable()
 export class ApproveKeyManagerUseCase {
   constructor(
@@ -23,9 +24,10 @@ export class ApproveKeyManagerUseCase {
     private readonly userRepository: IUserRepository,
     @Inject(ROLE_REPOSITORY)
     private readonly roleRepository: IRoleRepository,
+    private readonly targetAccess: KeyManagementTargetAccessService,
   ) {}
 
-  async execute(userId: string): Promise<UserResponseDto> {
+  async execute(userId: string, actorId: string): Promise<UserResponseDto> {
     const user = await this.userRepository.findByIdWithRoles(userId);
     if (!user) {
       throw new NotFoundException('사용자를 찾을 수 없습니다.');
@@ -51,6 +53,7 @@ export class ApproveKeyManagerUseCase {
     user.terminalCommandLimit = 0;
     const saved = await this.userRepository.save(user);
     saved.roles = [keyManagerRole];
+    await this.targetAccess.ensureDefaultTarget(saved.id, actorId);
 
     return UserResponseDto.fromEntity(saved, true);
   }

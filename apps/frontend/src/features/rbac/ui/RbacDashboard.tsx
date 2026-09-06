@@ -1,6 +1,11 @@
 import { useState } from 'react';
-import { Shield } from 'lucide-react';
-import { useUsers, useRoles, useUserActions } from '../model';
+import { AlertTriangle, RefreshCw, Shield } from 'lucide-react';
+import {
+  useUsers,
+  useRoles,
+  useUserActions,
+  useKeyManagementAccess,
+} from '../model';
 import { RoleList } from './RoleList';
 import { UserList } from './UserList';
 import { CreateUserModal } from './CreateUserModal';
@@ -15,15 +20,25 @@ export function RbacDashboard() {
   const { users, loading: usersLoading, reload: reloadUsers } = useUsers();
   const { roles, permissions, loading: rolesLoading } = useRoles();
   const {
+    targets: keyManagementTargets,
+    assignments: keyManagementAssignments,
+    loading: keyManagementAccessLoading,
+    error: keyManagementAccessError,
+    reload: reloadKeyManagementAccess,
+  } = useKeyManagementAccess();
+  const {
     createUser,
     updatePassword,
     deleteUser,
     assignRoles,
     approveKeyManager,
+    updateKeyManagementTargetAccess,
     resetTerminalLimit,
     updateTerminalLimit,
     previewAsUser,
-  } = useUserActions(reloadUsers);
+  } = useUserActions(() => {
+    void Promise.all([reloadUsers(), reloadKeyManagementAccess()]);
+  });
 
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
@@ -45,10 +60,33 @@ export function RbacDashboard() {
     return success;
   };
 
-  if (usersLoading || rolesLoading) {
+  if (usersLoading || rolesLoading || keyManagementAccessLoading) {
     return (
       <div className="flex items-center justify-center h-full">
         <div className="text-white">Loading...</div>
+      </div>
+    );
+  }
+
+  if (keyManagementAccessError) {
+    return (
+      <div className="flex h-full items-center justify-center bg-gray-900 p-6">
+        <div className="max-w-md rounded-2xl border border-amber-500/30 bg-amber-950/20 p-6 text-amber-100">
+          <AlertTriangle size={22} />
+          <h1 className="mt-3 font-semibold">
+            운영 키 범위를 확인하지 못했습니다
+          </h1>
+          <p className="mt-2 text-sm text-amber-200/70">
+            범위를 모르는 상태에서는 권한 변경을 안전하게 중단합니다.
+          </p>
+          <button
+            type="button"
+            onClick={() => void reloadKeyManagementAccess()}
+            className="mt-4 inline-flex items-center gap-2 rounded-lg border border-amber-400/30 px-3 py-2 text-sm hover:bg-amber-400/10"
+          >
+            <RefreshCw size={15} /> 다시 불러오기
+          </button>
+        </div>
       </div>
     );
   }
@@ -76,6 +114,9 @@ export function RbacDashboard() {
           onUpdateTerminalLimit={updateTerminalLimit}
           onCreateUser={() => setShowCreateModal(true)}
           onApproveKeyManager={approveKeyManager}
+          keyManagementTargets={keyManagementTargets}
+          keyManagementAssignments={keyManagementAssignments}
+          onUpdateKeyManagementTargets={updateKeyManagementTargetAccess}
           onPreviewUser={previewAsUser}
         />
       </div>

@@ -7,6 +7,8 @@ import {
   AssignRolesRequest,
   UpdateTerminalLimitRequest,
   ImpersonationResponse,
+  KeyManagementAccessMatrix,
+  KeyManagementTargetAssignment,
 } from './types';
 
 /**
@@ -100,7 +102,7 @@ export class RbacService extends BaseApiService {
     }
   }
 
-  /** 승인 대기 사용자를 GoLe 키 관리자로 전환한다. */
+  /** 승인 대기 사용자를 운영 키 관리자로 전환한다. */
   async approveKeyManager(userId: string): Promise<User> {
     try {
       const { data } = await api.post<User>(
@@ -109,6 +111,34 @@ export class RbacService extends BaseApiService {
       return data;
     } catch (error) {
       this.handleError(error, '키 관리 접근 승인에 실패했습니다.');
+    }
+  }
+
+  /** 사용자별로 접근할 수 있는 운영 키 대상을 조회한다. */
+  async getKeyManagementTargetAccess(): Promise<KeyManagementAccessMatrix> {
+    try {
+      const { data } = await api.get<KeyManagementAccessMatrix>(
+        `${this.basePath}/key-management-target-access`,
+      );
+      return data;
+    } catch (error) {
+      this.handleError(error, '운영 키 대상 범위를 불러오지 못했습니다.');
+    }
+  }
+
+  /** 한 사용자의 운영 키 대상 범위를 원자적으로 교체한다. */
+  async updateKeyManagementTargetAccess(
+    userId: string,
+    targetIds: string[],
+  ): Promise<KeyManagementTargetAssignment> {
+    try {
+      const { data } = await api.put<KeyManagementTargetAssignment>(
+        `${this.basePath}/users/${userId}/key-management-target-access`,
+        { targetIds },
+      );
+      return data;
+    } catch (error) {
+      this.handleError(error, '운영 키 대상 범위를 변경하지 못했습니다.');
     }
   }
 

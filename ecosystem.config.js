@@ -1,3 +1,5 @@
+const path = require('node:path');
+
 const databaseUrl = process.env.DATABASE_URL;
 const jwtSecret = process.env.JWT_SECRET;
 
@@ -41,6 +43,9 @@ module.exports = {
           'unix:///Users/kscold/.colima/default/docker.sock',
         JWT_SECRET: jwtSecret,
         FRONTEND_URL: process.env.FRONTEND_URL || 'https://control.kscold.com',
+        CONTROL_FRONTEND_DIST_PATH:
+          process.env.CONTROL_FRONTEND_DIST_PATH ||
+          path.join(__dirname, '.runtime', 'frontend-current'),
         CLAUDE_WORKING_DIR:
           process.env.CLAUDE_WORKING_DIR || '/Users/kscold/Desktop',
         REPOSITORY_STORAGE_DIR:
@@ -48,22 +53,11 @@ module.exports = {
           '/Users/kscold/repository-storage',
         KEY_MANAGEMENT_ENCRYPTION_KEY:
           process.env.KEY_MANAGEMENT_ENCRYPTION_KEY,
-        KEY_MANAGEMENT_GCP_PROJECT_ID:
-          process.env.KEY_MANAGEMENT_GCP_PROJECT_ID,
-        KEY_MANAGEMENT_GCP_SECRET_NAME:
-          process.env.KEY_MANAGEMENT_GCP_SECRET_NAME,
-        KEY_MANAGEMENT_GCP_SERVICE_ACCOUNT:
-          process.env.KEY_MANAGEMENT_GCP_SERVICE_ACCOUNT,
-        KEY_MANAGEMENT_GCP_INSTANCE: process.env.KEY_MANAGEMENT_GCP_INSTANCE,
-        KEY_MANAGEMENT_GCP_ZONE: process.env.KEY_MANAGEMENT_GCP_ZONE,
-        KEY_MANAGEMENT_GITHUB_REPOSITORY:
-          process.env.KEY_MANAGEMENT_GITHUB_REPOSITORY,
-        KEY_MANAGEMENT_GITHUB_WORKFLOW:
-          process.env.KEY_MANAGEMENT_GITHUB_WORKFLOW,
-        KEY_MANAGEMENT_GITHUB_REF: process.env.KEY_MANAGEMENT_GITHUB_REF,
-        KEY_MANAGEMENT_REQUIRED_KEYS: process.env.KEY_MANAGEMENT_REQUIRED_KEYS,
         KEY_MANAGEMENT_GCLOUD_PATH: process.env.KEY_MANAGEMENT_GCLOUD_PATH,
         KEY_MANAGEMENT_GH_PATH: process.env.KEY_MANAGEMENT_GH_PATH,
+        KEY_MANAGEMENT_SSH_PATH: process.env.KEY_MANAGEMENT_SSH_PATH,
+        KEY_MANAGEMENT_SSH_IDENTITY_DIR:
+          process.env.KEY_MANAGEMENT_SSH_IDENTITY_DIR,
         ...definedEnvironment([
           'ADMIN_EMAIL',
           'ADMIN_PASSWORD',

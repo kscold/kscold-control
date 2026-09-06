@@ -10,7 +10,7 @@ PORTONE_ENABLED=false
 `;
 
 describe('EnvDocumentService', () => {
-  const service = new EnvDocumentService({ get: jest.fn() } as any);
+  const service = new EnvDocumentService();
 
   it('키 값만 교체하고 나머지 줄은 보존한다', () => {
     const next = service.setKey(validEnv, 'PORTONE_ENABLED', 'true');
@@ -28,7 +28,13 @@ describe('EnvDocumentService', () => {
 
   it('필수 키 누락을 거절한다', () => {
     expect(() =>
-      service.normalizeAndValidate('GOLE_ENVIRONMENT=staging\n'),
+      service.normalizeAndValidate('GOLE_ENVIRONMENT=staging\n', [
+        'MONGODB_URI',
+        'MONGODB_DATABASE',
+        'REDIS_HOST',
+        'REDIS_PORT',
+        'GOLE_ENVIRONMENT',
+      ]),
     ).toThrow('필수 환경 변수 누락');
   });
 
@@ -36,5 +42,24 @@ describe('EnvDocumentService', () => {
     expect(() =>
       service.setKey(validEnv, 'NEW_KEY', 'safe\nINJECTED=1'),
     ).toThrow(BadRequestException);
+  });
+
+  it('대상별 필수 키 목록으로 Pawpong env를 검증한다', () => {
+    const pawpong = `NODE_ENV=production
+MONGODB_URI=mongodb://mongo/pawpong
+REDIS_HOST=redis
+REDIS_PORT=6379
+JWT_SECRET=secret
+`;
+
+    expect(
+      service.normalizeAndValidate(pawpong, [
+        'NODE_ENV',
+        'MONGODB_URI',
+        'REDIS_HOST',
+        'REDIS_PORT',
+        'JWT_SECRET',
+      ]),
+    ).toBe(pawpong);
   });
 });

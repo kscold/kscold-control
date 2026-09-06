@@ -1,4 +1,8 @@
-import { Injectable, ServiceUnavailableException } from '@nestjs/common';
+import {
+  ConflictException,
+  Injectable,
+  ServiceUnavailableException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import {
   AddedSecretVersion,
@@ -6,6 +10,7 @@ import {
   SecretStoreVersion,
 } from '../../domain/gateways/secret-store.gateway.interface';
 import { KeyManagementTargetService } from '../../application/services/key-management-target.service';
+import type { GcpSecretStoreConfig } from '../../domain/types/key-management-target.type';
 import { runProcess } from './process-runner';
 
 interface GcloudVersionDescription {
@@ -16,7 +21,6 @@ interface GcloudVersionDescription {
 @Injectable()
 export class GcpSecretManagerGateway implements ISecretStoreGateway {
   private readonly gcloudPath: string;
-  private readonly serviceAccount: string;
 
   constructor(
     config: ConfigService,
@@ -25,18 +29,17 @@ export class GcpSecretManagerGateway implements ISecretStoreGateway {
     this.gcloudPath =
       config.get<string>('KEY_MANAGEMENT_GCLOUD_PATH') ??
       '/opt/homebrew/bin/gcloud';
-    this.serviceAccount =
-      config.get<string>('KEY_MANAGEMENT_GCP_SERVICE_ACCOUNT') ??
-      'kscold-control-secrets@project-72a52bf1-06aa-4519-b2c.iam.gserviceaccount.com';
   }
 
   async readLatest(targetId: string): Promise<SecretStoreVersion> {
-    const target = this.targets.get(targetId);
+    const target = await this.targets.get(targetId);
+    const config = target.secretConfig as GcpSecretStoreConfig;
     const description = await this.describeVersion(targetId, 'latest');
     const version = this.extractVersion(description.name);
     const payload = await this.accessVersion(
-      target.projectId,
-      target.secretName,
+      config.projectId,
+      config.secretName,
+      config.serviceAccount,
       version,
     );
 
@@ -52,11 +55,13 @@ export class GcpSecretManagerGateway implements ISecretStoreGateway {
     version: string,
   ): Promise<SecretStoreVersion> {
     this.assertVersion(version);
-    const target = this.targets.get(targetId);
+    const target = await this.targets.get(targetId);
+    const config = target.secretConfig as GcpSecretStoreConfig;
     const description = await this.describeVersion(targetId, version);
     const payload = await this.accessVersion(
-      target.projectId,
-      target.secretName,
+      config.projectId,
+      config.secretName,
+      config.serviceAccount,
       version,
     );
 
@@ -70,8 +75,17 @@ export class GcpSecretManagerGateway implements ISecretStoreGateway {
   async addVersion(
     targetId: string,
     payload: string,
+    expectedVersion: string,
   ): Promise<AddedSecretVersion> {
-    const target = this.targets.get(targetId);
+    this.assertVersion(expectedVersion);
+    const target = await this.targets.get(targetId);
+    const config = target.secretConfig as GcpSecretStoreConfig;
+    const latest = await this.describeVersion(targetId, 'latest');
+    if (this.extractVersion(latest.name) !== expectedVersion) {
+      throw new ConflictException(
+        'GCP Secret Manager가 다른 작업에서 변경되어 반영을 중단했습니다.',
+      );
+    }
     try {
       const { stdout } = await runProcess(
         this.gcloudPath,
@@ -79,10 +93,10 @@ export class GcpSecretManagerGateway implements ISecretStoreGateway {
           'secrets',
           'versions',
           'add',
-          target.secretName,
+          config.secretName,
           '--data-file=-',
-          `--project=${target.projectId}`,
-          `--impersonate-service-account=${this.serviceAccount}`,
+          `--project=${config.projectId}`,
+          `--impersonate-service-account=${config.serviceAccount}`,
           '--quiet',
           '--format=json(name,createTime)',
         ],
@@ -105,16 +119,17 @@ export class GcpSecretManagerGateway implements ISecretStoreGateway {
     version: string,
   ): Promise<GcloudVersionDescription> {
     if (version !== 'latest') this.assertVersion(version);
-    const target = this.targets.get(targetId);
+    const target = await this.targets.get(targetId);
+    const config = target.secretConfig as GcpSecretStoreConfig;
     try {
       const { stdout } = await runProcess(this.gcloudPath, [
         'secrets',
         'versions',
         'describe',
         version,
-        `--secret=${target.secretName}`,
-        `--project=${target.projectId}`,
-        `--impersonate-service-account=${this.serviceAccount}`,
+        `--secret=${config.secretName}`,
+        `--project=${config.projectId}`,
+        `--impersonate-service-account=${config.serviceAccount}`,
         '--quiet',
         '--format=json(name,createTime)',
       ]);
@@ -129,6 +144,7 @@ export class GcpSecretManagerGateway implements ISecretStoreGateway {
   private async accessVersion(
     projectId: string,
     secretName: string,
+    serviceAccount: string,
     version: string,
   ): Promise<string> {
     try {
@@ -141,7 +157,7 @@ export class GcpSecretManagerGateway implements ISecretStoreGateway {
           version,
           `--secret=${secretName}`,
           `--project=${projectId}`,
-          `--impersonate-service-account=${this.serviceAccount}`,
+          `--impersonate-service-account=${serviceAccount}`,
           '--quiet',
         ],
         { maxOutputBytes: 256 * 1024 },

@@ -228,12 +228,11 @@ export class RbacSeedService {
     if (!keyManagerRole) {
       keyManagerRole = this.roleRepository.create({
         name: ROLES.KEY_MANAGER,
-        description: '대시보드 조회 및 GoLe 운영 키 조회, 수정, 배포',
+        description: '대시보드 조회 및 운영 키 조회, 수정, 배포',
         permissions: keyManagerPermissions,
       });
     } else {
-      keyManagerRole.description =
-        '대시보드 조회 및 GoLe 운영 키 조회, 수정, 배포';
+      keyManagerRole.description = '대시보드 조회 및 운영 키 조회, 수정, 배포';
       keyManagerRole.permissions = keyManagerPermissions;
     }
     await this.roleRepository.save(keyManagerRole);

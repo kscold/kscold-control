@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { Response } from 'express';
 import { join } from 'path';
+import { resolveFrontendDistPath } from '../utils/frontend-dist-path.util';
 
 @Catch(NotFoundException)
 export class SpaFallbackFilter implements ExceptionFilter {
@@ -24,10 +25,7 @@ export class SpaFallbackFilter implements ExceptionFilter {
       return;
     }
 
-    // 그 외 경로는 index.html 반환 (React Router)
-    // __dirname은 dist/ 폴더이므로 상위로 3단계 올라가서 apps/frontend/dist로 이동
-    response.sendFile(
-      join(__dirname, '..', '..', '..', '..', 'frontend', 'dist', 'index.html'),
-    );
+    // 운영에서는 원자적으로 발행된 정적 릴리스, 개발에서는 일반 dist를 사용한다.
+    response.sendFile(join(resolveFrontendDistPath(), 'index.html'));
   }
 }

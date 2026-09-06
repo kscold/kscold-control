@@ -83,13 +83,19 @@ test('로그 화면에서 Docker live와 archive 소스 패널을 렌더링한�
 }) => {
   await page.goto('/logs');
 
-  await expect(page.getByRole('heading', { name: '시스템 로그' })).toBeVisible();
+  await expect(
+    page.getByRole('heading', { name: '시스템 로그' }),
+  ).toBeVisible();
   await page.getByRole('combobox').first().selectOption('docker');
 
   await expect(page.getByText('Log Sources')).toBeVisible();
   await expect(page.getByRole('button', { name: 'Live' })).toBeVisible();
-  await expect(page.getByRole('button', { name: '소스 새로고침' })).toBeVisible();
-  await expect(page.getByText(/live stream과 회전된 docker json-file/)).toBeVisible();
+  await expect(
+    page.getByRole('button', { name: '소스 새로고침' }),
+  ).toBeVisible();
+  await expect(
+    page.getByText(/live stream과 회전된 docker json-file/),
+  ).toBeVisible();
   await expect(page.getByRole('button', { name: '에러만' })).toBeVisible();
 
   await page.getByRole('combobox').nth(3).selectOption('custom');
@@ -113,10 +119,38 @@ test('운영 감사 화면에서 타임라인을 렌더링한다', async ({ page
   await expect(page.getByTestId('audit-export-button')).toBeVisible();
   await expect(page.getByTestId('audit-export-csv-button')).toBeVisible();
   await expect(page.getByTestId('audit-copy-url-button')).toBeVisible();
-  await expect(page.getByText(/최근 24시간 .* 전체 .* 잡혀 있습니다/)).toBeVisible();
-  await expect(page.getByPlaceholder('이벤트, metadata, action 검색')).toBeVisible();
+  await expect(
+    page.getByText(/최근 24시간 .* 전체 .* 잡혀 있습니다/),
+  ).toBeVisible();
+  await expect(
+    page.getByPlaceholder('이벤트, metadata, action 검색'),
+  ).toBeVisible();
   await expect(page.getByPlaceholder('actor email 또는 id')).toBeVisible();
   await expect(page.getByPlaceholder('target type 또는 id')).toBeVisible();
   await expect(page.getByLabel('감사 시작 시각')).toBeVisible();
   await expect(page.getByLabel('감사 끝 시각')).toBeVisible();
+});
+
+test('운영 키 화면에서 DB 대상과 Pawpong 환경을 전환한다', async ({ page }) => {
+  await page.goto('/keys');
+
+  await expect(
+    page.getByRole('heading', {
+      name: 'GoLe Production 환경 변수 운영실',
+    }),
+  ).toBeVisible();
+  await expect(page.getByText('PostgreSQL registry · 2 targets')).toBeVisible();
+
+  await page.getByRole('button', { name: /Pawpong Production/ }).click();
+
+  await expect(
+    page.getByRole('heading', {
+      name: 'Pawpong Production 환경 변수 운영실',
+    }),
+  ).toBeVisible();
+  await expect(
+    page.getByText('.env.production', { exact: true }),
+  ).toBeVisible();
+  await expect(page.getByText(/\d+ keys/)).toBeVisible();
+  await expect(page.getByText('NODE_ENV')).toBeVisible();
 });

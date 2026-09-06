@@ -1,6 +1,6 @@
 {
   "name": "kscold-control",
-  "version": "1.1.3",
+  "version": "1.2.0",
   "private": true,
   "packageManager": "pnpm@10.29.3",
   "pnpm": {
@@ -34,12 +34,13 @@
     "test:frontend": "pnpm --filter @kscold-control/frontend test",
     "test:claude-smoke": "node ./scripts/claude-smoke.mjs",
     "test:repository-live-smoke": "node ./scripts/repository-live-smoke.mjs",
+    "test:release-publisher": "node --test ./scripts/test/frontend-release.test.mjs",
     "test:e2e:control": "bash ./scripts/run-control-e2e.sh",
     "check:architecture": "node ./scripts/check-architecture.mjs",
     "check:nginx": "bash ./scripts/check-nginx-config.sh",
     "check:runtime-contracts": "node ./scripts/check-runtime-contracts.mjs",
     "preflight:production": "node ./scripts/preflight-control.mjs",
-    "migrate:database": "node ./scripts/migrate-control-db.mjs",
+    "migrate:database": "node --env-file-if-exists=.env ./scripts/migrate-control-db.mjs",
     "verify:release": "node ./scripts/verify-release-manifest.mjs",
     "deploy:production": "node --env-file=.env ./scripts/deploy-control.mjs",
     "lint": "turbo run lint",

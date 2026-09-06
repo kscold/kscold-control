@@ -32,7 +32,7 @@ describe('QuickActions', () => {
     );
 
     expect(
-      screen.getByRole('button', { name: /GoLe 운영 키/ }),
+      screen.getByRole('button', { name: /운영 키 관리/ }),
     ).toBeInTheDocument();
     expect(
       screen.queryByRole('button', { name: /Terminal/ }),

@@ -7,7 +7,7 @@ A self-hosted infrastructure governance panel for managing Docker containers, Ng
 [![pnpm](https://img.shields.io/badge/pnpm-workspace-orange)](https://pnpm.io)
 [![NestJS](https://img.shields.io/badge/NestJS-10-red)](https://nestjs.com)
 [![React](https://img.shields.io/badge/React-18-61DAFB)](https://react.dev)
-[![v1.0.0](https://img.shields.io/badge/release-v1.0.0-brightgreen)](https://github.com/kscold/kscold-control/releases/tag/v1.0.0)
+[![v1.2.0](https://img.shields.io/badge/release-v1.2.0-brightgreen)](https://github.com/kscold/kscold-control/releases/tag/v1.2.0)
 
 ---
 
@@ -21,7 +21,7 @@ A self-hosted infrastructure governance panel for managing Docker containers, Ng
 | **Repository**  | Resumable SHA-256 uploads, atomic publish, version snapshots, diff viewer, file browser       |
 | **Audit**       | AOP-based automatic audit log, CSV export, actor/target insights                              |
 | **Security**    | IP ban management, JWT RBAC, permission guards                                                |
-| **Key Vault**   | Approval-gated GoLe `.env`, encrypted DB backups, Secret Manager version deploys              |
+| **Key Vault**   | DB-driven GoLe/Pawpong `.env`, encrypted backups, GCP/SSH versioned deploys                   |
 | **Logs**        | Unified viewer — backend · PM2 · Nginx · Docker · blog container logs                         |
 | **Network**     | Topology graph (React Flow), UPnP port management                                             |
 | **System**      | Real-time CPU / memory / disk, Nginx status, host info                                        |
@@ -44,7 +44,7 @@ kscold-control/
 │   │       ├── logs/             # Unified log reader
 │   │       ├── repository/       # Source version management
 │   │       ├── audit/            # AOP audit interceptor
-│   │       ├── key-management/   # GoLe Secret Manager, encrypted backups, deployment
+│   │       ├── key-management/   # Multi-target secret stores, encrypted backups, deployment
 │   │       └── security/         # IP ban
 │   └── frontend/             # React 18 + Vite + Tailwind CSS
 │       └── src/
@@ -131,26 +131,35 @@ npm install -g @openai/codex
 
 ## Environment Variables
 
-| Variable                        | Default                 | Description                               |
-| ------------------------------- | ----------------------- | ----------------------------------------- |
-| `DATABASE_URL`                  | —                       | PostgreSQL connection string (required)   |
-| `JWT_SECRET`                    | —                       | JWT signing secret (required)             |
-| `PORT`                          | `4000`                  | Backend HTTP/WS port                      |
-| `FRONTEND_URL`                  | `http://localhost:3000` | CORS allowed origin                       |
-| `NODE_ENV`                      | `development`           | `production` disables TypeORM auto-sync   |
-| `CLAUDE_WORKING_DIR`            | `$HOME`                 | Working directory for AI coding sessions  |
-| `OPENAI_API_KEY`                | —                       | OpenAI API key (Chat API + Codex CLI)     |
-| `OPENAI_MODEL`                  | `gpt-4o`                | OpenAI model for Chat API                 |
-| `CODEX_BIN`                     | `codex`                 | Path to Codex binary                      |
-| `LOG_LEVEL`                     | `info`                  | Winston log level                         |
-| `KEY_MANAGEMENT_ENCRYPTION_KEY` | —                       | Base64-encoded 32-byte AES-GCM backup key |
+| Variable                          | Default                    | Description                               |
+| --------------------------------- | -------------------------- | ----------------------------------------- |
+| `DATABASE_URL`                    | —                          | PostgreSQL connection string (required)   |
+| `JWT_SECRET`                      | —                          | JWT signing secret (required)             |
+| `PORT`                            | `4000`                     | Backend HTTP/WS port                      |
+| `FRONTEND_URL`                    | `http://localhost:3000`    | CORS allowed origin                       |
+| `CONTROL_FRONTEND_DIST_PATH`      | built-in `frontend/dist`   | Atomically published production UI path   |
+| `NODE_ENV`                        | `development`              | `production` disables TypeORM auto-sync   |
+| `CLAUDE_WORKING_DIR`              | `$HOME`                    | Working directory for AI coding sessions  |
+| `OPENAI_API_KEY`                  | —                          | OpenAI API key (Chat API + Codex CLI)     |
+| `OPENAI_MODEL`                    | `gpt-4o`                   | OpenAI model for Chat API                 |
+| `CODEX_BIN`                       | `codex`                    | Path to Codex binary                      |
+| `LOG_LEVEL`                       | `info`                     | Winston log level                         |
+| `KEY_MANAGEMENT_ENCRYPTION_KEY`   | —                          | Base64-encoded 32-byte AES-GCM backup key |
+| `KEY_MANAGEMENT_GCLOUD_PATH`      | `/opt/homebrew/bin/gcloud` | Path to the Google Cloud CLI              |
+| `KEY_MANAGEMENT_GH_PATH`          | `/opt/homebrew/bin/gh`     | Path to the GitHub CLI                    |
+| `KEY_MANAGEMENT_SSH_PATH`         | `/usr/bin/ssh`             | Path to the OpenSSH client                |
+| `KEY_MANAGEMENT_SSH_IDENTITY_DIR` | `$HOME/.ssh`               | Directory containing target SSH keys      |
 
-## GoLe Key Management API
+## Multi-target Key Management API
 
 Public registration creates a `pending_approval` account with no permissions.
-An administrator approves it from **RBAC → Users → 대시보드 + GoLe 키 관리자 승인**. The
+An administrator approves it from **RBAC → Users → 대시보드 + 운영 키 관리자 승인**. The
 approved `key_manager` role receives only `dashboard:read`, `secrets:read`,
 `secrets:reveal`, `secrets:write`, and `secrets:deploy`.
+Target scope is stored separately in `user_key_management_targets`. Global
+administrators always see every enabled target; other key managers only see and
+operate the targets selected on their RBAC user card. New approvals start with
+`gole-production` only, following least privilege.
 
 ### Read-only user preview
 
@@ -161,7 +170,10 @@ original administrator immediately; mutating HTTP requests and all Terminal,
 Claude, and Codex WebSocket sessions are rejected server-side during preview.
 Each preview start is recorded in the RBAC audit timeline.
 
-Get a JWT and the current immutable Secret Manager version:
+Targets are registered in `key_management_targets`. The production migration
+creates `gole-production` (GCP Secret Manager + GitHub Actions) and
+`pawpong-production` (SSH env file + blue/green deploy). Get a JWT and the
+current version for the targets granted to that user:
 
 ```bash
 TOKEN="$(curl -fsS https://control.kscold.com/api/auth/login \
@@ -175,6 +187,7 @@ curl -fsS https://control.kscold.com/api/key-management/targets \
 
 Change one key. `secretValue` is the literal text after `=` in the `.env` file.
 Use the version returned by the previous request; stale versions return HTTP 409.
+GCP versions are numeric, while SSH env versions are full SHA-256 checksums.
 
 ```bash
 curl -fsS -X PATCH \
@@ -196,9 +209,16 @@ curl -fsS -X PUT \
 ```
 
 Every PATCH, PUT, and restore first stores the current environment in PostgreSQL
-as AES-256-GCM ciphertext. A failed backup aborts the operation before creating a
-Secret Manager version. A successful change dispatches the exact version to the
-GoLe self-hosted runner; failed readiness restores the previous VM file.
+as AES-256-GCM ciphertext. A failed backup aborts the operation before touching
+the target. Changes use optimistic version checks, and a second change is blocked
+while the previous deployment is active. GoLe dispatches the exact Secret Manager
+version to GitHub Actions. Pawpong atomically replaces `.env.production` over SSH,
+then runs its existing blue/green readiness and Nginx rollback flow.
+
+For SSH targets, put a passwordless private key at
+`$KEY_MANAGEMENT_SSH_IDENTITY_DIR/kscold-control-<credentialRef>`, set mode `0600`,
+install its public key in the target account, and pin the host in `known_hosts`.
+Passwords and private key contents must never be stored in the target table.
 
 ```bash
 # Deployment and encrypted-backup ledger
@@ -222,17 +242,15 @@ curl -fsS -X POST \
 # 1. Configure .env (DATABASE_URL and JWT_SECRET are required)
 cp .env.example .env
 
-# 2. Apply the encrypted-backup ledger schema when first enabling Key Vault
-bash scripts/migrate-key-management.sh
-
-# 3. Verify, build, deploy, and attest the internal/external release revision
+# 2. Verify, migrate, build, deploy, and attest the internal/external release revision
 pnpm deploy:production
 ```
 
 The deployment command refuses a dirty/non-`main`/unpushed tree, runs architecture
 and runtime-contract checks, lint, backend/frontend tests, writes artifact hashes,
 reloads PM2, and verifies both local and public `/api/health` revisions. The backend
-serves the built frontend under `/` and all API routes under `/api`.
+serves an atomically published frontend release under `/` and all API routes under
+`/api`; ordinary `pnpm build` output is never served directly in production.
 A sample Nginx reverse-proxy config is at [`nginx/conf.d/app-stack.conf.example`](nginx/conf.d/app-stack.conf.example).
 
 For the optional Slacord compose service, copy `env/slacord.env.example` to

@@ -6,6 +6,7 @@ import {
   TriggerDeploymentInput,
 } from '../../domain/gateways/deployment.gateway.interface';
 import { KeyManagementTargetService } from '../../application/services/key-management-target.service';
+import type { GithubActionsDeploymentConfig } from '../../domain/types/key-management-target.type';
 import { runProcess } from './process-runner';
 
 interface GithubRunRecord {
@@ -32,16 +33,17 @@ export class GithubActionsDeploymentGateway implements IDeploymentGateway {
 
   async trigger(input: TriggerDeploymentInput): Promise<void> {
     this.assertInput(input);
-    const target = this.targets.get(input.targetId);
+    const target = await this.targets.get(input.targetId);
+    const deployment = target.deploymentConfig as GithubActionsDeploymentConfig;
     try {
       await runProcess(this.ghPath, [
         'workflow',
         'run',
-        target.workflow,
+        deployment.workflow,
         '--repo',
-        target.repository,
+        deployment.repository,
         '--ref',
-        target.ref,
+        deployment.ref,
         '-f',
         `target=${input.targetId}`,
         '-f',
@@ -56,19 +58,23 @@ export class GithubActionsDeploymentGateway implements IDeploymentGateway {
     }
   }
 
-  async findByRequestId(requestId: string): Promise<DeploymentRun | null> {
+  async findByRequestId(
+    targetId: string,
+    requestId: string,
+  ): Promise<DeploymentRun | null> {
     if (!/^[0-9a-f-]{36}$/i.test(requestId)) {
       return null;
     }
-    const target = this.targets.list()[0];
+    const target = await this.targets.get(targetId);
+    const deployment = target.deploymentConfig as GithubActionsDeploymentConfig;
     try {
       const { stdout } = await runProcess(this.ghPath, [
         'run',
         'list',
         '--repo',
-        target.repository,
+        deployment.repository,
         '--workflow',
-        target.workflow,
+        deployment.workflow,
         '--limit',
         '50',
         '--json',

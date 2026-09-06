@@ -1,4 +1,4 @@
-import { startTransition, useEffect, useState } from 'react';
+import { startTransition, useEffect, useRef, useState } from 'react';
 import { keyManagementService } from '../api/key-management.service';
 import type {
   KeyManagementTarget,
@@ -8,14 +8,18 @@ import type {
 
 export function useKeyManagement() {
   const [targets, setTargets] = useState<KeyManagementTarget[]>([]);
+  const [selectedTargetId, setSelectedTargetId] = useState<string | null>(null);
   const [backups, setBackups] = useState<SecretBackup[]>([]);
   const [revealed, setRevealed] = useState<RevealedEnvironment | null>(null);
   const [editorValue, setEditorValue] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [isWorking, setIsWorking] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const selectedTargetIdRef = useRef<string | null>(null);
+  const requestIdRef = useRef(0);
 
-  const target = targets[0] ?? null;
+  const target =
+    targets.find((item) => item.id === selectedTargetId) ?? targets[0] ?? null;
 
   const clearReveal = () => {
     setRevealed(null);
@@ -23,16 +27,23 @@ export function useKeyManagement() {
   };
 
   const load = async (quiet = false) => {
+    const requestId = ++requestIdRef.current;
     if (!quiet) setIsLoading(true);
     setError(null);
     try {
       const nextTargets = await keyManagementService.getTargets();
-      const nextTarget = nextTargets[0];
+      const preferredTargetId = selectedTargetIdRef.current;
+      const nextTarget =
+        nextTargets.find((item) => item.id === preferredTargetId) ??
+        nextTargets[0];
       const nextBackups = nextTarget
         ? await keyManagementService.getBackups(nextTarget.id)
         : [];
+      if (requestId !== requestIdRef.current) return;
       startTransition(() => {
         setTargets(nextTargets);
+        setSelectedTargetId(nextTarget?.id ?? null);
+        selectedTargetIdRef.current = nextTarget?.id ?? null;
         setBackups(nextBackups);
       });
     } catch (loadError) {
@@ -43,6 +54,32 @@ export function useKeyManagement() {
       );
     } finally {
       if (!quiet) setIsLoading(false);
+    }
+  };
+
+  const selectTarget = async (targetId: string) => {
+    if (targetId === selectedTargetIdRef.current || isWorking) return;
+    if (!targets.some((item) => item.id === targetId)) return;
+
+    const requestId = ++requestIdRef.current;
+    clearReveal();
+    setSelectedTargetId(targetId);
+    selectedTargetIdRef.current = targetId;
+    setBackups([]);
+    setIsWorking(true);
+    setError(null);
+    try {
+      const nextBackups = await keyManagementService.getBackups(targetId);
+      if (requestId === requestIdRef.current) setBackups(nextBackups);
+    } catch (loadError) {
+      if (requestId !== requestIdRef.current) return;
+      setError(
+        loadError instanceof Error
+          ? loadError.message
+          : '백업 및 배포 이력을 불러오지 못했습니다.',
+      );
+    } finally {
+      if (requestId === requestIdRef.current) setIsWorking(false);
     }
   };
 
@@ -68,7 +105,7 @@ export function useKeyManagement() {
   }, [revealed]);
 
   const reveal = async () => {
-    if (!target) return;
+    if (!target || target.connectionStatus !== 'healthy') return;
     setIsWorking(true);
     setError(null);
     try {
@@ -87,7 +124,7 @@ export function useKeyManagement() {
   };
 
   const save = async () => {
-    if (!target || !revealed) return;
+    if (!target || !revealed || target.connectionStatus !== 'healthy') return;
     setIsWorking(true);
     setError(null);
     try {
@@ -112,7 +149,9 @@ export function useKeyManagement() {
   };
 
   const restore = async (backupId: string) => {
-    if (!target) return;
+    if (!target || !target.version || target.connectionStatus !== 'healthy') {
+      return;
+    }
     setIsWorking(true);
     setError(null);
     try {
@@ -161,6 +200,7 @@ export function useKeyManagement() {
 
   return {
     targets,
+    selectedTargetId,
     target,
     backups,
     revealed,
@@ -170,6 +210,7 @@ export function useKeyManagement() {
     error,
     setEditorValue,
     clearReveal,
+    selectTarget,
     load,
     reveal,
     save,

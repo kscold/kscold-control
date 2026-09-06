@@ -1,5 +1,4 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import { createHash } from 'crypto';
 
 const ENV_KEY_PATTERN = /^[A-Za-z_][A-Za-z0-9_]*$/;
@@ -8,20 +7,10 @@ const MAX_VALUE_LENGTH = 16 * 1024;
 
 @Injectable()
 export class EnvDocumentService {
-  private readonly requiredKeys: string[];
-
-  constructor(config: ConfigService) {
-    const configured = config.get<string>('KEY_MANAGEMENT_REQUIRED_KEYS');
-    this.requiredKeys = (
-      configured ??
-      'MONGODB_URI,MONGODB_DATABASE,REDIS_HOST,REDIS_PORT,GOLE_ENVIRONMENT'
-    )
-      .split(',')
-      .map((key) => key.trim())
-      .filter(Boolean);
-  }
-
-  normalizeAndValidate(input: string): string {
+  normalizeAndValidate(
+    input: string,
+    requiredKeys: readonly string[] = [],
+  ): string {
     if (typeof input !== 'string' || input.includes('\0')) {
       throw new BadRequestException('올바른 .env 문자열이 아닙니다.');
     }
@@ -32,7 +21,7 @@ export class EnvDocumentService {
     }
 
     const values = this.parse(normalized);
-    const missingKeys = this.requiredKeys.filter((key) => !values.has(key));
+    const missingKeys = requiredKeys.filter((key) => !values.has(key));
     if (missingKeys.length > 0) {
       throw new BadRequestException(
         `필수 환경 변수 누락: ${missingKeys.join(', ')}`,
@@ -85,7 +74,12 @@ export class EnvDocumentService {
       .sort();
   }
 
-  setKey(input: string, key: string, secretValue: string): string {
+  setKey(
+    input: string,
+    key: string,
+    secretValue: string,
+    requiredKeys: readonly string[] = [],
+  ): string {
     if (!ENV_KEY_PATTERN.test(key)) {
       throw new BadRequestException('환경 변수 키 형식이 올바르지 않습니다.');
     }
@@ -118,7 +112,7 @@ export class EnvDocumentService {
       nextLines.push(`${key}=${secretValue}`);
     }
 
-    return this.normalizeAndValidate(`${nextLines.join('\n')}\n`);
+    return this.normalizeAndValidate(`${nextLines.join('\n')}\n`, requiredKeys);
   }
 
   checksum(input: string): string {

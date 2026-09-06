@@ -12,8 +12,8 @@ export function QuickActions() {
       to: '/keys',
       icon: KeyRound,
       iconClassName: 'text-amber-300',
-      title: 'GoLe 운영 키',
-      description: '환경 변수 조회, 수정 및 안전 배포',
+      title: '운영 키 관리',
+      description: 'GoLe · Pawpong 환경 변수와 안전 배포',
     },
     {
       permission: PERMISSIONS.TERMINAL_ACCESS,

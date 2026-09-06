@@ -1,7 +1,8 @@
 import { Controller, Get } from '@nestjs/common';
 import { createHash } from 'crypto';
 import { existsSync, readFileSync, readdirSync } from 'fs';
-import { join } from 'path';
+import { join, relative } from 'path';
+import { resolveFrontendDistPath } from '../common/utils/frontend-dist-path.util';
 
 interface ReleaseManifest {
   schemaVersion: number;
@@ -48,13 +49,16 @@ export class ReleaseController {
         readFileSync(manifestPath, 'utf8'),
       ) as ReleaseManifest;
       const root = join(__dirname, '..', '..', '..', '..');
+      const frontendDist = resolveFrontendDistPath();
       const actualPaths = [
-        ...this.listFiles(join(root, 'apps', 'backend', 'dist')),
-        ...this.listFiles(join(root, 'apps', 'frontend', 'dist')),
+        ...this.listFiles(join(root, 'apps', 'backend', 'dist')).map(
+          (filePath) => relative(root, filePath),
+        ),
+        ...this.listFiles(frontendDist).map((filePath) =>
+          join('apps', 'frontend', 'dist', relative(frontendDist, filePath)),
+        ),
       ]
-        .map((filePath) =>
-          filePath.slice(root.length + 1).replaceAll('\\', '/'),
-        )
+        .map((filePath) => filePath.replaceAll('\\', '/'))
         .filter(
           (relativePath) =>
             relativePath !== 'apps/backend/dist/release-manifest.json',
@@ -75,7 +79,10 @@ export class ReleaseController {
         !manifest.dirty &&
         sameFileSet &&
         Object.entries(manifest.artifacts).every(([relativePath, expected]) => {
-          const artifact = join(root, relativePath);
+          const frontendPrefix = 'apps/frontend/dist/';
+          const artifact = relativePath.startsWith(frontendPrefix)
+            ? join(frontendDist, relativePath.slice(frontendPrefix.length))
+            : join(root, relativePath);
           if (!/^[a-f0-9]{64}$/.test(expected) || !existsSync(artifact)) {
             return false;
           }

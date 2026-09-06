@@ -24,6 +24,8 @@ import {
   UpdateEnvironmentDto,
 } from '../../application/dto';
 import { KeyManagementService } from '../../application/services/key-management.service';
+import { KeyManagementTargetAccessGuard } from '../guards/key-management-target-access.guard';
+import { KeyManagementTargetAccessService } from '../../../rbac/application/services/key-management-target-access.service';
 
 interface MutationResponse {
   backupId: string;
@@ -34,15 +36,19 @@ interface MutationResponse {
 }
 
 @Controller('key-management')
-@UseGuards(AuthGuard('jwt'), PermissionsGuard)
+@UseGuards(AuthGuard('jwt'), PermissionsGuard, KeyManagementTargetAccessGuard)
 export class KeyManagementController {
-  constructor(private readonly keyManagement: KeyManagementService) {}
+  constructor(
+    private readonly keyManagement: KeyManagementService,
+    private readonly targetAccess: KeyManagementTargetAccessService,
+  ) {}
 
   @Get('targets')
   @RequirePermissions(PERMISSIONS.SECRETS_READ)
   @Header('Cache-Control', 'no-store, no-cache, must-revalidate, private')
-  listTargets() {
-    return this.keyManagement.listTargets();
+  async listTargets(@Request() req: JwtRequest) {
+    const targetIds = await this.targetAccess.getAuthorizedTargetIds(req.user);
+    return this.keyManagement.listTargets(targetIds);
   }
 
   @Post('targets/:targetId/reveal')
