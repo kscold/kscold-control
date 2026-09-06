@@ -19,7 +19,10 @@ describe('UserList QA preview', () => {
     terminalCommandLimit: -1,
   } as User;
 
-  function renderList(onPreviewUser = vi.fn()) {
+  function renderList(
+    onPreviewUser = vi.fn(),
+    onUpdateKeyManagementTargets = vi.fn().mockResolvedValue(true),
+  ) {
     render(
       <UserList
         users={[administrator, keyManager]}
@@ -30,6 +33,22 @@ describe('UserList QA preview', () => {
         onUpdateTerminalLimit={vi.fn().mockResolvedValue(true)}
         onCreateUser={vi.fn()}
         onApproveKeyManager={vi.fn().mockResolvedValue(true)}
+        keyManagementTargets={[
+          {
+            id: 'projectalpha-production',
+            displayName: 'ProjectAlpha Production',
+            environment: 'production',
+          },
+          {
+            id: 'projectbeta-production',
+            displayName: 'ProjectBeta Production',
+            environment: 'production',
+          },
+        ]}
+        keyManagementAssignments={{
+          [keyManager.id]: ['projectalpha-production'],
+        }}
+        onUpdateKeyManagementTargets={onUpdateKeyManagementTargets}
         onPreviewUser={onPreviewUser}
       />,
     );
@@ -50,5 +69,30 @@ describe('UserList QA preview', () => {
     await userEvent.click(screen.getByRole('button', { name: /QA 화면 보기/ }));
 
     expect(onPreviewUser).toHaveBeenCalledWith(keyManager);
+  });
+
+  it('키 관리자의 허용 대상과 관리자의 전체 접근을 구분해 표시한다', () => {
+    renderList();
+
+    expect(screen.getByText('관리자 전체 접근')).toBeInTheDocument();
+    expect(screen.getAllByText('ProjectAlpha Production')).toHaveLength(2);
+    expect(screen.getAllByText('ProjectBeta Production')).toHaveLength(1);
+  });
+
+  it('키 관리자의 ProjectBeta 범위를 체크해 저장한다', async () => {
+    const user = userEvent.setup();
+    const onUpdate = vi.fn().mockResolvedValue(true);
+    renderList(vi.fn(), onUpdate);
+
+    await user.click(screen.getByRole('button', { name: '범위 변경' }));
+    await user.click(
+      screen.getByRole('checkbox', { name: /ProjectBeta Production/ }),
+    );
+    await user.click(screen.getByRole('button', { name: '범위 저장' }));
+
+    expect(onUpdate).toHaveBeenCalledWith('target-user', [
+      'projectalpha-production',
+      'projectbeta-production',
+    ]);
   });
 });

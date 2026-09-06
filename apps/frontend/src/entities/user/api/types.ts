@@ -19,6 +19,22 @@ export interface UpdateTerminalLimitRequest {
   limit: number; // -1이면 무제한
 }
 
+export interface KeyManagementAccessTarget {
+  id: string;
+  displayName: string;
+  environment: string;
+}
+
+export interface KeyManagementTargetAssignment {
+  userId: string;
+  targetIds: string[];
+}
+
+export interface KeyManagementAccessMatrix {
+  targets: KeyManagementAccessTarget[];
+  assignments: KeyManagementTargetAssignment[];
+}
+
 export interface ImpersonationResponse {
   accessToken: string;
   sessionId: string;

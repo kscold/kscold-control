@@ -4,7 +4,6 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { ConfigModule } from '@nestjs/config';
 import { ScheduleModule } from '@nestjs/schedule';
 import { ServeStaticModule } from '@nestjs/serve-static';
-import { join } from 'path';
 import { AuthModule } from './auth/auth.module';
 import { TerminalModule } from './terminal/terminal.module';
 import { DockerModule } from './docker/docker.module';
@@ -25,6 +24,7 @@ import { ReleaseModule } from './release/release.module';
 import { User } from './rbac/domain/entities/user.entity';
 import { Role } from './rbac/domain/entities/role.entity';
 import { Permission } from './rbac/domain/entities/permission.entity';
+import { KeyManagementTargetAccess } from './rbac/domain/entities/key-management-target-access.entity';
 import { Session } from './terminal/domain/entities/session.entity';
 import { Message } from './terminal/domain/entities/message.entity';
 import { Container } from './docker/domain/entities/container.entity';
@@ -32,6 +32,7 @@ import { TopologyNodeLayout } from './docker/domain/entities/topology-node-layou
 import { Project } from './repository/domain/entities/project.entity';
 import { IpBan } from './security/domain/entities/ip-ban.entity';
 import { SecretBackup } from './key-management/domain/entities/secret-backup.entity';
+import { KeyManagementTargetEntity } from './key-management/domain/entities/key-management-target.entity';
 
 import { HttpLoggerMiddleware } from './common/middleware/http-logger.middleware';
 import {
@@ -39,6 +40,7 @@ import {
   ImpersonationReadOnlyInterceptor,
 } from './common/interceptors';
 import { shouldSynchronizeDatabase } from './common/utils/database-synchronize.util';
+import { resolveFrontendDistPath } from './common/utils/frontend-dist-path.util';
 
 @Module({
   imports: [
@@ -50,7 +52,7 @@ import { shouldSynchronizeDatabase } from './common/utils/database-synchronize.u
 
     // React 빌드 파일 서빙 (프로덕션)
     ServeStaticModule.forRoot({
-      rootPath: join(__dirname, '..', '..', 'frontend', 'dist'),
+      rootPath: resolveFrontendDistPath(),
       // Express 5 / path-to-regexp v8에서는 '/api/(.*)' 형식을 쓸 수 없다.
       exclude: ['/api/{*any}'], // API 라우트만 제외, SPA 라우팅(/docker, /claude 등)은 index.html로
       serveRoot: '/',
@@ -64,6 +66,7 @@ import { shouldSynchronizeDatabase } from './common/utils/database-synchronize.u
         User,
         Role,
         Permission,
+        KeyManagementTargetAccess,
         Session,
         Message,
         Container,
@@ -71,6 +74,7 @@ import { shouldSynchronizeDatabase } from './common/utils/database-synchronize.u
         Project,
         IpBan,
         SecretBackup,
+        KeyManagementTargetEntity,
       ],
       synchronize: shouldSynchronizeDatabase(),
       logging: process.env.NODE_ENV !== 'production',

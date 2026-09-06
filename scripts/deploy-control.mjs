@@ -8,6 +8,7 @@ import {
 } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { publishFrontendRelease } from './lib/frontend-release.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const lockPath = path.join(root, '.git', 'kscold-control-deploy.lock');
@@ -117,6 +118,7 @@ try {
 
   run('pnpm', ['check:architecture']);
   run('pnpm', ['check:runtime-contracts']);
+  run('pnpm', ['test:release-publisher']);
   run('pnpm', ['lint']);
   run('pnpm', ['test:backend']);
   run('pnpm', ['test:frontend']);
@@ -124,6 +126,7 @@ try {
   run('pnpm', ['verify:release']);
   run('pnpm', ['migrate:database']);
   run('pnpm', ['preflight:production']);
+  publishFrontendRelease({ root, revision });
   run('pm2', ['startOrReload', 'ecosystem.config.js', '--update-env']);
 
   await waitForRelease('http://127.0.0.1:4000/api/health', version, revision);

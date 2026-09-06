@@ -1,19 +1,21 @@
 export interface KeyManagementTarget {
   id: string;
   displayName: string;
-  provider: 'gcp-secret-manager';
-  projectId: string;
-  secretName: string;
+  description: string;
+  environment: string;
+  provider: 'gcp-secret-manager' | 'ssh-env-file';
+  deploymentProvider: 'github-actions' | 'ssh-blue-green';
+  envFileName: string;
   instanceName: string;
-  zone: string;
-  repository: string;
-  workflow: string;
-  ref: string;
-  version: string;
+  location: string;
+  requiredKeys: string[];
+  version: string | null;
   updatedAt: string | null;
-  checksum: string;
+  checksum: string | null;
   keyCount: number;
   keys: string[];
+  connectionStatus: 'healthy' | 'unavailable';
+  connectionError: string | null;
 }
 
 export interface RevealedEnvironment {
