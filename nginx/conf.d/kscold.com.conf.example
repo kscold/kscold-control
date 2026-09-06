@@ -74,6 +74,18 @@ server {
         gzip off;
     }
 
+    # 피드 생성과 단건 수정 요청은 JSON 본문 상한을 별도로 낮춘다.
+    # GET·DELETE도 같은 URI를 쓰지만 본문이 없으므로 응답과 라우팅에는 영향이 없다.
+    location ~ ^/api/feeds(?:/[^/]+)?/?$ {
+        client_max_body_size 256k;
+        proxy_pass http://ubuntu-blog:8080;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $remote_addr;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
     location /api/ {
         proxy_pass http://ubuntu-blog:8080;
         proxy_http_version 1.1;
