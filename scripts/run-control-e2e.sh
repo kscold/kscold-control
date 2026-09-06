@@ -7,11 +7,15 @@ BACKEND_DIR="$ROOT_DIR/apps/backend"
 BACKEND_LOG_FILE="${TMPDIR:-/tmp}/kscold-control-e2e-backend.log"
 BACKEND_PORT="4410"
 BACKEND_PID=""
+E2E_FRONTEND_DIR=""
 
 cleanup() {
   if [ -n "$BACKEND_PID" ] && kill -0 "$BACKEND_PID" 2>/dev/null; then
     kill "$BACKEND_PID" 2>/dev/null || true
     wait "$BACKEND_PID" 2>/dev/null || true
+  fi
+  if [[ -n "$E2E_FRONTEND_DIR" && "$E2E_FRONTEND_DIR" == "${TMPDIR:-/tmp}/kscold-control-e2e-frontend."* ]]; then
+    rm -rf -- "$E2E_FRONTEND_DIR"
   fi
 }
 
@@ -20,10 +24,16 @@ trap cleanup EXIT
 cd "$ROOT_DIR"
 
 pnpm --filter @kscold-control/backend build
+pnpm --filter @kscold-control/frontend build
+
+E2E_FRONTEND_DIR="$(mktemp -d "${TMPDIR:-/tmp}/kscold-control-e2e-frontend.XXXXXX")"
+cp -R "$ROOT_DIR/apps/frontend/dist/." "$E2E_FRONTEND_DIR/"
 
 cd "$BACKEND_DIR"
 DOCKER_HOST="unix:///Users/kscold/.colima/default/docker.sock" \
+NODE_ENV="production" \
 PORT="$BACKEND_PORT" \
+CONTROL_FRONTEND_DIST_PATH="$E2E_FRONTEND_DIR" \
 node -r dotenv/config dist/main.js dotenv_config_path="$ROOT_DIR/.env" \
   >"$BACKEND_LOG_FILE" 2>&1 &
 BACKEND_PID=$!

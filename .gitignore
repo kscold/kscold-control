@@ -3,6 +3,7 @@ dist
 .turbo
 .playwright
 .runtime/
+runtime/
 playwright-report
 test-results
 .env

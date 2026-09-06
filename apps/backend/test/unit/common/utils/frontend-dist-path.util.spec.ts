@@ -9,8 +9,8 @@ describe('resolveFrontendDistPath', () => {
   });
 
   it('상대 경로는 프로세스 작업 디렉터리 기준으로 고정한다', () => {
-    expect(resolveFrontendDistPath('.runtime/frontend-current')).toBe(
-      resolve(process.cwd(), '.runtime/frontend-current'),
+    expect(resolveFrontendDistPath('runtime/frontend-current')).toBe(
+      resolve(process.cwd(), 'runtime/frontend-current'),
     );
   });
 

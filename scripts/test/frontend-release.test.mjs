@@ -25,6 +25,10 @@ test('프론트엔드 릴리스를 원자 링크로 발행하고 교체한다', 
       now: 1,
     });
     assert.equal(
+      first.currentPath,
+      path.join(root, 'runtime', 'frontend-current'),
+    );
+    assert.equal(
       readFileSync(path.join(first.currentPath, 'index.html'), 'utf8'),
       'release-a',
     );

@@ -45,7 +45,7 @@ module.exports = {
         FRONTEND_URL: process.env.FRONTEND_URL || 'https://control.kscold.com',
         CONTROL_FRONTEND_DIST_PATH:
           process.env.CONTROL_FRONTEND_DIST_PATH ||
-          path.join(__dirname, '.runtime', 'frontend-current'),
+          path.join(__dirname, 'runtime', 'frontend-current'),
         CLAUDE_WORKING_DIR:
           process.env.CLAUDE_WORKING_DIR || '/Users/kscold/Desktop',
         REPOSITORY_STORAGE_DIR:
