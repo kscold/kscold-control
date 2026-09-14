@@ -14,11 +14,7 @@ import {
   StagedUploadFile,
   StagedUploadInspection,
 } from '../../domain/repositories/file-storage.interface';
-import {
-  containsPrivateKeyMaterial,
-  isReservedRepositoryPath,
-  isSensitiveRepositoryPath,
-} from '../../domain/policies/repository-path.policy';
+import { isReservedRepositoryPath } from '../../domain/policies/repository-path.policy';
 import {
   BACKUP_DIR,
   LEGACY_VERSIONS_DIR,
@@ -240,12 +236,9 @@ export class LocalFileStorageService implements IFileStorage, OnModuleInit {
           .relative(root, fullPath)
           .split(path.sep)
           .join('/');
-        if (
-          isReservedRepositoryPath(relativePath) ||
-          isSensitiveRepositoryPath(relativePath)
-        ) {
+        if (isReservedRepositoryPath(relativePath)) {
           throw new Error(
-            `예약 또는 민감 파일은 소스 저장소에 포함할 수 없습니다: ${relativePath}`,
+            `예약 파일은 소스 저장소에 포함할 수 없습니다: ${relativePath}`,
           );
         }
         const stat = await fs.lstat(fullPath);
@@ -258,11 +251,6 @@ export class LocalFileStorageService implements IFileStorage, OnModuleInit {
           stack.push(fullPath);
         } else if (stat.isFile()) {
           const inspected = await this.inspectFile(fullPath);
-          if (inspected.containsPrivateKey) {
-            throw new Error(
-              `비공개 키 자료가 포함된 파일은 소스 저장소에 포함할 수 없습니다: ${relativePath}`,
-            );
-          }
           files.push({
             relativePath,
             size: stat.size,
@@ -314,12 +302,6 @@ export class LocalFileStorageService implements IFileStorage, OnModuleInit {
               .relative(root, path.join(currentPath, entry.name))
               .split(path.sep)
               .join('/'),
-          ) &&
-          !isSensitiveRepositoryPath(
-            path
-              .relative(root, path.join(currentPath, entry.name))
-              .split(path.sep)
-              .join('/'),
           ),
       )
       .sort((left, right) => {
@@ -353,27 +335,14 @@ export class LocalFileStorageService implements IFileStorage, OnModuleInit {
     }
   }
 
-  private async inspectFile(
-    filePath: string,
-  ): Promise<{ sha256: string; containsPrivateKey: boolean }> {
+  private async inspectFile(filePath: string): Promise<{ sha256: string }> {
     const hash = createHash('sha256');
-    const previewChunks: Buffer[] = [];
-    let previewBytes = 0;
     for await (const chunk of createNodeReadStream(filePath)) {
       const buffer = chunk as Buffer;
       hash.update(buffer);
-      if (previewBytes < 128 * 1024) {
-        const remaining = 128 * 1024 - previewBytes;
-        const preview = buffer.subarray(0, remaining);
-        previewChunks.push(preview);
-        previewBytes += preview.length;
-      }
     }
     return {
       sha256: hash.digest('hex'),
-      containsPrivateKey: containsPrivateKeyMaterial(
-        Buffer.concat(previewChunks).toString('utf8'),
-      ),
     };
   }
 

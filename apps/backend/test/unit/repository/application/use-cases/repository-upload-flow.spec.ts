@@ -202,11 +202,14 @@ describe('repository upload flow', () => {
     expect(session.failedFiles).toEqual(['src/index.ts']);
   });
 
-  it('비공개 키 검출은 자동 복구 대상 무결성 오류와 구분한다', async () => {
+  it('키 본문이 있어도 무결성이 일치하면 실패 배치를 이어올린다', async () => {
     const content = Buffer.from(
       '-----BEGIN OPENSSH PRIVATE KEY-----\nprivate material',
     );
     const session = makeSession(content);
+    session.status = 'partial_failed';
+    session.batches[0].status = 'failed';
+    session.batches[0].failedFiles = ['src/index.ts'];
     const dependencies = createDependencies(session);
     const useCase = new UploadSessionBatchUseCase(
       dependencies.projectRepository as any,
@@ -223,13 +226,15 @@ describe('repository upload flow', () => {
       },
     ]);
 
-    await expect(execution).rejects.toBeInstanceOf(BadRequestException);
-    await expect(execution).rejects.not.toBeInstanceOf(
-      RepositoryUploadIntegrityException,
+    await expect(execution).resolves.toMatchObject({ uploadedCount: 1 });
+    expect(dependencies.fileStorage.writeStagedFile).toHaveBeenCalledWith(
+      project.name,
+      session.id,
+      'src/index.ts',
+      content,
     );
-    expect(dependencies.fileStorage.writeStagedFile).not.toHaveBeenCalled();
-    expect(session.status).toBe('partial_failed');
-    expect(session.failedFiles).toEqual(['src/index.ts']);
+    expect(session.status).toBe('finalizing');
+    expect(session.failedFiles).toEqual([]);
   });
 
   it('배치 완료 시 스테이징에만 쓰고 최종 반영 대기 상태로 전환한다', async () => {

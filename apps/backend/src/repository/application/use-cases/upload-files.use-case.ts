@@ -15,10 +15,7 @@ import {
 } from '../../domain/repositories/project.repository.interface';
 import { Project } from '../../domain/entities/project.entity';
 import { RepositoryUploadCoordinator } from '../services/repository-upload-coordinator.service';
-import {
-  assertNoPrivateKeyMaterial,
-  assertSafeRepositoryPath,
-} from '../utils/repository-path.util';
+import { assertSafeRepositoryPath } from '../utils/repository-path.util';
 import { hashUploadBuffer } from '../utils/upload-manifest.util';
 
 export interface UploadFile {
@@ -63,7 +60,6 @@ export class UploadFilesUseCase {
       const expected = new Map<string, { size: number; sha256: string }>();
       for (const file of files) {
         assertSafeRepositoryPath(file.relativePath);
-        assertNoPrivateKeyMaterial(file.relativePath, file.buffer);
         if (
           file.size !== file.buffer.length ||
           expected.has(file.relativePath)

@@ -25,10 +25,7 @@ import {
 import { Project } from '../../domain/entities/project.entity';
 import { RepositoryUploadCoordinator } from '../services/repository-upload-coordinator.service';
 import { RepositoryUploadIntegrityException } from '../errors/repository-upload-integrity.exception';
-import {
-  assertNoPrivateKeyMaterial,
-  assertSafeRepositoryPath,
-} from '../utils/repository-path.util';
+import { assertSafeRepositoryPath } from '../utils/repository-path.util';
 import { hashUploadBuffer } from '../utils/upload-manifest.util';
 
 export interface UploadSessionBatchFile {
@@ -101,11 +98,6 @@ export class UploadSessionBatchUseCase {
       const validation = this.validateFiles(batch, files);
       if (validation.failures.length > 0) {
         await this.markBatchFailed(session, batch, validation.failures);
-        if (validation.sensitiveFiles.length > 0) {
-          throw new BadRequestException(
-            `민감한 키 자료가 포함되어 업로드를 중단했습니다: ${validation.sensitiveFiles.join(', ')}`,
-          );
-        }
         throw new RepositoryUploadIntegrityException(
           `배치 파일 무결성 검증에 실패했습니다: ${validation.failures.join(', ')}`,
         );
@@ -178,24 +170,16 @@ export class UploadSessionBatchUseCase {
   private validateFiles(
     batch: RepositoryUploadBatch,
     files: UploadSessionBatchFile[],
-  ): { failures: string[]; sensitiveFiles: string[] } {
+  ): { failures: string[] } {
     const expected = new Map(
       batch.files.map((file) => [file.relativePath, file]),
     );
     const received = new Set<string>();
     const failures = new Set<string>();
-    const sensitiveFiles = new Set<string>();
 
     if (files.length !== batch.totalFiles) failures.add('(파일 수 불일치)');
     for (const file of files) {
       assertSafeRepositoryPath(file.relativePath);
-      try {
-        assertNoPrivateKeyMaterial(file.relativePath, file.buffer);
-      } catch {
-        failures.add(file.relativePath);
-        sensitiveFiles.add(file.relativePath);
-        continue;
-      }
       const metadata = expected.get(file.relativePath);
       if (!metadata || received.has(file.relativePath)) {
         failures.add(file.relativePath);
@@ -215,7 +199,6 @@ export class UploadSessionBatchUseCase {
     }
     return {
       failures: [...failures],
-      sensitiveFiles: [...sensitiveFiles],
     };
   }
 

@@ -6,10 +6,7 @@ import { Readable } from 'stream';
 import { spawn } from 'child_process';
 import { hasControlCharacter } from '../../../common/utils';
 import { ProjectVersion } from '../../domain/repositories/file-storage.interface';
-import {
-  isReservedRepositoryPath,
-  isSensitiveRepositoryPath,
-} from '../../domain/policies/repository-path.policy';
+import { isReservedRepositoryPath } from '../../domain/policies/repository-path.policy';
 import {
   LEGACY_VERSIONS_DIR,
   LocalStorageLayout,
@@ -171,12 +168,7 @@ export class LocalVersionStore {
     for (const rawEntry of result.stdout.toString('utf8').split('\n')) {
       const entry = rawEntry.replace(/^\.\//, '').replace(/\/$/, '');
       if (entry) {
-        const normalized = this.normalizeArchiveRelativePath(entry);
-        if (isSensitiveRepositoryPath(normalized)) {
-          throw new Error(
-            `민감 파일이 포함된 버전은 복원할 수 없습니다: ${normalized}`,
-          );
-        }
+        this.normalizeArchiveRelativePath(entry);
       }
     }
 

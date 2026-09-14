@@ -16,7 +16,6 @@ const EXCLUDED_DIRS = new Set([
   'venv',
   '.venv',
   'env',
-  '.env.local',
   'dist',
   'build',
   'out',
@@ -37,14 +36,6 @@ const EXCLUDED_DIRS = new Set([
   '.DS_Store',
   '.serena',
   '.claude',
-  '.ssh',
-  '.aws',
-  '.gnupg',
-  '.kube',
-  '.docker',
-  '.azure',
-  '.terraform',
-  '.pulumi',
   'coverage',
   '.nyc_output',
   'tmp',
@@ -174,30 +165,7 @@ const EXCLUDED_EXACT_FILENAMES = new Set([
   '.DS_Store',
   'Thumbs.db',
   'desktop.ini',
-  '.env',
-  '.envrc',
-  '.git-credentials',
-  '.npmrc',
-  '.pypirc',
-  '.netrc',
-  '.vault-token',
-  'auth.json',
-  'credentials.json',
-  'secrets.json',
-  'id_rsa',
-  'id_ed25519',
-  'id_ecdsa',
-  'id_dsa',
-  'kubeconfig',
 ]);
-
-const SENSITIVE_FILE_PATTERNS = [
-  /^\.env\.(?!(?:example|sample|template)$).+/i,
-  /(?:^|[-_.])service[-_]?account(?:[-_.]|$)/i,
-  /(?:^|[-_.])client[-_]?secret(?:[-_.]|$)/i,
-  /^terraform\.tfstate(?:\..+)?$/i,
-  /\.(?:pem|key|p12|pfx)$/i,
-];
 
 export interface FilterStats {
   kept: number;
@@ -226,9 +194,6 @@ export function getExcludeReason(
     EXCLUDED_EXACT_FILENAMES.has(fileName) ||
     EXCLUDED_EXACT_FILENAMES.has(fileName.toLowerCase())
   ) {
-    return 'name';
-  }
-  if (SENSITIVE_FILE_PATTERNS.some((pattern) => pattern.test(fileName))) {
     return 'name';
   }
   if (EXCLUDED_DIRS.has(fileName)) return 'dir';

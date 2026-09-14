@@ -247,7 +247,7 @@ describe('LocalFileStorageService', () => {
     );
   });
 
-  it('기존 저장소에 남은 민감 파일은 트리와 다운로드에서 노출하지 않는다', async () => {
+  it('민감 설정 파일도 트리와 다운로드에 포함한다', async () => {
     await storage.ensureProject('legacy-secret-project');
     await seedLiveFile(
       'legacy-secret-project',
@@ -261,9 +261,18 @@ describe('LocalFileStorageService', () => {
     );
 
     const tree = await storage.listTree('legacy-secret-project');
-    expect(tree.children?.map((item) => item.name)).toEqual(['README.md']);
+    expect(tree.children?.map((item) => item.name)).toEqual([
+      '.env',
+      'README.md',
+    ]);
+    const archive = await storage.archiveProject('legacy-secret-project');
+    const chunks: Buffer[] = [];
+    for await (const chunk of archive) chunks.push(Buffer.from(chunk));
+    expect(Buffer.concat(chunks).length).toBeGreaterThan(0);
+    const snapshot = await storage.createSnapshot('legacy-secret-project');
+    await storage.restoreVersion('legacy-secret-project', snapshot.id);
     await expect(
-      storage.archiveProject('legacy-secret-project'),
-    ).rejects.toThrow('민감 파일은 소스 저장소에 포함할 수 없습니다');
+      storage.readFile('legacy-secret-project', '.env'),
+    ).resolves.toEqual(Buffer.from('SECRET=value'));
   });
 });
