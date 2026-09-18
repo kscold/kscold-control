@@ -122,9 +122,15 @@ export const useAuthStore = create<AuthState>()(
           const { data } = await axios.get(`${API_URL}/api/auth/me`, {
             headers: { Authorization: `Bearer ${token}` },
           });
+          if (get().token !== token) return Boolean(get().token);
           set({ user: data, isValidating: false });
           return true;
-        } catch {
+        } catch (error) {
+          if (get().token !== token) return Boolean(get().token);
+          if (!axios.isAxiosError(error) || error.response?.status !== 401) {
+            set({ isValidating: false });
+            return true;
+          }
           const impersonation = get().impersonation;
           if (impersonation) {
             try {
@@ -133,6 +139,7 @@ export const useAuthStore = create<AuthState>()(
                   Authorization: `Bearer ${impersonation.actorToken}`,
                 },
               });
+              if (get().token !== token) return Boolean(get().token);
               set({
                 token: impersonation.actorToken,
                 user: data,
@@ -140,7 +147,15 @@ export const useAuthStore = create<AuthState>()(
                 isValidating: false,
               });
               return true;
-            } catch {
+            } catch (actorError) {
+              if (get().token !== token) return Boolean(get().token);
+              if (
+                !axios.isAxiosError(actorError) ||
+                actorError.response?.status !== 401
+              ) {
+                set({ isValidating: false });
+                return true;
+              }
               // 원래 관리자 세션도 만료됐다면 완전히 로그아웃한다.
             }
           }

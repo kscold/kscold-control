@@ -24,9 +24,39 @@ api.interceptors.request.use(
 // 응답 인터셉터 - 공통 에러를 처리한다
 api.interceptors.response.use(
   (response) => response,
-  (error) => {
+  async (error) => {
     if (error.response?.status === 401) {
       const auth = useAuthStore.getState();
+      const sentToken = error.config?.headers?.Authorization;
+      // An old request must not clear a newer login or restored admin session.
+      if (!auth.token || sentToken !== `Bearer ${auth.token}`) {
+        return Promise.reject(error);
+      }
+      if (!error.config._authRechecked) {
+        try {
+          await axios.get(`${API_URL}/api/auth/me`, {
+            headers: { Authorization: sentToken, 'Cache-Control': 'no-cache' },
+            timeout: 10_000,
+          });
+          if (useAuthStore.getState().token === auth.token) {
+            error.config._authRechecked = true;
+            return api.request(error.config);
+          }
+          return Promise.reject(error);
+        } catch (validationError) {
+          if (
+            !axios.isAxiosError(validationError) ||
+            validationError.response?.status !== 401
+          ) {
+            return Promise.reject(error);
+          }
+        }
+      } else {
+        // A valid session with a failing endpoint is not a reason to log out.
+        return Promise.reject(error);
+      }
+      if (useAuthStore.getState().token !== auth.token)
+        return Promise.reject(error);
       if (auth.impersonation && auth.endImpersonation()) {
         window.location.href = '/rbac';
       } else {

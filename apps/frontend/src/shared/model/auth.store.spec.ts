@@ -1,4 +1,4 @@
-import axios from 'axios';
+import axios, { AxiosError, AxiosHeaders } from 'axios';
 import { useAuthStore, type AuthUser } from './auth.store';
 
 describe('auth.store impersonation', () => {
@@ -23,6 +23,39 @@ describe('auth.store impersonation', () => {
       impersonation: null,
       isValidating: false,
     });
+  });
+
+  afterEach(() => vi.restoreAllMocks());
+
+  it('네트워크 장애에는 세션을 지우지 않는다', async () => {
+    vi.spyOn(axios, 'get').mockRejectedValue(new AxiosError('Network Error'));
+    await expect(useAuthStore.getState().validateToken()).resolves.toBe(true);
+    expect(useAuthStore.getState().token).toBe('admin-token');
+    expect(useAuthStore.getState().isValidating).toBe(false);
+  });
+
+  it('서버가 인증 만료를 확인하면 로그아웃한다', async () => {
+    const config = { headers: new AxiosHeaders() };
+    vi.spyOn(axios, 'get').mockRejectedValue(
+      new AxiosError('Unauthorized', undefined, config, undefined, {
+        status: 401,
+        statusText: 'Unauthorized',
+        data: {},
+        headers: new AxiosHeaders(),
+        config,
+      }),
+    );
+    await expect(useAuthStore.getState().validateToken()).resolves.toBe(false);
+    expect(useAuthStore.getState().token).toBeNull();
+  });
+
+  it('이전 검증 응답이 새 로그인 정보를 지우지 않는다', async () => {
+    vi.spyOn(axios, 'get').mockImplementationOnce(async () => {
+      useAuthStore.setState({ token: 'new-token', isValidating: false });
+      throw new AxiosError('Network Error');
+    });
+    await expect(useAuthStore.getState().validateToken()).resolves.toBe(true);
+    expect(useAuthStore.getState().token).toBe('new-token');
   });
 
   it('대상 토큰으로 전환하면서 원래 관리자 세션을 보관한다', () => {
