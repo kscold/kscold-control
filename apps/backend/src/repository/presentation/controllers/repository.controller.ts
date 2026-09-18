@@ -14,7 +14,7 @@ import {
   UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
-import { AuthGuard } from '@nestjs/passport';
+import { DiagnosticJwtGuard } from '../../../common/guards/diagnostic-jwt.guard';
 import { FilesInterceptor } from '@nestjs/platform-express';
 import type { Response } from 'express';
 import { PermissionsGuard } from '../../../common/guards';
@@ -74,7 +74,7 @@ function parseRelativePaths(raw: string | string[] | undefined): string[] {
 }
 
 @Controller('repository')
-@UseGuards(AuthGuard('jwt'), PermissionsGuard)
+@UseGuards(DiagnosticJwtGuard, PermissionsGuard)
 export class RepositoryController {
   constructor(
     private readonly createProjectUseCase: CreateProjectUseCase,
