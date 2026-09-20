@@ -14,6 +14,7 @@ import {
   RegisterUseCase,
   LoginUseCase,
   GetMeUseCase,
+  RefreshTokenUseCase,
   StartImpersonationUseCase,
 } from '../../application/use-cases';
 import { LoginDto, RegisterDto } from '../../application/dto';
@@ -27,6 +28,7 @@ export class AuthController {
     private readonly registerUseCase: RegisterUseCase,
     private readonly loginUseCase: LoginUseCase,
     private readonly getMeUseCase: GetMeUseCase,
+    private readonly refreshTokenUseCase: RefreshTokenUseCase,
     private readonly startImpersonationUseCase: StartImpersonationUseCase,
   ) {}
 
@@ -46,6 +48,19 @@ export class AuthController {
   @Get('me')
   async getMe(@Request() req: { user: User }) {
     return this.getMeUseCase.execute(req.user);
+  }
+
+  /**
+   * 접근 토큰 갱신
+   *
+   * 아직 유효한 토큰으로만 호출할 수 있고, 만료가 임박했을 때 화면이 미리 호출한다.
+   * 긴 작업(대용량 소스 동기화) 중 만료로 세션이 끊기는 것을 막는다.
+   */
+  @UseGuards(AuthGuard('jwt'))
+  @Post('refresh')
+  @HttpCode(HttpStatus.OK)
+  async refresh(@Request() req: { user: User }) {
+    return this.refreshTokenUseCase.execute(req.user);
   }
 
   @UseGuards(AuthGuard('jwt'))

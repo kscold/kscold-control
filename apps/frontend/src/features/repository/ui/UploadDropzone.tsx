@@ -11,6 +11,7 @@ import {
   isRepositoryUploadIntegrityError,
   repositoryService,
 } from '@/entities/project';
+import { useAuthStore } from '@/shared/model/auth.store';
 import { filterFiles, chunkFiles, type FilterStats } from '../lib/file-filter';
 import {
   buildUploadManifest,
@@ -381,6 +382,10 @@ export function UploadDropzone({
       return;
     }
 
+    // 대용량 동기화는 수 분에서 수십 분이 걸린다.
+    // 도중에 토큰 수명이 끝나면 업로드와 로그인이 함께 끊기므로 시작 전에 미리 갱신한다.
+    await useAuthStore.getState().ensureFreshToken();
+
     setUploading(true);
     setError(null);
 
@@ -428,6 +433,10 @@ export function UploadDropzone({
           );
 
           for (const batch of remainingBatches) {
+            // 배치 사이마다 남은 수명을 확인한다. 여유가 있으면 즉시 반환하므로 비용이 없고,
+            // 수십 분짜리 동기화가 만료 시점을 넘어가도 세션이 끊기지 않는다.
+            await useAuthStore.getState().ensureFreshToken();
+
             const localBatch = pendingUpload.batches[batch.index];
             if (!localBatch) {
               throw new Error(
