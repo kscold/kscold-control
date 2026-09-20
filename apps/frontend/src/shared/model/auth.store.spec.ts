@@ -169,7 +169,7 @@ describe('auth.store 토큰 선제 갱신', () => {
     await expect(useAuthStore.getState().ensureFreshToken()).resolves.toBe(
       true,
     );
-    expect(post).toHaveBeenCalledOnce();
+    expect(post).toHaveBeenCalledTimes(1);
     expect(useAuthStore.getState().token).toBe('refreshed-token');
   });
 

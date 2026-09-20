@@ -7,11 +7,13 @@ import '@testing-library/jest-dom/vitest';
  * 전역이 실제로 쓸 수 있는지 확인하고, 아니면 메모리 구현으로 바꿔 끼운다.
  */
 function installMemoryStorage(key: 'localStorage' | 'sessionStorage') {
-  const jsdomStorage = (globalThis as { window?: Window })[key];
-  if (typeof jsdomStorage?.clear === 'function') {
+  const existing = (globalThis as Record<string, unknown>)[key] as
+    | Storage
+    | undefined;
+  if (typeof existing?.clear === 'function') {
     try {
-      jsdomStorage.setItem('__storage_probe__', '1');
-      jsdomStorage.removeItem('__storage_probe__');
+      existing.setItem('__storage_probe__', '1');
+      existing.removeItem('__storage_probe__');
       return;
     } catch {
       // 전역이 있으나 쓸 수 없는 상태 — 아래에서 교체한다.
