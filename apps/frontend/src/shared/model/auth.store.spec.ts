@@ -129,3 +129,111 @@ describe('auth.store impersonation', () => {
     getSpy.mockRestore();
   });
 });
+
+describe('auth.store 토큰 선제 갱신', () => {
+  const user: AuthUser = {
+    id: 'admin-user',
+    email: 'admin@example.com',
+    roles: ['admin'],
+    permissions: ['rbac:manage'],
+  };
+
+  /** exp 만 담은 최소 형태의 JWT — 서명 검증은 서버 몫이라 여기선 불필요하다 */
+  const tokenExpiringIn = (ms: number) => {
+    const payload = btoa(
+      JSON.stringify({ exp: Math.floor((Date.now() + ms) / 1000) }),
+    );
+    return `header.${payload}.signature`;
+  };
+
+  const HOUR = 60 * 60 * 1000;
+
+  beforeEach(() => {
+    localStorage.clear();
+    useAuthStore.setState({
+      token: null,
+      user,
+      impersonation: null,
+      isValidating: false,
+    });
+  });
+
+  afterEach(() => vi.restoreAllMocks());
+
+  it('만료가 임박하면 새 토큰으로 바꾼다', async () => {
+    useAuthStore.setState({ token: tokenExpiringIn(2 * HOUR) });
+    const post = vi.spyOn(axios, 'post').mockResolvedValue({
+      data: { accessToken: 'refreshed-token', user },
+    });
+
+    await expect(useAuthStore.getState().ensureFreshToken()).resolves.toBe(
+      true,
+    );
+    expect(post).toHaveBeenCalledTimes(1);
+    expect(useAuthStore.getState().token).toBe('refreshed-token');
+  });
+
+  it('수명이 넉넉하면 서버를 부르지 않는다', async () => {
+    useAuthStore.setState({ token: tokenExpiringIn(6 * 24 * HOUR) });
+    const post = vi.spyOn(axios, 'post');
+
+    await expect(useAuthStore.getState().ensureFreshToken()).resolves.toBe(
+      false,
+    );
+    expect(post).not.toHaveBeenCalled();
+  });
+
+  it('갱신에 실패해도 기존 토큰을 유지한다', async () => {
+    const original = tokenExpiringIn(2 * HOUR);
+    useAuthStore.setState({ token: original });
+    vi.spyOn(axios, 'post').mockRejectedValue(new AxiosError('Network Error'));
+
+    await expect(useAuthStore.getState().ensureFreshToken()).resolves.toBe(
+      false,
+    );
+    // 갱신 실패는 로그아웃 사유가 아니다 — 남은 수명 동안 기존 토큰으로 계속 쓴다
+    expect(useAuthStore.getState().token).toBe(original);
+  });
+
+  it('미리보기 세션은 갱신하지 않는다', async () => {
+    useAuthStore.setState({
+      token: tokenExpiringIn(2 * HOUR),
+      impersonation: {
+        actorToken: 'admin-token',
+        actorUser: user,
+        sessionId: 'session-1',
+        expiresAt: new Date(Date.now() + HOUR).toISOString(),
+        readOnly: true,
+      },
+    });
+    const post = vi.spyOn(axios, 'post');
+
+    await expect(useAuthStore.getState().ensureFreshToken()).resolves.toBe(
+      false,
+    );
+    expect(post).not.toHaveBeenCalled();
+  });
+
+  it('갱신 중 다른 탭에서 로그인하면 그 토큰을 덮어쓰지 않는다', async () => {
+    useAuthStore.setState({ token: tokenExpiringIn(2 * HOUR) });
+    vi.spyOn(axios, 'post').mockImplementation(async () => {
+      useAuthStore.setState({ token: 'token-from-other-tab' });
+      return { data: { accessToken: 'refreshed-token', user } };
+    });
+
+    await expect(useAuthStore.getState().ensureFreshToken()).resolves.toBe(
+      false,
+    );
+    expect(useAuthStore.getState().token).toBe('token-from-other-tab');
+  });
+
+  it('해석할 수 없는 토큰은 갱신을 시도하지 않는다', async () => {
+    useAuthStore.setState({ token: 'not-a-jwt' });
+    const post = vi.spyOn(axios, 'post');
+
+    await expect(useAuthStore.getState().ensureFreshToken()).resolves.toBe(
+      false,
+    );
+    expect(post).not.toHaveBeenCalled();
+  });
+});

@@ -106,17 +106,21 @@ function RoutePageSkeleton() {
 const TOKEN_REVALIDATE_INTERVAL = 60 * 60 * 1000;
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { token, validateToken } = useAuthStore();
+  const { token, validateToken, ensureFreshToken } = useAuthStore();
 
   useEffect(() => {
     if (!token) return;
-    void validateToken();
-    const id = window.setInterval(
-      () => void validateToken(),
-      TOKEN_REVALIDATE_INTERVAL,
-    );
+    // 세션 확인과 함께 만료가 임박한 토큰을 미리 갱신한다.
+    // 갱신 수단이 없던 시절에는 토큰이 수명을 다하는 순간 작업 중에도 로그아웃됐다.
+    const check = () => {
+      void validateToken().then((valid) => {
+        if (valid) void ensureFreshToken();
+      });
+    };
+    check();
+    const id = window.setInterval(check, TOKEN_REVALIDATE_INTERVAL);
     return () => window.clearInterval(id);
-  }, [token, validateToken]);
+  }, [token, validateToken, ensureFreshToken]);
 
   if (!token) return <Navigate to="/login" replace />;
   return <>{children}</>;

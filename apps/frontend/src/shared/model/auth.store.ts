@@ -46,8 +46,29 @@ interface AuthState {
   register: (email: string, password: string) => Promise<void>;
   logout: () => void;
   validateToken: () => Promise<boolean>;
+  /** 만료가 임박했으면 토큰을 미리 갱신한다. 갱신했으면 true. */
+  ensureFreshToken: () => Promise<boolean>;
   beginImpersonation: (data: StartImpersonationData) => boolean;
   endImpersonation: () => boolean;
+}
+
+/** 갱신을 시작할 잔여 수명 — 이보다 적게 남으면 미리 바꾼다 (토큰 수명 7일 기준) */
+const REFRESH_THRESHOLD_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * JWT 의 만료 시각(ms)을 읽는다. 해석에 실패하면 null 을 돌려준다.
+ * 서명 검증은 서버 몫이고, 여기서는 갱신 시점을 정하는 용도로만 쓴다.
+ */
+function readTokenExpiry(token: string): number | null {
+  try {
+    const payload = token.split('.')[1];
+    if (!payload) return null;
+    const json = atob(payload.replace(/-/g, '+').replace(/_/g, '/'));
+    const exp = (JSON.parse(json) as { exp?: number }).exp;
+    return typeof exp === 'number' ? exp * 1000 : null;
+  } catch {
+    return null;
+  }
 }
 
 function clearSessionStorageByPrefix(prefix: string) {
@@ -98,6 +119,31 @@ export const useAuthStore = create<AuthState>()(
           impersonation: null,
           isValidating: false,
         });
+      },
+
+      ensureFreshToken: async () => {
+        const { token, impersonation } = get();
+        // 사용자 미리보기 세션은 짧은 수명이 의도된 것이라 갱신 대상이 아니다.
+        if (!token || impersonation) return false;
+
+        const expiresAt = readTokenExpiry(token);
+        if (expiresAt === null) return false;
+        if (expiresAt - Date.now() > REFRESH_THRESHOLD_MS) return false;
+
+        try {
+          const { data } = await axios.post(
+            `${API_URL}/api/auth/refresh`,
+            {},
+            { headers: { Authorization: `Bearer ${token}` }, timeout: 15_000 },
+          );
+          // 갱신하는 동안 다른 탭에서 로그인/로그아웃이 일어났다면 덮어쓰지 않는다.
+          if (get().token !== token) return false;
+          set({ token: data.accessToken, user: data.user });
+          return true;
+        } catch {
+          // 갱신 실패가 곧 로그아웃은 아니다. 남은 수명 동안은 기존 토큰으로 계속 쓴다.
+          return false;
+        }
       },
 
       validateToken: async () => {
