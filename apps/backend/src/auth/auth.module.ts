@@ -14,6 +14,7 @@ import {
   RegisterUseCase,
   LoginUseCase,
   GetMeUseCase,
+  RefreshTokenUseCase,
   StartImpersonationUseCase,
 } from './application/use-cases';
 
@@ -50,6 +51,7 @@ import { JwtStrategy } from './infrastructure/strategies/jwt.strategy';
     RegisterUseCase,
     LoginUseCase,
     GetMeUseCase,
+    RefreshTokenUseCase,
     StartImpersonationUseCase,
 
     // 전략(Passport)
