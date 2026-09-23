@@ -6,6 +6,6 @@ export class PatchEnvironmentKeyDto {
   secretValue: string;
 
   @IsString()
-  @Matches(/^\d+$/)
+  @Matches(/^(?:\d+|[a-f0-9]{64})$/)
   expectedVersion: string;
 }
