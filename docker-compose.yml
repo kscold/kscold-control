@@ -11,8 +11,6 @@ services:
       - ./ssl:/etc/nginx/ssl:ro
       - certbot-webroot:/var/www/certbot
       - /Users/kscold/Desktop/bucket:/var/www/bucket:ro
-    depends_on:
-      - ubuntu-galjido
     restart: unless-stopped
   kscold-infra-db:
     image: postgres:15-alpine
@@ -25,17 +23,6 @@ services:
       - '5432:5432'
     volumes:
       - infra-db-data:/var/lib/postgresql/data
-    restart: unless-stopped
-  ubuntu-galjido:
-    image: kscold/ubuntu-galjido:latest
-    container_name: ubuntu-galjido
-    command: bash -c "/entrypoint.sh"
-    ports:
-      - '2223:22'
-      - '5433:5432'
-      - '8081:8080'
-    cpus: '2'
-    mem_limit: 4g
     restart: unless-stopped
   ubuntu-congbang:
     image: kscold/ubuntu-congbang:latest
