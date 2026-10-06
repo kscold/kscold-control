@@ -6,6 +6,8 @@ import {
   UpdateUserRequest,
   AssignRolesRequest,
   UpdateTerminalLimitRequest,
+  BackupAccessMatrix,
+  BackupTargetAssignment,
   ImpersonationResponse,
   KeyManagementAccessMatrix,
   KeyManagementTargetAssignment,
@@ -139,6 +141,34 @@ export class RbacService extends BaseApiService {
       return data;
     } catch (error) {
       this.handleError(error, '운영 키 대상 범위를 변경하지 못했습니다.');
+    }
+  }
+
+  /** 사용자별로 볼 수 있는 백업 대상을 조회한다. */
+  async getBackupTargetAccess(): Promise<BackupAccessMatrix> {
+    try {
+      const { data } = await api.get<BackupAccessMatrix>(
+        `${this.basePath}/backup-target-access`,
+      );
+      return data;
+    } catch (error) {
+      this.handleError(error, '백업 열람 범위를 불러오지 못했습니다.');
+    }
+  }
+
+  /** 한 사용자의 백업 열람 범위를 통째로 바꾼다. */
+  async updateBackupTargetAccess(
+    userId: string,
+    targetIds: string[],
+  ): Promise<BackupTargetAssignment> {
+    try {
+      const { data } = await api.put<BackupTargetAssignment>(
+        `${this.basePath}/users/${userId}/backup-target-access`,
+        { targetIds },
+      );
+      return data;
+    } catch (error) {
+      this.handleError(error, '백업 열람 범위를 변경하지 못했습니다.');
     }
   }
 

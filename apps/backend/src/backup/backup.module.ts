@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { SecretEncryptionModule } from '../common/crypto/secret-encryption.module';
+import { RbacModule } from '../rbac/rbac.module';
 import { BackupRunnerService } from './application/services/backup-runner.service';
 import { BackupSchedulerService } from './application/services/backup-scheduler.service';
 import { BackupTargetSecretService } from './application/services/backup-target-secret.service';
@@ -32,6 +33,8 @@ import { BackupController } from './presentation/controllers/backup.controller';
   imports: [
     TypeOrmModule.forFeature([BackupTarget, BackupRun]),
     SecretEncryptionModule,
+    // 사용자별 백업 대상 열람 범위 확인
+    RbacModule,
   ],
   controllers: [BackupController],
   providers: [

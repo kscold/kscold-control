@@ -35,6 +35,22 @@ export interface KeyManagementAccessMatrix {
   assignments: KeyManagementTargetAssignment[];
 }
 
+export interface BackupAccessTarget {
+  id: string;
+  name: string;
+  description: string;
+}
+
+export interface BackupTargetAssignment {
+  userId: string;
+  targetIds: string[];
+}
+
+export interface BackupAccessMatrix {
+  targets: BackupAccessTarget[];
+  assignments: BackupTargetAssignment[];
+}
+
 export interface ImpersonationResponse {
   accessToken: string;
   sessionId: string;

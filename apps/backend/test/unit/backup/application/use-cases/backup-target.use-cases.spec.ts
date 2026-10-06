@@ -125,6 +125,17 @@ describe('백업 대상 관리 유스케이스', () => {
       expect(targetRepository.create).not.toHaveBeenCalled();
     });
 
+    it('localhost 주소는 저장하지 않고 호스트 별칭을 쓰라고 알려준다', async () => {
+      await expect(
+        useCase.execute({
+          name: 'blog-prod',
+          uri: 'mongodb://user:pass@127.0.0.1:27019/blog',
+          createdBy: null,
+        }),
+      ).rejects.toThrow('host.docker.internal:<포트>');
+      expect(targetRepository.create).not.toHaveBeenCalled();
+    });
+
     it('URI 형식 오류 메시지에 입력한 URI 를 싣지 않는다', async () => {
       const error = await useCase
         .execute({
@@ -169,6 +180,13 @@ describe('백업 대상 관리 유스케이스', () => {
         connectionSummary: 'mongodb://db.example.net:27017/app',
       });
       expect(result.changedFields).toEqual(['uri']);
+    });
+
+    it('접속 URI 를 localhost 주소로 바꾸려 하면 거절한다', async () => {
+      await expect(
+        useCase.execute('target-1', { uri: 'mongodb://localhost:27017/app' }),
+      ).rejects.toThrow('host.docker.internal:<포트>');
+      expect(targetRepository.update).not.toHaveBeenCalled();
     });
 
     it('접속 URI 를 비워 보내면 저장된 값을 그대로 둔다', async () => {

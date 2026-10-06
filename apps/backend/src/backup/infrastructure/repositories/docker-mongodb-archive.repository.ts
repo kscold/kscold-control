@@ -25,6 +25,13 @@ const PARTIAL_DIRECTORY_NAME = '.partial';
 /** 컨테이너에 접속 URI 를 넘길 때 쓰는 환경변수 이름 */
 const URI_ENV_KEY = 'MONGODB_BACKUP_URI';
 
+/**
+ * 덤프 컨테이너 안에서 "이 서버"를 가리키는 이름.
+ * 같은 서버의 다른 컨테이너에서 도는 DB 는 호스트에 공개된 포트로 접속해야 하는데,
+ * 이 이름이 풀리는지는 Docker 환경마다 달라서 실행할 때 직접 붙여 준다.
+ */
+const HOST_ALIAS = 'host.docker.internal:host-gateway';
+
 const DUMP_TIMEOUT_MS = 30 * 60 * 1000;
 const MAX_STDERR_LENGTH = 8 * 1024;
 const MAX_ERROR_DETAIL_LENGTH = 500;
@@ -174,6 +181,8 @@ export class DockerMongodbArchiveRepository implements IBackupArchiveRepository 
           '--rm',
           '--name',
           containerName,
+          '--add-host',
+          HOST_ALIAS,
           // 값 없이 이름만 주면 docker 가 자기 환경에서 읽어 컨테이너로 넘긴다.
           '-e',
           URI_ENV_KEY,
