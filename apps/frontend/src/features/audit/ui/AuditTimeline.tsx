@@ -30,6 +30,7 @@ const DOMAIN_OPTIONS: Array<{ value: AuditDomain; label: string }> = [
   { value: 'rbac', label: 'RBAC' },
   { value: 'security', label: '보안' },
   { value: 'secrets', label: '운영 키' },
+  { value: 'backup', label: '백업' },
 ];
 
 function getDomainTone(domain: AuditEvent['domain']) {
@@ -42,6 +43,8 @@ function getDomainTone(domain: AuditEvent['domain']) {
       return 'border-amber-400/20 bg-amber-500/10 text-amber-100';
     case 'rbac':
       return 'border-violet-400/20 bg-violet-500/10 text-violet-100';
+    case 'backup':
+      return 'border-teal-400/20 bg-teal-500/10 text-teal-100';
     default:
       return 'border-white/10 bg-white/5 text-slate-200';
   }
@@ -165,6 +168,11 @@ export function AuditTimeline() {
       domain: 'secrets',
       label: '운영 키',
       value: summary.byDomain.secrets,
+    },
+    {
+      domain: 'backup',
+      label: '백업',
+      value: summary.byDomain.backup,
     },
   ];
   const selectedItem = useMemo(
@@ -543,7 +551,8 @@ export function AuditTimeline() {
             );
           })}
 
-          <div className="grid gap-3 sm:grid-cols-2">
+          {/* 도메인 카드 옆 남는 칸을 모두 써서 날짜 입력이 좁아지지 않게 한다. */}
+          <div className="col-span-full grid gap-3 sm:grid-cols-2 xl:col-span-4">
             <label className="rounded-xl border border-white/10 bg-gray-900/70 px-3 py-2 text-xs text-gray-400">
               시작 시각
               <input

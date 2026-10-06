@@ -1,3 +1,4 @@
+import path from 'node:path';
 import process from 'node:process';
 
 /**
@@ -19,4 +20,17 @@ export function getHomeDirectory(): string {
  */
 export function getWorkingDirectory(): string {
   return process.env.CLAUDE_WORKING_DIR || getHomeDirectory();
+}
+
+/**
+ * MongoDB 백업을 대상(컨테이너·백업 대상) 이름별로 모아 두는 최상위 디렉토리.
+ * 컨테이너 수동 백업과 예약 백업이 같은 위치를 쓰므로 한곳에서 정한다.
+ */
+export function getMongodbBackupRoot(): string {
+  return path.join(
+    getHomeDirectory(),
+    'Desktop',
+    'server-logs',
+    'mongodb-backups',
+  );
 }
