@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import {
   Container,
+  DatabaseBackup,
   FileText,
   FolderGit2,
   GitBranch,
@@ -83,6 +84,12 @@ const NAV_ITEMS = [
     label: '소스 저장소',
     icon: FolderGit2,
     permission: PERMISSIONS.REPOSITORY_READ,
+  },
+  {
+    to: '/backups',
+    label: '백업 관리',
+    icon: DatabaseBackup,
+    permission: PERMISSIONS.BACKUP_READ,
   },
   {
     to: '/audit',
