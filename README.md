@@ -7,7 +7,7 @@ A self-hosted infrastructure governance panel for managing Docker containers, Ng
 [![pnpm](https://img.shields.io/badge/pnpm-workspace-orange)](https://pnpm.io)
 [![NestJS](https://img.shields.io/badge/NestJS-10-red)](https://nestjs.com)
 [![React](https://img.shields.io/badge/React-18-61DAFB)](https://react.dev)
-[![v1.2.0](https://img.shields.io/badge/release-v1.2.0-brightgreen)](https://github.com/kscold/kscold-control/releases/tag/v1.2.0)
+[![v1.3.0](https://img.shields.io/badge/release-v1.3.0-brightgreen)](https://github.com/kscold/kscold-control/releases/tag/v1.3.0)
 
 ---
 
