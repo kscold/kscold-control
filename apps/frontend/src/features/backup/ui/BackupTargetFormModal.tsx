@@ -113,6 +113,10 @@ export function BackupTargetFormModal({
     if (uri && !/^mongodb(\+srv)?:\/\//.test(uri)) {
       return '접속 URI 는 mongodb:// 또는 mongodb+srv:// 로 시작해야 합니다.';
     }
+    // 덤프는 별도 컨테이너에서 실행되므로 localhost 는 이 서버를 가리키지 않는다.
+    if (/^mongodb(\+srv)?:\/\/([^@/]*@)?(localhost|127\.)/i.test(uri)) {
+      return '덤프는 별도 컨테이너에서 실행됩니다. 이 서버의 DB 는 localhost 대신 host.docker.internal:포트 로 적어 주세요.';
+    }
     if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(form.scheduleTime)) {
       return '실행 시각을 선택하세요.';
     }
@@ -236,7 +240,10 @@ export function BackupTargetFormModal({
                   ? `현재 접속 위치: ${target.connectionSummary} · `
                   : ''}
                 URI 경로에 적힌 데이터베이스만 덤프합니다. 암호화해 저장하며
-                다시 보여주지 않습니다. 읽기 전용 계정을 권장합니다.
+                다시 보여주지 않습니다. 읽기 전용 계정을 권장합니다. 이 서버의
+                컨테이너에서 도는 DB 는 localhost 대신{' '}
+                <code className="font-mono">host.docker.internal:포트</code> 로
+                적습니다.
               </>
             }
           >
