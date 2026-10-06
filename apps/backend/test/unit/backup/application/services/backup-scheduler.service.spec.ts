@@ -3,7 +3,7 @@ import { BackupSchedulerService } from '@/backup/application/services/backup-sch
 import type { BackupTarget } from '@/backup/domain/entities/backup-target.entity';
 
 describe('BackupSchedulerService', () => {
-  // KST 2026-10-06 03:30 = UTC 2026-10-05 18:30
+  // 한국 시각 2026-10-06 03:30 = UTC 2026-10-05 18:30
   const now = new Date('2026-10-05T18:30:10.000Z');
   const beforeOccurrence = new Date('2026-10-05T10:00:00.000Z');
 
