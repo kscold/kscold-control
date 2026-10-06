@@ -6,9 +6,11 @@ import { PERMISSIONS } from '../../../common/constants/permissions';
 
 import {
   BackupMongodbUseCase,
+  GetScheduledBackupsUseCase,
   GetStatsUseCase,
   GetSystemInfoUseCase,
   ListBackupsUseCase,
+  RunScheduledBackupUseCase,
 } from '../../application/use-cases';
 
 @Controller('system')
@@ -19,6 +21,8 @@ export class SystemController {
     private readonly getSystemInfoUseCase: GetSystemInfoUseCase,
     private readonly backupMongodbUseCase: BackupMongodbUseCase,
     private readonly listBackupsUseCase: ListBackupsUseCase,
+    private readonly getScheduledBackupsUseCase: GetScheduledBackupsUseCase,
+    private readonly runScheduledBackupUseCase: RunScheduledBackupUseCase,
   ) {}
 
   @Get('dashboard/stats')
@@ -56,5 +60,17 @@ export class SystemController {
   @RequirePermissions(PERMISSIONS.SYSTEM_READ)
   async listBackups(@Param('containerName') containerName: string) {
     return this.listBackupsUseCase.execute(containerName);
+  }
+
+  @Get('backup/schedules')
+  @RequirePermissions(PERMISSIONS.SYSTEM_READ)
+  async getScheduledBackups() {
+    return this.getScheduledBackupsUseCase.execute();
+  }
+
+  @Post('backup/schedules/:targetName/run')
+  @RequirePermissions(PERMISSIONS.SYSTEM_WRITE)
+  async runScheduledBackup(@Param('targetName') targetName: string) {
+    return this.runScheduledBackupUseCase.execute(targetName);
   }
 }
