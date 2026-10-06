@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 import { BackupRun } from '../../domain/entities/backup-run.entity';
 import type {
   FindBackupRunsOptions,
@@ -60,7 +60,11 @@ export class TypeOrmBackupRunRepository implements IBackupRunRepository {
 
   findRecent(options: FindBackupRunsOptions): Promise<BackupRun[]> {
     return this.repository.find({
-      where: options.targetId ? { targetId: options.targetId } : {},
+      where: options.targetId
+        ? { targetId: options.targetId }
+        : options.targetIds
+          ? { targetId: In(options.targetIds) }
+          : {},
       relations: { target: true },
       order: { startedAt: 'DESC' },
       take: options.limit,

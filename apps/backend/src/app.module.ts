@@ -26,6 +26,7 @@ import { User } from './rbac/domain/entities/user.entity';
 import { Role } from './rbac/domain/entities/role.entity';
 import { Permission } from './rbac/domain/entities/permission.entity';
 import { KeyManagementTargetAccess } from './rbac/domain/entities/key-management-target-access.entity';
+import { BackupTargetAccess } from './rbac/domain/entities/backup-target-access.entity';
 import { Session } from './terminal/domain/entities/session.entity';
 import { Message } from './terminal/domain/entities/message.entity';
 import { Container } from './docker/domain/entities/container.entity';
@@ -69,6 +70,7 @@ import { resolveFrontendDistPath } from './common/utils/frontend-dist-path.util'
         Role,
         Permission,
         KeyManagementTargetAccess,
+        BackupTargetAccess,
         Session,
         Message,
         Container,

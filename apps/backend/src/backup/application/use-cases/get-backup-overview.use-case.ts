@@ -18,6 +18,10 @@ import {
   type IBackupTargetRepository,
 } from '../../domain/repositories/backup-target.repository';
 import type { BackupArchive } from '../../domain/types/backup.type';
+import {
+  BackupTargetAccessService,
+  type BackupViewer,
+} from '../../../rbac/application/services/backup-target-access.service';
 import { BackupRunnerService } from '../services/backup-runner.service';
 
 /** 백업 대상 하나의 현재 상태 */
@@ -36,7 +40,10 @@ export interface BackupOverview {
   items: BackupTargetStatus[];
 }
 
-/** 백업 대상 전체와 대상별 일정·최근 실행 결과·보관 중인 백업 조회 */
+/**
+ * 대상별 일정·최근 실행 결과·보관 중인 백업 조회
+ * 조회하는 사용자가 볼 수 있는 대상만 돌려준다.
+ */
 @Injectable()
 export class GetBackupOverviewUseCase {
   private readonly logger = new Logger(GetBackupOverviewUseCase.name);
@@ -49,10 +56,17 @@ export class GetBackupOverviewUseCase {
     @Inject(BACKUP_ARCHIVE_REPOSITORY)
     private readonly archiveRepository: IBackupArchiveRepository,
     private readonly runner: BackupRunnerService,
+    private readonly targetAccess: BackupTargetAccessService,
   ) {}
 
-  async execute(now: Date = new Date()): Promise<BackupOverview> {
-    const targets = await this.targetRepository.findAll();
+  async execute(
+    viewer: BackupViewer,
+    now: Date = new Date(),
+  ): Promise<BackupOverview> {
+    const visibleIds = await this.targetAccess.resolveVisibleTargetIds(viewer);
+    const targets = (await this.targetRepository.findAll()).filter(
+      (target) => visibleIds === null || visibleIds.has(target.id),
+    );
     const latestRuns = await this.runRepository.findLatestByTargetIds(
       targets.map((target) => target.id),
     );

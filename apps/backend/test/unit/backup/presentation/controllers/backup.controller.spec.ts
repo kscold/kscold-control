@@ -122,8 +122,10 @@ describe('BackupController', () => {
       ],
     });
 
-    const response = await controller.listTargets();
+    const response = await controller.listTargets(request as never);
 
+    // 누가 조회하는지에 따라 보이는 대상이 달라지므로 요청한 사용자를 넘긴다.
+    expect(getBackupOverview.execute).toHaveBeenCalledWith(request.user);
     expect(response).toEqual({
       timeZone: 'Asia/Seoul',
       items: [
@@ -243,9 +245,9 @@ describe('BackupController', () => {
     listBackupRuns.execute.mockResolvedValueOnce([run]);
     const query = { targetId: target.id, limit: 5 };
 
-    const response = await controller.listRuns(query);
+    const response = await controller.listRuns(query, request as never);
 
-    expect(listBackupRuns.execute).toHaveBeenCalledWith(query);
+    expect(listBackupRuns.execute).toHaveBeenCalledWith(request.user, query);
     expect(response.items[0]).toMatchObject({
       id: 'run-1',
       targetName: 'app-prod',
