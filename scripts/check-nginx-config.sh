@@ -24,15 +24,26 @@ openssl req -x509 -nodes -newkey rsa:2048 -days 1 \
   -keyout "${test_root}/privkey.pem" \
   -out "${test_root}/fullchain.pem" >/dev/null 2>&1
 
-for domain in app.example.com gole.kscold.com kscold.com; do
+# 예제 설정이 참조하는 인증서 도메인을 직접 읽어 준비한다.
+# 목록을 손으로 맞추면 예제를 추가할 때마다 검사가 깨진다.
+while IFS= read -r domain; do
   mkdir -p "${test_root}/ssl/${domain}"
   cp "${test_root}/privkey.pem" "${test_root}/ssl/${domain}/privkey.pem"
   cp "${test_root}/fullchain.pem" "${test_root}/ssl/${domain}/fullchain.pem"
-done
+done < <(grep -hoE '/etc/nginx/ssl/[^/]+/' "${test_root}"/conf.d/*.conf | cut -d/ -f5 | sort -u)
+
+# 업스트림 호스트도 같은 방식으로 모아 검사용 컨테이너 안에서 이름이 풀리게 한다.
+add_host_args=()
+while IFS= read -r upstream_host; do
+  add_host_args+=(--add-host "${upstream_host}:127.0.0.1")
+done < <(
+  grep -hoE 'proxy_pass https?://[A-Za-z0-9._-]+' "${test_root}"/conf.d/*.conf |
+    sed -E 's#.*://##' |
+    sort -u
+)
 
 docker run --rm \
-  --add-host ubuntu-app:127.0.0.1 \
-  --add-host ubuntu-blog:127.0.0.1 \
+  ${add_host_args[@]+"${add_host_args[@]}"} \
   --volume "${test_root}/nginx.conf:/etc/nginx/nginx.conf:ro" \
   --volume "${test_root}/conf.d:/etc/nginx/conf.d:ro" \
   --volume "${test_root}/ssl:/etc/nginx/ssl:ro" \
