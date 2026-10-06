@@ -171,6 +171,43 @@ describe('BackupView', () => {
     expect(screen.getByText('아직 실행 기록이 없습니다.')).toBeInTheDocument();
   });
 
+  it('배정받은 대상이 없는 조회 전용 사용자에게는 이유를 알려준다', async () => {
+    signIn([PERMISSIONS.BACKUP_READ]);
+    vi.mocked(backupTargetService.getOverview).mockResolvedValue(overviewOf());
+    vi.mocked(backupTargetService.listRuns).mockResolvedValue([]);
+    renderView();
+
+    expect(
+      await screen.findByText('볼 수 있는 백업 대상이 없습니다.'),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText('관리자가 열람 범위에 넣어 준 대상만 여기에 보입니다.'),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: '첫 대상 추가' }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('localhost 주소는 서버로 보내지 않고 호스트 별칭을 안내한다', async () => {
+    const user = userEvent.setup();
+    const createTarget = vi.spyOn(backupTargetService, 'createTarget');
+    renderView();
+
+    await user.click(await screen.findByRole('button', { name: '대상 추가' }));
+    const dialog = screen.getByRole('dialog');
+    await user.type(within(dialog).getByLabelText('이름'), 'blog-prod');
+    await user.type(
+      within(dialog).getByLabelText('접속 URI'),
+      'mongodb://user:pass@127.0.0.1:27019/blog',
+    );
+    await user.click(within(dialog).getByRole('button', { name: '대상 추가' }));
+
+    expect(within(dialog).getByRole('alert')).toHaveTextContent(
+      'host.docker.internal:포트',
+    );
+    expect(createTarget).not.toHaveBeenCalled();
+  });
+
   it('조회에 실패하면 서버가 보낸 이유를 보여준다', async () => {
     vi.mocked(backupTargetService.getOverview).mockRejectedValue(
       new Error('백업 현황 조회 실패'),
