@@ -1,4 +1,4 @@
-import { SecretEncryptionService } from '@/key-management/application/services/secret-encryption.service';
+import { SecretEncryptionService } from '@/common/crypto/secret-encryption.service';
 
 describe('SecretEncryptionService', () => {
   const key = Buffer.alloc(32, 7).toString('base64');
