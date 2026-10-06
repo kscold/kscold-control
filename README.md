@@ -24,7 +24,7 @@ A self-hosted infrastructure governance panel for managing Docker containers, Ng
 | **Key Vault**   | DB-driven GoLe/Pawpong `.env`, encrypted backups, GCP/SSH versioned deploys                   |
 | **Logs**        | Unified viewer — backend · PM2 · Nginx · Docker · blog container logs                         |
 | **Network**     | Topology graph (React Flow), UPnP port management                                             |
-| **System**      | Real-time CPU / memory / disk, Nginx status, host info                                        |
+| **System**      | Real-time CPU / memory / disk, Nginx status, host info, scheduled MongoDB backups             |
 
 ---
 
@@ -149,6 +149,7 @@ npm install -g @openai/codex
 | `KEY_MANAGEMENT_GH_PATH`          | `/opt/homebrew/bin/gh`     | Path to the GitHub CLI                    |
 | `KEY_MANAGEMENT_SSH_PATH`         | `/usr/bin/ssh`             | Path to the OpenSSH client                |
 | `KEY_MANAGEMENT_SSH_IDENTITY_DIR` | `$HOME/.ssh`               | Directory containing target SSH keys      |
+| `SCHEDULED_MONGODB_BACKUPS`       | —                          | JSON array of scheduled MongoDB backups   |
 
 ## Multi-target Key Management API
 
@@ -232,6 +233,49 @@ curl -fsS -X POST \
   -H "Authorization: Bearer $TOKEN" \
   -H 'Content-Type: application/json' \
   --data '{"expectedVersion":"2"}'
+```
+
+---
+
+## Scheduled MongoDB Backups
+
+Dump MongoDB databases that live outside the host (for example MongoDB Atlas)
+once a day and delete backups that have outlived their retention period.
+
+```bash
+# .env — only the database named in the URI path is dumped
+SCHEDULED_MONGODB_BACKUPS='[{"name":"my-app-prod","uri":"mongodb+srv://backup-user:change-me@cluster.example.mongodb.net/prod","retentionDays":10}]'
+```
+
+| Field           | Default   | Description                                                 |
+| --------------- | --------- | ----------------------------------------------------------- |
+| `name`          | —         | Identifier used for the backup directory and the API        |
+| `uri`           | —         | Connection string; a read-only database user is recommended |
+| `retentionDays` | `10`      | Backups older than this are deleted after a successful run  |
+| `image`         | `mongo:7` | Docker image that provides `mongodump`                      |
+
+- Runs every day at **03:30 Asia/Seoul**. Each target is dumped by a throwaway
+  container, so the host needs no MongoDB tools. The URI reaches `mongodump`
+  through the environment and a config file inside the container, never as a
+  command-line argument.
+- Archives are written to
+  `~/Desktop/server-logs/mongodb-backups/<name>/<UTC timestamp>/dump.archive.gz`
+  with owner-only permissions.
+- Old backups are pruned only after a new backup succeeds, and the most recent
+  backup is always kept, so a failing target never loses its last good copy.
+
+```bash
+# Schedule, last result, and stored backups per target (requires system:read)
+curl -H "Authorization: Bearer $TOKEN" \
+  http://localhost:4000/api/system/backup/schedules
+
+# Back up one target right now (requires system:write)
+curl -X POST -H "Authorization: Bearer $TOKEN" \
+  http://localhost:4000/api/system/backup/schedules/my-app-prod/run
+
+# Restore an archive (add --nsFrom/--nsTo to restore into another database)
+docker run --rm -i -e MONGODB_URI mongo:7 \
+  sh -c 'mongorestore --uri "$MONGODB_URI" --archive --gzip' < dump.archive.gz
 ```
 
 ---
