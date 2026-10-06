@@ -148,13 +148,11 @@ export function BackupTargetCard({
         )}
       </div>
 
-      <dl className="grid grid-cols-1 gap-px border-y border-gray-800 bg-gray-800 sm:grid-cols-2 xl:grid-cols-4">
+      {/* 접속 위치가 가장 길어 넓은 화면에서는 두 칸 몫을 준다. 어느 DB 인지(경로 끝)까지 잘리지 않고 보여야 한다. */}
+      <dl className="grid grid-cols-1 gap-px border-y border-gray-800 bg-gray-800 sm:grid-cols-2 xl:grid-cols-[minmax(0,2fr)_repeat(3,minmax(0,1fr))]">
         <div className="bg-gray-900 px-4 py-3 sm:px-5">
           <dt className="text-[11px] font-medium text-gray-500">접속 위치</dt>
-          <dd
-            className="mt-1 truncate font-mono text-xs text-gray-200"
-            title={target.connectionSummary}
-          >
+          <dd className="mt-1 break-all font-mono text-xs leading-5 text-gray-200">
             {target.connectionSummary}
           </dd>
         </div>
