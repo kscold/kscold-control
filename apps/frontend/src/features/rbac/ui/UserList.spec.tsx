@@ -19,13 +19,37 @@ describe('UserList QA preview', () => {
     terminalCommandLimit: -1,
   } as User;
 
+  // 백업은 조회 권한만 있는 운영 키 관리자
+  const backupViewer = {
+    id: 'backup-viewer',
+    email: 'viewer@example.com',
+    roles: [
+      {
+        id: 'key-manager',
+        name: 'key_manager',
+        permissions: [{ id: 'p1', name: 'backup:read' }],
+      },
+    ],
+    terminalCommandCount: 0,
+    terminalCommandLimit: 0,
+  } as User;
+  const backupTargets = [
+    { id: 'blog-id', name: 'kscold-blog', description: '' },
+    { id: 'pawpong-id', name: 'pawpong-prod', description: '' },
+  ];
+
   function renderList(
     onPreviewUser = vi.fn(),
     onUpdateKeyManagementTargets = vi.fn().mockResolvedValue(true),
+    backup: {
+      users?: User[];
+      assignments?: Record<string, string[]>;
+      onUpdate?: (userId: string, targetIds: string[]) => Promise<boolean>;
+    } = {},
   ) {
     render(
       <UserList
-        users={[administrator, keyManager]}
+        users={backup.users ?? [administrator, keyManager]}
         onAssignRoles={vi.fn()}
         onUpdatePassword={vi.fn().mockResolvedValue(true)}
         onDelete={vi.fn()}
@@ -49,6 +73,11 @@ describe('UserList QA preview', () => {
           [keyManager.id]: ['gole-production'],
         }}
         onUpdateKeyManagementTargets={onUpdateKeyManagementTargets}
+        backupTargets={backupTargets}
+        backupAssignments={backup.assignments ?? {}}
+        onUpdateBackupTargets={
+          backup.onUpdate ?? vi.fn().mockResolvedValue(true)
+        }
         onPreviewUser={onPreviewUser}
       />,
     );
@@ -94,5 +123,80 @@ describe('UserList QA preview', () => {
       'gole-production',
       'pawpong-production',
     ]);
+  });
+
+  describe('백업 열람 범위', () => {
+    it('관리자는 전체 열람으로, 조회 권한만 있는 사용자는 배정된 대상만 표시한다', () => {
+      renderList(vi.fn(), vi.fn(), {
+        users: [administrator, backupViewer],
+        assignments: { [backupViewer.id]: ['pawpong-id'] },
+      });
+
+      expect(screen.getByText('관리자 전체 열람')).toBeInTheDocument();
+      // 관리자 칸에는 두 대상이 모두, 조회 전용 사용자 칸에는 포퐁만 보인다.
+      expect(screen.getAllByText('pawpong-prod')).toHaveLength(2);
+      expect(screen.getAllByText('kscold-blog')).toHaveLength(1);
+    });
+
+    it('배정된 대상이 없으면 없다고 알려준다', () => {
+      renderList(vi.fn(), vi.fn(), { users: [backupViewer] });
+
+      expect(screen.getByText('볼 수 있는 백업 대상 없음')).toBeInTheDocument();
+    });
+
+    it('백업 조회 권한이 없는 사용자에게는 범위 영역을 보여주지 않는다', () => {
+      renderList(vi.fn(), vi.fn(), { users: [keyManager] });
+
+      expect(screen.queryByText('백업 열람 범위')).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole('button', { name: '열람 범위 변경' }),
+      ).not.toBeInTheDocument();
+    });
+
+    it('볼 수 있는 대상을 체크해 저장한다', async () => {
+      const user = userEvent.setup();
+      const onUpdate = vi.fn().mockResolvedValue(true);
+      renderList(vi.fn(), vi.fn(), { users: [backupViewer], onUpdate });
+
+      await user.click(screen.getByRole('button', { name: '열람 범위 변경' }));
+      await user.click(screen.getByRole('checkbox', { name: /pawpong-prod/ }));
+      await user.click(screen.getByRole('button', { name: '열람 범위 저장' }));
+
+      expect(onUpdate).toHaveBeenCalledWith(backupViewer.id, ['pawpong-id']);
+      // 저장에 성공하면 편집 영역이 닫힌다.
+      expect(
+        screen.queryByRole('button', { name: '열람 범위 저장' }),
+      ).not.toBeInTheDocument();
+    });
+
+    it('저장에 실패하면 편집 중인 내용을 그대로 둔다', async () => {
+      const user = userEvent.setup();
+      const onUpdate = vi.fn().mockResolvedValue(false);
+      renderList(vi.fn(), vi.fn(), { users: [backupViewer], onUpdate });
+
+      await user.click(screen.getByRole('button', { name: '열람 범위 변경' }));
+      await user.click(screen.getByRole('checkbox', { name: /kscold-blog/ }));
+      await user.click(screen.getByRole('button', { name: '열람 범위 저장' }));
+
+      expect(
+        screen.getByRole('checkbox', { name: /kscold-blog/ }),
+      ).toBeChecked();
+    });
+
+    it('체크를 풀어 배정을 거둘 수 있다', async () => {
+      const user = userEvent.setup();
+      const onUpdate = vi.fn().mockResolvedValue(true);
+      renderList(vi.fn(), vi.fn(), {
+        users: [backupViewer],
+        assignments: { [backupViewer.id]: ['pawpong-id'] },
+        onUpdate,
+      });
+
+      await user.click(screen.getByRole('button', { name: '열람 범위 변경' }));
+      await user.click(screen.getByRole('checkbox', { name: /pawpong-prod/ }));
+      await user.click(screen.getByRole('button', { name: '열람 범위 저장' }));
+
+      expect(onUpdate).toHaveBeenCalledWith(backupViewer.id, []);
+    });
   });
 });
