@@ -271,8 +271,16 @@ Targets are stored in PostgreSQL and managed on the **백업 관리** page
 - **History** — every run (scheduled or manual, with who started it) is recorded
   and shown on the page. Changes and manual runs are also written to the audit
   log under the `backup` domain.
-- **Permissions** — `backup:read` to view, `backup:manage` to change targets or
-  run a backup.
+- **Permissions** — `backup:manage` (administrators) can change targets, run a
+  backup, and see every target. `backup:read` alone only opens the page: such a
+  user sees just the targets an administrator assigned to them under
+  **권한 관리 → 백업 열람 범위**, so a collaborator can watch one project's
+  backups without seeing the others.
+- **Databases on the same host** — the dump runs in its own container, where
+  `localhost` is that container, not the server. For a MongoDB running in
+  another container on this host, publish its port and use
+  `host.docker.internal:<port>` as the host; loopback addresses are rejected
+  when a target is saved.
 
 ```bash
 # Targets with schedule, last result, and stored backups
@@ -291,6 +299,11 @@ curl -X POST -H "Authorization: Bearer $TOKEN" \
 # Run history (optionally ?targetId=TARGET_ID&limit=30)
 curl -H "Authorization: Bearer $TOKEN" \
   http://localhost:4000/api/backups/runs
+
+# Let a backup:read user see specific targets (requires rbac:manage)
+curl -X PUT -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+  -d '{"targetIds":["TARGET_ID"]}' \
+  http://localhost:4000/api/rbac/users/USER_ID/backup-target-access
 
 # Restore an archive (add --nsFrom/--nsTo to restore into another database)
 docker run --rm -i -e MONGODB_URI mongo:7 \
