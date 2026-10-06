@@ -56,6 +56,8 @@ export class RbacSeedService {
       [PERMISSIONS.REPOSITORY_DELETE]: '소스 저장소 삭제',
       [PERMISSIONS.SECURITY_READ]: 'IP 차단 목록 조회',
       [PERMISSIONS.SECURITY_MANAGE]: 'IP 차단 관리',
+      [PERMISSIONS.BACKUP_READ]: '백업 대상, 실행 이력, 보관 중인 백업 조회',
+      [PERMISSIONS.BACKUP_MANAGE]: '백업 대상 등록/수정/삭제 및 수동 실행',
       [PERMISSIONS.SECRETS_READ]: '운영 환경 변수 메타데이터 및 백업 조회',
       [PERMISSIONS.SECRETS_REVEAL]: '운영 환경 변수 평문 공개',
       [PERMISSIONS.SECRETS_WRITE]: '운영 환경 변수 새 버전 생성',
@@ -116,7 +118,8 @@ export class RbacSeedService {
         p.name === PERMISSIONS.DOCKER_READ ||
         p.name === PERMISSIONS.SYSTEM_READ ||
         p.name === PERMISSIONS.REPOSITORY_READ ||
-        p.name === PERMISSIONS.SECURITY_READ,
+        p.name === PERMISSIONS.SECURITY_READ ||
+        p.name === PERMISSIONS.BACKUP_READ,
     );
     let readOnlyRole = await this.roleRepository.findByNameWithPermissions(
       ROLES.READ_ONLY,
@@ -140,7 +143,8 @@ export class RbacSeedService {
         p.name === PERMISSIONS.DOCKER_UPDATE ||
         p.name === PERMISSIONS.SYSTEM_READ ||
         p.name === PERMISSIONS.REPOSITORY_READ ||
-        p.name === PERMISSIONS.SECURITY_READ,
+        p.name === PERMISSIONS.SECURITY_READ ||
+        p.name === PERMISSIONS.BACKUP_READ,
     );
     let operatorRole = await this.roleRepository.findByNameWithPermissions(
       ROLES.OPERATOR,

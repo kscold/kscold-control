@@ -19,6 +19,7 @@ import { AuditModule } from './audit/audit.module';
 import { SecurityModule } from './security/security.module';
 import { KeyManagementModule } from './key-management/key-management.module';
 import { ReleaseModule } from './release/release.module';
+import { BackupModule } from './backup/backup.module';
 
 // 도메인 엔티티 (클린 아키텍처)
 import { User } from './rbac/domain/entities/user.entity';
@@ -33,6 +34,8 @@ import { Project } from './repository/domain/entities/project.entity';
 import { IpBan } from './security/domain/entities/ip-ban.entity';
 import { SecretBackup } from './key-management/domain/entities/secret-backup.entity';
 import { KeyManagementTargetEntity } from './key-management/domain/entities/key-management-target.entity';
+import { BackupTarget } from './backup/domain/entities/backup-target.entity';
+import { BackupRun } from './backup/domain/entities/backup-run.entity';
 
 import { HttpLoggerMiddleware } from './common/middleware/http-logger.middleware';
 import {
@@ -74,6 +77,8 @@ import { resolveFrontendDistPath } from './common/utils/frontend-dist-path.util'
         IpBan,
         SecretBackup,
         KeyManagementTargetEntity,
+        BackupTarget,
+        BackupRun,
       ],
       synchronize: shouldSynchronizeDatabase(),
       logging: process.env.NODE_ENV !== 'production',
@@ -95,6 +100,7 @@ import { resolveFrontendDistPath } from './common/utils/frontend-dist-path.util'
     SecurityModule,
     KeyManagementModule,
     ReleaseModule,
+    BackupModule,
   ],
   providers: [
     {

@@ -8,9 +8,10 @@ import type {
   MongodbBackupEntry,
   MongodbBackupResult,
 } from '../../domain/repositories/mongodb-backup.repository';
-import { MONGODB_BACKUP_ROOT as BACKUP_ROOT } from './mongodb-backup-root';
+import { getMongodbBackupRoot } from '../../../common/utils';
 
 const execFileAsync = promisify(execFile);
+const BACKUP_ROOT = getMongodbBackupRoot();
 const DOCKER_HOST =
   process.env.DOCKER_HOST || 'unix:///Users/kscold/.colima/default/docker.sock';
 

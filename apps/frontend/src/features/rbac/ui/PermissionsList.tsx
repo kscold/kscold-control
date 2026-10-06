@@ -1,5 +1,6 @@
 import {
   Container,
+  DatabaseBackup,
   FolderGit2,
   KeyRound,
   LayoutDashboard,
@@ -84,6 +85,15 @@ const PERMISSION_GROUPS = [
     icon: ShieldAlert,
     accent: 'border-rose-500/30 bg-rose-500/5 text-rose-300',
     permissions: [PERMISSIONS.SECURITY_READ, PERMISSIONS.SECURITY_MANAGE],
+  },
+  {
+    id: 'backup',
+    title: '백업 관리',
+    description: '백업 대상과 실행 이력 조회, 대상 변경과 수동 실행',
+    routes: ['백업 관리'],
+    icon: DatabaseBackup,
+    accent: 'border-teal-500/30 bg-teal-500/5 text-teal-300',
+    permissions: [PERMISSIONS.BACKUP_READ, PERMISSIONS.BACKUP_MANAGE],
   },
   {
     id: 'secrets',

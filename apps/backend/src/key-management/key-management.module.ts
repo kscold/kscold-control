@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { SecretEncryptionModule } from '../common/crypto/secret-encryption.module';
 import { RbacModule } from '../rbac/rbac.module';
 import { SecretBackup } from './domain/entities/secret-backup.entity';
 import { KeyManagementTargetEntity } from './domain/entities/key-management-target.entity';
@@ -10,7 +11,6 @@ import { SECRET_BACKUP_REPOSITORY } from './domain/repositories/secret-backup.re
 import { EnvDocumentService } from './application/services/env-document.service';
 import { KeyManagementService } from './application/services/key-management.service';
 import { KeyManagementTargetService } from './application/services/key-management-target.service';
-import { SecretEncryptionService } from './application/services/secret-encryption.service';
 import { GcpSecretManagerGateway } from './infrastructure/gateways/gcp-secret-manager.gateway';
 import { GithubActionsDeploymentGateway } from './infrastructure/gateways/github-actions-deployment.gateway';
 import { RoutingDeploymentGateway } from './infrastructure/gateways/routing-deployment.gateway';
@@ -27,13 +27,13 @@ import { KeyManagementTargetAccessGuard } from './presentation/guards/key-manage
   imports: [
     TypeOrmModule.forFeature([SecretBackup, KeyManagementTargetEntity]),
     RbacModule,
+    SecretEncryptionModule,
   ],
   controllers: [KeyManagementController],
   providers: [
     EnvDocumentService,
     KeyManagementService,
     KeyManagementTargetService,
-    SecretEncryptionService,
     KeyManagementTargetAccessGuard,
     GcpSecretManagerGateway,
     SshEnvFileSecretStoreGateway,
