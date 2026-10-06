@@ -6,16 +6,12 @@ describe('SystemController', () => {
   const getSystemInfoUseCase = { execute: jest.fn() };
   const backupMongodbUseCase = { execute: jest.fn() };
   const listBackupsUseCase = { execute: jest.fn() };
-  const getScheduledBackupsUseCase = { execute: jest.fn() };
-  const runScheduledBackupUseCase = { execute: jest.fn() };
 
   const controller = new SystemController(
     getStatsUseCase as any,
     getSystemInfoUseCase as any,
     backupMongodbUseCase as any,
     listBackupsUseCase as any,
-    getScheduledBackupsUseCase as any,
-    runScheduledBackupUseCase as any,
   );
 
   beforeEach(() => {
@@ -91,34 +87,5 @@ describe('SystemController', () => {
 
     await expect(controller.listBackups('mongo-1')).resolves.toEqual(backups);
     expect(listBackupsUseCase.execute).toHaveBeenCalledWith('mongo-1');
-  });
-
-  it('예약 백업 조회는 읽기 권한을, 즉시 실행은 쓰기 권한을 요구한다', () => {
-    expect(
-      Reflect.getMetadata('permissions', controller.getScheduledBackups),
-    ).toEqual([PERMISSIONS.SYSTEM_READ]);
-    expect(
-      Reflect.getMetadata('permissions', controller.runScheduledBackup),
-    ).toEqual([PERMISSIONS.SYSTEM_WRITE]);
-  });
-
-  it('예약 백업 현황을 그대로 반환한다', async () => {
-    const overview = {
-      schedule: { cron: '30 3 * * *', timeZone: 'Asia/Seoul' },
-      targets: [],
-    };
-    getScheduledBackupsUseCase.execute.mockResolvedValueOnce(overview);
-
-    await expect(controller.getScheduledBackups()).resolves.toEqual(overview);
-  });
-
-  it('예약 백업 즉시 실행은 대상 이름을 그대로 전달한다', async () => {
-    const run = { target: 'app-prod', success: true };
-    runScheduledBackupUseCase.execute.mockResolvedValueOnce(run);
-
-    await expect(controller.runScheduledBackup('app-prod')).resolves.toEqual(
-      run,
-    );
-    expect(runScheduledBackupUseCase.execute).toHaveBeenCalledWith('app-prod');
   });
 });
