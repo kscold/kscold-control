@@ -111,6 +111,12 @@ describe('RbacSeedService', () => {
     expect(
       guestRole.permissions.map((permission) => permission.name),
     ).not.toContain(PERMISSIONS.BACKUP_READ);
+    // 키 관리자는 배정받은 백업을 볼 수만 있다. 무엇이 보이는지는 대상 배정이 정한다.
+    const keyManagerPermissions = keyManagerRole.permissions.map(
+      (permission) => permission.name,
+    );
+    expect(keyManagerPermissions).toContain(PERMISSIONS.BACKUP_READ);
+    expect(keyManagerPermissions).not.toContain(PERMISSIONS.BACKUP_MANAGE);
     expect(
       keyManagerRole.permissions.map((permission) => permission.name),
     ).toEqual(
@@ -122,7 +128,7 @@ describe('RbacSeedService', () => {
         PERMISSIONS.SECRETS_DEPLOY,
       ]),
     );
-    expect(keyManagerRole.permissions).toHaveLength(5);
+    expect(keyManagerRole.permissions).toHaveLength(6);
     expect(keyManagerRole.permissions).not.toEqual(
       expect.arrayContaining([
         expect.objectContaining({ name: PERMISSIONS.SYSTEM_READ }),

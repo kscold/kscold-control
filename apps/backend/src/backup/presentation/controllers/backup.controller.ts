@@ -54,6 +54,7 @@ type RunResponse = ReturnType<typeof toRunResponse>;
  * 감사 로깅은 @Audit() + AuditInterceptor(AOP)가 맡는다.
  *
  * 접속 URI 는 어떤 응답에도 싣지 않는다. 자격증명을 뺀 접속 위치만 내보낸다.
+ * 조회는 사용자마다 볼 수 있는 대상이 다르다(전역 관리자·백업 관리 권한 보유자는 전체).
  */
 @Controller('backups')
 @UseGuards(AuthGuard('jwt'), PermissionsGuard)
@@ -69,8 +70,8 @@ export class BackupController {
 
   @Get('targets')
   @RequirePermissions(PERMISSIONS.BACKUP_READ)
-  async listTargets() {
-    const overview = await this.getBackupOverview.execute();
+  async listTargets(@Req() req: BackupRequest) {
+    const overview = await this.getBackupOverview.execute(req.user);
     return {
       timeZone: overview.timeZone,
       items: overview.items.map(toTargetStatusResponse),
@@ -189,8 +190,8 @@ export class BackupController {
 
   @Get('runs')
   @RequirePermissions(PERMISSIONS.BACKUP_READ)
-  async listRuns(@Query() query: ListBackupRunsDto) {
-    const runs = await this.listBackupRuns.execute(query);
+  async listRuns(@Query() query: ListBackupRunsDto, @Req() req: BackupRequest) {
+    const runs = await this.listBackupRuns.execute(req.user, query);
     return { items: runs.map(toRunResponse) };
   }
 }

@@ -16,7 +16,10 @@ export interface FinishBackupRunInput {
 }
 
 export interface FindBackupRunsOptions {
+  /** 대상 하나의 이력만 */
   targetId?: string;
+  /** 이 대상들의 이력만 (열람 범위가 정해진 사용자용) */
+  targetIds?: string[];
   limit: number;
 }
 

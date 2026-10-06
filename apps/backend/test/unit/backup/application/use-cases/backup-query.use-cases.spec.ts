@@ -1,4 +1,4 @@
-import { Logger } from '@nestjs/common';
+import { ForbiddenException, Logger } from '@nestjs/common';
 import {
   GetBackupOverviewUseCase,
   ListBackupRunsUseCase,
@@ -38,6 +38,13 @@ describe('백업 조회·실행 유스케이스', () => {
   };
   const archiveRepository = { list: jest.fn() };
   const runner = { isRunning: jest.fn(), start: jest.fn() };
+  const targetAccess = { resolveVisibleTargetIds: jest.fn() };
+  const admin = { id: 'admin-1', roles: ['admin'], permissions: [] };
+  const scopedViewer = {
+    id: 'viewer-1',
+    roles: ['key_manager'],
+    permissions: ['backup:read'],
+  };
 
   afterAll(() => {
     jest.restoreAllMocks();
@@ -52,6 +59,8 @@ describe('백업 조회·실행 유스케이스', () => {
     );
     archiveRepository.list.mockResolvedValue([]);
     runner.isRunning.mockReturnValue(false);
+    // 기본은 전체를 볼 수 있는 사용자
+    targetAccess.resolveVisibleTargetIds.mockResolvedValue(null);
   });
 
   describe('현황 조회', () => {
@@ -60,6 +69,7 @@ describe('백업 조회·실행 유스케이스', () => {
       runRepository as never,
       archiveRepository as never,
       runner as never,
+      targetAccess as never,
     );
 
     it('대상별 일정·최근 실행·보관 중인 백업을 모아 돌려준다', async () => {
@@ -68,7 +78,7 @@ describe('백업 조회·실행 유스케이스', () => {
       );
       runner.isRunning.mockImplementation((id: string) => id === 'target-1');
 
-      const overview = await useCase.execute(now);
+      const overview = await useCase.execute(admin, now);
 
       expect(overview.timeZone).toBe('Asia/Seoul');
       expect(runRepository.findLatestByTargetIds).toHaveBeenCalledWith([
@@ -101,7 +111,7 @@ describe('백업 조회·실행 유스케이스', () => {
           : Promise.resolve([archive]),
       );
 
-      const overview = await useCase.execute(now);
+      const overview = await useCase.execute(admin, now);
 
       expect(overview.items[0].archives).toEqual([]);
       expect(overview.items[1].archives).toEqual([archive]);
@@ -111,10 +121,41 @@ describe('백업 조회·실행 유스케이스', () => {
       targetRepository.findAll.mockResolvedValueOnce([]);
       runRepository.findLatestByTargetIds.mockResolvedValueOnce(new Map());
 
-      await expect(useCase.execute(now)).resolves.toEqual({
+      await expect(useCase.execute(admin, now)).resolves.toEqual({
         timeZone: 'Asia/Seoul',
         items: [],
       });
+    });
+
+    it('열람 범위가 정해진 사용자에게는 배정받은 대상만 돌려준다', async () => {
+      targetAccess.resolveVisibleTargetIds.mockResolvedValueOnce(
+        new Set(['target-2']),
+      );
+
+      const overview = await useCase.execute(scopedViewer, now);
+
+      expect(targetAccess.resolveVisibleTargetIds).toHaveBeenCalledWith(
+        scopedViewer,
+      );
+      expect(overview.items.map((item) => item.target.name)).toEqual([
+        'paused-prod',
+      ]);
+      // 보이지 않는 대상은 디스크 조회나 이력 조회 대상에도 넣지 않는다.
+      expect(archiveRepository.list).toHaveBeenCalledTimes(1);
+      expect(archiveRepository.list).toHaveBeenCalledWith('paused-prod');
+      expect(runRepository.findLatestByTargetIds).toHaveBeenCalledWith([
+        'target-2',
+      ]);
+    });
+
+    it('배정받은 대상이 없으면 빈 목록을 돌려준다', async () => {
+      targetAccess.resolveVisibleTargetIds.mockResolvedValueOnce(new Set());
+      runRepository.findLatestByTargetIds.mockResolvedValueOnce(new Map());
+
+      const overview = await useCase.execute(scopedViewer, now);
+
+      expect(overview.items).toEqual([]);
+      expect(archiveRepository.list).not.toHaveBeenCalled();
     });
   });
 
@@ -132,12 +173,15 @@ describe('백업 조회·실행 유스케이스', () => {
   });
 
   describe('이력 조회', () => {
-    const useCase = new ListBackupRunsUseCase(runRepository as never);
+    const useCase = new ListBackupRunsUseCase(
+      runRepository as never,
+      targetAccess as never,
+    );
 
     it('건수를 지정하지 않으면 최근 30건을 조회한다', async () => {
       runRepository.findRecent.mockResolvedValueOnce([lastRun]);
 
-      await expect(useCase.execute()).resolves.toEqual([lastRun]);
+      await expect(useCase.execute(admin)).resolves.toEqual([lastRun]);
       expect(runRepository.findRecent).toHaveBeenCalledWith({
         targetId: undefined,
         limit: 30,
@@ -147,12 +191,57 @@ describe('백업 조회·실행 유스케이스', () => {
     it('대상과 건수를 지정해 조회한다', async () => {
       runRepository.findRecent.mockResolvedValueOnce([]);
 
-      await useCase.execute({ targetId: 'target-1', limit: 5 });
+      await useCase.execute(admin, { targetId: 'target-1', limit: 5 });
 
       expect(runRepository.findRecent).toHaveBeenCalledWith({
         targetId: 'target-1',
         limit: 5,
       });
+    });
+
+    it('열람 범위가 정해진 사용자는 배정받은 대상들의 이력만 조회한다', async () => {
+      targetAccess.resolveVisibleTargetIds.mockResolvedValueOnce(
+        new Set(['target-1', 'target-3']),
+      );
+      runRepository.findRecent.mockResolvedValueOnce([lastRun]);
+
+      await expect(useCase.execute(scopedViewer)).resolves.toEqual([lastRun]);
+      expect(runRepository.findRecent).toHaveBeenCalledWith({
+        targetIds: ['target-1', 'target-3'],
+        limit: 30,
+      });
+    });
+
+    it('배정받은 대상 하나를 지정해 조회할 수 있다', async () => {
+      targetAccess.resolveVisibleTargetIds.mockResolvedValueOnce(
+        new Set(['target-1']),
+      );
+      runRepository.findRecent.mockResolvedValueOnce([lastRun]);
+
+      await useCase.execute(scopedViewer, { targetId: 'target-1' });
+
+      expect(runRepository.findRecent).toHaveBeenCalledWith({
+        targetId: 'target-1',
+        limit: 30,
+      });
+    });
+
+    it('배정받지 않은 대상의 이력을 지정하면 거절한다', async () => {
+      targetAccess.resolveVisibleTargetIds.mockResolvedValueOnce(
+        new Set(['target-1']),
+      );
+
+      await expect(
+        useCase.execute(scopedViewer, { targetId: 'target-2' }),
+      ).rejects.toBeInstanceOf(ForbiddenException);
+      expect(runRepository.findRecent).not.toHaveBeenCalled();
+    });
+
+    it('배정받은 대상이 없으면 조회하지 않고 빈 목록을 돌려준다', async () => {
+      targetAccess.resolveVisibleTargetIds.mockResolvedValueOnce(new Set());
+
+      await expect(useCase.execute(scopedViewer)).resolves.toEqual([]);
+      expect(runRepository.findRecent).not.toHaveBeenCalled();
     });
   });
 });

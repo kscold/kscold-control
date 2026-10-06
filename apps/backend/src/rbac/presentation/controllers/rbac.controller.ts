@@ -16,6 +16,7 @@ import { Audit } from '../../../common/decorators/audit.decorator';
 import { PERMISSIONS } from '../../../common/constants/permissions';
 import type { JwtRequest } from '../../../common/types/jwt-request.type';
 import { KeyManagementTargetAccessService } from '../../application/services/key-management-target-access.service';
+import { BackupTargetAccessService } from '../../application/services/backup-target-access.service';
 
 // Application Layer
 import {
@@ -38,6 +39,7 @@ import {
 // Presentation Layer
 import {
   AssignRolesRequestDto,
+  SetBackupTargetAccessRequestDto,
   SetKeyManagementTargetAccessRequestDto,
   SetTerminalLimitRequestDto,
 } from '../dto';
@@ -91,6 +93,7 @@ export class RbacController {
     private readonly manageTerminalLimitUseCase: ManageTerminalLimitUseCase,
     private readonly approveKeyManagerUseCase: ApproveKeyManagerUseCase,
     private readonly targetAccess: KeyManagementTargetAccessService,
+    private readonly backupTargetAccess: BackupTargetAccessService,
   ) {}
 
   // ==================== Role Endpoints ====================
@@ -258,6 +261,42 @@ export class RbacController {
       before: await this.targetAccess.getUserTargetIds(id),
     };
     return this.targetAccess.replaceUserTargets(id, dto.targetIds, req.user.id);
+  }
+
+  /** 사용자별로 볼 수 있는 백업 대상 */
+  @Get('backup-target-access')
+  @RequirePermissions(PERMISSIONS.RBAC_MANAGE)
+  getBackupTargetAccess() {
+    return this.backupTargetAccess.listAccessMatrix();
+  }
+
+  @Put('users/:id/backup-target-access')
+  @RequirePermissions(PERMISSIONS.RBAC_MANAGE)
+  @Audit({
+    domain: 'rbac',
+    action: 'user.set-backup-target-access',
+    summary: (ctx) =>
+      `사용자 ${ctx.params.id}의 백업 대상 열람 범위를 변경했습니다.`,
+    targetType: 'user',
+    targetId: (ctx) => ctx.params.id,
+    metadata: (ctx) => ({
+      before: (ctx.extra as { before?: unknown }).before ?? [],
+      after: (ctx.response as { targetIds: string[] }).targetIds,
+    }),
+  })
+  async setBackupTargetAccess(
+    @Param('id') id: string,
+    @Body() dto: SetBackupTargetAccessRequestDto,
+    @Request() req: RbacRequest,
+  ) {
+    req._auditExtra = {
+      before: await this.backupTargetAccess.getUserTargetIds(id),
+    };
+    return this.backupTargetAccess.replaceUserTargets(
+      id,
+      dto.targetIds,
+      req.user.id,
+    );
   }
 
   // ==================== Terminal Limit Endpoints ====================
