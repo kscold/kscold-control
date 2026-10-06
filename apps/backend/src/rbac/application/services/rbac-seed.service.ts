@@ -15,6 +15,9 @@ import { ROLES } from '../../../common/constants/roles';
 import { PERMISSIONS } from '../../../common/constants/permissions';
 import { PasswordHasher } from '../../../common/utils/password-hasher.util';
 
+const KEY_MANAGER_DESCRIPTION =
+  '대시보드 조회, 운영 키 조회·수정·배포, 배정된 백업 조회';
+
 /**
  * RBAC Seed Service
  * Application service for seeding initial RBAC data
@@ -56,7 +59,8 @@ export class RbacSeedService {
       [PERMISSIONS.REPOSITORY_DELETE]: '소스 저장소 삭제',
       [PERMISSIONS.SECURITY_READ]: 'IP 차단 목록 조회',
       [PERMISSIONS.SECURITY_MANAGE]: 'IP 차단 관리',
-      [PERMISSIONS.BACKUP_READ]: '백업 대상, 실행 이력, 보관 중인 백업 조회',
+      [PERMISSIONS.BACKUP_READ]:
+        '백업 대상, 실행 이력, 보관 중인 백업 조회 (관리자가 아니면 배정된 대상만)',
       [PERMISSIONS.BACKUP_MANAGE]: '백업 대상 등록/수정/삭제 및 수동 실행',
       [PERMISSIONS.SECRETS_READ]: '운영 환경 변수 메타데이터 및 백업 조회',
       [PERMISSIONS.SECRETS_REVEAL]: '운영 환경 변수 평문 공개',
@@ -216,12 +220,14 @@ export class RbacSeedService {
     await this.roleRepository.save(pendingRole);
 
     // 승인된 외부 개발자는 키 관리 화면과 API에 필요한 권한만 가진다.
+    // 백업은 조회만 할 수 있고, 관리자가 배정한 대상만 보인다.
     const keyPermissionNames = new Set<string>([
       PERMISSIONS.DASHBOARD_READ,
       PERMISSIONS.SECRETS_READ,
       PERMISSIONS.SECRETS_REVEAL,
       PERMISSIONS.SECRETS_WRITE,
       PERMISSIONS.SECRETS_DEPLOY,
+      PERMISSIONS.BACKUP_READ,
     ]);
     const keyManagerPermissions = allPermissions.filter((permission) =>
       keyPermissionNames.has(permission.name),
@@ -232,11 +238,11 @@ export class RbacSeedService {
     if (!keyManagerRole) {
       keyManagerRole = this.roleRepository.create({
         name: ROLES.KEY_MANAGER,
-        description: '대시보드 조회 및 운영 키 조회, 수정, 배포',
+        description: KEY_MANAGER_DESCRIPTION,
         permissions: keyManagerPermissions,
       });
     } else {
-      keyManagerRole.description = '대시보드 조회 및 운영 키 조회, 수정, 배포';
+      keyManagerRole.description = KEY_MANAGER_DESCRIPTION;
       keyManagerRole.permissions = keyManagerPermissions;
     }
     await this.roleRepository.save(keyManagerRole);

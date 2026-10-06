@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import {
+  DatabaseBackup,
   Users,
   Edit2,
   Eye,
@@ -8,8 +9,14 @@ import {
   Trash2,
   UserCheck,
 } from 'lucide-react';
-import type { KeyManagementAccessTarget, User } from '@/entities/user';
+import type {
+  BackupAccessTarget,
+  KeyManagementAccessTarget,
+  User,
+} from '@/entities/user';
+import { PERMISSIONS } from '@/shared/config/permissions';
 import { ROLES } from '@/shared/config/roles';
+import { TargetScopeSection } from './TargetScopeSection';
 
 interface UserListProps {
   users: User[];
@@ -23,6 +30,12 @@ interface UserListProps {
   keyManagementTargets: KeyManagementAccessTarget[];
   keyManagementAssignments: Record<string, string[]>;
   onUpdateKeyManagementTargets: (
+    userId: string,
+    targetIds: string[],
+  ) => Promise<boolean>;
+  backupTargets: BackupAccessTarget[];
+  backupAssignments: Record<string, string[]>;
+  onUpdateBackupTargets: (
     userId: string,
     targetIds: string[],
   ) => Promise<boolean>;
@@ -65,6 +78,9 @@ export function UserList({
   keyManagementTargets,
   keyManagementAssignments,
   onUpdateKeyManagementTargets,
+  backupTargets,
+  backupAssignments,
+  onUpdateBackupTargets,
   onPreviewUser,
 }: UserListProps) {
   const [editingUserId, setEditingUserId] = useState<string | null>(null);
@@ -73,10 +89,6 @@ export function UserList({
     string | null
   >(null);
   const [editTerminalLimit, setEditTerminalLimit] = useState<number>(10);
-  const [editingTargetAccessId, setEditingTargetAccessId] = useState<
-    string | null
-  >(null);
-  const [draftTargetIds, setDraftTargetIds] = useState<string[]>([]);
 
   const handleSavePassword = async (userId: string) => {
     const success = await onUpdatePassword(userId, editPassword);
@@ -91,11 +103,6 @@ export function UserList({
     if (success) {
       setEditingTerminalLimitId(null);
     }
-  };
-
-  const handleSaveTargetAccess = async (userId: string) => {
-    const success = await onUpdateKeyManagementTargets(userId, draftTargetIds);
-    if (success) setEditingTargetAccessId(null);
   };
 
   return (
@@ -128,6 +135,19 @@ export function UserList({
           const assignedTargetIds = isGlobalAdmin
             ? keyManagementTargets.map((target) => target.id)
             : (keyManagementAssignments[user.id] ?? []);
+          // 백업은 조회 권한이 있는 사용자에게만 범위를 정한다. 관리 권한이 있으면 전체를 본다.
+          const rolePermissions = new Set(
+            user.roles.flatMap((role) =>
+              (role.permissions ?? []).map((permission) => permission.name),
+            ),
+          );
+          const seesAllBackups =
+            isGlobalAdmin || rolePermissions.has(PERMISSIONS.BACKUP_MANAGE);
+          const canReadBackups =
+            seesAllBackups || rolePermissions.has(PERMISSIONS.BACKUP_READ);
+          const assignedBackupIds = seesAllBackups
+            ? backupTargets.map((target) => target.id)
+            : (backupAssignments[user.id] ?? []);
           return (
             <div
               key={user.id}
@@ -223,98 +243,45 @@ export function UserList({
                     )}
                   </div>
                   {(isGlobalAdmin || isKeyManager) && (
-                    <div className="mt-3 rounded-lg border border-cyan-400/20 bg-slate-950/35 p-2.5">
-                      <div className="flex flex-wrap items-center justify-between gap-2">
-                        <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-cyan-100">
-                          <KeyRound size={14} /> 운영 키 범위
-                        </span>
-                        {isGlobalAdmin ? (
-                          <span className="text-[11px] text-slate-400">
-                            관리자 전체 접근
-                          </span>
-                        ) : (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setEditingTargetAccessId(user.id);
-                              setDraftTargetIds(assignedTargetIds);
-                            }}
-                            className="rounded border border-cyan-400/30 px-2 py-1 text-[11px] font-semibold text-cyan-100 hover:bg-cyan-400/10"
-                          >
-                            범위 변경
-                          </button>
-                        )}
-                      </div>
-                      <div className="mt-2 flex flex-wrap gap-1.5">
-                        {assignedTargetIds.length > 0 ? (
-                          keyManagementTargets
-                            .filter((target) =>
-                              assignedTargetIds.includes(target.id),
-                            )
-                            .map((target) => (
-                              <span
-                                key={target.id}
-                                className="rounded-md border border-cyan-400/20 bg-cyan-400/10 px-2 py-1 text-[11px] text-cyan-100"
-                              >
-                                {target.displayName}
-                              </span>
-                            ))
-                        ) : (
-                          <span className="text-[11px] text-amber-300">
-                            배정된 운영 키 대상 없음
-                          </span>
-                        )}
-                      </div>
-                      {editingTargetAccessId === user.id && (
-                        <div className="mt-3 space-y-2 border-t border-white/10 pt-3">
-                          {keyManagementTargets.map((target) => (
-                            <label
-                              key={target.id}
-                              className="flex cursor-pointer items-center justify-between gap-3 rounded-md border border-white/10 bg-slate-900/70 px-2.5 py-2 text-xs text-slate-200"
-                            >
-                              <span>
-                                {target.displayName}
-                                <span className="ml-2 text-[10px] uppercase text-slate-500">
-                                  {target.environment}
-                                </span>
-                              </span>
-                              <input
-                                type="checkbox"
-                                checked={draftTargetIds.includes(target.id)}
-                                onChange={(event) =>
-                                  setDraftTargetIds((current) =>
-                                    event.target.checked
-                                      ? [...current, target.id]
-                                      : current.filter(
-                                          (id) => id !== target.id,
-                                        ),
-                                  )
-                                }
-                                className="h-4 w-4 accent-cyan-400"
-                              />
-                            </label>
-                          ))}
-                          <div className="flex gap-2">
-                            <button
-                              type="button"
-                              onClick={() =>
-                                void handleSaveTargetAccess(user.id)
-                              }
-                              className="rounded bg-cyan-500 px-3 py-1.5 text-xs font-bold text-slate-950 hover:bg-cyan-400"
-                            >
-                              범위 저장
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => setEditingTargetAccessId(null)}
-                              className="rounded border border-white/15 px-3 py-1.5 text-xs text-slate-300 hover:bg-white/5"
-                            >
-                              취소
-                            </button>
-                          </div>
-                        </div>
-                      )}
-                    </div>
+                    <TargetScopeSection
+                      tone="cyan"
+                      icon={KeyRound}
+                      title="운영 키 범위"
+                      items={keyManagementTargets.map((target) => ({
+                        id: target.id,
+                        label: target.displayName,
+                        hint: target.environment,
+                      }))}
+                      assignedIds={assignedTargetIds}
+                      fullAccessLabel={
+                        isGlobalAdmin ? '관리자 전체 접근' : undefined
+                      }
+                      emptyLabel="배정된 운영 키 대상 없음"
+                      editLabel="범위 변경"
+                      saveLabel="범위 저장"
+                      onSave={(ids) =>
+                        onUpdateKeyManagementTargets(user.id, ids)
+                      }
+                    />
+                  )}
+                  {canReadBackups && (
+                    <TargetScopeSection
+                      tone="teal"
+                      icon={DatabaseBackup}
+                      title="백업 열람 범위"
+                      items={backupTargets.map((target) => ({
+                        id: target.id,
+                        label: target.name,
+                      }))}
+                      assignedIds={assignedBackupIds}
+                      fullAccessLabel={
+                        seesAllBackups ? '관리자 전체 열람' : undefined
+                      }
+                      emptyLabel="볼 수 있는 백업 대상 없음"
+                      editLabel="열람 범위 변경"
+                      saveLabel="열람 범위 저장"
+                      onSave={(ids) => onUpdateBackupTargets(user.id, ids)}
+                    />
                   )}
                   {editingUserId === user.id && (
                     <div className="mt-2 flex gap-2">

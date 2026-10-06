@@ -137,11 +137,14 @@ describe('DockerMongodbArchiveRepository', () => {
       const args = fs.readFileSync(path.join(logDir, 'args'), 'utf8');
       expect(args).not.toContain('secret-pass');
       expect(args).not.toContain('cluster.example.net');
-      expect(args.split('\n').slice(0, 9)).toEqual([
+      expect(args.split('\n').slice(0, 11)).toEqual([
         'run',
         '--rm',
         '--name',
         expect.stringMatching(/^mongodb-backup-app-prod-\d{4}-/),
+        // 같은 서버의 DB 에 host.docker.internal 로 닿을 수 있게 한다.
+        '--add-host',
+        'host.docker.internal:host-gateway',
         '-e',
         'MONGODB_BACKUP_URI',
         '--entrypoint',

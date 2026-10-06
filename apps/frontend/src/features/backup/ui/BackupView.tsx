@@ -251,12 +251,14 @@ export function BackupView() {
               <div className="rounded-2xl border border-dashed border-gray-800 bg-gray-900/30 p-10 text-center">
                 <DatabaseBackup size={32} className="mx-auto text-gray-700" />
                 <p className="mt-3 text-sm text-gray-400">
-                  등록된 백업 대상이 없습니다.
+                  {canManage
+                    ? '등록된 백업 대상이 없습니다.'
+                    : '볼 수 있는 백업 대상이 없습니다.'}
                 </p>
                 <p className="mt-1 text-xs text-gray-600">
                   {canManage
                     ? '대상을 추가하면 매일 정해진 시각에 자동으로 백업합니다.'
-                    : '백업 관리 권한이 있는 사용자가 대상을 추가할 수 있습니다.'}
+                    : '관리자가 열람 범위에 넣어 준 대상만 여기에 보입니다.'}
                 </p>
                 {canManage && (
                   <button

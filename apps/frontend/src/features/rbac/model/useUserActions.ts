@@ -104,6 +104,28 @@ export function useUserActions(onSuccess?: () => void) {
     }
   };
 
+  const updateBackupTargetAccess = async (
+    userId: string,
+    targetIds: string[],
+  ) => {
+    try {
+      setLoading(true);
+      await rbacService.updateBackupTargetAccess(userId, targetIds);
+      showAlert('백업 열람 범위를 변경했습니다.');
+      onSuccess?.();
+      return true;
+    } catch (error) {
+      showAlert(
+        error instanceof Error
+          ? error.message
+          : '백업 열람 범위 변경에 실패했습니다.',
+      );
+      return false;
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const updateKeyManagementTargetAccess = async (
     userId: string,
     targetIds: string[],
@@ -190,6 +212,7 @@ export function useUserActions(onSuccess?: () => void) {
     assignRoles,
     approveKeyManager,
     updateKeyManagementTargetAccess,
+    updateBackupTargetAccess,
     resetTerminalLimit,
     updateTerminalLimit,
     previewAsUser,

@@ -5,6 +5,7 @@ import {
   isValidMongodbUri,
   isValidRetentionDays,
   summarizeMongodbUri,
+  usesLoopbackHost,
 } from '@/backup/domain/policies/backup-target.policy';
 
 describe('백업 대상 입력 규칙', () => {
@@ -74,6 +75,28 @@ describe('백업 대상 입력 규칙', () => {
 
     expect(summary).not.toContain('backup-user');
     expect(summary).not.toContain('p%40ss');
+  });
+
+  it.each([
+    'mongodb://localhost:27017/app',
+    'mongodb://user:pass@127.0.0.1:27019/app?authSource=admin',
+    'mongodb://LOCALHOST/app',
+    'mongodb://[::1]:27017/app',
+    'mongodb://0.0.0.0:27017/app',
+    'mongodb://db.example.net:27017,127.0.0.1:27018/app',
+  ])('덤프 컨테이너 자신을 가리키는 주소로 본다: %s', (uri) => {
+    expect(usesLoopbackHost(uri)).toBe(true);
+  });
+
+  it.each([
+    'mongodb://host.docker.internal:27019/app',
+    'mongodb+srv://user:pass@cluster.example.net/prod',
+    'mongodb://user:pass@10.0.0.5:27017/app',
+    'mongodb://localhost.example.net:27017/app',
+    // 비밀번호나 DB 이름에 들어간 글자는 호스트로 보지 않는다
+    'mongodb://localhost:127.0.0.1@db.example.net/localhost',
+  ])('이 서버 밖(또는 호스트 별칭) 주소는 통과시킨다: %s', (uri) => {
+    expect(usesLoopbackHost(uri)).toBe(false);
   });
 
   it.each(['mongo:7', 'mongo', 'registry.example.com/tools/mongo:7.0.14'])(

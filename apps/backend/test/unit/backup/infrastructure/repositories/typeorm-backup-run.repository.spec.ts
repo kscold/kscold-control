@@ -1,3 +1,4 @@
+import { In } from 'typeorm';
 import { TypeOrmBackupRunRepository } from '@/backup/infrastructure/repositories/typeorm-backup-run.repository';
 
 describe('TypeOrmBackupRunRepository', () => {
@@ -129,6 +130,23 @@ describe('TypeOrmBackupRunRepository', () => {
       relations: { target: true },
       order: { startedAt: 'DESC' },
       take: 5,
+    });
+  });
+
+  it('여러 대상을 지정하면 그 대상들의 이력만 조회한다', async () => {
+    const find = jest.fn().mockResolvedValue([]);
+    const repository = new TypeOrmBackupRunRepository({ find } as never);
+
+    await repository.findRecent({
+      targetIds: ['target-1', 'target-3'],
+      limit: 30,
+    });
+
+    expect(find).toHaveBeenCalledWith({
+      where: { targetId: In(['target-1', 'target-3']) },
+      relations: { target: true },
+      order: { startedAt: 'DESC' },
+      take: 30,
     });
   });
 
