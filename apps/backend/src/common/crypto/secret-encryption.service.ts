@@ -8,6 +8,13 @@ export interface EncryptedSecretPayload {
   authTag: string;
 }
 
+/**
+ * 운영 비밀 암호화 (AES-256-GCM)
+ *
+ * 데이터베이스에 남겨야 하는 비밀(운영 키 백업, 백업 대상 접속 URI)을 암호화한다.
+ * associatedData 로 암호문을 특정 대상에 묶어 두므로, 다른 행의 암호문을
+ * 옮겨 붙이면 복호화가 실패한다.
+ */
 @Injectable()
 export class SecretEncryptionService {
   private readonly key: Buffer;

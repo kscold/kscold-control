@@ -25,7 +25,7 @@ import {
 } from '../../domain/repositories/secret-backup.repository.interface';
 import { EnvDocumentService } from './env-document.service';
 import { KeyManagementTargetService } from './key-management-target.service';
-import { SecretEncryptionService } from './secret-encryption.service';
+import { SecretEncryptionService } from '../../../common/crypto/secret-encryption.service';
 import type { KeyManagementTarget } from '../../domain/types/key-management-target.type';
 
 export interface KeyManagementActor {
