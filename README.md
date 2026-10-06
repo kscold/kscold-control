@@ -24,7 +24,8 @@ A self-hosted infrastructure governance panel for managing Docker containers, Ng
 | **Key Vault**   | DB-driven GoLe/Pawpong `.env`, encrypted backups, GCP/SSH versioned deploys                   |
 | **Logs**        | Unified viewer — backend · PM2 · Nginx · Docker · blog container logs                         |
 | **Network**     | Topology graph (React Flow), UPnP port management                                             |
-| **System**      | Real-time CPU / memory / disk, Nginx status, host info, scheduled MongoDB backups             |
+| **Backups**     | DB-managed MongoDB backup targets, per-target daily schedule, retention pruning, run history  |
+| **System**      | Real-time CPU / memory / disk, Nginx status, host info                                        |
 
 ---
 
@@ -45,6 +46,7 @@ kscold-control/
 │   │       ├── repository/       # Source version management
 │   │       ├── audit/            # AOP audit interceptor
 │   │       ├── key-management/   # Multi-target secret stores, encrypted backups, deployment
+│   │       ├── backup/           # Backup targets, scheduler, run history
 │   │       └── security/         # IP ban
 │   └── frontend/             # React 18 + Vite + Tailwind CSS
 │       └── src/
@@ -144,12 +146,11 @@ npm install -g @openai/codex
 | `OPENAI_MODEL`                    | `gpt-4o`                   | OpenAI model for Chat API                 |
 | `CODEX_BIN`                       | `codex`                    | Path to Codex binary                      |
 | `LOG_LEVEL`                       | `info`                     | Winston log level                         |
-| `KEY_MANAGEMENT_ENCRYPTION_KEY`   | —                          | Base64-encoded 32-byte AES-GCM backup key |
+| `KEY_MANAGEMENT_ENCRYPTION_KEY`   | —                          | Base64 32-byte AES-GCM key for DB secrets |
 | `KEY_MANAGEMENT_GCLOUD_PATH`      | `/opt/homebrew/bin/gcloud` | Path to the Google Cloud CLI              |
 | `KEY_MANAGEMENT_GH_PATH`          | `/opt/homebrew/bin/gh`     | Path to the GitHub CLI                    |
 | `KEY_MANAGEMENT_SSH_PATH`         | `/usr/bin/ssh`             | Path to the OpenSSH client                |
 | `KEY_MANAGEMENT_SSH_IDENTITY_DIR` | `$HOME/.ssh`               | Directory containing target SSH keys      |
-| `SCHEDULED_MONGODB_BACKUPS`       | —                          | JSON array of scheduled MongoDB backups   |
 
 ## Multi-target Key Management API
 
@@ -237,41 +238,59 @@ curl -fsS -X POST \
 
 ---
 
-## Scheduled MongoDB Backups
+## Backup Management
 
 Dump MongoDB databases that live outside the host (for example MongoDB Atlas)
 once a day and delete backups that have outlived their retention period.
+Targets are stored in PostgreSQL and managed on the **백업 관리** page
+(`/backups`) — no redeploy is needed to add a target or change its schedule.
 
-```bash
-# .env — only the database named in the URI path is dumped
-SCHEDULED_MONGODB_BACKUPS='[{"name":"my-app-prod","uri":"mongodb+srv://backup-user:change-me@cluster.example.mongodb.net/prod","retentionDays":10}]'
-```
+| Setting        | Default   | Description                                                       |
+| -------------- | --------- | ----------------------------------------------------------------- |
+| Name           | —         | Identifier and backup directory name; fixed after creation        |
+| Connection URI | —         | Only the database in the URI path is dumped; use a read-only user |
+| Daily run time | `03:30`   | `HH:mm` in Asia/Seoul, per target                                 |
+| Retention days | `10`      | Backups older than this are deleted after a successful run        |
+| Dump image     | `mongo:7` | Docker image that provides `mongodump`                            |
+| Enabled        | on        | Pauses the schedule; manual runs still work                       |
 
-| Field           | Default   | Description                                                 |
-| --------------- | --------- | ----------------------------------------------------------- |
-| `name`          | —         | Identifier used for the backup directory and the API        |
-| `uri`           | —         | Connection string; a read-only database user is recommended |
-| `retentionDays` | `10`      | Backups older than this are deleted after a successful run  |
-| `image`         | `mongo:7` | Docker image that provides `mongodump`                      |
-
-- Runs every day at **03:30 Asia/Seoul**. Each target is dumped by a throwaway
-  container, so the host needs no MongoDB tools. The URI reaches `mongodump`
-  through the environment and a config file inside the container, never as a
-  command-line argument.
-- Archives are written to
+- **Credentials** — the connection URI is stored as AES-256-GCM ciphertext
+  (`KEY_MANAGEMENT_ENCRYPTION_KEY`) and is never returned by the API or shown
+  again; the page displays only the host and database. It reaches `mongodump`
+  through the environment and a config file inside a throwaway container, never
+  as a command-line argument.
+- **Schedule** — a one-minute scheduler runs every target whose daily time has
+  passed since its last scheduled run, so a backup missed while the server was
+  down still runs once it is back. Targets are dumped one at a time.
+- **Archives** — written to
   `~/Desktop/server-logs/mongodb-backups/<name>/<UTC timestamp>/dump.archive.gz`
-  with owner-only permissions.
-- Old backups are pruned only after a new backup succeeds, and the most recent
-  backup is always kept, so a failing target never loses its last good copy.
+  with owner-only permissions. Old backups are pruned only after a new backup
+  succeeds, and the most recent backup is always kept, so a failing target never
+  loses its last good copy. Deleting a target removes its settings and history
+  but leaves the archives on disk.
+- **History** — every run (scheduled or manual, with who started it) is recorded
+  and shown on the page. Changes and manual runs are also written to the audit
+  log under the `backup` domain.
+- **Permissions** — `backup:read` to view, `backup:manage` to change targets or
+  run a backup.
 
 ```bash
-# Schedule, last result, and stored backups per target (requires system:read)
+# Targets with schedule, last result, and stored backups
 curl -H "Authorization: Bearer $TOKEN" \
-  http://localhost:4000/api/system/backup/schedules
+  http://localhost:4000/api/backups/targets
 
-# Back up one target right now (requires system:write)
+# Register a target
+curl -X POST -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+  -d '{"name":"my-app-prod","uri":"mongodb+srv://backup-user:change-me@cluster.example.mongodb.net/prod","scheduleTime":"03:30","retentionDays":10}' \
+  http://localhost:4000/api/backups/targets
+
+# Start a backup now — returns 202 with the run; poll the history for the result
 curl -X POST -H "Authorization: Bearer $TOKEN" \
-  http://localhost:4000/api/system/backup/schedules/my-app-prod/run
+  http://localhost:4000/api/backups/targets/TARGET_ID/run
+
+# Run history (optionally ?targetId=TARGET_ID&limit=30)
+curl -H "Authorization: Bearer $TOKEN" \
+  http://localhost:4000/api/backups/runs
 
 # Restore an archive (add --nsFrom/--nsTo to restore into another database)
 docker run --rm -i -e MONGODB_URI mongo:7 \
