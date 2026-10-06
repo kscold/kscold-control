@@ -57,6 +57,9 @@ const SecurityPage = lazy(() =>
     default: module.SecurityPage,
   })),
 );
+const BackupPage = lazy(() =>
+  import('@/pages/backup').then((module) => ({ default: module.BackupPage })),
+);
 const KeyManagementPage = lazy(() =>
   import('@/pages/key-management').then((module) => ({
     default: module.KeyManagementPage,
@@ -164,6 +167,7 @@ function HomeRoute() {
     [PERMISSIONS.RBAC_MANAGE, '/rbac'],
     [PERMISSIONS.REPOSITORY_READ, '/repository'],
     [PERMISSIONS.SECURITY_READ, '/security'],
+    [PERMISSIONS.BACKUP_READ, '/backups'],
   ].find(([permission]) => user.permissions.includes(permission));
 
   return firstAllowedRoute ? (
@@ -259,6 +263,10 @@ export default function App() {
           <Route
             path="repository"
             element={page(PERMISSIONS.REPOSITORY_READ, <RepositoryPage />)}
+          />
+          <Route
+            path="backups"
+            element={page(PERMISSIONS.BACKUP_READ, <BackupPage />)}
           />
           <Route
             path="audit"
