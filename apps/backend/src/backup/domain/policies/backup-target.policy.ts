@@ -76,6 +76,26 @@ export function isValidMongodbUri(uri: string): boolean {
   return separatorCount <= 1 && !tail.includes('@') && hosts.length > 0;
 }
 
+/** 덤프 컨테이너 안에서는 컨테이너 자신을 가리키게 되는 호스트 */
+const LOOPBACK_HOST_PATTERN =
+  /^(localhost|127(?:\.\d{1,3}){3}|0\.0\.0\.0|\[::1?\])(?::\d+)?$/i;
+
+/** 같은 서버의 DB 에 접속할 때 호스트 자리에 쓰는 이름 */
+export const SAME_HOST_ALIAS = 'host.docker.internal';
+
+/**
+ * URI 의 호스트 중에 localhost·127.0.0.1 같은 주소가 있는지 본다.
+ *
+ * 덤프는 별도 컨테이너에서 실행되므로 이런 주소는 이 서버가 아니라 그 컨테이너를 가리킨다.
+ * 그대로 등록하면 예약 시각에 가서야 접속 실패로 드러나므로 등록할 때 알려준다.
+ * 형식 검증(isValidMongodbUri)을 통과한 값에만 쓴다.
+ */
+export function usesLoopbackHost(uri: string): boolean {
+  return splitMongodbUri(uri)
+    .hosts.split(',')
+    .some((host) => LOOPBACK_HOST_PATTERN.test(host.trim()));
+}
+
 /**
  * 접속 URI 에서 자격증명과 옵션을 뺀 표시용 문자열을 만든다.
  * 형식 검증(isValidMongodbUri)을 통과한 값에만 쓴다.
