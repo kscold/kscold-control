@@ -3,20 +3,14 @@ import { execFile } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { promisify } from 'node:util';
-import { getHomeDirectory } from '../../../common/utils';
 import type {
   IMongodbBackupRepository,
   MongodbBackupEntry,
   MongodbBackupResult,
 } from '../../domain/repositories/mongodb-backup.repository';
+import { MONGODB_BACKUP_ROOT as BACKUP_ROOT } from './mongodb-backup-root';
 
 const execFileAsync = promisify(execFile);
-const BACKUP_ROOT = path.join(
-  getHomeDirectory(),
-  'Desktop',
-  'server-logs',
-  'mongodb-backups',
-);
 const DOCKER_HOST =
   process.env.DOCKER_HOST || 'unix:///Users/kscold/.colima/default/docker.sock';
 

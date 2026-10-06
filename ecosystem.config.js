@@ -69,6 +69,7 @@ module.exports = {
           'OPENAI_MODEL',
           'REPOSITORY_UPLOAD_SESSION_DIR',
           'SECURITY_ALLOWLIST',
+          'SCHEDULED_MONGODB_BACKUPS',
         ]),
       },
       // 자동 재시작
