@@ -43,6 +43,10 @@ export const PERMISSIONS = {
   SECURITY_READ: 'security:read',
   SECURITY_MANAGE: 'security:manage',
 
+  // Backup (백업 관리)
+  BACKUP_READ: 'backup:read',
+  BACKUP_MANAGE: 'backup:manage',
+
   // Secrets (운영 환경 변수)
   SECRETS_READ: 'secrets:read',
   SECRETS_REVEAL: 'secrets:reveal',

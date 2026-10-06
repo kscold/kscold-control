@@ -98,10 +98,19 @@ describe('RbacSeedService', () => {
 
     expect(adminRole.permissions).toEqual(permissions);
     expect(roleRepository.save).toHaveBeenCalledWith(adminRole);
-    expect(readOnlyRole.permissions).toHaveLength(5);
-    expect(operatorRole.permissions).toHaveLength(6);
+    expect(readOnlyRole.permissions).toHaveLength(6);
+    expect(operatorRole.permissions).toHaveLength(7);
     expect(terminalRole.permissions).toHaveLength(1);
     expect(guestRole.permissions).toHaveLength(4);
+    // 백업 현황은 읽기 전용·운영자까지만 보고, 대상 변경과 실행은 관리자만 한다.
+    for (const role of [readOnlyRole, operatorRole]) {
+      const names = role.permissions.map((permission) => permission.name);
+      expect(names).toContain(PERMISSIONS.BACKUP_READ);
+      expect(names).not.toContain(PERMISSIONS.BACKUP_MANAGE);
+    }
+    expect(
+      guestRole.permissions.map((permission) => permission.name),
+    ).not.toContain(PERMISSIONS.BACKUP_READ);
     expect(
       keyManagerRole.permissions.map((permission) => permission.name),
     ).toEqual(
