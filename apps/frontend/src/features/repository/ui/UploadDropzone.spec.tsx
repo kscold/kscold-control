@@ -275,5 +275,12 @@ describe('UploadDropzone session recovery', () => {
           '서버 세션과 파일 스냅샷이 달라 새 세션으로 자동 복구하고 있습니다.',
       }),
     );
+    expect(onUploadActivityChange).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        phase: 'success',
+        batchCurrent: 1,
+        batchTotal: 1,
+      }),
+    );
   });
 });

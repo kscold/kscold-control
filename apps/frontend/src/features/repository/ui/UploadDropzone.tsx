@@ -217,7 +217,10 @@ function buildActivityFromSession(
     totalFiles: session.totalFiles,
     totalBytes: session.totalBytes,
     filteredCount: session.filteredCount,
-    batchCurrent: currentBatchIndex !== null ? currentBatchIndex + 1 : 0,
+    batchCurrent:
+      currentBatchIndex !== null
+        ? currentBatchIndex + 1
+        : session.batches.filter((batch) => batch.status === 'completed').length,
     batchTotal: session.batchTotal,
     message: options?.message ?? defaultMessage,
     error: options?.error ?? null,
