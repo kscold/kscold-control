@@ -1,4 +1,5 @@
 import { useModalStore } from '../model/modal.store';
+import { createPortal } from 'react-dom';
 
 export const Modal = () => {
   const { isOpen, title, message, type, onConfirm, close } = useModalStore();
@@ -6,17 +7,33 @@ export const Modal = () => {
   if (!isOpen) return null;
 
   const handleConfirm = () => {
+    close();
     if (onConfirm) {
       onConfirm();
     }
-    close();
   };
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div className="bg-gray-800 rounded-lg p-6 max-w-md w-full border border-gray-700">
-        <h2 className="text-xl font-bold text-white mb-4">{title}</h2>
-        <p className="text-gray-300 mb-6 whitespace-pre-wrap">{message}</p>
+      <div
+        role="alertdialog"
+        aria-modal="true"
+        aria-labelledby="global-modal-title"
+        aria-describedby="global-modal-message"
+        className="bg-gray-800 rounded-lg p-6 max-w-md w-full border border-gray-700 max-h-[85dvh] overflow-auto"
+      >
+        <h2
+          id="global-modal-title"
+          className="text-xl font-bold text-white mb-4"
+        >
+          {title}
+        </h2>
+        <p
+          id="global-modal-message"
+          className="text-gray-300 mb-6 whitespace-pre-wrap break-words"
+        >
+          {message}
+        </p>
 
         <div className="flex justify-end gap-3">
           {type === 'confirm' && (
@@ -35,6 +52,7 @@ export const Modal = () => {
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 };

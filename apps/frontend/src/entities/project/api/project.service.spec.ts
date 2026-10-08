@@ -20,6 +20,33 @@ function axiosError(data: unknown, status = 400): AxiosError {
 describe('RepositoryService upload errors', () => {
   afterEach(() => {
     vi.restoreAllMocks();
+    vi.useRealTimers();
+  });
+
+  it('최종 반영 응답 유실 시 같은 세션으로만 재시도한다', async () => {
+    vi.useFakeTimers();
+    const result = { session: { status: 'completed' } };
+    const post = vi
+      .spyOn(api, 'post')
+      .mockRejectedValueOnce(axiosError({ message: 'gateway timeout' }, 504))
+      .mockResolvedValueOnce({ data: result });
+    const execution = new RepositoryService().finalizeUploadSession(
+      'project-id',
+      'session-id',
+    );
+    await vi.runAllTimersAsync();
+    expect(await execution).toBe(result);
+    expect(post).toHaveBeenCalledTimes(2);
+    expect(post.mock.calls[0]).toEqual(post.mock.calls[1]);
+  });
+
+  it('요청 검증 오류 배열의 이유를 숨기지 않는다', async () => {
+    vi.spyOn(api, 'post').mockRejectedValue(
+      axiosError({ message: ['업로드 파일 수 한도 초과'] }),
+    );
+    await expect(
+      new RepositoryService().createUploadSession('project', {} as never),
+    ).rejects.toThrow('업로드 파일 수 한도 초과');
   });
 
   it('서버 무결성 코드를 자동 세션 복구용 오류로 변환한다', async () => {

@@ -14,6 +14,7 @@ import type {
   UploadSessionBatchResult,
   FinalizeUploadSessionResult,
   ProjectVersion,
+  RepositoryUploadLimits,
 } from '../model/types';
 
 const REPOSITORY_UPLOAD_INTEGRITY_ERROR_CODE =
@@ -37,6 +38,21 @@ export function isRepositoryUploadIntegrityError(
  */
 export class RepositoryService extends BaseApiService {
   private readonly basePath = '/repository';
+
+  async getUploadLimits(): Promise<RepositoryUploadLimits> {
+    try {
+      const { data } = await api.get<RepositoryUploadLimits>(
+        `${this.basePath}/upload-limits`,
+        { timeout: 15_000 },
+      );
+      return data;
+    } catch (error) {
+      this.handleError(
+        error,
+        '서버 업로드 제한을 확인하지 못했습니다. 다시 시도해주세요.',
+      );
+    }
+  }
 
   async listProjects(): Promise<RepositoryProject[]> {
     try {
@@ -129,6 +145,7 @@ export class RepositoryService extends BaseApiService {
       const { data } = await api.post<RepositoryUploadSession>(
         `${this.basePath}/projects/${projectId}/upload-sessions`,
         input,
+        { params: { summary: true }, timeout: 60_000 },
       );
       return data;
     } catch (error) {
@@ -143,6 +160,7 @@ export class RepositoryService extends BaseApiService {
     try {
       const { data } = await api.get<{ item: RepositoryUploadSession | null }>(
         `${this.basePath}/projects/${projectId}/upload-sessions/latest`,
+        { params: { summary: true }, timeout: 15_000 },
       );
       return data.item ?? null;
     } catch (error) {
@@ -158,6 +176,7 @@ export class RepositoryService extends BaseApiService {
     try {
       const { data } = await api.get<{ item: RepositoryUploadSession | null }>(
         `${this.basePath}/projects/${projectId}/upload-sessions/${sessionId}`,
+        { params: { summary: true }, timeout: 15_000 },
       );
       return data.item ?? null;
     } catch (error) {
@@ -202,6 +221,7 @@ export class RepositoryService extends BaseApiService {
             // Content-Type 수동 설정 금지 — 브라우저가 boundary 포함한 multipart/form-data 자동 설정
             // 배치 1건당 2분 타임아웃 — 멈춘 연결을 빨리 실패 처리해 재시도로 넘긴다.
             timeout: 120_000,
+            params: { summary: true },
             onUploadProgress: (e) => {
               if (!options?.onProgress) {
                 return;
@@ -252,15 +272,24 @@ export class RepositoryService extends BaseApiService {
     projectId: string,
     sessionId: string,
   ): Promise<FinalizeUploadSessionResult> {
-    try {
-      const { data } = await api.post<FinalizeUploadSessionResult>(
-        `${this.basePath}/projects/${projectId}/upload-sessions/${sessionId}/finalize`,
-      );
-      return data;
-    } catch (error) {
-      this.logError('RepositoryService', 'finalizeUploadSession', error);
-      this.throwUploadSessionError(error, '업로드 최종 반영 실패');
+    for (let attempt = 1; attempt <= 3; attempt += 1) {
+      try {
+        const { data } = await api.post<FinalizeUploadSessionResult>(
+          `${this.basePath}/projects/${projectId}/upload-sessions/${sessionId}/finalize`,
+          undefined,
+          { params: { summary: true }, timeout: 120_000 },
+        );
+        return data;
+      } catch (error) {
+        if (!this.isRetryableError(error) || attempt === 3) {
+          this.logError('RepositoryService', 'finalizeUploadSession', error);
+          this.throwUploadSessionError(error, '업로드 최종 반영 실패');
+        }
+        // Finalization is idempotent: retry the same receipt, never a new session.
+        await this.delay(1000 * 2 ** (attempt - 1));
+      }
     }
+    throw new Error('업로드 최종 반영 실패');
   }
 
   private throwUploadSessionError(
