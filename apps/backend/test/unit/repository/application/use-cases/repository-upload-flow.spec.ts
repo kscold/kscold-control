@@ -115,6 +115,26 @@ function createDependencies(session: RepositoryUploadSession | null = null) {
 }
 
 describe('repository upload flow', () => {
+  it('마지막 배치 응답 유실 후 재전송은 finalizing에서도 멱등 성공한다', async () => {
+    const session = makeSession();
+    const dependencies = createDependencies(session);
+    const useCase = new UploadSessionBatchUseCase(
+      dependencies.projectRepository as any,
+      dependencies.fileStorage as any,
+      dependencies.sessionRepository as any,
+      new RepositoryUploadCoordinator(),
+    );
+    const files = [
+      { relativePath: 'src/index.ts', size: 3, buffer: Buffer.from('new') },
+    ];
+    const first = await useCase.execute(project.id, session.id, 0, files);
+    expect(first.session.status).toBe('finalizing');
+    const retry = await useCase.execute(project.id, session.id, 0, files);
+    expect(retry.uploadedCount).toBe(1);
+    expect(retry.session.status).toBe('finalizing');
+    expect(dependencies.fileStorage.writeStagedFile).toHaveBeenCalledTimes(1);
+  });
+
   it('v2 세션을 만들기 전에 전체 manifest와 중복 경로를 검증한다', async () => {
     const content = Buffer.from('content');
     const file = metadata('src/index.ts', content);

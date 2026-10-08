@@ -3,6 +3,7 @@ import {
   ConflictException,
   Inject,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import {
@@ -44,6 +45,7 @@ export interface UploadSessionBatchResult {
 
 @Injectable()
 export class UploadSessionBatchUseCase {
+  private readonly logger = new Logger(UploadSessionBatchUseCase.name);
   constructor(
     @Inject(PROJECT_REPOSITORY)
     private readonly projectRepository: IProjectRepository,
@@ -94,6 +96,9 @@ export class UploadSessionBatchUseCase {
       if (batch.status === 'completed') {
         return this.toResult(project, session, batch);
       }
+      if (session.status === 'finalizing') {
+        throw new ConflictException('이미 업로드 최종 반영이 진행 중입니다.');
+      }
 
       const validation = this.validateFiles(batch, files);
       if (validation.failures.length > 0) {
@@ -122,7 +127,21 @@ export class UploadSessionBatchUseCase {
             file.buffer,
           );
           uploadedBytes += file.size;
-        } catch {
+        } catch (error) {
+          const code = (error as NodeJS.ErrnoException)?.code;
+          const reason = [
+            'ENOSPC',
+            'EDQUOT',
+            'EACCES',
+            'EPERM',
+            'EIO',
+            'ENOENT',
+          ].includes(code ?? '')
+            ? code
+            : 'WRITE_FAILED';
+          this.logger.error(
+            `Upload write failed: session=${session.id} batch=${batch.index} code=${reason}`,
+          );
           failedFiles.push(file.relativePath);
         }
       }
@@ -162,9 +181,6 @@ export class UploadSessionBatchUseCase {
       );
     }
     if (session.status === 'completed') return;
-    if (session.status === 'finalizing') {
-      throw new ConflictException('이미 업로드 최종 반영이 진행 중입니다.');
-    }
   }
 
   private validateFiles(
@@ -230,6 +246,9 @@ export class UploadSessionBatchUseCase {
     batch.uploadedBytes = 0;
     batch.failedFiles = [...new Set(failedFiles)];
     batch.error = `${batch.failedFiles.length}개 파일의 업로드 또는 검증에 실패했습니다.`;
+    this.logger.warn(
+      `Upload batch failed: session=${session.id} batch=${batch.index} failedFiles=${batch.failedFiles.length}`,
+    );
     batch.updatedAt = new Date().toISOString();
     this.recalculateSession(session);
     await this.uploadSessionRepository.save(session);

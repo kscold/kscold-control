@@ -228,7 +228,7 @@ async function waitForCompletedUploadSession(
 
   while (Date.now() < deadline) {
     const latest = await apiRequest(
-      `/repository/projects/${projectId}/upload-sessions/latest`,
+      `/repository/projects/${projectId}/upload-sessions/latest?summary=true`,
       token,
     );
     const session = latest.item;
@@ -379,6 +379,13 @@ async function verifyAtomicApiUpload(project, token) {
     replacement,
   );
   assert.equal(staged.session.status, 'finalizing');
+  const replay = await apiMultipartRequest(
+    `/repository/projects/${project.id}/upload-sessions/${replacementSession.id}/batches/0`,
+    token,
+    replacement,
+  );
+  assert.equal(replay.session.status, 'finalizing');
+  assert.equal(replay.uploadedCount, replacement.length);
   assert.equal(
     await readLiveText(project.id, token, relativePath),
     'before-source',
@@ -417,11 +424,22 @@ async function createFixtureDirectory(projectName) {
   await fsp.mkdir(fixtureRoot, { recursive: true });
 
   const expectedPaths = [];
-  const groups = [
-    ['src/core', 48],
-    ['src/features', 48],
-    ['docs/guides', 28],
-  ];
+  const fileCount = Number(process.env.CONTROL_LIVE_FILE_COUNT || 124);
+  const totalBytes = Number(process.env.CONTROL_LIVE_TOTAL_BYTES || 0);
+  assert(Number.isInteger(fileCount) && fileCount >= 2 && fileCount <= 100000);
+  assert(
+    Number.isSafeInteger(totalBytes) &&
+      totalBytes >= 0 &&
+      totalBytes <= 2 * 1024 ** 3,
+  );
+  const groups =
+    fileCount === 124
+      ? [
+          ['src/core', 48],
+          ['src/features', 48],
+          ['docs/guides', 28],
+        ]
+      : [['src/generated', fileCount]];
 
   let sequence = 1;
   for (const [directory, count] of groups) {
@@ -437,9 +455,16 @@ async function createFixtureDirectory(projectName) {
         'This file exists to validate live repository upload flow.',
       ].join('\n');
 
+      const content = totalBytes
+        ? Buffer.alloc(
+            Math.floor(totalBytes / fileCount) +
+              (sequence <= totalBytes % fileCount ? 1 : 0),
+            'x',
+          )
+        : payload;
       await fsp.writeFile(
         path.join(targetDirectory, fileName),
-        payload,
+        content,
         'utf8',
       );
       expectedPaths.push(relativePath);
@@ -510,10 +535,81 @@ async function run() {
     await page.locator('input[type="file"]').setInputFiles(fixture.fixtureRoot);
     await page
       .getByTestId('repository-upload-ready')
-      .waitFor({ state: 'visible', timeout: 30_000 });
+      .waitFor({ state: 'visible', timeout: 180_000 });
+
+    // Fault injection is restricted to this synthetic project's browser requests.
+    const sessionUrl = `**/api/repository/projects/${project.id}/upload-sessions?*`;
+    await page.route(
+      sessionUrl,
+      async (route) => {
+        await route.fulfill({
+          status: 400,
+          contentType: 'application/json',
+          body: JSON.stringify({ message: ['검증용 세션 생성 거절'] }),
+        });
+      },
+      { times: 1 },
+    );
     await page
       .getByRole('button', { name: /업로드 시작|남은 배치 이어올리기/ })
       .click();
+    const failureDialog = page.getByRole('alertdialog', {
+      name: '업로드 실패',
+    });
+    await failureDialog.waitFor();
+    assert.match(await failureDialog.textContent(), /검증용 세션 생성 거절/);
+    await failureDialog.getByRole('button', { name: '확인' }).click();
+
+    let lastBatchIndex = -1;
+    page.on('request', (request) => {
+      if (
+        request.method() === 'POST' &&
+        /\/upload-sessions\?/.test(request.url())
+      ) {
+        lastBatchIndex = request.postDataJSON().batches.length - 1;
+      }
+    });
+    let lostLastResponse = false;
+    let injectedFailures = 0;
+    let firstBatchRequests = 0;
+    await page.route(
+      `**/api/repository/projects/${project.id}/upload-sessions/*/batches/*`,
+      async (route) => {
+        const index = Number(
+          new URL(route.request().url()).pathname.split('/').at(-1),
+        );
+        if (index === 0) firstBatchRequests += 1;
+        if (index === 1 && injectedFailures < 4) {
+          injectedFailures += 1;
+          await route.fulfill({
+            status: 503,
+            contentType: 'application/json',
+            body: JSON.stringify({ message: '검증용 일시적 배치 장애' }),
+          });
+          return;
+        }
+        if (index === lastBatchIndex && !lostLastResponse) {
+          lostLastResponse = true;
+          const response = await route.fetch({ timeout: 120_000 });
+          assert(
+            response.ok(),
+            '마지막 배치는 응답 유실 전에 서버가 수신해야 합니다.',
+          );
+          await response.dispose();
+          await route.abort('connectionreset');
+          return;
+        }
+        await route.continue();
+      },
+    );
+    await page
+      .getByRole('button', { name: /업로드 시작|남은 배치 이어올리기/ })
+      .click();
+
+    await failureDialog.waitFor({ timeout: 120_000 });
+    assert.match(await failureDialog.textContent(), /검증용 일시적 배치 장애/);
+    await failureDialog.getByRole('button', { name: '확인' }).click();
+    await page.getByRole('button', { name: '남은 배치 이어올리기' }).click();
 
     const activityCard = page.getByTestId('repository-upload-activity');
     await activityCard.waitFor({ state: 'visible', timeout: 30_000 });
@@ -527,8 +623,22 @@ async function run() {
       project.id,
       token,
       latestBeforeBrowserUpload.item?.id ?? null,
+      600_000,
     );
     assert.equal(completedSession.totalFiles, fixture.expectedPaths.length);
+    assert.equal(
+      firstBatchRequests,
+      1,
+      '이어올리기는 완료된 배치를 다시 전송하면 안 됩니다.',
+    );
+    assert.equal(injectedFailures, 4);
+    assert.equal(lostLastResponse, true);
+    if (process.env.CONTROL_LIVE_TOTAL_BYTES) {
+      assert.equal(
+        completedSession.totalBytes,
+        Number(process.env.CONTROL_LIVE_TOTAL_BYTES),
+      );
+    }
     await page.waitForFunction(() => {
       const node = document.querySelector(
         '[data-testid="repository-upload-activity"]',
@@ -537,6 +647,11 @@ async function run() {
         node && /완료되었습니다|반영했습니다/.test(node.textContent || ''),
       );
     });
+    const successDialog = page.getByRole('alertdialog', {
+      name: '업로드 완료',
+    });
+    await successDialog.waitFor({ timeout: 30_000 });
+    await successDialog.getByRole('button', { name: '확인' }).click();
 
     await fsp.mkdir(path.dirname(screenshotPath), { recursive: true });
     await page.screenshot({ path: screenshotPath, fullPage: true });

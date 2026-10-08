@@ -39,7 +39,10 @@ function freezeClientFile(
 }
 
 /** 선택 시점 바이트를 고정하고, 같은 크기의 내용 변경도 구분하는 재개 토큰을 만든다. */
-export async function buildUploadManifest(files: ClientFile[]): Promise<{
+export async function buildUploadManifest(
+  files: ClientFile[],
+  onProgress?: (processed: number, total: number) => void,
+): Promise<{
   digest: string;
   files: HashedClientFile[];
 }> {
@@ -71,6 +74,9 @@ export async function buildUploadManifest(files: ClientFile[]): Promise<{
     manifestParts.push(
       `${metadata.relativePath}\0${metadata.size}\0${metadata.sha256}\n`,
     );
+    if (hashedFiles.length % 50 === 0 || hashedFiles.length === sorted.length) {
+      onProgress?.(hashedFiles.length, sorted.length);
+    }
   }
 
   const digest = await sha256(new TextEncoder().encode(manifestParts.join('')));

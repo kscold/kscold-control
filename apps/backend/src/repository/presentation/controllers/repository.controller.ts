@@ -41,8 +41,10 @@ import {
   RestoreVersionUseCase,
 } from '../../application/use-cases';
 import { CreateProjectDto } from '../../application/dto/create-project.dto';
+import { REPOSITORY_UPLOAD_LIMITS } from '../../domain/policies/upload-limits.policy';
 import type { UploadFile } from '../../application/use-cases/upload-files.use-case';
 import { CreateUploadSessionRequestDto } from '../dto';
+import { uploadSessionResponse } from '../dto/upload-session-response';
 
 interface MulterFile {
   fieldname: string;
@@ -93,6 +95,12 @@ export class RepositoryController {
     private readonly cleanupVersionsUseCase: CleanupVersionsUseCase,
     private readonly restoreVersionUseCase: RestoreVersionUseCase,
   ) {}
+
+  @Get('upload-limits')
+  @RequirePermissions(PERMISSIONS.REPOSITORY_WRITE)
+  getUploadLimits() {
+    return REPOSITORY_UPLOAD_LIMITS;
+  }
 
   @Get('projects')
   @RequirePermissions(PERMISSIONS.REPOSITORY_READ)
@@ -228,12 +236,14 @@ export class RepositoryController {
     @Param('id') id: string,
     @Body() body: CreateUploadSessionRequestDto,
     @Request() req: JwtRequest,
+    @Query('summary') summary?: string,
   ) {
-    return this.createUploadSessionUseCase.execute(
+    const session = await this.createUploadSessionUseCase.execute(
       id,
       body,
       getProjectOwnerScope(req),
     );
+    return uploadSessionResponse(session, summary);
   }
 
   @Get('projects/:id/upload-sessions/latest')
@@ -241,12 +251,13 @@ export class RepositoryController {
   async getLatestUploadSession(
     @Param('id') id: string,
     @Request() req: JwtRequest,
+    @Query('summary') summary?: string,
   ) {
     const item = await this.getUploadSessionUseCase.executeLatest(
       id,
       getProjectOwnerScope(req),
     );
-    return { item };
+    return { item: item ? uploadSessionResponse(item, summary) : null };
   }
 
   @Get('projects/:id/upload-sessions/:sessionId')
@@ -255,13 +266,14 @@ export class RepositoryController {
     @Param('id') id: string,
     @Param('sessionId') sessionId: string,
     @Request() req: JwtRequest,
+    @Query('summary') summary?: string,
   ) {
     const item = await this.getUploadSessionUseCase.executeById(
       id,
       sessionId,
       getProjectOwnerScope(req),
     );
-    return { item };
+    return { item: item ? uploadSessionResponse(item, summary) : null };
   }
 
   @Post('projects/:id/upload-sessions/:sessionId/batches/:batchIndex')
@@ -305,6 +317,7 @@ export class RepositoryController {
     @UploadedFiles() files: MulterFile[],
     @Body('relativePaths') relativePathsRaw: string | string[],
     @Request() req: JwtRequest,
+    @Query('summary') summary?: string,
   ) {
     if (!files?.length) {
       throw new BadRequestException('업로드할 배치 파일이 없습니다.');
@@ -322,13 +335,17 @@ export class RepositoryController {
       size: file.size,
     }));
 
-    return this.uploadSessionBatchUseCase.execute(
+    const result = await this.uploadSessionBatchUseCase.execute(
       id,
       sessionId,
       batchIndex,
       uploadFiles,
       getProjectOwnerScope(req),
     );
+    return {
+      ...result,
+      session: uploadSessionResponse(result.session, summary),
+    };
   }
 
   @Post('projects/:id/upload-sessions/:sessionId/finalize')
@@ -355,12 +372,17 @@ export class RepositoryController {
     @Param('id') id: string,
     @Param('sessionId') sessionId: string,
     @Request() req: JwtRequest,
+    @Query('summary') summary?: string,
   ) {
-    return this.finalizeUploadSessionUseCase.execute(
+    const result = await this.finalizeUploadSessionUseCase.execute(
       id,
       sessionId,
       getProjectOwnerScope(req),
     );
+    return {
+      ...result,
+      session: uploadSessionResponse(result.session, summary),
+    };
   }
 
   @Get('projects/:id/download')

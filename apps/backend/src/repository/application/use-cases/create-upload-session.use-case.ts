@@ -24,6 +24,7 @@ import {
   RepositoryUploadSession,
 } from '../../domain/types/upload-session.type';
 import { RepositoryUploadCoordinator } from '../services/repository-upload-coordinator.service';
+import { REPOSITORY_UPLOAD_LIMITS } from '../../domain/policies/upload-limits.policy';
 import { assertSafeRepositoryPath } from '../utils/repository-path.util';
 import {
   buildUploadManifestDigest,
@@ -149,8 +150,11 @@ export class CreateUploadSessionUseCase {
       !input.batches?.length ||
       !Number.isInteger(input.totalFiles) ||
       input.totalFiles <= 0 ||
+      input.totalFiles > REPOSITORY_UPLOAD_LIMITS.maxFiles ||
+      input.batches.length > REPOSITORY_UPLOAD_LIMITS.maxBatches ||
       !Number.isSafeInteger(input.totalBytes) ||
       input.totalBytes < 0 ||
+      input.totalBytes > REPOSITORY_UPLOAD_LIMITS.maxTotalBytes ||
       !MANIFEST_DIGEST_PATTERN.test(input.manifestDigest)
     ) {
       throw new BadRequestException(

@@ -12,6 +12,8 @@ import {
   repositoryService,
 } from '@/entities/project';
 import { useAuthStore } from '@/shared/model/auth.store';
+import { useModalStore } from '@/shared/model/modal.store';
+import { assertUploadWithinLimits } from '../lib/upload-limits';
 import { filterFiles, chunkFiles, type FilterStats } from '../lib/file-filter';
 import {
   buildUploadManifest,
@@ -54,8 +56,9 @@ interface PendingUpload {
 async function buildPendingUpload(
   kept: ClientFile[],
   stats: FilterStats,
+  onProgress?: (processed: number, total: number) => void,
 ): Promise<PendingUpload> {
-  const manifest = await buildUploadManifest(kept);
+  const manifest = await buildUploadManifest(kept, onProgress);
   const frozenFiles = manifest.files.map((item) => item.clientFile);
   const metadataByPath = new Map(
     manifest.files.map((item) => [item.clientFile.relativePath, item.metadata]),
@@ -232,9 +235,12 @@ export function UploadDropzone({
   onUploadActivityChange,
 }: UploadDropzoneProps) {
   const inputRef = useRef<HTMLInputElement>(null);
+  const uploadInFlight = useRef(false);
   const [dragOver, setDragOver] = useState(false);
   const [scanning, setScanning] = useState(false);
   const [scanCount, setScanCount] = useState(0);
+  const [hashedCount, setHashedCount] = useState(0);
+  const [hashTotal, setHashTotal] = useState(0);
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
@@ -249,6 +255,11 @@ export function UploadDropzone({
     current: number;
     total: number;
   } | null>(null);
+
+  const reportError = (message: string) => {
+    setError(message);
+    useModalStore.getState().showAlert(message, '업로드 실패');
+  };
 
   const publishActivity = (
     next: Omit<RepositoryUploadActivity, 'projectId' | 'projectName'> | null,
@@ -269,6 +280,7 @@ export function UploadDropzone({
     setLoadingSession(true);
     try {
       const latest = await repositoryService.getLatestUploadSession(project.id);
+      if (uploadInFlight.current) return;
       const resumableSession =
         latest?.protocolVersion === REPOSITORY_UPLOAD_PROTOCOL_VERSION &&
         latest.status !== 'superseded'
@@ -315,31 +327,48 @@ export function UploadDropzone({
 
   const handleFiles = useCallback(
     async (fileList: FileList) => {
-      const allFiles: ClientFile[] = Array.from(fileList).map((f) => ({
-        relativePath: stripTopFolder(
-          (f as File & { webkitRelativePath?: string }).webkitRelativePath ||
-            f.name,
-        ),
-        file: f,
-      }));
-
-      setScanCount(allFiles.length);
-      const { kept, stats } = filterFiles(allFiles);
-      setLastStats(stats);
-      setError(null);
-
-      if (kept.length === 0) {
-        setPendingUpload(null);
-        setProgress(0);
-        setError('업로드할 파일이 없습니다 (전부 필터링됨)');
-        if (inputRef.current) {
-          inputRef.current.value = '';
-        }
-        return;
-      }
-
+      setHashedCount(0);
+      setHashTotal(0);
       try {
-        const nextPendingUpload = await buildPendingUpload(kept, stats);
+        const allFiles: ClientFile[] = Array.from(fileList).map((f) => ({
+          relativePath: stripTopFolder(
+            (f as File & { webkitRelativePath?: string }).webkitRelativePath ||
+              f.name,
+          ),
+          file: f,
+        }));
+
+        setScanCount(allFiles.length);
+        const { kept, stats } = filterFiles(allFiles);
+        setLastStats(stats);
+        setError(null);
+
+        if (kept.length === 0) {
+          setProgress(0);
+          throw new Error(
+            '업로드할 파일이 없습니다 (전부 필터링됨). 소스 파일이 있는 폴더를 선택해주세요.',
+          );
+        }
+
+        const limits = await repositoryService.getUploadLimits();
+        assertUploadWithinLimits(
+          kept.length,
+          stats.totalSize,
+          chunkFiles(kept).length,
+          limits,
+        );
+        setHashTotal(kept.length);
+        const nextPendingUpload = await buildPendingUpload(
+          kept,
+          stats,
+          setHashedCount,
+        );
+        assertUploadWithinLimits(
+          nextPendingUpload.kept.length,
+          nextPendingUpload.stats.totalSize,
+          nextPendingUpload.batches.length,
+          limits,
+        );
         setPendingUpload(nextPendingUpload);
 
         if (
@@ -361,31 +390,27 @@ export function UploadDropzone({
         }
       } catch (manifestError) {
         setPendingUpload(null);
-        setError(
+        reportError(
           manifestError instanceof Error
             ? manifestError.message
             : '파일 내용 해시를 계산하지 못했습니다.',
         );
       } finally {
         setScanning(false);
-      }
-
-      if (inputRef.current) {
-        inputRef.current.value = '';
+        if (inputRef.current) {
+          inputRef.current.value = '';
+        }
       }
     },
     [serverSession, project],
   );
 
   const startUpload = async () => {
-    if (!pendingUpload) {
+    if (!pendingUpload || uploadInFlight.current) {
       return;
     }
 
-    // 대용량 동기화는 수 분에서 수십 분이 걸린다.
-    // 도중에 토큰 수명이 끝나면 업로드와 로그인이 함께 끊기므로 시작 전에 미리 갱신한다.
-    await useAuthStore.getState().ensureFreshToken();
-
+    uploadInFlight.current = true;
     setUploading(true);
     setError(null);
 
@@ -399,6 +424,31 @@ export function UploadDropzone({
     let integrityRecoveryAttempted = false;
 
     try {
+      publishActivity({
+        phase: 'preparing',
+        progress: 0,
+        uploadedCount: activeSession?.uploadedCount ?? 0,
+        totalFiles: pendingUpload.kept.length,
+        totalBytes: pendingUpload.stats.totalSize,
+        filteredCount: pendingUpload.stats.filtered,
+        batchCurrent: 0,
+        batchTotal: pendingUpload.batches.length,
+        message: '로그인 상태와 서버 업로드 한도를 확인하고 있습니다.',
+        error: null,
+        sessionId: activeSession?.id ?? null,
+        sessionStatus: activeSession?.status ?? null,
+        failedFiles: [],
+        transportProgress: null,
+        resumable: Boolean(activeSession),
+      });
+      await useAuthStore.getState().ensureFreshToken();
+      const limits = await repositoryService.getUploadLimits();
+      assertUploadWithinLimits(
+        pendingUpload.kept.length,
+        pendingUpload.stats.totalSize,
+        pendingUpload.batches.length,
+        limits,
+      );
       while (true) {
         try {
           if (!activeSession) {
@@ -550,6 +600,12 @@ export function UploadDropzone({
             setProgress(100);
             publishActivity(completedActivity);
             setPendingUpload(null);
+            useModalStore
+              .getState()
+              .showAlert(
+                `${activeSession.totalFiles.toLocaleString()}개 파일을 검증하고 저장소에 반영했습니다.`,
+                '업로드 완료',
+              );
             onUploaded();
           }
           break;
@@ -590,17 +646,30 @@ export function UploadDropzone({
     } catch (uploadError) {
       const message =
         uploadError instanceof Error ? uploadError.message : '업로드 실패';
-      setError(message);
-
       if (activeSession?.id) {
         try {
           const latestSession = await repositoryService.getUploadSession(
             project.id,
             activeSession.id,
           );
+          if (!latestSession) throw uploadError;
 
           if (latestSession) {
             setServerSession(latestSession);
+            if (latestSession.status === 'completed') {
+              setError(null);
+              setProgress(100);
+              setPendingUpload(null);
+              publishActivity(buildActivityFromSession(project, latestSession));
+              useModalStore
+                .getState()
+                .showAlert(
+                  `${latestSession.totalFiles.toLocaleString()}개 파일의 서버 반영 완료를 확인했습니다.`,
+                  '업로드 완료',
+                );
+              onUploaded();
+              return;
+            }
             const pausedActivity = buildActivityFromSession(
               project,
               latestSession,
@@ -613,11 +682,9 @@ export function UploadDropzone({
                     : 'error',
                 error: message,
                 message:
-                  latestSession.status === 'completed'
-                    ? `${latestSession.totalFiles}개 파일 업로드가 완료되었습니다.`
-                    : latestSession.status === 'finalization_failed'
-                      ? '최종 반영 상태를 확정하지 못했습니다. 같은 폴더로 재시도하면 서버 영수증을 기준으로 이어갑니다.'
-                      : '업로드가 중단되었습니다. 같은 폴더를 다시 선택하면 남은 배치만 이어서 업로드할 수 있습니다.',
+                  latestSession.status === 'finalization_failed'
+                    ? '최종 반영 상태를 확정하지 못했습니다. 같은 폴더로 재시도하면 서버 영수증을 기준으로 이어갑니다.'
+                    : '업로드가 중단되었습니다. 같은 폴더를 다시 선택하면 남은 배치만 이어서 업로드할 수 있습니다.',
               },
             );
             setProgress(pausedActivity.progress);
@@ -665,7 +732,9 @@ export function UploadDropzone({
           resumable: false,
         });
       }
+      reportError(message);
     } finally {
+      uploadInFlight.current = false;
       setUploading(false);
       setBatchInfo(null);
     }
@@ -683,6 +752,15 @@ export function UploadDropzone({
 
   return (
     <div className="space-y-3">
+      {error && (
+        <div
+          role="alert"
+          className="rounded-lg border border-red-900/50 bg-red-950/30 px-3 py-3 text-sm text-red-300 break-words"
+        >
+          <p className="font-semibold">업로드를 완료하지 못했습니다</p>
+          <p className="mt-1">{error}</p>
+        </div>
+      )}
       <div
         onDragOver={(e) => {
           e.preventDefault();
@@ -691,12 +769,23 @@ export function UploadDropzone({
         onDragLeave={() => setDragOver(false)}
         onDrop={async (e) => {
           e.preventDefault();
+          if (uploading || scanning) return;
           setDragOver(false);
           setScanning(true);
           setScanCount(0);
           setPendingUpload(null);
           setError(null);
-          await collectFromDataTransfer(e.dataTransfer, handleFiles);
+          try {
+            await collectFromDataTransfer(e.dataTransfer, handleFiles);
+          } catch (dropError) {
+            reportError(
+              dropError instanceof Error
+                ? dropError.message
+                : '폴더를 읽지 못했습니다. 다시 선택해주세요.',
+            );
+          } finally {
+            setScanning(false);
+          }
         }}
         onClick={() => !uploading && !scanning && inputRef.current?.click()}
         className={`cursor-pointer rounded-2xl border-2 border-dashed p-10 text-center transition-all ${
@@ -742,8 +831,18 @@ export function UploadDropzone({
               </p>
             )}
             <p className="mt-1 text-xs text-gray-500">
-              불필요한 파일 자동 제외 처리 중
+              {hashTotal > 0
+                ? `파일 검증 ${hashedCount.toLocaleString()}/${hashTotal.toLocaleString()}개`
+                : '불필요한 파일 제외 및 서버 업로드 한도 확인 중'}
             </p>
+            {hashTotal > 0 && (
+              <progress
+                aria-label="파일 검증 진행률"
+                value={hashedCount}
+                max={hashTotal}
+                className="mt-3 h-2 w-full max-w-xs"
+              />
+            )}
           </>
         ) : (
           <>
@@ -942,12 +1041,6 @@ export function UploadDropzone({
             업로드를 시작하면 새 세션으로 처리합니다.
           </div>
         )}
-
-      {error && (
-        <div className="rounded-lg border border-red-900/50 bg-red-950/30 px-3 py-2 text-xs text-red-400">
-          {error}
-        </div>
-      )}
 
       {serverSession?.status !== 'completed' &&
       serverSession?.failedFiles.length ? (

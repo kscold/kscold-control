@@ -66,7 +66,7 @@ export interface RepositoryUploadSessionBatch {
   totalFiles: number;
   totalBytes: number;
   status: RepositoryUploadBatchStatus;
-  files: RepositoryUploadBatchFileMeta[];
+  files?: RepositoryUploadBatchFileMeta[];
   uploadedCount: number;
   uploadedBytes: number;
   failedFiles: string[];
@@ -158,4 +158,9 @@ export interface ProjectVersion {
   createdAt: string;
   compressedSize: number;
   filename: string;
+}
+export interface RepositoryUploadLimits {
+  maxFiles: number;
+  maxTotalBytes: number;
+  maxBatches: number;
 }
