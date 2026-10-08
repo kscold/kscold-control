@@ -652,7 +652,7 @@ export function UploadDropzone({
             project.id,
             activeSession.id,
           );
-          if (!latestSession) throw new Error('업로드 세션을 찾지 못했습니다.');
+          if (!latestSession) throw uploadError;
 
           if (latestSession) {
             setServerSession(latestSession);
