@@ -13,6 +13,7 @@ import {
   Min,
   ValidateNested,
 } from 'class-validator';
+import { REPOSITORY_UPLOAD_LIMITS } from '../../../domain/policies/upload-limits.policy';
 
 const SHA256_HEX = /^[a-f0-9]{64}$/;
 const MANIFEST_SHA256 = /^sha256:[a-f0-9]{64}$/;
@@ -65,12 +66,16 @@ export class CreateUploadSessionRequestDto {
 
   @IsInt()
   @Min(1)
-  @Max(20_000)
+  @Max(REPOSITORY_UPLOAD_LIMITS.maxFiles, {
+    message: '업로드 파일 수는 최대 $constraint1개입니다 (선택: $value개).',
+  })
   totalFiles: number;
 
   @IsInt()
   @Min(0)
-  @Max(2 * 1024 * 1024 * 1024)
+  @Max(REPOSITORY_UPLOAD_LIMITS.maxTotalBytes, {
+    message: '한 번에 업로드할 수 있는 전체 용량은 최대 2 GiB입니다.',
+  })
   totalBytes: number;
 
   @IsInt()
@@ -84,7 +89,10 @@ export class CreateUploadSessionRequestDto {
 
   @IsArray()
   @ArrayMinSize(1)
-  @ArrayMaxSize(2000)
+  @ArrayMaxSize(REPOSITORY_UPLOAD_LIMITS.maxBatches, {
+    message:
+      '업로드 배치는 최대 $constraint1개입니다. 폴더를 나누어 올려주세요.',
+  })
   @ValidateNested({ each: true })
   @Type(() => UploadSessionBatchRequestDto)
   batches: UploadSessionBatchRequestDto[];
