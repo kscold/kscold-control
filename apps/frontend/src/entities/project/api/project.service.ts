@@ -1,4 +1,4 @@
-import axios from 'axios';
+import axios, { type AxiosResponse } from 'axios';
 import { api } from '@/shared/api/client';
 import { BaseApiService } from '@/shared/api/base.service';
 import type {
@@ -41,9 +41,8 @@ export class RepositoryService extends BaseApiService {
 
   async getUploadLimits(): Promise<RepositoryUploadLimits> {
     try {
-      const { data } = await api.get<RepositoryUploadLimits>(
+      const { data } = await this.readUploadMetadata<RepositoryUploadLimits>(
         `${this.basePath}/upload-limits`,
-        { timeout: 15_000 },
       );
       return data;
     } catch (error) {
@@ -158,10 +157,11 @@ export class RepositoryService extends BaseApiService {
     projectId: string,
   ): Promise<RepositoryUploadSession | null> {
     try {
-      const { data } = await api.get<{ item: RepositoryUploadSession | null }>(
-        `${this.basePath}/projects/${projectId}/upload-sessions/latest`,
-        { params: { summary: true }, timeout: 15_000 },
-      );
+      const { data } = await this.readUploadMetadata<{
+        item: RepositoryUploadSession | null;
+      }>(`${this.basePath}/projects/${projectId}/upload-sessions/latest`, {
+        summary: true,
+      });
       return data.item ?? null;
     } catch (error) {
       this.logError('RepositoryService', 'getLatestUploadSession', error);
@@ -174,14 +174,31 @@ export class RepositoryService extends BaseApiService {
     sessionId: string,
   ): Promise<RepositoryUploadSession | null> {
     try {
-      const { data } = await api.get<{ item: RepositoryUploadSession | null }>(
+      const { data } = await this.readUploadMetadata<{
+        item: RepositoryUploadSession | null;
+      }>(
         `${this.basePath}/projects/${projectId}/upload-sessions/${sessionId}`,
-        { params: { summary: true }, timeout: 15_000 },
+        { summary: true },
       );
       return data.item ?? null;
     } catch (error) {
       this.logError('RepositoryService', 'getUploadSession', error);
       this.handleError(error, '업로드 세션 상태 조회 실패');
+    }
+  }
+
+  private async readUploadMetadata<T>(
+    url: string,
+    params?: { summary: boolean },
+  ): Promise<AxiosResponse<T>> {
+    for (let attempt = 1; ; attempt += 1) {
+      try {
+        return await api.get<T>(url, { params, timeout: 15_000 });
+      } catch (error) {
+        // Only read-only upload metadata is retried here, never session creation.
+        if (!this.isRetryableError(error) || attempt >= 3) throw error;
+        await this.delay(1000 * 2 ** (attempt - 1));
+      }
     }
   }
 

@@ -4,6 +4,8 @@ Actual instance nginx conf files in this directory are local-only and ignored by
 
 Use [app-stack.conf.example](./app-stack.conf.example) as the reference template when creating a real site conf.
 KSCOLD 운영 설정은 [example.com.conf.example](./example.com.conf.example)을 기준으로 동기화합니다.
+Control은 [control.example.com.conf.example](./control.example.com.conf.example)을 기준으로
+동기화합니다. 업로드 배치는 HTTP upstream 연결을 재사용하고, WebSocket 연결은 별도로 유지합니다.
 공개 ProjectAlpha 개발 주소를 닫아 둘 때는
 [projectalpha.example.com.off.conf.example](./projectalpha.example.com.off.conf.example)을
 `projectalpha.example.com.off.conf`로 복사해 사용합니다. 이 설정은 다른 기본 가상호스트로 요청이
