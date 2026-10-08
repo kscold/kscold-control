@@ -23,6 +23,54 @@ describe('RepositoryService upload errors', () => {
     vi.useRealTimers();
   });
 
+  it.each(['limits', 'latest', 'session'] as const)(
+    '%s 조회의 일시적인 504 응답을 같은 요청으로 재시도한다',
+    async (kind) => {
+      vi.useFakeTimers();
+      const item = { id: 'session-id', status: 'uploading' };
+      const data = kind === 'limits' ? { maxFiles: 100_000 } : { item };
+      const get = vi
+        .spyOn(api, 'get')
+        .mockRejectedValueOnce(axiosError({ message: 'gateway timeout' }, 504))
+        .mockResolvedValueOnce({ data });
+      const service = new RepositoryService();
+      const execution =
+        kind === 'limits'
+          ? service.getUploadLimits()
+          : kind === 'latest'
+            ? service.getLatestUploadSession('project-id')
+            : service.getUploadSession('project-id', 'session-id');
+
+      await vi.runAllTimersAsync();
+      expect(await execution).toBe(kind === 'limits' ? data : item);
+      expect(get).toHaveBeenCalledTimes(2);
+      expect(get.mock.calls[0]).toEqual(get.mock.calls[1]);
+    },
+  );
+
+  it('상태 조회의 권한 거절은 재시도하지 않는다', async () => {
+    const get = vi
+      .spyOn(api, 'get')
+      .mockRejectedValue(axiosError({ message: '접근 권한 없음' }, 403));
+    await expect(
+      new RepositoryService().getUploadSession('project-id', 'session-id'),
+    ).rejects.toThrow('접근 권한 없음');
+    expect(get).toHaveBeenCalledTimes(1);
+  });
+
+  it('상태 조회 재시도를 세 번으로 제한하고 오류를 전달한다', async () => {
+    vi.useFakeTimers();
+    const get = vi
+      .spyOn(api, 'get')
+      .mockRejectedValue(axiosError({ message: 'gateway timeout' }, 504));
+    const assertion = expect(
+      new RepositoryService().getLatestUploadSession('project-id'),
+    ).rejects.toThrow('gateway timeout');
+    await vi.runAllTimersAsync();
+    await assertion;
+    expect(get).toHaveBeenCalledTimes(3);
+  });
+
   it('최종 반영 응답 유실 시 같은 세션으로만 재시도한다', async () => {
     vi.useFakeTimers();
     const result = { session: { status: 'completed' } };
