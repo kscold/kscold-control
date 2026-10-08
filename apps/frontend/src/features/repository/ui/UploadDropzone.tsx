@@ -13,6 +13,7 @@ import {
 } from '@/entities/project';
 import { useAuthStore } from '@/shared/model/auth.store';
 import { useModalStore } from '@/shared/model/modal.store';
+import { reportFrontendError } from '@/shared/lib/error-reporter';
 import { assertUploadWithinLimits } from '../lib/upload-limits';
 import { filterFiles, chunkFiles, type FilterStats } from '../lib/file-filter';
 import {
@@ -220,7 +221,8 @@ function buildActivityFromSession(
     batchCurrent:
       currentBatchIndex !== null
         ? currentBatchIndex + 1
-        : session.batches.filter((batch) => batch.status === 'completed').length,
+        : session.batches.filter((batch) => batch.status === 'completed')
+            .length,
     batchTotal: session.batchTotal,
     message: options?.message ?? defaultMessage,
     error: options?.error ?? null,
@@ -239,6 +241,7 @@ export function UploadDropzone({
 }: UploadDropzoneProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const uploadInFlight = useRef(false);
+  const uploadStage = useRef('selection');
   const [dragOver, setDragOver] = useState(false);
   const [scanning, setScanning] = useState(false);
   const [scanCount, setScanCount] = useState(0);
@@ -262,6 +265,12 @@ export function UploadDropzone({
   const reportError = (message: string) => {
     setError(message);
     useModalStore.getState().showAlert(message, '업로드 실패');
+    // Report the failed stage, not source paths, contents, or raw API payloads.
+    reportFrontendError(
+      new Error(
+        `Repository upload failed: project=${project.id} stage=${uploadStage.current}`,
+      ),
+    );
   };
 
   const publishActivity = (
@@ -330,6 +339,7 @@ export function UploadDropzone({
 
   const handleFiles = useCallback(
     async (fileList: FileList) => {
+      uploadStage.current = 'selection';
       setHashedCount(0);
       setHashTotal(0);
       try {
@@ -427,6 +437,7 @@ export function UploadDropzone({
     let integrityRecoveryAttempted = false;
 
     try {
+      uploadStage.current = 'preflight';
       publishActivity({
         phase: 'preparing',
         progress: 0,
@@ -455,6 +466,7 @@ export function UploadDropzone({
       while (true) {
         try {
           if (!activeSession) {
+            uploadStage.current = 'session';
             publishActivity({
               phase: 'preparing',
               progress: 3,
@@ -486,6 +498,7 @@ export function UploadDropzone({
           );
 
           for (const batch of remainingBatches) {
+            uploadStage.current = `batch:${batch.index}`;
             // 배치 사이마다 남은 수명을 확인한다. 여유가 있으면 즉시 반환하므로 비용이 없고,
             // 수십 분짜리 동기화가 만료 시점을 넘어가도 세션이 끊기지 않는다.
             await useAuthStore.getState().ensureFreshToken();
@@ -572,6 +585,7 @@ export function UploadDropzone({
           }
 
           if (activeSession.status !== 'completed') {
+            uploadStage.current = 'finalize';
             const finalizingActivity = buildActivityFromSession(
               project,
               activeSession,

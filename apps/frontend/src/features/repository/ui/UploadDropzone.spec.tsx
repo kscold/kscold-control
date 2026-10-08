@@ -12,6 +12,11 @@ import { UploadDropzone } from './UploadDropzone';
 import { useModalStore } from '@/shared/model/modal.store';
 import { useAuthStore } from '@/shared/model/auth.store';
 import { Modal } from '@/shared/ui/Modal';
+import { reportFrontendError } from '@/shared/lib/error-reporter';
+
+vi.mock('@/shared/lib/error-reporter', () => ({
+  reportFrontendError: vi.fn(),
+}));
 
 const project: RepositoryProject = {
   id: 'project-id',
@@ -121,6 +126,11 @@ describe('UploadDropzone session recovery', () => {
     );
     expect(screen.getByRole('alert')).toHaveTextContent('파일 수 한도 초과');
     expect(screen.getByTestId('repository-upload-ready')).toBeVisible();
+    expect(reportFrontendError).toHaveBeenCalledWith(
+      expect.objectContaining({
+        message: 'Repository upload failed: project=project-id stage=session',
+      }),
+    );
   });
 
   it('인증 갱신 대기 중에도 즉시 진행 표시하고 중복 클릭을 막는다', async () => {

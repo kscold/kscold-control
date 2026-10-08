@@ -37,8 +37,8 @@ add_host_args=()
 while IFS= read -r upstream_host; do
   add_host_args+=(--add-host "${upstream_host}:127.0.0.1")
 done < <(
-  grep -hoE 'proxy_pass https?://[A-Za-z0-9._-]+' "${test_root}"/conf.d/*.conf |
-    sed -E 's#.*://##' |
+  grep -hoE 'proxy_pass https?://[A-Za-z0-9._-]+|server [A-Za-z0-9._-]+:[0-9]+' "${test_root}"/conf.d/*.conf |
+    sed -E 's#.*://##; s/^server //; s/:[0-9]+$//' |
     sort -u
 )
 
