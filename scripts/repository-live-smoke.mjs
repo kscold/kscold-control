@@ -169,9 +169,11 @@ async function apiRequest(apiPath, token, init = {}) {
 
   if (!response.ok) {
     const detail = await response.text();
-    throw new Error(
+    const error = new Error(
       `${init.method || 'GET'} ${apiPath} failed: ${response.status} ${detail}`,
     );
+    error.status = response.status;
+    throw error;
   }
 
   if (response.status === 204) {
@@ -225,12 +227,35 @@ async function waitForCompletedUploadSession(
   timeoutMs = 120_000,
 ) {
   const deadline = Date.now() + timeoutMs;
+  let consecutiveFailures = 0;
 
   while (Date.now() < deadline) {
-    const latest = await apiRequest(
-      `/repository/projects/${projectId}/upload-sessions/latest?summary=true`,
-      token,
-    );
+    let latest;
+    try {
+      latest = await apiRequest(
+        `/repository/projects/${projectId}/upload-sessions/latest?summary=true`,
+        token,
+        {
+          signal: AbortSignal.timeout(
+            Math.max(1, Math.min(15_000, deadline - Date.now())),
+          ),
+        },
+      );
+      consecutiveFailures = 0;
+    } catch (error) {
+      const retryable =
+        error.status === 408 ||
+        error.status === 429 ||
+        error.status >= 500 ||
+        (error instanceof TypeError && error.message === 'fetch failed') ||
+        error.name === 'TimeoutError';
+      if (!retryable || ++consecutiveFailures > 5) throw error;
+      console.warn(
+        `[repository-live-smoke] Progress poll retry ${consecutiveFailures}/5 (${error.status || error.name})`,
+      );
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+      continue;
+    }
     const session = latest.item;
     if (session?.id !== previousSessionId && session?.status === 'completed') {
       return session;
