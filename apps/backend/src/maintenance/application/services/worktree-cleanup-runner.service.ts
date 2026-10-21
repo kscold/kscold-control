@@ -144,6 +144,15 @@ export class WorktreeCleanupRunnerService implements OnModuleInit {
     return { run, completion };
   }
 
+  /** 다른 작업이 같은 디스크를 쓰고 있으면 오차가 생기지만, 폴더 크기 합보다는 실제에 가깝다. */
+  private async measureFree(rootPath: string): Promise<number | null> {
+    try {
+      return await this.workspace.freeBytes(rootPath);
+    } catch {
+      return null;
+    }
+  }
+
   private async execute(
     target: WorktreeCleanupTarget,
     run: WorktreeCleanupRun,
@@ -152,6 +161,7 @@ export class WorktreeCleanupRunnerService implements OnModuleInit {
 
     try {
       const { decisions, scan } = await this.evaluate(target);
+      const freeBefore = await this.measureFree(target.rootPath);
       const staleRepositories = scan.staleRepositories;
       const removed: RemovedWorktree[] = [];
       const failed: string[] = [];
@@ -187,9 +197,18 @@ export class WorktreeCleanupRunnerService implements OnModuleInit {
       }
 
       const freedBytes = removed.reduce((sum, item) => sum + item.sizeBytes, 0);
+      const freeAfter = await this.measureFree(target.rootPath);
+      const diskReclaimedBytes =
+        freeBefore !== null && freeAfter !== null
+          ? Math.max(0, freeAfter - freeBefore)
+          : null;
       const notes = [
         removed.length > 0
-          ? `작업 폴더 ${removed.length}개를 정리했습니다 (${formatGiB(freedBytes)} 확보).`
+          ? `작업 폴더 ${removed.length}개를 정리했습니다 (폴더 크기 합 ${formatGiB(freedBytes)}${
+              diskReclaimedBytes !== null
+                ? `, 실제로 늘어난 여유 공간 ${formatGiB(diskReclaimedBytes)}`
+                : ''
+            }).`
           : '지울 수 있는 작업 폴더가 없었습니다.',
         `${kept.length}개는 남겼습니다.`,
       ];
@@ -208,6 +227,7 @@ export class WorktreeCleanupRunnerService implements OnModuleInit {
         removed,
         kept,
         freedBytes,
+        diskReclaimedBytes,
       };
       this.logger.log(`[작업 폴더 정리] ${target.name}: ${outcome.message}`);
     } catch (error) {
@@ -217,6 +237,7 @@ export class WorktreeCleanupRunnerService implements OnModuleInit {
         removed: [],
         kept: [],
         freedBytes: 0,
+        diskReclaimedBytes: null,
       };
       this.logger.error(`[작업 폴더 정리] ${target.name}: ${outcome.message}`);
     }

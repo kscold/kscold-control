@@ -18,6 +18,7 @@ export interface FinishWorktreeCleanupRunInput {
   removed: RemovedWorktree[];
   kept: KeptWorktree[];
   freedBytes: number;
+  diskReclaimedBytes: number | null;
 }
 
 export interface IWorktreeCleanupRunRepository {

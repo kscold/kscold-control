@@ -63,6 +63,7 @@ describe('작업 폴더 정리 실행', () => {
     rootExists: jest.fn(),
     scan: jest.fn(),
     remove: jest.fn(),
+    freeBytes: jest.fn(),
   };
   let runner: WorktreeCleanupRunnerService;
 
@@ -73,6 +74,10 @@ describe('작업 폴더 정리 실행', () => {
     }
     targetRepository.findById.mockResolvedValue(target);
     workspace.rootExists.mockResolvedValue(true);
+    // 정리 전 10GiB → 정리 후 10.5GiB : 폴더 크기 합(2GiB)보다 적게 늘어난 상황
+    workspace.freeBytes
+      .mockResolvedValueOnce(10 * 1024 ** 3)
+      .mockResolvedValueOnce(10.5 * 1024 ** 3);
     workspace.scan.mockResolvedValue({
       inspections: [
         inspection('new', 1),
@@ -140,7 +145,20 @@ describe('작업 폴더 정리 실행', () => {
         { name: 'wip', reasons: ['unpushed-commits'] },
       ],
     });
-    expect(run.message).toContain('1개를 정리했습니다 (2.0GiB 확보)');
+    expect(run.diskReclaimedBytes).toBe(0.5 * 1024 ** 3);
+    expect(run.message).toContain(
+      '1개를 정리했습니다 (폴더 크기 합 2.0GiB, 실제로 늘어난 여유 공간 0.5GiB)',
+    );
+  });
+
+  it('여유 공간을 재지 못해도 정리는 끝내고 폴더 크기 합만 적는다', async () => {
+    workspace.freeBytes.mockReset();
+    workspace.freeBytes.mockRejectedValue(new Error('statfs 실패'));
+
+    const run = await runner.runToCompletion('target-1', 'schedule');
+
+    expect(run).toMatchObject({ status: 'success', diskReclaimedBytes: null });
+    expect(run.message).toContain('(폴더 크기 합 2.0GiB)');
   });
 
   it('한 폴더를 지우지 못해도 실행은 끝까지 하고 그 폴더는 남긴 것으로 기록한다', async () => {

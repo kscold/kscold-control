@@ -23,6 +23,8 @@ export interface WorktreeCleanupRun {
   }>;
   kept: Array<{ name: string; reasons: WorktreeKeepReason[] }>;
   freedBytes: number;
+  /** 정리 전후 실제로 늘어난 디스크 여유 공간. 측정 못 했으면 null */
+  diskReclaimedBytes: number | null;
   actorEmail: string | null;
   startedAt: string;
   finishedAt: string | null;

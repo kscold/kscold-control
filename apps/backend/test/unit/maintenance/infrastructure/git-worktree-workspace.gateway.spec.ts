@@ -212,6 +212,10 @@ describe('GitWorktreeWorkspaceGateway', () => {
     expect(result.inspections).toHaveLength(1);
   });
 
+  it('정리 루트가 있는 디스크의 남은 공간을 잰다', async () => {
+    await expect(gateway().freeBytes(root)).resolves.toBeGreaterThan(0);
+  });
+
   it('심볼릭 링크로 된 폴더는 따라가지 않는다', async () => {
     const dir = addWorktree('real', 'feature/real');
     fs.symlinkSync(dir, path.join(root, 'link'));
