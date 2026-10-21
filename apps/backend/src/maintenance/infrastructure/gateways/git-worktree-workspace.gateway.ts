@@ -64,6 +64,11 @@ export class GitWorktreeWorkspaceGateway implements IWorktreeWorkspaceGateway {
     'worktree-cleanup',
   );
 
+  async freeBytes(rootPath: string): Promise<number> {
+    const stats = await fs.promises.statfs(rootPath);
+    return Number(stats.bavail) * Number(stats.bsize);
+  }
+
   async rootExists(rootPath: string): Promise<boolean> {
     try {
       return (await fs.promises.stat(rootPath)).isDirectory();

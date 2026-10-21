@@ -19,6 +19,8 @@ export interface RemoveWorktreeRequest {
 
 /** 작업 폴더를 살펴보고, 지우기 전에 로컬 파일을 남긴 뒤 지우는 포트 */
 export interface IWorktreeWorkspaceGateway {
+  /** 정리 루트가 있는 디스크의 남은 공간(바이트) */
+  freeBytes(rootPath: string): Promise<number>;
   /** 정리 루트가 실제로 있는 디렉터리인지 */
   rootExists(rootPath: string): Promise<boolean>;
   /** 정리 루트 바로 아래의 연결된 작업 폴더(git worktree)를 살펴본다. */

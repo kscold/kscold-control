@@ -58,6 +58,23 @@ export class WorktreeCleanupRun {
   })
   freedBytes: number;
 
+  /**
+   * 정리 전후 디스크 여유 공간 차이. 폴더 크기 합(freedBytes)보다 작을 수 있다.
+   * pnpm 이 APFS 복제로 설치한 node_modules 처럼 여러 폴더가 같은 블록을 나눠 쓰면
+   * 하나를 지워도 공간이 바로 늘지 않는다. 측정하지 못했으면 null.
+   */
+  @Column({
+    name: 'disk_reclaimed_bytes',
+    type: 'bigint',
+    nullable: true,
+    transformer: {
+      to: (value: number | null) => value,
+      from: (value: string | number | null) =>
+        value === null ? null : Number(value),
+    },
+  })
+  diskReclaimedBytes: number | null;
+
   @Column({ name: 'actor_id', type: 'uuid', nullable: true })
   actorId: string | null;
 
