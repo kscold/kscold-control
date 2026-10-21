@@ -1,11 +1,11 @@
 import {
-  isScheduledBackupDue,
-  isValidBackupScheduleTime,
+  isDailyScheduleDue as isScheduledBackupDue,
+  isValidDailyScheduleTime as isValidBackupScheduleTime,
   latestScheduledOccurrence,
   resolveNextRunAt,
-} from '@/backup/domain/policies/backup-schedule.policy';
+} from '@/common/scheduling/daily-schedule.policy';
 
-describe('백업 예약 규칙', () => {
+describe('매일 예약 규칙', () => {
   it.each(['00:00', '03:30', '23:59'])('실행 시각 %s 은 허용한다', (time) => {
     expect(isValidBackupScheduleTime(time)).toBe(true);
   });

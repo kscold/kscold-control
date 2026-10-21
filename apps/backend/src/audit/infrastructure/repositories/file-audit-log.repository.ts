@@ -284,6 +284,7 @@ export class FileAuditLogRepository implements IAuditLogRepository {
       security: 0,
       secrets: 0,
       backup: 0,
+      maintenance: 0,
     };
     const actorMap = new Map<
       string,
