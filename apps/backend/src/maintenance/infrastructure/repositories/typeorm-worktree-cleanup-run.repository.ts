@@ -25,6 +25,7 @@ export class TypeOrmWorktreeCleanupRunRepository implements IWorktreeCleanupRunR
         removed: [],
         kept: [],
         freedBytes: 0,
+        diskReclaimedBytes: null,
         actorId: input.actor?.id ?? null,
         actorEmail: input.actor?.email ?? null,
         startedAt: new Date(),

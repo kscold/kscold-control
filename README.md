@@ -335,6 +335,9 @@ removes the ones that can be recreated from the remote, once a day.
   `.env` (not dependency or build directories) and a `manifest.json` with the
   restore command are written to
   `~/Desktop/server-logs/worktree-cleanup/<target>/<timestamp>/<worktree>/`.
+- Each run records both the summed folder size and the free space the disk
+  actually gained. They differ when worktrees share blocks — pnpm installs
+  `node_modules` as APFS clones on macOS, so removing one clone frees little.
 - **미리보기** shows what would be removed without touching anything. Viewing
   needs `system:read`; changing targets and running needs `system:write`. Changes
   and runs are written to the audit log under the `maintenance` domain.

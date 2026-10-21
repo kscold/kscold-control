@@ -89,7 +89,9 @@ describe('WorktreeCleanupView', () => {
 
     await user.click(await screen.findByRole('button', { name: '미리보기' }));
 
-    expect(await screen.findByText(/지울 폴더/)).toHaveTextContent('지울 폴더 1개 · 확보 예상 2.0 GiB');
+    expect(await screen.findByText(/지울 폴더/)).toHaveTextContent(
+      '지울 폴더 1개 · 폴더 크기 합 2.0 GiB',
+    );
     const row = screen.getByText('wip').closest('tr') as HTMLElement;
     expect(within(row).getByText('푸시 안 한 커밋')).toBeInTheDocument();
     expect(

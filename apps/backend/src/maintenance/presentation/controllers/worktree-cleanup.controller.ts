@@ -205,6 +205,7 @@ function toRunResponse(run: WorktreeCleanupRun) {
     removed: run.removed,
     kept: run.kept,
     freedBytes: run.freedBytes,
+    diskReclaimedBytes: run.diskReclaimedBytes,
     actorEmail: run.actorEmail,
     startedAt: run.startedAt.toISOString(),
     finishedAt: run.finishedAt ? run.finishedAt.toISOString() : null,

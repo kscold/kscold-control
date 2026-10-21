@@ -357,7 +357,7 @@ export function WorktreeCleanupView() {
                           ? '실패'
                           : run.status === 'running'
                             ? '정리 중'
-                            : `${run.removed.length}개 정리 · ${formatSize(run.freedBytes)}`}
+                            : `${run.removed.length}개 정리 · ${run.diskReclaimedBytes !== null ? `여유 공간 +${formatSize(run.diskReclaimedBytes)}` : `폴더 합 ${formatSize(run.freedBytes)}`}`}
                       </span>
                     </div>
                     <p className="mt-1 leading-5">{run.message}</p>
