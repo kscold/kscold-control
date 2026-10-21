@@ -24,7 +24,7 @@ export function WorktreePreviewTable({
         {removable.length > 0 && (
           <>
             {' '}
-            · 확보 예상{' '}
+            · 폴더 크기 합{' '}
             <span className="font-semibold text-amber-300">
               {formatSize(freed)}
             </span>
@@ -35,6 +35,13 @@ export function WorktreePreviewTable({
           · 남길 폴더 {preview.items.length - removable.length}개
         </span>
       </p>
+      {removable.length > 0 && (
+        <p className="text-[11px] text-gray-500">
+          pnpm 이 설치한 node_modules 처럼 여러 폴더가 디스크 블록을 나눠 쓰면
+          실제로 늘어나는 여유 공간은 폴더 크기 합보다 적습니다. 실행 후 이력에
+          실제 값을 적습니다.
+        </p>
+      )}
       {preview.staleRepositories.length > 0 && (
         <p className="text-[11px] text-amber-300/80">
           원격 상태를 새로 받지 못한 저장소가 있어 예전 상태로 판단했습니다 (덜
