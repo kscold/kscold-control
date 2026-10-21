@@ -60,6 +60,11 @@ const SecurityPage = lazy(() =>
 const BackupPage = lazy(() =>
   import('@/pages/backup').then((module) => ({ default: module.BackupPage })),
 );
+const MaintenancePage = lazy(() =>
+  import('@/pages/maintenance').then((module) => ({
+    default: module.MaintenancePage,
+  })),
+);
 const KeyManagementPage = lazy(() =>
   import('@/pages/key-management').then((module) => ({
     default: module.KeyManagementPage,
@@ -267,6 +272,10 @@ export default function App() {
           <Route
             path="backups"
             element={page(PERMISSIONS.BACKUP_READ, <BackupPage />)}
+          />
+          <Route
+            path="maintenance"
+            element={page(PERMISSIONS.SYSTEM_READ, <MaintenancePage />)}
           />
           <Route
             path="audit"

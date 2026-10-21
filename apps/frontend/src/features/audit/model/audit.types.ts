@@ -6,7 +6,8 @@ export type AuditDomain =
   | 'rbac'
   | 'security'
   | 'secrets'
-  | 'backup';
+  | 'backup'
+  | 'maintenance';
 
 export interface AuditDiffSummary {
   changeCount: number;
@@ -53,6 +54,7 @@ export interface AuditSummary {
     security: number;
     secrets: number;
     backup: number;
+    maintenance: number;
   };
   topActors: AuditActorSummary[];
   topTargets: AuditTargetSummary[];
