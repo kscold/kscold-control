@@ -35,6 +35,7 @@
     "test:claude-smoke": "node ./scripts/claude-smoke.mjs",
     "test:repository-live-smoke": "node ./scripts/repository-live-smoke.mjs",
     "test:release-publisher": "node --test ./scripts/test/frontend-release.test.mjs",
+    "test:frontend-bundle": "node --test ./scripts/test/frontend-bundle.test.mjs",
     "test:e2e:control": "bash ./scripts/run-control-e2e.sh",
     "check:architecture": "node ./scripts/check-architecture.mjs",
     "check:nginx": "bash ./scripts/check-nginx-config.sh",
@@ -49,13 +50,13 @@
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
-    "@playwright/test": "^1.61.1",
+    "@playwright/test": "^1.63.0",
     "eslint": "^9.39.5",
     "eslint-plugin-react-hooks": "^7.1.1",
-    "eslint-plugin-react-refresh": "^0.5.3",
-    "globals": "^17.7.0",
-    "prettier": "^3.9.5",
-    "turbo": "^2.10.5",
-    "typescript-eslint": "^8.63.0"
+    "eslint-plugin-react-refresh": "^0.5.7",
+    "globals": "^17.13.0",
+    "prettier": "^3.9.9",
+    "turbo": "^2.11.7",
+    "typescript-eslint": "^8.71.0"
   }
 }
