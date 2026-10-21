@@ -4,6 +4,7 @@ import {
   Container,
   DatabaseBackup,
   FileText,
+  FolderX,
   FolderGit2,
   GitBranch,
   Globe,
@@ -90,6 +91,12 @@ const NAV_ITEMS = [
     label: '백업 관리',
     icon: DatabaseBackup,
     permission: PERMISSIONS.BACKUP_READ,
+  },
+  {
+    to: '/maintenance',
+    label: '작업 폴더 정리',
+    icon: FolderX,
+    permission: PERMISSIONS.SYSTEM_READ,
   },
   {
     to: '/audit',
