@@ -1,13 +1,14 @@
-import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 
-const apiProxyTarget = process.env.VITE_PROXY_API_TARGET || 'http://localhost:4000';
+const apiProxyTarget =
+  process.env.VITE_PROXY_API_TARGET || 'http://localhost:4000';
 
 export default defineConfig({
   plugins: [react()],
   resolve: {
-    alias: { '@': path.resolve(__dirname, 'src') },
+    alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) },
   },
   server: {
     port: 3000,
@@ -26,14 +27,35 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     sourcemap: true,
-    rollupOptions: {
+    rolldownOptions: {
       output: {
-        manualChunks: {
-          'vendor-react': ['react', 'react-dom', 'react-router-dom'],
-          'vendor-xterm': ['@xterm/xterm', '@xterm/addon-fit', '@xterm/addon-unicode11'],
-          'vendor-reactflow': ['@xyflow/react'],
-          'vendor-socket': ['socket.io-client'],
-          'vendor-markdown': ['react-markdown', 'remark-gfm'],
+        codeSplitting: {
+          groups: [
+            {
+              name: 'vendor-react',
+              test: /[\\/]node_modules[\\/](react|react-dom|react-router|react-router-dom|scheduler)[\\/]/,
+              priority: 30,
+            },
+            {
+              name: 'vendor-xterm',
+              test: /[\\/]node_modules[\\/]@xterm[\\/]/,
+              priority: 20,
+            },
+            {
+              name: 'vendor-reactflow',
+              test: /[\\/]node_modules[\\/]@xyflow[\\/]/,
+              priority: 20,
+            },
+            {
+              name: 'vendor-socket',
+              test: /[\\/]node_modules[\\/]socket.io-client[\\/]/,
+              priority: 20,
+            },
+            {
+              name: 'vendor-markdown',
+              test: /[\\/]node_modules[\\/](react-markdown|remark-gfm)[\\/]/,
+            },
+          ],
         },
       },
     },
