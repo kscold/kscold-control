@@ -20,6 +20,7 @@ import { SecurityModule } from './security/security.module';
 import { KeyManagementModule } from './key-management/key-management.module';
 import { ReleaseModule } from './release/release.module';
 import { BackupModule } from './backup/backup.module';
+import { MaintenanceModule } from './maintenance/maintenance.module';
 
 // 도메인 엔티티 (클린 아키텍처)
 import { User } from './rbac/domain/entities/user.entity';
@@ -37,6 +38,8 @@ import { SecretBackup } from './key-management/domain/entities/secret-backup.ent
 import { KeyManagementTargetEntity } from './key-management/domain/entities/key-management-target.entity';
 import { BackupTarget } from './backup/domain/entities/backup-target.entity';
 import { BackupRun } from './backup/domain/entities/backup-run.entity';
+import { WorktreeCleanupTarget } from './maintenance/domain/entities/worktree-cleanup-target.entity';
+import { WorktreeCleanupRun } from './maintenance/domain/entities/worktree-cleanup-run.entity';
 
 import { HttpLoggerMiddleware } from './common/middleware/http-logger.middleware';
 import {
@@ -81,6 +84,8 @@ import { resolveFrontendDistPath } from './common/utils/frontend-dist-path.util'
         KeyManagementTargetEntity,
         BackupTarget,
         BackupRun,
+        WorktreeCleanupTarget,
+        WorktreeCleanupRun,
       ],
       synchronize: shouldSynchronizeDatabase(),
       logging: process.env.NODE_ENV !== 'production',
@@ -103,6 +108,7 @@ import { resolveFrontendDistPath } from './common/utils/frontend-dist-path.util'
     KeyManagementModule,
     ReleaseModule,
     BackupModule,
+    MaintenanceModule,
   ],
   providers: [
     {

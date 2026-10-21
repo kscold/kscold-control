@@ -27,6 +27,7 @@ const EMPTY_SUMMARY: AuditSummary = {
     security: 0,
     secrets: 0,
     backup: 0,
+    maintenance: 0,
   },
   topActors: [],
   topTargets: [],
@@ -51,7 +52,8 @@ function isAuditDomain(value: string | null): value is AuditDomain {
     value === 'rbac' ||
     value === 'security' ||
     value === 'secrets' ||
-    value === 'backup'
+    value === 'backup' ||
+    value === 'maintenance'
   );
 }
 

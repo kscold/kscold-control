@@ -24,6 +24,7 @@ A self-hosted infrastructure governance panel for managing Docker containers, Ng
 | **Key Vault**   | DB-driven ProjectAlpha/ProjectBeta `.env`, encrypted backups, GCP/SSH versioned deploys                   |
 | **Logs**        | Unified viewer — backend · PM2 · Nginx · Docker · blog container logs                         |
 | **Network**     | Topology graph (React Flow), UPnP port management                                             |
+| **Maintenance** | Daily cleanup of finished git worktrees with local-file backup and run history                |
 | **Backups**     | DB-managed MongoDB backup targets, per-target daily schedule, retention pruning, run history  |
 | **System**      | Real-time CPU / memory / disk, Nginx status, host info                                        |
 
@@ -309,6 +310,34 @@ curl -X PUT -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json
 docker run --rm -i -e MONGODB_URI mongo:7 \
   sh -c 'mongorestore --uri "$MONGODB_URI" --archive --gzip' < dump.archive.gz
 ```
+
+---
+
+## Worktree Cleanup
+
+Long-running agent work leaves many `git worktree` checkouts behind (each with its
+own `node_modules` and build output). The **작업 폴더 정리** page (`/maintenance`)
+removes the ones that can be recreated from the remote, once a day.
+
+| Setting       | Default                                  | Description                                          |
+| ------------- | ---------------------------------------- | ---------------------------------------------------- |
+| Root path     | —                                        | Directory whose direct children are linked worktrees |
+| Keep recent   | `3`                                      | Most recently touched worktrees are always kept      |
+| Keep unmerged | on                                       | Keep worktrees whose HEAD is not in a base branch    |
+| Base branches | `origin/dev, origin/main, origin/master` | What counts as merged                                |
+| Daily time    | `04:30`                                  | `HH:mm` Asia/Seoul                                   |
+
+- A worktree is **always kept** when a process is running inside it, it has
+  uncommitted changes, or it has commits that exist on no remote. Anything the
+  scan cannot read is kept too.
+- Removal uses `git worktree remove`; the main repository and the branch stay.
+  Right before removing, the state is checked again. Ignored local files such as
+  `.env` (not dependency or build directories) and a `manifest.json` with the
+  restore command are written to
+  `~/Desktop/server-logs/worktree-cleanup/<target>/<timestamp>/<worktree>/`.
+- **미리보기** shows what would be removed without touching anything. Viewing
+  needs `system:read`; changing targets and running needs `system:write`. Changes
+  and runs are written to the audit log under the `maintenance` domain.
 
 ---
 

@@ -31,6 +31,7 @@ const DOMAIN_OPTIONS: Array<{ value: AuditDomain; label: string }> = [
   { value: 'security', label: '보안' },
   { value: 'secrets', label: '운영 키' },
   { value: 'backup', label: '백업' },
+  { value: 'maintenance', label: '유지보수' },
 ];
 
 function getDomainTone(domain: AuditEvent['domain']) {
@@ -173,6 +174,11 @@ export function AuditTimeline() {
       domain: 'backup',
       label: '백업',
       value: summary.byDomain.backup,
+    },
+    {
+      domain: 'maintenance',
+      label: '유지보수',
+      value: summary.byDomain.maintenance,
     },
   ];
   const selectedItem = useMemo(
