@@ -97,4 +97,30 @@ describe('buildUploadManifest', () => {
       'sha256:2bf4d6471395e7af13d8d3c3ffd533cf9211126fe7a226c6f8422c3acd94ad70',
     );
   });
+
+  it('선택 뒤 사라진 파일은 건너뛰고 나머지로 manifest를 만든다', async () => {
+    const vanished = {
+      relativePath: 'logs-now/run.txt',
+      file: {
+        name: 'run.txt',
+        size: 3,
+        arrayBuffer: async () => {
+          throw new DOMException(
+            'A requested file or directory could not be found',
+            'NotFoundError',
+          );
+        },
+      } as unknown as File,
+    };
+
+    const result = await buildUploadManifest([
+      clientFile('src/index.ts', 'safe'),
+      vanished,
+    ]);
+
+    expect(result.files.map((file) => file.metadata.relativePath)).toEqual([
+      'src/index.ts',
+    ]);
+    expect(result.unreadablePaths).toEqual(['logs-now/run.txt']);
+  });
 });
