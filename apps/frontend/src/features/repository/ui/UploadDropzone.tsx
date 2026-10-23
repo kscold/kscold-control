@@ -60,6 +60,11 @@ async function buildPendingUpload(
   onProgress?: (processed: number, total: number) => void,
 ): Promise<PendingUpload> {
   const manifest = await buildUploadManifest(kept, onProgress);
+  if (manifest.files.length === 0) {
+    throw new Error(
+      '선택한 파일을 하나도 읽지 못했습니다. 폴더를 다시 선택해주세요.',
+    );
+  }
   const frozenFiles = manifest.files.map((item) => item.clientFile);
   const metadataByPath = new Map(
     manifest.files.map((item) => [item.clientFile.relativePath, item.metadata]),
@@ -71,6 +76,8 @@ async function buildPendingUpload(
   const frozenStats = {
     ...stats,
     kept: frozenFiles.length,
+    filtered: stats.filtered + manifest.unreadablePaths.length,
+    unreadablePaths: manifest.unreadablePaths,
     totalSize: frozenTotalSize,
   };
   const rawBatches = chunkFiles(frozenFiles, 50, 8 * 1024 * 1024);
@@ -967,6 +974,16 @@ export function UploadDropzone({
                 <div className="mt-2 text-xs text-amber-100/70">
                   제외된 폴더:{' '}
                   {Array.from(pendingUpload.stats.filteredDirs).join(', ')}
+                </div>
+              )}
+              {(pendingUpload.stats.unreadablePaths?.length ?? 0) > 0 && (
+                <div className="mt-2 text-xs text-amber-100/70">
+                  선택 뒤 바뀌거나 사라져 건너뛴 파일(
+                  {pendingUpload.stats.unreadablePaths!.length}개):{' '}
+                  {pendingUpload.stats.unreadablePaths!.slice(0, 5).join(', ')}
+                  {pendingUpload.stats.unreadablePaths!.length > 5
+                    ? ` 외 ${pendingUpload.stats.unreadablePaths!.length - 5}개`
+                    : ''}
                 </div>
               )}
             </div>

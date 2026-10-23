@@ -174,6 +174,8 @@ export interface FilterStats {
   filteredByExt: number;
   filteredByDir: number;
   filteredBySize: number;
+  /** 선택 뒤 바뀌거나 사라져 읽지 못하고 건너뛴 파일 경로 */
+  unreadablePaths?: string[];
   totalSize: number;
 }
 
