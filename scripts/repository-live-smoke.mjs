@@ -7,6 +7,7 @@ import path from 'node:path';
 import { Client } from 'pg';
 import jwt from 'jsonwebtoken';
 import { chromium } from '@playwright/test';
+import { execFileSync } from 'node:child_process';
 
 const baseUrl =
   process.env.CONTROL_LIVE_BASE_URL || 'https://control.example.com';
@@ -431,6 +432,10 @@ async function verifyAtomicApiUpload(project, token) {
   );
 }
 
+function hashBuffer(content) {
+  return createHash('sha256').update(content).digest('hex');
+}
+
 function createProjectName() {
   const stamp = new Date()
     .toISOString()
@@ -449,6 +454,7 @@ async function createFixtureDirectory(projectName) {
   await fsp.mkdir(fixtureRoot, { recursive: true });
 
   const expectedPaths = [];
+  const assetFiles = [];
   const fileCount = Number(process.env.CONTROL_LIVE_FILE_COUNT || 124);
   const totalBytes = Number(process.env.CONTROL_LIVE_TOTAL_BYTES || 0);
   assert(Number.isInteger(fileCount) && fileCount >= 2 && fileCount <= 100000);
@@ -497,11 +503,116 @@ async function createFixtureDirectory(projectName) {
     }
   }
 
+  if (process.argv.includes('--with-source-assets')) {
+    const assets = [
+      ['.env', Buffer.from('UPLOAD_TEST_SECRET=synthetic-fixture-only\n')],
+      [
+        '.env.production',
+        Buffer.from('UPLOAD_TEST_TOKEN=synthetic-fixture-only\n'),
+      ],
+      [
+        'cert/private.pem',
+        Buffer.from(
+          '-----BEGIN PRIVATE KEY-----\nsynthetic-fixture-only\n-----END PRIVATE KEY-----\n',
+        ),
+      ],
+      [
+        'public/logo.svg',
+        Buffer.from(
+          `<svg xmlns="http://www.w3.org/2000/svg"><!--${'x'.repeat(1024 ** 2)}--></svg>`,
+        ),
+      ],
+      ['public/image.png', Buffer.from([137, 80, 78, 71, 0, 255])],
+      ['public/font.woff2', Buffer.from([119, 79, 70, 50, 0, 255])],
+      ['yarn.lock', Buffer.from('# synthetic fixture lockfile')],
+      ['.vscode/settings.json', Buffer.from('{"editor.tabSize":2}')],
+    ];
+    for (const [relativePath, content] of assets) {
+      const destination = path.join(fixtureRoot, relativePath);
+      await fsp.mkdir(path.dirname(destination), { recursive: true });
+      await fsp.writeFile(destination, content, { mode: 0o600 });
+      expectedPaths.push(relativePath);
+      assetFiles.push({
+        relativePath,
+        size: content.length,
+        sha256: hashBuffer(content),
+      });
+    }
+    await fsp.mkdir(path.join(fixtureRoot, 'node_modules'), {
+      recursive: true,
+    });
+    await fsp.writeFile(
+      path.join(fixtureRoot, 'node_modules/fixture-cache.js'),
+      'excluded cache fixture',
+    );
+  }
+
   return {
     tempRoot,
     fixtureRoot,
     expectedPaths,
+    assetFiles,
   };
+}
+
+async function verifySourceAssets(projectId, token, assets) {
+  if (!assets.length) return;
+  const response = await fetch(
+    `${baseUrl}/api/repository/projects/${projectId}/download`,
+    {
+      headers: { Authorization: `Bearer ${token}` },
+    },
+  );
+  assert(response.ok(), 'Source archive download must succeed');
+  assert.match(response.headers.get('cache-control') ?? '', /no-store/);
+  const archive = Buffer.from(await response.arrayBuffer());
+  for (const asset of assets) {
+    const bytes = execFileSync(
+      'tar',
+      ['-xzOf', '-', `./${asset.relativePath}`],
+      {
+        input: archive,
+        maxBuffer: asset.size + 1024 ** 2,
+      },
+    );
+    assert.equal(
+      hashBuffer(bytes),
+      asset.sha256,
+      `Archive bytes mismatch: ${asset.relativePath}`,
+    );
+  }
+  const preview = await fetch(
+    `${baseUrl}/api/repository/projects/${projectId}/file?path=.env`,
+    {
+      headers: { Authorization: `Bearer ${token}` },
+    },
+  );
+  assert(preview.ok());
+  assert.match(preview.headers.get('cache-control') ?? '', /no-store/);
+  const env = await preview.json();
+  assert.equal(
+    hashBuffer(Buffer.from(env.content, env.encoding)),
+    assets[0].sha256,
+  );
+  const unauthenticated = await fetch(
+    `${baseUrl}/api/repository/projects/${projectId}/download`,
+  );
+  assert.equal(unauthenticated.status, 401);
+  const versions = await apiRequest(
+    `/repository/projects/${projectId}/versions`,
+    token,
+  );
+  const original = await apiRequest(
+    `/repository/projects/${projectId}/file-at-version?path=.env&versionId=${encodeURIComponent(versions.items[0].id)}`,
+    token,
+  );
+  assert.equal(
+    hashBuffer(Buffer.from(original.content, original.encoding)),
+    assets[0].sha256,
+  );
+  console.log(
+    `[repository-live-smoke] ${assets.length} source assets verified byte-for-byte, including .env, private key, >1MiB SVG, PNG, font, lockfile and editor settings; unauthenticated access denied.`,
+  );
 }
 
 function findTreePath(node, targetPath, currentPath = '') {
@@ -661,7 +772,8 @@ async function run() {
     if (process.env.CONTROL_LIVE_TOTAL_BYTES) {
       assert.equal(
         completedSession.totalBytes,
-        Number(process.env.CONTROL_LIVE_TOTAL_BYTES),
+        Number(process.env.CONTROL_LIVE_TOTAL_BYTES) +
+          fixture.assetFiles.reduce((sum, file) => sum + file.size, 0),
       );
     }
     await page.waitForFunction(() => {
@@ -697,6 +809,8 @@ async function run() {
         `업로드된 파일을 트리에서 찾지 못했습니다: ${samplePath}`,
       );
     }
+    assert(!findTreePath(tree, 'node_modules/fixture-cache.js'));
+    await verifySourceAssets(project.id, token, fixture.assetFiles);
 
     console.log(
       `[repository-live-smoke] Upload verified with ${fixture.expectedPaths.length} files.`,

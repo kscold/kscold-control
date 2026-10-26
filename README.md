@@ -399,6 +399,41 @@ Make sure `pnpm build` passes and relevant docs are updated before submitting.
 
 ---
 
+## Source Upload Policy
+
+Folder uploads preserve `.env`, credential/key files, SVG/images, fonts, documents,
+lockfiles, editor settings and other original bytes. Content is not rejected for
+containing a private key. This private repository is not a secrets vault: users with
+repository read access to the project (its owner and administrators) can download
+these values. Do not grant repository access to untrusted users. Uploaded files
+are not committed to this application's Git repository.
+
+Only dependency/cache/build directories, VCS metadata and generated cache files
+are automatically excluded. Files are no longer silently dropped at 1 MiB or
+because of their media/binary extension. Server limits remain 50 MiB per file,
+2 GiB and 100,000 files per upload; the UI reports a limit violation before sending
+instead of removing those files. Unreadable/changed local files are explicitly
+listed. Select the folder again to include assets omitted by older uploads.
+
+For an authorized production check, `pnpm test:repository-live-smoke --with-source-assets`
+creates and removes a separate synthetic project. It checks the browser upload,
+retry/resume, archive byte equality, versioned `.env` reads and unauthenticated
+download denial. It never uploads the application's real `.env` or local keys.
+
+Project name repair (administrator maintenance, not an upload filter):
+
+```sh
+# Preview only. Never run against a different deployment's environment.
+node --env-file=.env scripts/rename-repository-project.mjs old-name new-name
+# Apply requires the kscold-control PM2 process to be stopped, then restarted
+# immediately after maintenance. Do not stop Docker, databases or other apps.
+node --env-file=.env scripts/rename-repository-project.mjs old-name new-name --apply
+```
+
+The repair preserves the project ID, contents, archives, staging, receipts and
+resumable-session metadata. It writes a private recovery journal under
+`~/.local/state/kscold-control/repository-renames` before applying any changes.
+
 ## License
 
 [MIT](LICENSE)

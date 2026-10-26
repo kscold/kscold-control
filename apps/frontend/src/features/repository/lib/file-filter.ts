@@ -1,7 +1,4 @@
-/** 업로드에서 제외할 디렉토리/파일 패턴 — src 코드만 올리기 위한 필터 */
-
-/** 단일 파일 최대 크기 — 이보다 크면 자동 제외 (코드/설정 파일은 거의 1MB 이하) */
-export const MAX_FILE_SIZE_BYTES = 1 * 1024 * 1024;
+/** 원본과 설정은 보존하고 재생성 가능한 캐시/산출물과 VCS 메타데이터만 제외한다. */
 
 const EXCLUDED_DIRS = new Set([
   'node_modules',
@@ -15,7 +12,6 @@ const EXCLUDED_DIRS = new Set([
   '.tox',
   'venv',
   '.venv',
-  'env',
   'dist',
   'build',
   'out',
@@ -24,147 +20,24 @@ const EXCLUDED_DIRS = new Set([
   '.turbo',
   '.cache',
   'target',
-  'bin',
   '.gradle',
-  '.idea',
-  '.vscode',
   '.vs',
   '.metadata', // Eclipse
-  '.settings', // Eclipse
-  '.classpath',
-  '.project',
-  '.DS_Store',
-  '.serena',
-  '.claude',
   'coverage',
   '.nyc_output',
-  'tmp',
-  'temp',
   '.parcel-cache',
   '.expo',
   '.docusaurus',
-  '__snapshots__',
-  'logs',
-  'log',
+  '.pnpm-store',
 ]);
 
-const EXCLUDED_EXTENSIONS = new Set([
-  // 빌드 산출물
-  'pyc',
-  'pyo',
-  'class',
-  'jar',
-  'war',
-  'ear',
-  'dll',
-  'exe',
-  'so',
-  'dylib',
-  'a',
-  'lib',
-  'o',
-  'obj',
-  // 이미지/미디어 (코드 저장소면 일반적으로 큼)
-  'png',
-  'jpg',
-  'jpeg',
-  'gif',
-  'bmp',
-  'tiff',
-  'tif',
-  'ico',
-  'webp',
-  'psd',
-  'ai',
-  'eps',
-  'mp3',
-  'mp4',
-  'avi',
-  'mov',
-  'mkv',
-  'wmv',
-  'flv',
-  'webm',
-  'wav',
-  'flac',
-  'ogg',
-  'm4a',
-  // 폰트
-  'ttf',
-  'otf',
-  'woff',
-  'woff2',
-  'eot',
-  // 문서/오피스
-  'pdf',
-  'doc',
-  'docx',
-  'xls',
-  'xlsx',
-  'ppt',
-  'pptx',
-  'odt',
-  'ods',
-  'odp',
-  'rtf',
-  // 압축
-  'zip',
-  'tar',
-  'gz',
-  'bz2',
-  '7z',
-  'rar',
-  'iso',
-  'dmg',
-  'pkg',
-  // 데이터 (대용량 가능)
-  'sqlite',
-  'db',
-  'mdb',
-  'bak',
-  // ML/바이너리 데이터
-  'bin',
-  'pkl',
-  'pickle',
-  'npy',
-  'npz',
-  'h5',
-  'hdf5',
-  'feather',
-  'parquet',
-  'safetensors',
-  'ckpt',
-  'pt',
-  'pth',
-  'onnx',
-  'pb',
-  'tflite',
-  // 대용량 데이터/지도 (보통 빌드 산출물 또는 외부 데이터)
-  'geojson',
-  'shp',
-  'shx',
-  'dbf',
-  // 임시
-  'log',
-  'tmp',
-  'swp',
-  'swo',
-  'lock',
-]);
-
-/** minified 산출물 패턴 — 확장자 검사로 못 잡는 패턴 */
-const MINIFIED_PATTERNS = [
-  /\.min\.js$/,
-  /\.min\.css$/,
-  /\.bundle\.js$/,
-  /\.chunk\.[a-f0-9]{6,}\.js$/,
-  /\bvendor\.[a-f0-9]+\.js$/,
-];
+const CACHE_FILE_PATTERN = /\.(?:pyc|pyo|tsbuildinfo)$/i;
 
 const EXCLUDED_EXACT_FILENAMES = new Set([
-  '.DS_Store',
-  'Thumbs.db',
+  '.ds_store',
+  'thumbs.db',
   'desktop.ini',
+  '.git', // git worktree의 메타데이터 포인터도 원본 파일이 아니다.
 ]);
 
 export interface FilterStats {
@@ -173,44 +46,25 @@ export interface FilterStats {
   filteredDirs: Set<string>;
   filteredByExt: number;
   filteredByDir: number;
-  filteredBySize: number;
   /** 선택 뒤 바뀌거나 사라져 읽지 못하고 건너뛴 파일 경로 */
   unreadablePaths?: string[];
   totalSize: number;
 }
 
-export type ExcludeReason = 'dir' | 'ext' | 'size' | 'name' | null;
+export type ExcludeReason = 'dir' | 'ext' | 'name' | null;
 
-export function getExcludeReason(
-  relativePath: string,
-  size: number,
-): ExcludeReason {
-  const parts = relativePath.split('/');
+export function getExcludeReason(relativePath: string): ExcludeReason {
+  const parts = relativePath.replace(/\\/g, '/').split('/');
   // 디렉토리 필터
   for (const part of parts.slice(0, -1)) {
     if (EXCLUDED_DIRS.has(part)) return 'dir';
   }
   const fileName = parts[parts.length - 1];
   // 정확 매칭 파일명
-  if (
-    EXCLUDED_EXACT_FILENAMES.has(fileName) ||
-    EXCLUDED_EXACT_FILENAMES.has(fileName.toLowerCase())
-  ) {
+  if (EXCLUDED_EXACT_FILENAMES.has(fileName.toLowerCase())) {
     return 'name';
   }
-  if (EXCLUDED_DIRS.has(fileName)) return 'dir';
-  // minified / 빌드 산출물 패턴
-  for (const pattern of MINIFIED_PATTERNS) {
-    if (pattern.test(fileName)) return 'ext';
-  }
-  // 확장자 필터
-  const dotIdx = fileName.lastIndexOf('.');
-  if (dotIdx > 0) {
-    const ext = fileName.slice(dotIdx + 1).toLowerCase();
-    if (EXCLUDED_EXTENSIONS.has(ext)) return 'ext';
-  }
-  // 크기 필터
-  if (size > MAX_FILE_SIZE_BYTES) return 'size';
+  if (CACHE_FILE_PATTERN.test(fileName)) return 'ext';
   return null;
 }
 
@@ -222,21 +76,22 @@ export function filterFiles<
   let totalSize = 0;
   let filteredByDir = 0;
   let filteredByExt = 0;
-  let filteredBySize = 0;
   let filtered = 0;
 
   for (const f of files) {
-    const reason = getExcludeReason(f.relativePath, f.file.size);
+    const reason = getExcludeReason(f.relativePath);
     if (reason !== null) {
       filtered++;
       if (reason === 'dir') {
         filteredByDir++;
-        const firstSegment = f.relativePath.split('/')[0];
-        if (EXCLUDED_DIRS.has(firstSegment)) filteredDirs.add(firstSegment);
+        const excludedDirectory = f.relativePath
+          .replace(/\\/g, '/')
+          .split('/')
+          .slice(0, -1)
+          .find((segment) => EXCLUDED_DIRS.has(segment));
+        if (excludedDirectory) filteredDirs.add(excludedDirectory);
       } else if (reason === 'ext') {
         filteredByExt++;
-      } else if (reason === 'size') {
-        filteredBySize++;
       }
       continue;
     }
@@ -252,7 +107,6 @@ export function filterFiles<
       filteredDirs,
       filteredByExt,
       filteredByDir,
-      filteredBySize,
       totalSize,
     },
   };

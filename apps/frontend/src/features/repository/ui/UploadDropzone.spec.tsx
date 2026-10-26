@@ -179,11 +179,101 @@ describe('UploadDropzone session recovery', () => {
     );
     render(<UploadDropzone project={project} onUploaded={vi.fn()} />);
     fireEvent.change(document.querySelector('input[type="file"]')!, {
-      target: { files: [new File(['x'], 'image.png')] },
+      target: { files: [new File(['x'], 'tsconfig.tsbuildinfo')] },
     });
     expect(await screen.findByRole('alert')).toHaveTextContent('전부 필터링됨');
     expect(screen.queryByText('파일 분석 중...')).not.toBeInTheDocument();
     expect(useModalStore.getState().isOpen).toBe(true);
+  });
+
+  it('env·키·SVG·이미지·폰트·잠금 파일과 1MiB 초과 파일을 실제 전송 목록에 보존한다', async () => {
+    vi.spyOn(repositoryService, 'getLatestUploadSession').mockResolvedValue(
+      null,
+    );
+    vi.spyOn(useAuthStore.getState(), 'ensureFreshToken').mockResolvedValue(
+      true,
+    );
+    let session: RepositoryUploadSession;
+    const create = vi
+      .spyOn(repositoryService, 'createUploadSession')
+      .mockImplementation(async (_id, input) => {
+        session = makeSession('asset-session', input);
+        return session;
+      });
+    const upload = vi
+      .spyOn(repositoryService, 'uploadSessionBatch')
+      .mockImplementation(async () => ({
+        project,
+        session: { ...session, status: 'finalizing' },
+        batchIndex: 0,
+        uploadedCount: session.totalFiles,
+        failedFiles: [],
+      }));
+    vi.spyOn(repositoryService, 'finalizeUploadSession').mockImplementation(
+      async () => ({
+        project,
+        session: { ...session, status: 'completed' },
+      }),
+    );
+    const onUploaded = vi.fn();
+    render(<UploadDropzone project={project} onUploaded={onUploaded} />);
+    const paths = [
+      '.env',
+      'cert/private.pem',
+      'public/logo.svg',
+      'public/photo.png',
+      'public/font.woff2',
+      'yarn.lock',
+      '.vscode/settings.json',
+    ];
+    const files = [...paths, 'node_modules/cache.js'].map((relativePath) => {
+      const bytes = new Uint8Array(
+        relativePath.endsWith('.svg') ? 1024 ** 2 + 1 : 10,
+      );
+      const file = new File([bytes], relativePath.split('/').at(-1)!);
+      Object.defineProperties(file, {
+        webkitRelativePath: { value: `sampleproject/${relativePath}` },
+        arrayBuffer: { value: async () => bytes.buffer },
+      });
+      return file;
+    });
+    fireEvent.change(document.querySelector('input[type="file"]')!, {
+      target: { files },
+    });
+    await screen.findByTestId('repository-upload-ready');
+    fireEvent.click(screen.getByRole('button', { name: '업로드 시작' }));
+    await waitFor(() => expect(onUploaded).toHaveBeenCalledTimes(1));
+    expect(create.mock.calls[0][1].totalFiles).toBe(paths.length);
+    expect(create.mock.calls[0][1].filteredCount).toBe(1);
+    expect(
+      upload.mock.calls[0][3].map((file) => file.relativePath).sort(),
+    ).toEqual([...paths].sort());
+  });
+
+  it('큰 파일을 몰래 제외하지 않고 해시 계산과 서버 전송 전에 경고한다', async () => {
+    vi.spyOn(repositoryService, 'getLatestUploadSession').mockResolvedValue(
+      null,
+    );
+    const create = vi.spyOn(repositoryService, 'createUploadSession');
+    const read = vi.fn();
+    const file = new File(['placeholder'], 'large.svg');
+    Object.defineProperties(file, {
+      size: { value: 50 * 1024 ** 2 + 1 },
+      arrayBuffer: { value: read },
+    });
+    render(<UploadDropzone project={project} onUploaded={vi.fn()} />);
+    fireEvent.change(document.querySelector('input[type="file"]')!, {
+      target: { files: [file] },
+    });
+    expect(await screen.findByRole('alert')).toHaveTextContent('large.svg');
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      '파일을 임의로 제외하지 않았습니다',
+    );
+    expect(read).not.toHaveBeenCalled();
+    expect(create).not.toHaveBeenCalled();
+    expect(
+      screen.queryByTestId('repository-upload-ready'),
+    ).not.toBeInTheDocument();
   });
 
   it('무결성 불일치가 나면 같은 스냅샷으로 새 세션을 한 번 만들어 완료한다', async () => {
