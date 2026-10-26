@@ -563,7 +563,7 @@ async function verifySourceAssets(projectId, token, assets) {
       headers: { Authorization: `Bearer ${token}` },
     },
   );
-  assert(response.ok(), 'Source archive download must succeed');
+  assert(response.ok, 'Source archive download must succeed');
   assert.match(response.headers.get('cache-control') ?? '', /no-store/);
   const archive = Buffer.from(await response.arrayBuffer());
   for (const asset of assets) {
@@ -587,7 +587,7 @@ async function verifySourceAssets(projectId, token, assets) {
       headers: { Authorization: `Bearer ${token}` },
     },
   );
-  assert(preview.ok());
+  assert(preview.ok);
   assert.match(preview.headers.get('cache-control') ?? '', /no-store/);
   const env = await preview.json();
   assert.equal(
