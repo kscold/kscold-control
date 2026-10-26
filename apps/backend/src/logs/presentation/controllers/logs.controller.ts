@@ -44,9 +44,12 @@ export class LogsController {
   ) {}
 
   @Post('frontend-error')
-  reportFrontendError(@Body() body: FrontendErrorRequestDto) {
-    this.logFrontendErrorUseCase.execute(body);
-    return { ok: true };
+  reportFrontendError(
+    @Body() body: FrontendErrorRequestDto,
+    @Request() req: JwtRequest,
+  ) {
+    const recorded = this.logFrontendErrorUseCase.execute(body, req.user.id);
+    return { ok: true, recorded };
   }
 
   @Get()

@@ -3,6 +3,10 @@ import ReactDOM from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import App from './app/App';
 import './index.css';
+import { installGlobalErrorReporting } from './shared/lib/error-reporter';
+
+const removeErrorReporting = installGlobalErrorReporting();
+import.meta.hot?.dispose(removeErrorReporting);
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>

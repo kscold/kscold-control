@@ -14,6 +14,7 @@ import {
 import { useAuthStore } from '@/shared/model/auth.store';
 import { useModalStore } from '@/shared/model/modal.store';
 import { reportFrontendError } from '@/shared/lib/error-reporter';
+import type { UploadStage } from '@/shared/lib/frontend-diagnostic';
 import {
   assertUploadFilesWithinLimits,
   assertUploadWithinLimits,
@@ -272,15 +273,15 @@ export function UploadDropzone({
     total: number;
   } | null>(null);
 
-  const reportError = (message: string) => {
+  const reportError = (message: string, cause?: unknown) => {
     setError(message);
     useModalStore.getState().showAlert(message, '업로드 실패');
-    // Report the failed stage, not source paths, contents, or raw API payloads.
-    reportFrontendError(
-      new Error(
-        `Repository upload failed: project=${project.id} stage=${uploadStage.current}`,
-      ),
-    );
+    const [stage, batch] = uploadStage.current.split(':');
+    reportFrontendError(cause, {
+      kind: 'upload',
+      stage: stage as UploadStage,
+      batchIndex: batch === undefined ? undefined : Number(batch),
+    });
   };
 
   const publishActivity = (
@@ -419,6 +420,7 @@ export function UploadDropzone({
           manifestError instanceof Error
             ? manifestError.message
             : '파일 내용 해시를 계산하지 못했습니다.',
+          manifestError,
         );
       } finally {
         setScanning(false);
@@ -761,7 +763,7 @@ export function UploadDropzone({
           resumable: false,
         });
       }
-      reportError(message);
+      reportError(message, uploadError);
     } finally {
       uploadInFlight.current = false;
       setUploading(false);
@@ -804,6 +806,7 @@ export function UploadDropzone({
           setScanCount(0);
           setPendingUpload(null);
           setError(null);
+          uploadStage.current = 'selection';
           try {
             await collectFromDataTransfer(e.dataTransfer, handleFiles);
           } catch (dropError) {
@@ -811,6 +814,7 @@ export function UploadDropzone({
               dropError instanceof Error
                 ? dropError.message
                 : '폴더를 읽지 못했습니다. 다시 선택해주세요.',
+              dropError,
             );
           } finally {
             setScanning(false);

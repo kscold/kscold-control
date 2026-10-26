@@ -123,6 +123,10 @@ export function sanitizeHttpRequestBody(
   originalUrl: string,
 ): unknown {
   const path = originalUrl.split('?', 1)[0];
+  if (/\/logs\/frontend-error\/?$/.test(path)) {
+    // DTO 검증 전에도 구형 클라이언트의 스택·URL·원문을 절대 기록하지 않음.
+    return { diagnostic: '[recorded separately without raw payload]' };
+  }
   if (
     method.toUpperCase() === 'POST' &&
     UPLOAD_SESSION_CREATE_PATH.test(path)
