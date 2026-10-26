@@ -1,5 +1,20 @@
 # Changelog
 
+## 1.4.1 - 2026-10-26
+
+- 네트워크 조회 실패를 빈 목록으로 처리하던 오류를 수정하고 상태·이전 결과·재시도 안내를 분리함.
+- UPnP 탐색을 합치고 소켓·타이머를 정리하여 반복 조회 시 자원 누수를 방지함.
+- 모바일 포트 목록을 개선하고 읽기 전용·QA 미리보기의 변경 버튼을 제거함.
+- 렌더링·전역·비동기·번들 오류 및 업로드 실패 단계를 민감정보 없는 진단으로 기록함.
+- 구형 오류 요청의 원문도 HTTP 로그에서 제외하고 사용자별 수집량을 제한함.
+- 루트·프론트·백엔드 버전과 변경 이력을 CI 및 배포 전에 검증함.
+
+Network failures now return an explicit unavailable state instead of an empty
+success. Browser diagnostics send only allowlisted categories and release context,
+not messages, stacks, source paths, URLs, credentials or environment contents.
+No DB migration or router configuration change is required.
+Cross-platform one-command installers remain a separate, unfinished task.
+
 ## 1.4.0 - 2026-10-26
 
 - 공개 예시와 DB 마이그레이션에서 설치별 프로젝트·계정·접속 정보를 제거함.

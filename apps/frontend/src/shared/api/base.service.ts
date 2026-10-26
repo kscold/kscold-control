@@ -1,4 +1,5 @@
 import { AxiosError } from 'axios';
+import { ApiError } from './api-error';
 
 /**
  * 모든 API 서비스가 공통으로 쓰는 에러 처리와 유틸리티를 제공하는 기반 클래스
@@ -16,8 +17,7 @@ import { AxiosError } from 'axios';
  */
 function extractServerMessage(error: AxiosError): string | null {
   const data = error.response?.data as
-    | { message?: unknown; error?: unknown }
-    | undefined;
+    { message?: unknown; error?: unknown } | undefined;
   if (!data) return null;
 
   if (typeof data.message === 'string' && data.message) return data.message;
@@ -37,13 +37,20 @@ export class BaseApiService {
    */
   protected handleError(error: unknown, defaultMessage: string): never {
     if (error instanceof AxiosError) {
-      throw new Error(
+      const data = error.response?.data as { code?: unknown } | undefined;
+      const code =
+        typeof data?.code === 'string' && /^[A-Z_]{1,64}$/.test(data.code)
+          ? data.code
+          : error.code;
+      throw new ApiError(
         extractServerMessage(error) || error.message || defaultMessage,
+        error.response?.status,
+        code,
       );
     }
 
     if (error instanceof Error) {
-      throw new Error(error.message);
+      throw error;
     }
 
     throw new Error(defaultMessage);
@@ -71,6 +78,9 @@ export class BaseApiService {
    * @param error 에러 객체
    */
   protected logError(context: string, method: string, error: unknown): void {
-    console.error(`[${context}] ${method} failed:`, error);
+    // Axios 객체에는 인증 헤더와 .env 요청 본문이 들어 있으므로 출력하지 않음.
+    console.warn(`[${context}] ${method} failed`, {
+      status: error instanceof AxiosError ? error.response?.status : undefined,
+    });
   }
 }

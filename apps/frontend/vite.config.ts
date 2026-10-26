@@ -1,4 +1,5 @@
 import { fileURLToPath } from 'node:url';
+import { readFileSync } from 'node:fs';
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 
@@ -6,6 +7,13 @@ const apiProxyTarget =
   process.env.VITE_PROXY_API_TARGET || 'http://localhost:4000';
 
 export default defineConfig({
+  define: {
+    'import.meta.env.VITE_APP_VERSION': JSON.stringify(
+      JSON.parse(
+        readFileSync(new URL('./package.json', import.meta.url), 'utf8'),
+      ).version,
+    ),
+  },
   plugins: [react()],
   resolve: {
     alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) },

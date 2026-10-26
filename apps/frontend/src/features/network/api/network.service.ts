@@ -5,10 +5,11 @@ import type { PortMapping } from '../model/network.types';
 export class NetworkApiService extends BaseApiService {
   private readonly basePath = '/upnp';
 
-  async getMappings(): Promise<PortMapping[]> {
+  async getMappings(signal?: AbortSignal): Promise<PortMapping[]> {
     try {
       const { data } = await api.get<PortMapping[]>(
         `${this.basePath}/mappings`,
+        { signal, timeout: 45_000 },
       );
       return data;
     } catch (error) {
@@ -42,10 +43,11 @@ export class NetworkApiService extends BaseApiService {
     }
   }
 
-  async getExternalIp(): Promise<string> {
+  async getExternalIp(signal?: AbortSignal): Promise<string> {
     try {
       const { data } = await api.get<{ ip: string }>(
         `${this.basePath}/external-ip`,
+        { signal, timeout: 45_000 },
       );
       return data.ip;
     } catch (error) {

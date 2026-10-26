@@ -1,6 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common';
-import * as http from 'http';
-import * as dgram from 'dgram';
+import { isIP } from 'net';
+import { searchSsdp } from '../ssdp-discovery';
+import { requestGateway } from '../gateway-http';
+import { UpnpQueryError } from '../../domain/errors/upnp-query.error';
 
 import type { IUpnpGatewayRepository } from '../../domain/repositories/upnp-gateway.repository';
 import type {
@@ -14,6 +16,7 @@ export class UpnpGatewayRepositoryImpl implements IUpnpGatewayRepository {
   private readonly logger = new Logger(UpnpGatewayRepositoryImpl.name);
   private gatewayCache: GatewayInfo | null = null;
   private gatewayCacheTime = 0;
+  private discovery: Promise<GatewayInfo> | null = null;
 
   // ── SSDP 게이트웨이 탐색 ─────────────────────────────────
 
@@ -26,67 +29,19 @@ export class UpnpGatewayRepositoryImpl implements IUpnpGatewayRepository {
 
     for (const st of searchTargets) {
       try {
-        const loc = await this.ssdpSearch(st);
+        const loc = await searchSsdp(st);
         if (loc) return loc;
       } catch {
         // 현재 탐색 대상 실패 시 다음 대상으로 계속 시도함.
       }
     }
-    throw new Error('Gateway not found via SSDP');
-  }
-
-  private ssdpSearch(st: string): Promise<string> {
-    return new Promise((resolve, reject) => {
-      const socket = dgram.createSocket('udp4');
-      const msg = Buffer.from(
-        'M-SEARCH * HTTP/1.1\r\n' +
-          'HOST: 239.255.255.250:1900\r\n' +
-          'MAN: "ssdp:discover"\r\n' +
-          'MX: 3\r\n' +
-          `ST: ${st}\r\n\r\n`,
-      );
-      let found = false;
-      socket.on('message', (buf) => {
-        const str = buf.toString();
-        const loc = str.match(/LOCATION:\s*(.+)/i);
-        if (loc && !found) {
-          found = true;
-          socket.close();
-          resolve(loc[1].trim());
-        }
-      });
-      socket.on('error', reject);
-      socket.bind(() =>
-        socket.send(msg, 0, msg.length, 1900, '239.255.255.250'),
-      );
-      setTimeout(() => {
-        if (!found) {
-          try {
-            socket.close();
-          } catch {
-            /* 소켓 종료 중 오류는 무시함. */
-          }
-          reject(new Error(`SSDP timeout for ${st}`));
-        }
-      }, 4000);
-    });
+    throw new UpnpQueryError('UPNP_UNAVAILABLE');
   }
 
   // ── HTTP·SOAP 통신 ───────────────────────────────────────
 
   private httpGet(host: string, port: number, path: string): Promise<string> {
-    return new Promise((resolve, reject) => {
-      const req = http.get({ host, port, path, timeout: 5000 }, (res) => {
-        let data = '';
-        res.on('data', (c) => (data += c));
-        res.on('end', () => resolve(data));
-      });
-      req.on('error', reject);
-      req.on('timeout', () => {
-        req.destroy();
-        reject(new Error('HTTP timeout'));
-      });
-    });
+    return requestGateway({ host, port, path, method: 'GET' });
   }
 
   private soapCall(
@@ -97,33 +52,20 @@ export class UpnpGatewayRepositoryImpl implements IUpnpGatewayRepository {
     body: string,
   ): Promise<string> {
     const soap = `<?xml version="1.0"?><s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/" s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/"><s:Body>${body}</s:Body></s:Envelope>`;
-    return new Promise((resolve, reject) => {
-      const req = http.request(
-        {
-          host,
-          port,
-          path,
-          method: 'POST',
-          headers: {
-            'Content-Type': 'text/xml; charset="utf-8"',
-            SOAPAction: `"${action}"`,
-            'Content-Length': Buffer.byteLength(soap),
-          },
+    return requestGateway(
+      {
+        host,
+        port,
+        path,
+        method: 'POST',
+        headers: {
+          'Content-Type': 'text/xml; charset="utf-8"',
+          SOAPAction: `"${action}"`,
+          'Content-Length': Buffer.byteLength(soap),
         },
-        (res) => {
-          let data = '';
-          res.on('data', (c) => (data += c));
-          res.on('end', () => resolve(data));
-        },
-      );
-      req.on('error', reject);
-      req.setTimeout(5000, () => {
-        req.destroy();
-        reject(new Error('SOAP timeout'));
-      });
-      req.write(soap);
-      req.end();
-    });
+      },
+      soap,
+    );
   }
 
   // ── 네트워크 보조 함수 ────────────────────────────────────
@@ -150,6 +92,15 @@ export class UpnpGatewayRepositoryImpl implements IUpnpGatewayRepository {
       return this.gatewayCache;
     }
 
+    if (!this.discovery) {
+      this.discovery = this.discoverUncachedGateway().finally(() => {
+        this.discovery = null;
+      });
+    }
+    return this.discovery;
+  }
+
+  private async discoverUncachedGateway(): Promise<GatewayInfo> {
     const locationUrl = await this.discoverGatewayUrl();
     const url = new URL(locationUrl);
     const host = url.hostname;
@@ -157,9 +108,6 @@ export class UpnpGatewayRepositoryImpl implements IUpnpGatewayRepository {
 
     try {
       const descXml = await this.httpGet(host, port, url.pathname);
-      this.logger.debug(
-        `Description XML from ${locationUrl}:\n${descXml.slice(0, 500)}`,
-      );
 
       // WANIPConnection 또는 WANPPPConnection 서비스 블록 우선 탐색함.
       const serviceBlockRegex = /<service>([\s\S]*?)<\/service>/gi;
@@ -191,10 +139,9 @@ export class UpnpGatewayRepositoryImpl implements IUpnpGatewayRepository {
       this.logger.warn(
         'No WANIPConnection service found in description XML, trying fallback paths',
       );
-    } catch (err) {
+    } catch {
       this.logger.warn(
-        'Failed to fetch/parse gateway description XML',
-        err instanceof Error ? err.message : err,
+        'UPnP description unavailable; checking compatible endpoints',
       );
     }
 
@@ -214,7 +161,10 @@ export class UpnpGatewayRepositoryImpl implements IUpnpGatewayRepository {
           'urn:schemas-upnp-org:service:WANIPConnection:1#GetExternalIPAddress',
           '<u:GetExternalIPAddress xmlns:u="urn:schemas-upnp-org:service:WANIPConnection:1"></u:GetExternalIPAddress>',
         );
-        if (!testXml.includes('Fault') && !testXml.includes('404')) {
+        if (
+          !testXml.includes('Fault') &&
+          /<NewExternalIPAddress>[^<]+<\/NewExternalIPAddress>/i.test(testXml)
+        ) {
           const info: GatewayInfo = {
             host,
             port,
@@ -233,24 +183,18 @@ export class UpnpGatewayRepositoryImpl implements IUpnpGatewayRepository {
       }
     }
 
-    // 모든 후보 실패 시 기존 기본 경로를 마지막 대체값으로 사용함.
-    const info: GatewayInfo = {
-      host,
-      port,
-      controlUrl: '/UpnP/Control/WANIPConn1',
-      serviceType: 'urn:schemas-upnp-org:service:WANIPConnection:1',
-    };
-    this.gatewayCache = info;
-    this.gatewayCacheTime = Date.now();
-    return info;
+    throw new UpnpQueryError('UPNP_UNAVAILABLE');
   }
 
   async getMappings(): Promise<PortMapping[]> {
+    const deadline = Date.now() + 25_000;
     const gw = await this.discoverGateway();
     const results: PortMapping[] = [];
 
-    for (let i = 0; i < 100; i++) {
+    for (let i = 0; i <= 100; i++) {
       try {
+        if (Date.now() > deadline)
+          throw new UpnpQueryError('UPNP_QUERY_FAILED');
         const xml = await this.soapCall(
           gw.host,
           gw.port,
@@ -258,26 +202,43 @@ export class UpnpGatewayRepositoryImpl implements IUpnpGatewayRepository {
           `${gw.serviceType}#GetGenericPortMappingEntry`,
           `<u:GetGenericPortMappingEntry xmlns:u="${gw.serviceType}"><NewPortMappingIndex>${i}</NewPortMappingIndex></u:GetGenericPortMappingEntry>`,
         );
-        if (xml.includes('UPnPError') || xml.includes('Fault')) break;
+        if (xml.includes('UPnPError') || xml.includes('Fault')) {
+          // 713만 정상적인 목록 끝임. 통신 오류·미지원은 빈 목록으로 위장하지 않음.
+          if (/<errorCode>\s*713\s*<\/errorCode>/i.test(xml)) return results;
+          throw new UpnpQueryError('UPNP_QUERY_FAILED');
+        }
         const get = (tag: string) => {
           const m = xml.match(new RegExp(`<${tag}>([^<]*)</${tag}>`));
           return m ? m[1] : '';
         };
-        const pubPort = parseInt(get('NewExternalPort'), 10);
-        if (!pubPort) break;
+        const pubPort = Number(get('NewExternalPort'));
+        const privatePort = Number(get('NewInternalPort'));
+        const privateHost = get('NewInternalClient').trim();
+        const protocol = get('NewProtocol').trim().toUpperCase();
+        if (
+          !Number.isInteger(pubPort) ||
+          pubPort < 1 ||
+          pubPort > 65535 ||
+          !Number.isInteger(privatePort) ||
+          privatePort < 1 ||
+          privatePort > 65535 ||
+          !isIP(privateHost) ||
+          !['TCP', 'UDP'].includes(protocol) ||
+          i === 100
+        )
+          throw new UpnpQueryError('UPNP_QUERY_FAILED');
         results.push({
           publicPort: pubPort,
-          privatePort: parseInt(get('NewInternalPort'), 10),
-          protocol: (get('NewProtocol') || 'TCP').toUpperCase() as
-            'TCP' | 'UDP',
+          privatePort,
+          protocol: protocol as 'TCP' | 'UDP',
           description: get('NewPortMappingDescription'),
           enabled: get('NewEnabled') !== '0',
           ttl: parseInt(get('NewLeaseDuration') || '0', 10),
-          privateHost: get('NewInternalClient'),
+          privateHost,
           local: false,
         });
       } catch {
-        break;
+        throw new UpnpQueryError('UPNP_QUERY_FAILED');
       }
     }
     return results;
@@ -356,7 +317,7 @@ export class UpnpGatewayRepositoryImpl implements IUpnpGatewayRepository {
     const ip = xml.match(
       /<NewExternalIPAddress>([^<]+)<\/NewExternalIPAddress>/i,
     )?.[1];
-    if (!ip) throw new Error('UPnP 외부 IP 응답이 없습니다');
+    if (!ip || !isIP(ip.trim())) throw new UpnpQueryError('UPNP_QUERY_FAILED');
     return ip.trim();
   }
 }

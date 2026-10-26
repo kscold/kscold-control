@@ -147,6 +147,7 @@ try {
   const localOrigin = `http://127.0.0.1:${process.env.PORT || 4000}`;
 
   run('pnpm', ['check:architecture']);
+  run('pnpm', ['check:version']);
   run('pnpm', ['check:runtime-contracts']);
   run('pnpm', ['test:release-publisher']);
   run('pnpm', ['lint']);

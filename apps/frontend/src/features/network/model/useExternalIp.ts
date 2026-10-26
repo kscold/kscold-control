@@ -1,16 +1,9 @@
-import { useState } from 'react';
 import { networkService } from '../api/network.service';
+import { useNetworkQuery } from './useNetworkQuery';
+
+const fetchExternalIp = (signal: AbortSignal) =>
+  networkService.getExternalIp(signal);
 
 export function useExternalIp() {
-  const [externalIp, setExternalIp] = useState<string>('');
-
-  const loadExternalIp = async () => {
-    try {
-      setExternalIp(await networkService.getExternalIp());
-    } catch (e) {
-      console.error('External IP fetch failed', e);
-    }
-  };
-
-  return { externalIp, loadExternalIp };
+  return useNetworkQuery(fetchExternalIp, '');
 }

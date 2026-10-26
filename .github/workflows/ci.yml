@@ -37,6 +37,9 @@ jobs:
       - name: Check public source boundary
         run: pnpm check:public-source
 
+      - name: Check release version contract
+        run: pnpm check:version && pnpm test:release-version
+
       - name: Migration compatibility tests
         run: node --test scripts/test/migration-compatibility.test.mjs
 
