@@ -9,11 +9,10 @@ import type {
   MongodbBackupResult,
 } from '../../domain/repositories/mongodb-backup.repository';
 import { getMongodbBackupRoot } from '../../../common/utils';
+import { resolveDockerHost } from '../../../common/utils/docker-host.util';
 
 const execFileAsync = promisify(execFile);
 const BACKUP_ROOT = getMongodbBackupRoot();
-const DOCKER_HOST =
-  process.env.DOCKER_HOST || 'unix:///home/example/.colima/default/docker.sock';
 
 /** 컨테이너 안에서 MongoDB 접속 정보를 찾을 때 확인하는 환경변수 이름들 */
 const MONGO_URI_ENV_KEYS = ['MONGODB_URI', 'MONGO_URI', 'MONGO_URL'];
@@ -35,7 +34,7 @@ export class DockerMongodbBackupRepository implements IMongodbBackupRepository {
       .slice(0, 19);
     const backupDir = path.join(BACKUP_ROOT, containerName, date);
     const dumpName = `dump_${date}`;
-    const env = { ...process.env, DOCKER_HOST };
+    const env = { ...process.env, DOCKER_HOST: resolveDockerHost() };
 
     fs.mkdirSync(backupDir, { recursive: true });
     this.logger.log(`백업 시작: ${containerName} → ${backupDir}`);

@@ -10,7 +10,12 @@ export function resolveDockerProjectRoot(startDir: string): string {
    * 상위 디렉터리를 올라가 docker-compose.yml이 있는 프로젝트 루트 찾음.
    */
   while (true) {
-    if (fs.existsSync(path.join(currentDir, 'docker-compose.yml'))) {
+    if (
+      fs.existsSync(path.join(currentDir, 'docker-compose.local.yml')) ||
+      fs.existsSync(path.join(currentDir, 'docker-compose.yml')) ||
+      (fs.existsSync(path.join(currentDir, 'pnpm-workspace.yaml')) &&
+        fs.existsSync(path.join(currentDir, 'apps/backend/package.json')))
+    ) {
       return currentDir;
     }
 
@@ -28,4 +33,18 @@ export function resolveDockerProjectRoot(startDir: string): string {
 
     currentDir = parentDir;
   }
+}
+
+export function resolveComposeFilePath(projectRoot: string): string {
+  const configured = process.env.CONTROL_COMPOSE_FILE;
+  if (configured) {
+    if (!path.isAbsolute(configured)) {
+      throw new Error('CONTROL_COMPOSE_FILE은 절대 경로여야 합니다.');
+    }
+    return configured;
+  }
+  const localPath = path.join(projectRoot, 'docker-compose.local.yml');
+  return fs.existsSync(localPath)
+    ? localPath
+    : path.join(projectRoot, 'docker-compose.yml');
 }

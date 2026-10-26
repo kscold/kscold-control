@@ -1,26 +1,13 @@
-# Nginx Conf Policy
+# Nginx 설정 / Configuration
 
-Actual instance nginx conf files in this directory are local-only and ignored by git.
+공개 저장소에는 [범용 템플릿](./app-stack.conf.example)만 보관합니다.
+실제 도메인, 인증서, 업스트림 주소가 들어간 `*.conf`와 백업본은 로컬 전용입니다.
+Only generic templates belong in Git. Real domains, certificates and upstreams stay local.
 
-Use [app-stack.conf.example](./app-stack.conf.example) as the reference template when creating a real site conf.
-KSCOLD 운영 설정은 [example.com.conf.example](./example.com.conf.example)을 기준으로 동기화합니다.
-Control은 [control.example.com.conf.example](./control.example.com.conf.example)을 기준으로
-동기화합니다. 업로드 배치는 HTTP upstream 연결을 재사용하고, WebSocket 연결은 별도로 유지합니다.
-공개 ProjectAlpha 개발 주소를 닫아 둘 때는
-[projectalpha.example.com.off.conf.example](./projectalpha.example.com.off.conf.example)을
-`projectalpha.example.com.off.conf`로 복사해 사용합니다. 이 설정은 다른 기본 가상호스트로 요청이
-잘못 흘러가지 않게 HTTP와 HTTPS에서 모두 `410 Gone`을 반환합니다.
+1. `app-stack.conf.example`을 `<service>.conf`로 복사합니다.
+2. 운영자가 자신의 도메인, 인증서 경로, 업스트림 주소를 입력합니다.
+3. 실제 컨테이너에서 `nginx -t`가 성공한 경우에만 reload합니다.
 
-Typical local workflow:
-
-1. Copy `app-stack.conf.example` to `nginx/conf.d/<service>.conf`
-2. Replace the domain, certificate path, and upstream container names
-3. Reload nginx after verifying the config
-
-If a configuration should be shared in git, commit it as `*.conf.example`, not as `*.conf`.
-
-Before committing a shared configuration, validate the base file and every example with:
-
-```bash
-pnpm check:nginx
-```
+`pnpm check:nginx`는 별도의 임시 컨테이너에서 공개 템플릿만 검사합니다.
+현재 운영 Nginx를 재시작하거나 실제 사이트 설정을 바꾸지 않습니다.
+실제 설정 파일과 인증서를 Git에 추가하지 마세요.

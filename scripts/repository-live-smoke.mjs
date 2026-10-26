@@ -9,8 +9,10 @@ import jwt from 'jsonwebtoken';
 import { chromium } from '@playwright/test';
 import { execFileSync } from 'node:child_process';
 
-const baseUrl =
-  process.env.CONTROL_LIVE_BASE_URL || 'https://control.example.com';
+const baseUrl = process.env.CONTROL_LIVE_BASE_URL || process.env.FRONTEND_URL;
+if (!baseUrl || !/^https?:\/\//.test(baseUrl)) {
+  throw new Error('검증 대상 CONTROL_LIVE_BASE_URL을 명시해야 합니다.');
+}
 const screenshotPath =
   process.env.CONTROL_LIVE_SMOKE_SCREENSHOT ||
   path.resolve(process.cwd(), 'test-results', 'repository-live-smoke.png');

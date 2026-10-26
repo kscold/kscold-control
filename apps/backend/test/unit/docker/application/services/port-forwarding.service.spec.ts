@@ -4,8 +4,14 @@ import type { IUpnpGatewayRepository } from '@/upnp/domain/repositories/upnp-gat
 describe('PortForwardingService', () => {
   let service: PortForwardingService;
   let gateway: jest.Mocked<IUpnpGatewayRepository>;
+  const originalHost = process.env.PUBLIC_HOST;
+  afterEach(() => {
+    if (originalHost === undefined) delete process.env.PUBLIC_HOST;
+    else process.env.PUBLIC_HOST = originalHost;
+  });
 
   beforeEach(() => {
+    process.env.PUBLIC_HOST = 'router.example.com';
     gateway = {
       getMappings: jest.fn().mockResolvedValue([]),
       addMapping: jest.fn().mockResolvedValue(undefined),
@@ -140,6 +146,26 @@ describe('PortForwardingService', () => {
       domain: 'router.example.com',
       ssh: 'ssh root@router.example.com -p 2222',
       http: 'http://router.example.com:3000',
+    });
+  });
+
+  it('고정 호스트가 없으면 조회한 외부 IP를 사용한다', async () => {
+    delete process.env.PUBLIC_HOST;
+    service = new PortForwardingService(gateway);
+    await Promise.resolve();
+    expect(service.getExternalAccess({ '80': 8080 }).http).toBe(
+      'http://203.0.113.10:8080',
+    );
+  });
+
+  it('접속 주소를 확인하지 못하면 잘못된 예제 주소를 안내하지 않는다', async () => {
+    delete process.env.PUBLIC_HOST;
+    gateway.getExternalIp.mockRejectedValue(new Error('unavailable'));
+    service = new PortForwardingService(gateway);
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(service.getExternalAccess({ '80': 8080, '22': 2222 })).toEqual({
+      domain: '',
     });
   });
 });

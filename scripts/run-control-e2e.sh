@@ -2,7 +2,7 @@
 
 set -euo pipefail
 
-ROOT_DIR="/home/example/Desktop/kscold-control"
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 BACKEND_DIR="$ROOT_DIR/apps/backend"
 BACKEND_LOG_FILE="${TMPDIR:-/tmp}/kscold-control-e2e-backend.log"
 BACKEND_PORT="4410"
@@ -30,7 +30,6 @@ E2E_FRONTEND_DIR="$(mktemp -d "${TMPDIR:-/tmp}/kscold-control-e2e-frontend.XXXXX
 cp -R "$ROOT_DIR/apps/frontend/dist/." "$E2E_FRONTEND_DIR/"
 
 cd "$BACKEND_DIR"
-DOCKER_HOST="unix:///home/example/.colima/default/docker.sock" \
 NODE_ENV="production" \
 PORT="$BACKEND_PORT" \
 CONTROL_FRONTEND_DIST_PATH="$E2E_FRONTEND_DIR" \

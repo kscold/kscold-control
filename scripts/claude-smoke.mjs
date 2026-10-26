@@ -8,6 +8,7 @@ import {
 } from 'node:fs';
 import path from 'node:path';
 import process from 'node:process';
+import { homedir } from 'node:os';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 
@@ -94,7 +95,7 @@ function readExtensionCandidates(directoryPath) {
 }
 
 function resolveClaudeBinary() {
-  const homeDir = process.env.HOME || '/home/example';
+  const homeDir = homedir();
   const envBinary =
     process.env.CLAUDE_CODE_BIN || process.env.CLAUDE_BINARY_PATH || null;
   const fromPath = runCommand('which', ['claude']) || null;
