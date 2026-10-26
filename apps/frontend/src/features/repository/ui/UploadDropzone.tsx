@@ -14,7 +14,10 @@ import {
 import { useAuthStore } from '@/shared/model/auth.store';
 import { useModalStore } from '@/shared/model/modal.store';
 import { reportFrontendError } from '@/shared/lib/error-reporter';
-import { assertUploadWithinLimits } from '../lib/upload-limits';
+import {
+  assertUploadFilesWithinLimits,
+  assertUploadWithinLimits,
+} from '../lib/upload-limits';
 import { filterFiles, chunkFiles, type FilterStats } from '../lib/file-filter';
 import {
   buildUploadManifest,
@@ -371,6 +374,7 @@ export function UploadDropzone({
         }
 
         const limits = await repositoryService.getUploadLimits();
+        assertUploadFilesWithinLimits(kept, limits);
         assertUploadWithinLimits(
           kept.length,
           stats.totalSize,
@@ -383,6 +387,7 @@ export function UploadDropzone({
           stats,
           setHashedCount,
         );
+        assertUploadFilesWithinLimits(nextPendingUpload.kept, limits);
         assertUploadWithinLimits(
           nextPendingUpload.kept.length,
           nextPendingUpload.stats.totalSize,
@@ -875,7 +880,11 @@ export function UploadDropzone({
               폴더를 드롭하거나 클릭하여 선택
             </p>
             <p className="mt-1 text-xs text-gray-500">
-              node_modules / .git / __pycache__ 등 자동 제외
+              캐시·의존성·빌드 폴더·.git 메타데이터만 자동 제외
+            </p>
+            <p className="mt-2 text-xs text-amber-200/80">
+              .env·인증 키·SVG·이미지·폰트·잠금 파일도 원본 그대로 포함합니다.
+              저장소 소유자와 관리자는 이 파일들을 조회·다운로드할 수 있습니다.
             </p>
           </>
         )}
@@ -1051,14 +1060,8 @@ export function UploadDropzone({
               )}
               {lastStats.filteredByExt > 0 && (
                 <div>
-                  · 빌드산출물·바이너리·이미지(
+                  · 컴파일 캐시 파일(
                   {lastStats.filteredByExt.toLocaleString()}개) 제외
-                </div>
-              )}
-              {lastStats.filteredBySize > 0 && (
-                <div>
-                  · 1MB 초과 대용량 파일(
-                  {lastStats.filteredBySize.toLocaleString()}개) 제외
                 </div>
               )}
             </div>

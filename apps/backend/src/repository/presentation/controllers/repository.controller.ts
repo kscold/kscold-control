@@ -4,6 +4,7 @@ import {
   Controller,
   Delete,
   Get,
+  Header,
   Param,
   ParseIntPipe,
   Post,
@@ -153,7 +154,7 @@ export class RepositoryController {
   @UseInterceptors(
     FilesInterceptor('files', 1000, {
       limits: {
-        fileSize: 50 * 1024 * 1024, // 파일당 50MB
+        fileSize: REPOSITORY_UPLOAD_LIMITS.maxFileBytes,
         fieldSize: 10 * 1024 * 1024,
         fields: 5000,
         files: 1000,
@@ -281,7 +282,7 @@ export class RepositoryController {
   @UseInterceptors(
     FilesInterceptor('files', 200, {
       limits: {
-        fileSize: 50 * 1024 * 1024,
+        fileSize: REPOSITORY_UPLOAD_LIMITS.maxFileBytes,
         fieldSize: 10 * 1024 * 1024,
         files: 200,
         fields: 100,
@@ -386,6 +387,7 @@ export class RepositoryController {
   }
 
   @Get('projects/:id/download')
+  @Header('Cache-Control', 'private, no-store')
   @RequirePermissions(PERMISSIONS.REPOSITORY_READ)
   async downloadArchive(
     @Param('id') id: string,
@@ -408,6 +410,7 @@ export class RepositoryController {
   }
 
   @Get('projects/:id/file')
+  @Header('Cache-Control', 'private, no-store')
   @RequirePermissions(PERMISSIONS.REPOSITORY_READ)
   async readFile(
     @Param('id') id: string,
@@ -418,6 +421,7 @@ export class RepositoryController {
   }
 
   @Get('projects/:id/file-at-version')
+  @Header('Cache-Control', 'private, no-store')
   @RequirePermissions(PERMISSIONS.REPOSITORY_READ)
   async readFileAtVersion(
     @Param('id') id: string,

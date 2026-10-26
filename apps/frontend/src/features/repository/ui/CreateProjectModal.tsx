@@ -57,7 +57,7 @@ export function CreateProjectModal({
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="bigzami2"
+              placeholder="bigzami"
               className="w-full rounded-lg border border-gray-700 bg-gray-950 px-3 py-2 text-sm text-white placeholder:text-gray-600 focus:border-blue-500 focus:outline-none"
             />
             <p className="mt-1 text-[10px] text-gray-600">

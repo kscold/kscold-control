@@ -209,7 +209,7 @@ export class CreateUploadSessionUseCase {
       if (
         !Number.isSafeInteger(file.size) ||
         file.size < 0 ||
-        file.size > 50 * 1024 * 1024 ||
+        file.size > REPOSITORY_UPLOAD_LIMITS.maxFileBytes ||
         !SHA256_HEX_PATTERN.test(file.sha256)
       ) {
         throw new BadRequestException(
