@@ -133,13 +133,18 @@ export class ReadFileUseCase {
     }
 
     // 텍스트 판별: 확장자 + 첫 8KB 안에 NULL 바이트가 있으면 바이너리
-    const fileName = relativePath.split('/').pop() ?? '';
+    const fileName = (relativePath.split('/').pop() ?? '').toLowerCase();
     const dotIdx = fileName.lastIndexOf('.');
     const ext =
       dotIdx > 0
         ? fileName.slice(dotIdx + 1).toLowerCase()
         : fileName.toLowerCase();
-    const isTextByExt = TEXT_EXTENSIONS.has(ext);
+    const isEnvironmentFile =
+      fileName === '.env' || fileName.startsWith('.env.');
+    const isTextByExt =
+      TEXT_EXTENSIONS.has(ext) ||
+      isEnvironmentFile ||
+      (dotIdx === 0 && TEXT_EXTENSIONS.has(fileName.slice(1)));
     const probe = buffer.subarray(0, Math.min(8192, buffer.length));
     const hasNull = probe.includes(0);
     const isText = isTextByExt && !hasNull;
