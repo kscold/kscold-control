@@ -1,6 +1,6 @@
 {
   "name": "kscold-control",
-  "version": "1.4.0",
+  "version": "1.4.1",
   "license": "MIT",
   "private": true,
   "packageManager": "pnpm@10.29.3",
@@ -44,7 +44,9 @@
     "test:repository-live-smoke": "node ./scripts/repository-live-smoke.mjs",
     "test:release-publisher": "node --test ./scripts/test/frontend-release.test.mjs",
     "test:repository-maintenance": "node --test ./scripts/test/repository-rename.test.mjs",
-    "test:frontend-bundle": "node --test ./scripts/test/frontend-bundle.test.mjs",
+    "test:frontend-bundle": "node --test ./scripts/test/frontend-bundle.test.mjs ./scripts/test/network-bundle.test.mjs",
+    "test:release-version": "node --test ./scripts/test/release-version.test.mjs",
+    "check:version": "node ./scripts/check-version.mjs",
     "test:e2e:control": "bash ./scripts/run-control-e2e.sh",
     "check:architecture": "node ./scripts/check-architecture.mjs",
     "check:nginx": "bash ./scripts/check-nginx-config.sh",

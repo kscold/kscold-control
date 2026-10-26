@@ -28,8 +28,9 @@ nginx/conf.d/local/
 nginx/conf.d/*.local.conf
 nginx/conf.d/*.private.conf
 
-# Documentation
-docs/
+# 설치별 문서는 비공개로 두고 공개 검토된 안내만 추적함.
+docs/*
+!docs/operations-diagnostics.md
 CLAUDE.md
 
 # Serena MCP 메타데이터

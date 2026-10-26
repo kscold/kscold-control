@@ -5,6 +5,7 @@ interface CreateMappingModalProps {
   form: CreateMappingForm;
   setForm: (form: CreateMappingForm) => void;
   submitting: boolean;
+  canSubmit: boolean;
   externalIp: string;
   onSubmit: () => void;
   onClose: () => void;
@@ -14,14 +15,23 @@ export function CreateMappingModal({
   form,
   setForm,
   submitting,
+  canSubmit,
   externalIp,
   onSubmit,
   onClose,
 }: CreateMappingModalProps) {
   return (
     <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
-      <div className="bg-gray-900 border border-gray-700 rounded-2xl w-full max-w-md p-6">
-        <h3 className="text-lg font-bold text-white mb-5 flex items-center gap-2">
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="create-mapping-title"
+        className="bg-gray-900 border border-gray-700 rounded-2xl w-full max-w-md max-h-[85dvh] overflow-auto p-6"
+      >
+        <h3
+          id="create-mapping-title"
+          className="text-lg font-bold text-white mb-5 flex items-center gap-2"
+        >
           <Network size={18} className="text-purple-400" />
           포트 매핑 추가
         </h3>
@@ -32,6 +42,7 @@ export function CreateMappingModal({
                 외부 포트
               </label>
               <input
+                aria-label="외부 포트"
                 type="number"
                 className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-purple-500"
                 placeholder="예: 8080"
@@ -48,6 +59,7 @@ export function CreateMappingModal({
                 내부 포트
               </label>
               <input
+                aria-label="내부 포트"
                 type="number"
                 className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-purple-500"
                 placeholder="예: 8080"
@@ -86,6 +98,7 @@ export function CreateMappingModal({
           <div>
             <label className="block text-sm text-gray-400 mb-1">설명</label>
             <input
+              aria-label="설명"
               className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-purple-500"
               placeholder="예: Web Server"
               value={form.description}
@@ -121,7 +134,7 @@ export function CreateMappingModal({
           </button>
           <button
             onClick={onSubmit}
-            disabled={submitting}
+            disabled={submitting || !canSubmit}
             className="flex-1 py-2 bg-purple-600 hover:bg-purple-500 text-white rounded-lg transition text-sm font-semibold disabled:opacity-50"
           >
             {submitting ? '추가 중...' : '추가'}

@@ -128,8 +128,9 @@ describe('UploadDropzone session recovery', () => {
     expect(screen.getByTestId('repository-upload-ready')).toBeVisible();
     expect(reportFrontendError).toHaveBeenCalledWith(
       expect.objectContaining({
-        message: 'Repository upload failed: project=project-id stage=session',
+        message: '파일 수 한도 초과',
       }),
+      { kind: 'upload', stage: 'session', batchIndex: undefined },
     );
   });
 

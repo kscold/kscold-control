@@ -12,6 +12,9 @@ A self-hosted infrastructure governance panel for managing Docker containers, Ng
 운영 설정과 공개 소스는 분리합니다. 개인 프로젝트·계정·도메인은 예시에 넣지 않으며,
 실제 대상과 권한은 각 설치의 DB 및 비공개 설정에서 관리합니다. [보안 정책 / Security](SECURITY.md)
 
+네트워크 상태·재시도·민감정보 없는 오류 수집 안내:
+[운영 진단 / Operational Diagnostics](docs/operations-diagnostics.md)
+
 ---
 
 ## Features

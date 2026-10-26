@@ -1,4 +1,10 @@
-import { Inject, Injectable, Logger } from '@nestjs/common';
+import {
+  Inject,
+  Injectable,
+  Logger,
+  ServiceUnavailableException,
+} from '@nestjs/common';
+import { UpnpQueryError } from '../../domain/errors/upnp-query.error';
 
 import {
   type IUpnpGatewayRepository,
@@ -19,11 +25,15 @@ export class GetExternalIpUseCase {
     try {
       return await this.gateway.getExternalIp();
     } catch (err) {
-      this.logger.error('Failed to get external IP via UPnP', err);
-      throw new Error(
-        `외부 IP 조회 실패: ${err instanceof Error ? err.message : err}`,
-        { cause: err },
-      );
+      const failure =
+        err instanceof UpnpQueryError
+          ? err
+          : new UpnpQueryError('UPNP_QUERY_FAILED');
+      this.logger.warn(`UPnP external IP unavailable: ${failure.code}`);
+      throw new ServiceUnavailableException({
+        code: failure.code,
+        message: failure.message,
+      });
     }
   }
 }
