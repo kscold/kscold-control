@@ -49,6 +49,9 @@ jobs:
       - name: Frontend tests
         run: pnpm test:frontend
 
+      - name: Repository maintenance tests
+        run: pnpm test:repository-maintenance
+
       - name: Build
         run: pnpm build
 

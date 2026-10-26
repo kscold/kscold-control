@@ -162,5 +162,7 @@ export interface ProjectVersion {
 export interface RepositoryUploadLimits {
   maxFiles: number;
   maxTotalBytes: number;
+  /** 구버전 서버 응답은 파일당 50MiB 제한을 사용한다. */
+  maxFileBytes?: number;
   maxBatches: number;
 }

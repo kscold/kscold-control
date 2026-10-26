@@ -1,4 +1,10 @@
 import { BadRequestException } from '@nestjs/common';
+import { promises as fs } from 'node:fs';
+import { tmpdir } from 'node:os';
+import * as path from 'node:path';
+import { spawnSync } from 'node:child_process';
+import { LocalFileStorageService } from '@/repository/infrastructure/storage/local-file-storage.service';
+import { LocalUploadSessionRepository } from '@/repository/infrastructure/repositories/local-upload-session.repository';
 import { CreateUploadSessionUseCase } from '@/repository/application/use-cases/create-upload-session.use-case';
 import { UploadSessionBatchUseCase } from '@/repository/application/use-cases/upload-session-batch.use-case';
 import { FinalizeUploadSessionUseCase } from '@/repository/application/use-cases/finalize-upload-session.use-case';
@@ -115,6 +121,154 @@ function createDependencies(session: RepositoryUploadSession | null = null) {
 }
 
 describe('repository upload flow', () => {
+  it('env·키·SVG·바이너리를 배치 업로드 후 압축 다운로드·이전 버전까지 원본 그대로 보존한다', async () => {
+    const root = await fs.mkdtemp(path.join(tmpdir(), 'repository-roundtrip-'));
+    const previousStorage = process.env.REPOSITORY_STORAGE_DIR;
+    const previousSessions = process.env.REPOSITORY_UPLOAD_SESSION_DIR;
+    process.env.REPOSITORY_STORAGE_DIR = root;
+    process.env.REPOSITORY_UPLOAD_SESSION_DIR = path.join(
+      root,
+      '.upload-sessions',
+    );
+    try {
+      const storage = new LocalFileStorageService();
+      await storage.onModuleInit();
+      await storage.ensureProject(project.name);
+      const sessions = new LocalUploadSessionRepository();
+      const { projectRepository } = createDependencies();
+      const coordinator = new RepositoryUploadCoordinator();
+      const create = new CreateUploadSessionUseCase(
+        projectRepository as any,
+        storage,
+        sessions,
+        coordinator,
+      );
+      const upload = new UploadSessionBatchUseCase(
+        projectRepository as any,
+        storage,
+        sessions,
+        coordinator,
+      );
+      const finalize = new FinalizeUploadSessionUseCase(
+        projectRepository as any,
+        storage,
+        sessions,
+        coordinator,
+      );
+      const contents = new Map([
+        ['.env', Buffer.from('TEST_SECRET=fixture-only\n')],
+        ['.env.production', Buffer.from('TEST_DATABASE=fixture-only\n')],
+        [
+          'cert/private.pem',
+          Buffer.from(
+            '-----BEGIN PRIVATE KEY-----\nfixture-only\n-----END PRIVATE KEY-----\n',
+          ),
+        ],
+        [
+          'public/logo.svg',
+          Buffer.from(
+            `<svg xmlns="http://www.w3.org/2000/svg"><!--${'x'.repeat(1024 ** 2)}--></svg>`,
+          ),
+        ],
+        ['public/image.png', Buffer.from([137, 80, 78, 71, 0, 255])],
+        ['public/font.woff2', Buffer.from([119, 79, 70, 50, 0, 255])],
+        ['yarn.lock', Buffer.from('# fixture lockfile')],
+        ['.vscode/settings.json', Buffer.from('{"editor.tabSize":2}')],
+      ]);
+      const files = [...contents].map(([relativePath, buffer]) => ({
+        relativePath,
+        buffer,
+        size: buffer.length,
+      }));
+      const metas = files.map((file) =>
+        metadata(file.relativePath, file.buffer),
+      );
+      const batches = [metas.slice(0, 4), metas.slice(4)].map(
+        (batchFiles, index) => ({
+          index,
+          files: batchFiles,
+          totalFiles: batchFiles.length,
+          totalBytes: batchFiles.reduce((sum, file) => sum + file.size, 0),
+        }),
+      );
+      const session = await create.execute(
+        project.id,
+        {
+          protocolVersion: REPOSITORY_UPLOAD_PROTOCOL_VERSION,
+          replace: true,
+          totalFiles: files.length,
+          totalBytes: files.reduce((sum, file) => sum + file.size, 0),
+          filteredCount: 0,
+          manifestDigest: buildUploadManifestDigest(metas),
+          batches,
+        },
+        project.ownerId,
+      );
+      await upload.execute(
+        project.id,
+        session.id,
+        0,
+        files.slice(0, 4),
+        project.ownerId,
+      );
+      await upload.execute(
+        project.id,
+        session.id,
+        0,
+        files.slice(0, 4),
+        project.ownerId,
+      );
+      await upload.execute(
+        project.id,
+        session.id,
+        1,
+        files.slice(4),
+        project.ownerId,
+      );
+      const result = await finalize.execute(
+        project.id,
+        session.id,
+        project.ownerId,
+      );
+      expect(result.session.status).toBe('completed');
+      expect(result.project.fileCount).toBe(files.length);
+      const archive = await storage.archiveProject(project.name);
+      const chunks: Buffer[] = [];
+      for await (const chunk of archive) chunks.push(Buffer.from(chunk));
+      const extracted = path.join(root, 'extracted');
+      await fs.mkdir(extracted);
+      const tar = spawnSync('tar', ['-xzf', '-', '-C', extracted], {
+        input: Buffer.concat(chunks),
+      });
+      expect(tar.status).toBe(0);
+      for (const [relativePath, bytes] of contents) {
+        expect(await storage.readFile(project.name, relativePath)).toEqual(
+          bytes,
+        );
+        expect(await fs.readFile(path.join(extracted, relativePath))).toEqual(
+          bytes,
+        );
+      }
+      const [version] = await storage.listVersions(project.name);
+      await fs.writeFile(path.join(root, project.name, '.env'), 'changed');
+      await storage.restoreVersion(project.name, version.id);
+      expect(await storage.readFile(project.name, '.env')).toEqual(
+        contents.get('.env'),
+      );
+      expect(await storage.readFile(project.name, 'public/logo.svg')).toEqual(
+        contents.get('public/logo.svg'),
+      );
+    } finally {
+      if (previousStorage === undefined)
+        delete process.env.REPOSITORY_STORAGE_DIR;
+      else process.env.REPOSITORY_STORAGE_DIR = previousStorage;
+      if (previousSessions === undefined)
+        delete process.env.REPOSITORY_UPLOAD_SESSION_DIR;
+      else process.env.REPOSITORY_UPLOAD_SESSION_DIR = previousSessions;
+      await fs.rm(root, { recursive: true, force: true });
+    }
+  }, 30_000);
+
   it('마지막 배치 응답 유실 후 재전송은 finalizing에서도 멱등 성공한다', async () => {
     const session = makeSession();
     const dependencies = createDependencies(session);

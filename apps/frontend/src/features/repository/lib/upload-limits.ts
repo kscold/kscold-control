@@ -1,6 +1,20 @@
 import type { RepositoryUploadLimits } from '@/entities/project';
 import { formatBytes } from '@/shared/lib';
 
+export function assertUploadFilesWithinLimits(
+  files: Array<{ relativePath: string; file: { size: number } }>,
+  limits: RepositoryUploadLimits,
+): void {
+  const maxFileBytes = limits.maxFileBytes ?? 50 * 1024 * 1024;
+  const oversized = files.filter(({ file }) => file.size > maxFileBytes);
+  if (oversized.length > 0) {
+    const paths = oversized.slice(0, 5).map(({ relativePath }) => relativePath);
+    throw new Error(
+      `파일당 서버 한도 ${formatBytes(maxFileBytes)}를 초과한 파일 ${oversized.length}개: ${paths.join(', ')}${oversized.length > 5 ? ` 외 ${oversized.length - 5}개` : ''}. 파일을 임의로 제외하지 않았습니다. 해당 파일을 나누거나 선택 폴더 밖으로 옮긴 뒤 다시 선택해주세요. 아직 서버에는 전송되지 않았습니다.`,
+    );
+  }
+}
+
 export function assertUploadWithinLimits(
   files: number,
   bytes: number,
