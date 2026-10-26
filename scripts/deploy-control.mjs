@@ -61,13 +61,20 @@ async function verifySpaRoute(url) {
     signal: AbortSignal.timeout(5_000),
   });
   if (!response.ok) {
-    throw new Error(`SPA 직접 경로 확인 실패: ${url} (HTTP ${response.status})`);
+    throw new Error(
+      `SPA 직접 경로 확인 실패: ${url} (HTTP ${response.status})`,
+    );
   }
 
   const contentType = response.headers.get('content-type') ?? '';
   const body = await response.text();
-  if (!contentType.includes('text/html') || !body.includes('<div id="root"></div>')) {
-    throw new Error(`SPA 직접 경로가 프론트엔드 HTML을 반환하지 않습니다: ${url}`);
+  if (
+    !contentType.includes('text/html') ||
+    !body.includes('<div id="root"></div>')
+  ) {
+    throw new Error(
+      `SPA 직접 경로가 프론트엔드 HTML을 반환하지 않습니다: ${url}`,
+    );
   }
 }
 
@@ -131,6 +138,13 @@ try {
   if (!process.env.DATABASE_URL || !process.env.JWT_SECRET) {
     throw new Error('.env의 DATABASE_URL과 JWT_SECRET이 필요합니다.');
   }
+  if (!process.env.FRONTEND_URL) {
+    throw new Error('배포 확인에 사용할 FRONTEND_URL이 필요합니다.');
+  }
+  const publicOrigin = new URL(process.env.FRONTEND_URL).origin;
+  if (!/^https?:\/\//.test(publicOrigin))
+    throw new Error('FRONTEND_URL은 HTTP(S) 주소여야 합니다.');
+  const localOrigin = `http://127.0.0.1:${process.env.PORT || 4000}`;
 
   run('pnpm', ['check:architecture']);
   run('pnpm', ['check:runtime-contracts']);
@@ -145,14 +159,10 @@ try {
   publishFrontendRelease({ root, revision });
   run('pm2', ['startOrReload', 'ecosystem.config.js', '--update-env']);
 
-  await waitForRelease('http://127.0.0.1:4000/api/health', version, revision);
-  await waitForRelease(
-    'https://control.example.com/api/health',
-    version,
-    revision,
-  );
-  await verifySpaRoute('http://127.0.0.1:4000/keys');
-  await verifySpaRoute('https://control.example.com/keys');
+  await waitForRelease(`${localOrigin}/api/health`, version, revision);
+  await waitForRelease(`${publicOrigin}/api/health`, version, revision);
+  await verifySpaRoute(`${localOrigin}/keys`);
+  await verifySpaRoute(`${publicOrigin}/keys`);
   run('pm2', ['save']);
   console.log(
     `Production release is healthy: v${version} ${revision.slice(0, 12)}`,

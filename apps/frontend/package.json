@@ -1,6 +1,7 @@
 {
   "name": "@kscold-control/frontend",
-  "version": "1.3.0",
+  "version": "1.4.0",
+  "license": "MIT",
   "private": true,
   "type": "module",
   "scripts": {
@@ -45,7 +46,7 @@
     "tailwindcss": "^4.3.3",
     "typescript": "^5.2.2",
     "vite": "^8.1.5",
-    "vitest": "^4.1.10",
+    "vitest": "^4.1.12",
     "@tailwindcss/postcss": "^4.3.3"
   }
 }

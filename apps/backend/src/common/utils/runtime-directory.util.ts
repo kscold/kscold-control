@@ -1,11 +1,12 @@
 import path from 'node:path';
 import process from 'node:process';
+import { homedir } from 'node:os';
 
 /**
  * HOME 환경변수가 비어 있을 때 사용하는 폴백 홈 디렉토리.
  * PM2/launchd 로 띄우면 HOME 이 전달되지 않는 경우가 있어 폴백이 필요하다.
  */
-export const DEFAULT_HOME_DIRECTORY = '/home/example';
+export const DEFAULT_HOME_DIRECTORY = homedir();
 
 /**
  * 백엔드 프로세스가 기준으로 삼는 홈 디렉토리.

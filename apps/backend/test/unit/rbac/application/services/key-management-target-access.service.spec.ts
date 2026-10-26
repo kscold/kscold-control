@@ -16,7 +16,9 @@ describe('KeyManagementTargetAccessService', () => {
           environment: 'production',
         },
       ]),
-      findTargetIdsByUserId: jest.fn().mockResolvedValue(['projectalpha-production']),
+      findTargetIdsByUserId: jest
+        .fn()
+        .mockResolvedValue(['projectalpha-production']),
       findAllAssignments: jest.fn().mockResolvedValue([]),
       replaceForUser: jest.fn().mockResolvedValue(undefined),
     };
@@ -75,7 +77,11 @@ describe('KeyManagementTargetAccessService', () => {
     });
 
     await expect(
-      service.replaceUserTargets('admin-1', ['projectalpha-production'], 'actor-1'),
+      service.replaceUserTargets(
+        'admin-1',
+        ['projectalpha-production'],
+        'actor-1',
+      ),
     ).rejects.toBeInstanceOf(BadRequestException);
     expect(repository.replaceForUser).not.toHaveBeenCalled();
   });
@@ -86,7 +92,11 @@ describe('KeyManagementTargetAccessService', () => {
     await expect(
       service.replaceUserTargets(
         'key-manager-1',
-        ['projectbeta-production', 'projectalpha-production', 'projectalpha-production'],
+        [
+          'projectbeta-production',
+          'projectalpha-production',
+          'projectalpha-production',
+        ],
         'admin-1',
       ),
     ).resolves.toEqual({
@@ -100,16 +110,16 @@ describe('KeyManagementTargetAccessService', () => {
     );
   });
 
-  it('신규 승인 사용자는 ProjectAlpha 대상부터 최소 권한으로 배정한다', async () => {
+  it('배정 없는 사용자는 어떤 운영 대상에도 접근할 수 없다', async () => {
     const { service, repository } = fixture();
     repository.findTargetIdsByUserId.mockResolvedValue([]);
 
-    await service.ensureDefaultTarget('key-manager-1', 'admin-1');
-
-    expect(repository.replaceForUser).toHaveBeenCalledWith(
-      'key-manager-1',
-      ['projectalpha-production'],
-      'admin-1',
-    );
+    await expect(
+      service.getAuthorizedTargetIds({
+        id: 'key-manager-1',
+        roles: ['key_manager'],
+      }),
+    ).resolves.toEqual([]);
+    expect(repository.replaceForUser).not.toHaveBeenCalled();
   });
 });

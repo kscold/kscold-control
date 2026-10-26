@@ -23,25 +23,17 @@ describe('ApproveKeyManagerUseCase', () => {
     const roleRepository = {
       findByNameWithPermissions: jest.fn().mockResolvedValue(keyManagerRole),
     };
-    const targetAccess = {
-      ensureDefaultTarget: jest.fn().mockResolvedValue(undefined),
-    };
     const useCase = new ApproveKeyManagerUseCase(
       userRepository as any,
       roleRepository as any,
-      targetAccess as any,
     );
 
-    const result = await useCase.execute(user.id, 'admin-1');
+    const result = await useCase.execute(user.id);
 
     expect(user.roles).toEqual([keyManagerRole]);
     expect(user.terminalCommandCount).toBe(0);
     expect(user.terminalCommandLimit).toBe(0);
     expect(result.terminalCommandLimit).toBe(0);
     expect(userRepository.save).toHaveBeenCalledWith(user);
-    expect(targetAccess.ensureDefaultTarget).toHaveBeenCalledWith(
-      user.id,
-      'admin-1',
-    );
   });
 });

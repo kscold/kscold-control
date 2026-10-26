@@ -94,16 +94,4 @@ export class KeyManagementTargetAccessService {
     await this.repository.replaceForUser(userId, targetIds, actorId);
     return { userId, targetIds };
   }
-
-  async ensureDefaultTarget(userId: string, actorId: string): Promise<void> {
-    const current = await this.repository.findTargetIdsByUserId(userId);
-    if (current.length > 0) return;
-
-    const targets = await this.repository.findEnabledTargets();
-    const defaultTarget =
-      targets.find((target) => target.id === 'projectalpha-production') ?? targets[0];
-    if (!defaultTarget) return;
-
-    await this.repository.replaceForUser(userId, [defaultTarget.id], actorId);
-  }
 }

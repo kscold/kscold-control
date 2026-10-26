@@ -229,7 +229,7 @@ export class RbacController {
     @Request() req: RbacRequest,
   ) {
     req._auditExtra = { before: await this.getUserSnapshot(id) };
-    return this.approveKeyManagerUseCase.execute(id, req.user.id);
+    return this.approveKeyManagerUseCase.execute(id);
   }
 
   @Get('key-management-target-access')

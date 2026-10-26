@@ -1,4 +1,11 @@
 const path = require('node:path');
+const { homedir } = require('node:os');
+const { existsSync } = require('node:fs');
+const home = homedir();
+const colimaSocket = path.join(home, '.colima/default/docker.sock');
+const desktopSocket = path.join(home, '.docker/run/docker.sock');
+const dockerSocket =
+  [colimaSocket, desktopSocket].find(existsSync) || '/var/run/docker.sock';
 
 const databaseUrl = process.env.DATABASE_URL;
 const jwtSecret = process.env.JWT_SECRET;
@@ -32,25 +39,19 @@ module.exports = {
       env: {
         NODE_ENV: 'production',
         TYPEORM_SYNCHRONIZE: 'false',
-        PORT: 4000,
-        // SECURITY: Never commit real credentials! Set these via:
-        // 1. PM2 ecosystem file with env_file option, or
-        // 2. PM2 startup command: pm2 start ecosystem.config.js --update-env
-        // 3. System environment variables
+        PORT: process.env.PORT || 4000,
+        // 실제 자격증명은 로컬 .env 또는 프로세스 환경에서만 전달한다.
         DATABASE_URL: databaseUrl,
-        DOCKER_HOST:
-          process.env.DOCKER_HOST ||
-          'unix:///home/example/.colima/default/docker.sock',
+        DOCKER_HOST: process.env.DOCKER_HOST || `unix://${dockerSocket}`,
         JWT_SECRET: jwtSecret,
-        FRONTEND_URL: process.env.FRONTEND_URL || 'https://control.example.com',
+        FRONTEND_URL: process.env.FRONTEND_URL || 'http://localhost:4000',
         CONTROL_FRONTEND_DIST_PATH:
           process.env.CONTROL_FRONTEND_DIST_PATH ||
           path.join(__dirname, 'runtime', 'frontend-current'),
-        CLAUDE_WORKING_DIR:
-          process.env.CLAUDE_WORKING_DIR || '/home/example/Desktop',
+        CLAUDE_WORKING_DIR: process.env.CLAUDE_WORKING_DIR || home,
         REPOSITORY_STORAGE_DIR:
           process.env.REPOSITORY_STORAGE_DIR ||
-          '/home/example/repository-storage',
+          path.join(home, 'repository-storage'),
         KEY_MANAGEMENT_ENCRYPTION_KEY:
           process.env.KEY_MANAGEMENT_ENCRYPTION_KEY,
         KEY_MANAGEMENT_GCLOUD_PATH: process.env.KEY_MANAGEMENT_GCLOUD_PATH,
@@ -69,6 +70,8 @@ module.exports = {
           'OPENAI_MODEL',
           'REPOSITORY_UPLOAD_SESSION_DIR',
           'SECURITY_ALLOWLIST',
+          'CONTROL_COMPOSE_FILE',
+          'PUBLIC_HOST',
         ]),
       },
       // 자동 재시작

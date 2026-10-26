@@ -24,8 +24,7 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command:
-      `cd /home/example/Desktop/kscold-control/apps/frontend && VITE_PROXY_API_TARGET=http://127.0.0.1:4410 pnpm dev --host 127.0.0.1 --port ${frontendPort}`,
+    command: `VITE_PROXY_API_TARGET=http://127.0.0.1:4410 pnpm --filter @kscold-control/frontend dev --host 127.0.0.1 --port ${frontendPort}`,
     url: `http://127.0.0.1:${frontendPort}/login`,
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,

@@ -59,7 +59,7 @@ async function fixture(
         return { rows: destinationExists ? [{ id: 'other-project' }] : [] };
       if (sql.startsWith('UPDATE')) {
         if (failUpdate) throw new Error('simulated database failure');
-        assert.deepEqual(params, ['sampleproject', project.id, 'sampleproject']);
+        assert.deepEqual(params, ['renamed-project', project.id, 'sampleproject']);
         return { rowCount: 1 };
       }
       return { rows: [] };
@@ -75,7 +75,7 @@ async function fixture(
       sessionDir,
       backupDir: path.join(root, 'private-journal'),
       from: 'sampleproject',
-      to: 'sampleproject',
+      to: 'renamed-project',
     },
   };
 }
@@ -101,28 +101,28 @@ test('rename preserves bytes, versions, sessions, receipts and a private recover
   const result = await renameRepositoryProject({ ...f.options, apply: true });
   assert.equal(result.applied, true);
   assert.equal(
-    await fs.readFile(path.join(f.root, 'sampleproject/.env'), 'utf8'),
+    await fs.readFile(path.join(f.root, 'renamed-project/.env'), 'utf8'),
     'TEST_SECRET=fixture-only',
   );
   assert.equal(
     await fs.readFile(
-      path.join(f.root, '.repository-versions/sampleproject/old.tar.gz'),
+      path.join(f.root, '.repository-versions/renamed-project/old.tar.gz'),
       'utf8',
     ),
     'unchanged-version-bytes',
   );
   assert.equal(
     JSON.parse(await fs.readFile(f.session, 'utf8')).projectName,
-    'sampleproject',
+    'renamed-project',
   );
   assert.equal(
     JSON.parse(
       await fs.readFile(
-        path.join(f.root, '.upload-receipts/sampleproject/receipt.json'),
+        path.join(f.root, '.upload-receipts/renamed-project/receipt.json'),
         'utf8',
       ),
     ).projectName,
-    'sampleproject',
+    'renamed-project',
   );
   assert.equal(
     JSON.parse(await fs.readFile(result.journal, 'utf8')).state,
@@ -146,7 +146,7 @@ test('database failure restores original directories and session metadata', asyn
     JSON.parse(await fs.readFile(f.session, 'utf8')).projectName,
     'sampleproject',
   );
-  await assert.rejects(fs.stat(path.join(f.root, 'sampleproject')), {
+  await assert.rejects(fs.stat(path.join(f.root, 'renamed-project')), {
     code: 'ENOENT',
   });
   assert(f.queries.includes('ROLLBACK'));

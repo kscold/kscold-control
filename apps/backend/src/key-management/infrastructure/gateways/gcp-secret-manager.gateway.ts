@@ -27,8 +27,7 @@ export class GcpSecretManagerGateway implements ISecretStoreGateway {
     private readonly targets: KeyManagementTargetService,
   ) {
     this.gcloudPath =
-      config.get<string>('KEY_MANAGEMENT_GCLOUD_PATH') ??
-      '/opt/homebrew/bin/gcloud';
+      config.get<string>('KEY_MANAGEMENT_GCLOUD_PATH') || 'gcloud';
   }
 
   async readLatest(targetId: string): Promise<SecretStoreVersion> {

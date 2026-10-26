@@ -14,7 +14,7 @@ import {
 export class PortForwardingService {
   private readonly logger = new Logger(PortForwardingService.name);
   private externalIp: string | null = null;
-  private readonly domain = 'router.example.com'; // 외부 접속 안내에 쓰는 고정 도메인
+  private readonly domain = process.env.PUBLIC_HOST || '';
 
   constructor(
     @Inject(UPNP_GATEWAY_REPOSITORY)
@@ -38,7 +38,7 @@ export class PortForwardingService {
       })
       .catch(() => {
         this.logger.warn(
-          'UPnP 외부 IP 조회에 실패해 고정 도메인을 사용합니다.',
+          'UPnP 외부 IP 조회 실패. PUBLIC_HOST가 설정된 경우에만 외부 접속 주소를 안내합니다.',
         );
         this.externalIp = this.domain;
       });
@@ -153,19 +153,20 @@ export class PortForwardingService {
     http?: string;
     domain: string;
   } {
+    const host = this.domain || this.externalIp || '';
     // 반환 타입이 이미 선언돼 있으므로 지역 변수에 any 를 둘 이유가 없다.
     const result: { ssh?: string; http?: string; domain: string } = {
-      domain: this.domain,
+      domain: host,
     };
 
     // SSH 내부 포트 22가 공개된 경우에만 접속 명령 제공함.
-    if (ports['22']) {
-      result.ssh = `ssh root@${this.domain} -p ${ports['22']}`;
+    if (ports['22'] && host) {
+      result.ssh = `ssh root@${host} -p ${ports['22']}`;
     }
 
     // HTTP 내부 포트 80이 공개된 경우에만 URL 제공함.
-    if (ports['80']) {
-      result.http = `http://${this.domain}:${ports['80']}`;
+    if (ports['80'] && host) {
+      result.http = `http://${host}:${ports['80']}`;
     }
 
     return result;

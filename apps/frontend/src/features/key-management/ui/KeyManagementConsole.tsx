@@ -20,6 +20,7 @@ import {
 import { useModalStore } from '@/shared/model';
 import type { BackupStatus, SecretBackup } from '../model/types';
 import { useKeyManagement } from '../model/useKeyManagement';
+import { API_URL } from '@/shared/config';
 
 const STATUS: Record<BackupStatus, { label: string; className: string }> = {
   backed_up: {
@@ -243,13 +244,17 @@ export function KeyManagementConsole() {
     [target.instanceName, target.location].filter(Boolean).join(' · ') ||
     '런타임 메타데이터 동기화 중';
   const envFileName = target.envFileName || '.env';
-  const patchCommand = `curl -X PATCH 'https://control.example.com/api/key-management/targets/${target.id}/environment/MY_KEY' \\
+  const apiOrigin = new URL(
+    API_URL || window.location.origin,
+    window.location.origin,
+  ).origin;
+  const patchCommand = `curl -X PATCH '${apiOrigin}/api/key-management/targets/${target.id}/environment/MY_KEY' \\
   -H 'Authorization: Bearer $TOKEN' \\
   -H 'Content-Type: application/json' \\
   --data '{"secretValue":"new-value","expectedVersion":"${expectedVersion}"}'`;
   const fullCommand = `jq -n --rawfile env ${target.envFileName} --arg version '${expectedVersion}' \\
   '{envFile: $env, expectedVersion: $version}' | \\
-curl -X PUT 'https://control.example.com/api/key-management/targets/${target.id}/environment' \\
+curl -X PUT '${apiOrigin}/api/key-management/targets/${target.id}/environment' \\
   -H 'Authorization: Bearer $TOKEN' \\
   -H 'Content-Type: application/json' --data-binary @-`;
 

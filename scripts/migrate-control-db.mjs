@@ -3,6 +3,7 @@ import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { Client } from 'pg';
+import { isMigrationCompatible } from './lib/migration-compatibility.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const migrationsDirectory = path.join(root, 'apps/backend/migrations');
@@ -48,7 +49,7 @@ try {
     );
 
     if (existing.rowCount) {
-      if (existing.rows[0].checksum !== checksum) {
+      if (!isMigrationCompatible(id, existing.rows[0].checksum, checksum)) {
         throw new Error(`이미 적용된 마이그레이션 체크섬이 다릅니다: ${id}`);
       }
       skipped += 1;
