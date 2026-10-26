@@ -1,12 +1,14 @@
 import { Injectable } from '@nestjs/common';
 import { execFile } from 'node:child_process';
 import * as fs from 'node:fs';
-import * as path from 'node:path';
 import { promisify } from 'node:util';
 import type { IComposeRuntimeGateway } from '../../domain/gateways/compose-runtime.gateway.interface';
 import type { ComposeDocument } from '../../domain/types/compose.type';
 import { resolveDockerHost } from '../lib/docker-host';
-import { resolveDockerProjectRoot } from '../lib/docker-project-root';
+import {
+  resolveComposeFilePath,
+  resolveDockerProjectRoot,
+} from '../lib/docker-project-root';
 
 const execFileAsync = promisify(execFile);
 const yaml = require('js-yaml');
@@ -14,12 +16,10 @@ const yaml = require('js-yaml');
 @Injectable()
 export class DockerComposeRuntimeAdapter implements IComposeRuntimeGateway {
   private readonly projectRoot = resolveDockerProjectRoot(__dirname);
-  private readonly composeFilePath = path.join(
-    this.projectRoot,
-    'docker-compose.yml',
-  );
+  private readonly composeFilePath = resolveComposeFilePath(this.projectRoot);
 
   readCompose(): ComposeDocument {
+    this.assertConfigured();
     const content = fs.readFileSync(this.composeFilePath, 'utf8');
     const compose = yaml.load(content) ?? {};
 
@@ -35,6 +35,7 @@ export class DockerComposeRuntimeAdapter implements IComposeRuntimeGateway {
   }
 
   writeCompose(compose: ComposeDocument): void {
+    this.assertConfigured();
     const content = yaml.dump(compose, {
       indent: 2,
       lineWidth: 120,
@@ -51,7 +52,11 @@ export class DockerComposeRuntimeAdapter implements IComposeRuntimeGateway {
      * 하나만 보이게 함.
      */
     try {
-      fs.writeFileSync(temporaryFilePath, content, 'utf8');
+      fs.writeFileSync(temporaryFilePath, content, {
+        encoding: 'utf8',
+        mode: 0o600,
+        flag: 'wx',
+      });
       fs.renameSync(temporaryFilePath, this.composeFilePath);
     } finally {
       if (fs.existsSync(temporaryFilePath)) {
@@ -101,6 +106,7 @@ export class DockerComposeRuntimeAdapter implements IComposeRuntimeGateway {
   }
 
   private async runCompose(args: string[]): Promise<string> {
+    this.assertConfigured();
     /*
      * 서비스 이름은 애플리케이션에서 허용 문자로 검증하지만, 여기서도 셸을 거치지
      * 않고 실행 파일과 인수를 분리함. Compose 파일 경로에 공백이 있어도
@@ -118,5 +124,13 @@ export class DockerComposeRuntimeAdapter implements IComposeRuntimeGateway {
       },
     );
     return `${stdout}${stderr}`;
+  }
+
+  private assertConfigured(): void {
+    if (!fs.existsSync(this.composeFilePath)) {
+      throw new Error(
+        '관리할 Compose 파일이 없습니다. CONTROL_COMPOSE_FILE 또는 docker-compose.local.yml을 설정하세요.',
+      );
+    }
   }
 }

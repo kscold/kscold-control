@@ -27,8 +27,7 @@ export class GithubActionsDeploymentGateway implements IDeploymentGateway {
     config: ConfigService,
     private readonly targets: KeyManagementTargetService,
   ) {
-    this.ghPath =
-      config.get<string>('KEY_MANAGEMENT_GH_PATH') ?? '/opt/homebrew/bin/gh';
+    this.ghPath = config.get<string>('KEY_MANAGEMENT_GH_PATH') || 'gh';
   }
 
   async trigger(input: TriggerDeploymentInput): Promise<void> {

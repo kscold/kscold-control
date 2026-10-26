@@ -3,11 +3,14 @@
 A self-hosted infrastructure governance panel for managing Docker containers, Nginx, SSL certificates, AI coding assistants (Claude Code · OpenAI Chat API · Codex CLI), source repositories, and system monitoring — all from a single web interface.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Node.js](https://img.shields.io/badge/Node.js-20%2B-green)](https://nodejs.org)
+[![Node.js](https://img.shields.io/badge/Node.js-24_LTS-green)](https://nodejs.org)
 [![pnpm](https://img.shields.io/badge/pnpm-workspace-orange)](https://pnpm.io)
-[![NestJS](https://img.shields.io/badge/NestJS-10-red)](https://nestjs.com)
+[![NestJS](https://img.shields.io/badge/NestJS-11-red)](https://nestjs.com)
 [![React](https://img.shields.io/badge/React-18-61DAFB)](https://react.dev)
-[![v1.3.0](https://img.shields.io/badge/release-v1.3.0-brightgreen)](https://github.com/kscold/kscold-control/releases/tag/v1.3.0)
+[![Release](https://img.shields.io/github/v/release/kscold/kscold-control)](https://github.com/kscold/kscold-control/releases)
+
+운영 설정과 공개 소스는 분리합니다. 개인 프로젝트·계정·도메인은 예시에 넣지 않으며,
+실제 대상과 권한은 각 설치의 DB 및 비공개 설정에서 관리합니다. [보안 정책 / Security](SECURITY.md)
 
 ---
 
@@ -21,7 +24,7 @@ A self-hosted infrastructure governance panel for managing Docker containers, Ng
 | **Repository**  | Resumable SHA-256 uploads, atomic publish, version snapshots, diff viewer, file browser       |
 | **Audit**       | AOP-based automatic audit log, CSV export, actor/target insights                              |
 | **Security**    | IP ban management, JWT RBAC, permission guards                                                |
-| **Key Vault**   | DB-driven ProjectAlpha/ProjectBeta `.env`, encrypted backups, GCP/SSH versioned deploys                   |
+| **Key Vault**   | DB-driven targets, encrypted `.env` backups, GCP/SSH versioned deploys                        |
 | **Logs**        | Unified viewer — backend · PM2 · Nginx · Docker · blog container logs                         |
 | **Network**     | Topology graph (React Flow), UPnP port management                                             |
 | **Maintenance** | Daily cleanup of finished git worktrees with local-file backup and run history                |
@@ -77,12 +80,15 @@ kscold-control/
 
 | Tool       | Min version   |
 | ---------- | ------------- |
-| Node.js    | 20            |
-| pnpm       | 9             |
+| Node.js    | 24 LTS        |
+| pnpm       | 10.29.3       |
 | PostgreSQL | 14            |
 | Docker     | 24 (optional) |
 
-### One-command setup
+### Manual development setup
+
+원클릭 설치는 아직 검증 중입니다. 아래는 PostgreSQL과 개발 도구가 준비된 환경의 수동 절차입니다.
+Automated cross-platform installation is still being validated; the steps below are manual.
 
 ```bash
 git clone https://github.com/kscold/kscold-control.git
@@ -162,7 +168,7 @@ approved `key_manager` role receives only `dashboard:read`, `secrets:read`,
 Target scope is stored separately in `user_key_management_targets`. Global
 administrators always see every enabled target; other key managers only see and
 operate the targets selected on their RBAC user card. New approvals start with
-`projectalpha-production` only, following least privilege.
+no target access. An administrator must explicitly assign the allowed targets.
 
 ### Read-only user preview
 
@@ -173,9 +179,9 @@ original administrator immediately; mutating HTTP requests and all Terminal,
 Claude, and Codex WebSocket sessions are rejected server-side during preview.
 Each preview start is recorded in the RBAC audit timeline.
 
-Targets are registered in `key_management_targets`. The production migration
-creates `projectalpha-production` (GCP Secret Manager + GitHub Actions) and
-`projectbeta-production` (SSH env file + blue/green deploy). Get a JWT and the
+Targets are registered in `key_management_targets` for each installation. Public
+migrations define structure only; they do not create operator accounts, grant
+target access or register production endpoints. Get a JWT and the
 current version for the targets granted to that user:
 
 ```bash
@@ -290,7 +296,7 @@ curl -H "Authorization: Bearer $TOKEN" \
 
 # Register a target
 curl -X POST -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
-  -d '{"name":"my-app-prod","uri":"mongodb+srv://backup-user:change-me@cluster.example.mongodb.net/prod","scheduleTime":"03:30","retentionDays":10}' \
+  -d '{"name":"my-app-prod","uri":"mongodb://database.example.com:27017/app","scheduleTime":"03:30","retentionDays":10}' \
   http://localhost:4000/api/backups/targets
 
 # Start a backup now — returns 202 with the run; poll the history for the result
@@ -361,11 +367,10 @@ serves an atomically published frontend release under `/` and all API routes und
 `/api`; ordinary `pnpm build` output is never served directly in production.
 A sample Nginx reverse-proxy config is at [`nginx/conf.d/app-stack.conf.example`](nginx/conf.d/app-stack.conf.example).
 
-For the optional ProjectDelta compose service, copy `env/projectdelta.env.example` to
-`env/projectdelta.env` and replace every placeholder before starting the stack.
-The compose file allows that file to be absent so unrelated services can still
-be validated with `docker compose config`, but ProjectDelta itself needs its runtime
-secrets to start correctly.
+Managed Docker stacks are local-only. Set `CONTROL_COMPOSE_FILE` to an absolute
+path, or create a private `docker-compose.local.yml`. Existing private
+`docker-compose.yml` installations remain supported. None of these files belongs
+in Git. Deployment health checks use your configured `FRONTEND_URL` and `PORT`.
 
 SSL certificates can be issued and renewed directly from the **Nginx → SSL** panel.
 

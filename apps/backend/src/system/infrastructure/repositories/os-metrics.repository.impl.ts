@@ -12,9 +12,9 @@ import type {
   MemoryStats,
 } from '../../domain/types/system-info.type';
 import { parseDockerSystemDfOutput } from '../../../common/utils/docker-disk-usage.util';
+import { resolveDockerHost } from '../../../common/utils/docker-host.util';
 
 const execAsync = promisify(exec);
-const DEFAULT_DOCKER_HOST = 'unix:///home/example/.colima/default/docker.sock';
 
 @Injectable()
 export class OsMetricsRepositoryImpl implements IOsMetricsRepository {
@@ -78,7 +78,7 @@ export class OsMetricsRepositoryImpl implements IOsMetricsRepository {
     };
 
     try {
-      const home = process.env.HOME || '/Users/' + process.env.USER;
+      const home = os.homedir();
       const dockerUsagePromise = this.getDockerStorageUsage(home);
 
       const [dfResult, appsResult, dockerUsage] = await Promise.all([
@@ -266,11 +266,12 @@ export class OsMetricsRepositoryImpl implements IOsMetricsRepository {
     home: string,
   ): Promise<DockerStorageUsage> {
     const dockerUsage = this.createEmptyDockerUsage();
-    const dockerHost = process.env.DOCKER_HOST || DEFAULT_DOCKER_HOST;
+    const dockerHost = resolveDockerHost();
 
     try {
       const { stdout } = await execAsync(
-        `DOCKER_HOST=${dockerHost} docker system df --format '{{json .}}'`,
+        "docker system df --format '{{json .}}'",
+        { env: { ...process.env, DOCKER_HOST: dockerHost } },
       );
       Object.assign(dockerUsage, parseDockerSystemDfOutput(stdout));
     } catch (error) {

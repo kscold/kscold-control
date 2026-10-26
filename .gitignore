@@ -7,11 +7,17 @@ runtime/
 playwright-report
 test-results
 .env
+.env.*
+!.env.example
 env/*
 *.env.local
 .DS_Store
 docker-compose.override.yml
 docker-compose.local.yml
+/docker-compose.yml
+/setup-ssl.sh
+/issue-ssl-*.sh
+.control-install/
 
 # Local-only infra overrides
 nginx/conf.d/*.conf
