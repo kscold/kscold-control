@@ -1,0 +1,11 @@
+log_level: INFO
+storage:
+  storage_path: /qdrant/storage
+  snapshots_path: /qdrant/snapshots
+  performance:
+    max_search_threads: 2
+service:
+  host: 127.0.0.1
+  http_port: 6333
+  grpc_port: 6334
+telemetry_disabled: true

@@ -1,0 +1,54 @@
+name: Blog image
+
+on:
+  pull_request:
+    paths:
+      - 'docker/blog/**'
+      - '.github/workflows/blog-image.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: blog-image-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build ARM64 blog image
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Read pinned blog revision
+        id: source
+        run: echo "revision=$(cat docker/blog/source-revision)" >> "$GITHUB_OUTPUT"
+      - uses: actions/checkout@v7
+        with:
+          repository: kscold/kscold-blog-version-2
+          ref: ${{ steps.source.outputs.revision }}
+          path: .blog-source
+          persist-credentials: false
+      - name: Validate scripts and deployment definition
+        env:
+          BLOG_IMAGE: kscold/ubuntu-blog:2026-10-27-ci
+          BLOG_ENV_FILE: /dev/null
+        run: |
+          bash -n docker/blog/build.sh docker/blog/entrypoint.sh docker/blog/verify.sh
+          python3 -c 'import ast,pathlib; [ast.parse(p.read_text()) for p in pathlib.Path("docker/blog").glob("*.py")]'
+          docker compose -f docker/blog/compose.yaml config --quiet
+      - name: Build pinned source without production services
+        run: bash docker/blog/build.sh .blog-source "$(cat docker/blog/source-revision)" kscold/ubuntu-blog:2026-10-27-ci
+      - name: Check runtime executables
+        run: |
+          docker run --name blog-verify-runtime --network none --entrypoint sh kscold/ubuntu-blog:2026-10-27-ci -ec '
+            node --version
+            java -version
+            python --version
+            qdrant --version
+            mongod --version
+            python -c "import ssl, sqlite3, grpc, pymongo, qdrant_client"
+          '
