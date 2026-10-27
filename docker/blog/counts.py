@@ -1,11 +1,17 @@
 """컨테이너 안에서 실행하며 문서 본문·환경 변수 값은 출력하지 않는다."""
 import json
 import os
+import sys
 import urllib.request
 
 from pymongo import MongoClient
 
-with MongoClient(os.environ["MONGODB_URI"], serverSelectionTimeoutMS=5000) as client:
+sys.path.insert(0, "/usr/local/lib/blog")
+from runtime_env import local_mongodb_uri
+
+mongo_uri = local_mongodb_uri(os.environ["MONGODB_URI"], "127.0.0.1:27017")
+
+with MongoClient(mongo_uri, serverSelectionTimeoutMS=5000) as client:
     database = client[os.getenv("MONGODB_DATABASE", "kscold-blog")]
     result = {"version": client.server_info()["version"],
               "counts": {name: database[name].count_documents({})
@@ -14,7 +20,7 @@ with MongoClient(os.environ["MONGODB_URI"], serverSelectionTimeoutMS=5000) as cl
         result["fcv"] = client.admin.command({"getParameter": 1, "featureCompatibilityVersion": 1})["featureCompatibilityVersion"]
     except Exception:
         result["fcv"] = "권한 부족"
-qdrant_url = os.getenv("QDRANT_URL", "http://127.0.0.1:6333")
+qdrant_url = "http://127.0.0.1:6333"
 with urllib.request.urlopen(qdrant_url + "/collections", timeout=5) as response:
     collections = json.load(response)["result"]["collections"]
 result["qdrant"] = {}

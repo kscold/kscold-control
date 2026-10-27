@@ -7,10 +7,12 @@ import urllib.request
 
 from dotenv import load_dotenv
 from pymongo import MongoClient
+from runtime_env import local_mongodb_uri
 
 service = sys.argv[1]
-if service == "api":
+if service in ("api", "agent"):
     load_dotenv("/app/backend/.env", override=False)
+    os.environ["MONGODB_URI"] = local_mongodb_uri(os.environ["MONGODB_URI"], os.environ["BLOG_MONGODB_HOST"])
 
 if service in ("api", "agent"):
     for attempt in range(90):

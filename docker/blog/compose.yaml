@@ -15,8 +15,9 @@ services:
       VAULT_AGENT_GRPC_PORT: '9090'
       FILE_UPLOAD_DIR: /app/uploads
     ports:
-      - '127.0.0.1:3002:3000'
-      - '127.0.0.1:8083:8080'
+      - '0.0.0.0:3002:3000'
+      - '0.0.0.0:8083:8080'
+      - '0.0.0.0:27019:27017'
     volumes:
       - blog-mongo-data:/data/db
       - blog-uploads:/app/uploads
@@ -25,6 +26,7 @@ services:
     networks:
       - blog-network
     cpus: '3'
+    cpu_shares: 4096
     mem_limit: 4g
     pids_limit: 512
     ulimits:
@@ -48,13 +50,13 @@ networks:
 volumes:
   blog-mongo-data:
     external: true
-    name: ${BLOG_MONGO_VOLUME:-kscold-control_blog-mongo-data}
+    name: ${BLOG_MONGO_VOLUME:?원본과 다른 새 MongoDB 볼륨을 지정하세요}
   blog-uploads:
     external: true
-    name: ${BLOG_UPLOADS_VOLUME:-kscold-control_blog-uploads}
+    name: ${BLOG_UPLOADS_VOLUME:?원본과 다른 새 업로드 볼륨을 지정하세요}
   blog-qdrant-data:
     external: true
-    name: ${BLOG_QDRANT_VOLUME:-kscold-vault-qdrant-data}
+    name: ${BLOG_QDRANT_VOLUME:?원본과 다른 새 Qdrant 볼륨을 지정하세요}
   blog-qdrant-snapshots:
     external: true
-    name: ${BLOG_SNAPSHOTS_VOLUME:-kscold-vault-qdrant-snapshots}
+    name: ${BLOG_SNAPSHOTS_VOLUME:?원본과 다른 새 스냅샷 볼륨을 지정하세요}

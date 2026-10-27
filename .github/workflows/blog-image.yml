@@ -15,8 +15,30 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  validate:
+    name: Validate blog deployment definition
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Validate scripts, internal addresses and deployment definition
+        env:
+          BLOG_IMAGE: kscold/ubuntu-blog:2026-10-27-ci
+          BLOG_ENV_FILE: /dev/null
+          BLOG_MONGO_VOLUME: blog-verify-mongo-ci
+          BLOG_UPLOADS_VOLUME: blog-verify-uploads-ci
+          BLOG_QDRANT_VOLUME: blog-verify-qdrant-ci
+          BLOG_SNAPSHOTS_VOLUME: blog-verify-snapshots-ci
+        run: |
+          bash -n docker/blog/build.sh docker/blog/entrypoint.sh docker/blog/verify.sh
+          python3 -c 'import ast,pathlib; [ast.parse(p.read_text()) for p in pathlib.Path("docker/blog").glob("*.py")]'
+          python3 -m unittest discover -s docker/blog -p 'test_*.py'
+          docker compose -f docker/blog/compose.yaml config --quiet
   build:
     name: Build ARM64 blog image
+    if: github.event_name == 'workflow_dispatch'
+    needs: validate
     runs-on: ubuntu-24.04-arm
     timeout-minutes: 35
     steps:
@@ -32,14 +54,6 @@ jobs:
           ref: ${{ steps.source.outputs.revision }}
           path: .blog-source
           persist-credentials: false
-      - name: Validate scripts and deployment definition
-        env:
-          BLOG_IMAGE: kscold/ubuntu-blog:2026-10-27-ci
-          BLOG_ENV_FILE: /dev/null
-        run: |
-          bash -n docker/blog/build.sh docker/blog/entrypoint.sh docker/blog/verify.sh
-          python3 -c 'import ast,pathlib; [ast.parse(p.read_text()) for p in pathlib.Path("docker/blog").glob("*.py")]'
-          docker compose -f docker/blog/compose.yaml config --quiet
       - name: Build pinned source without production services
         run: bash docker/blog/build.sh .blog-source "$(cat docker/blog/source-revision)" kscold/ubuntu-blog:2026-10-27-ci
       - name: Check runtime executables

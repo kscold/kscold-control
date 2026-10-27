@@ -1,165 +1,74 @@
 # ubuntu-blog 통합 이미지
 
-Ubuntu 위에서 API, Next standalone, MongoDB, Vault Agent, Qdrant를 별도 Supervisor 프로그램으로 실행한다. `compose.yaml`은 교체 검토용 정의이며 자동 배포하지 않는다. 운영 설정과 데이터는 이미지에 포함하지 않는다.
+API·Next standalone·Agent·MongoDB·Qdrant를 별도 Supervisor 프로그램으로 실행한다. 이 Compose는 교체 검토용이며 자동 배포하지 않는다. 운영 시크릿과 비공개 overlay는 이미지·Git에 넣지 않는다.
 
-## 버전과 빌드
+## 현재 이미지와 다음 이미지
 
-| 구성 | 고정 버전 | 선택 근거 |
+현재 `2026-10-27-r1`은 블로그 `50034991f6561b7147d19d0be4aa2e72b819062c`를 사용한다. Dockerfile의 소스·빌더·Qdrant 고정값은 이 기준이며, 아래 A 설정 변경은 기존 r1 이미지를 변경하지 않는다. A 복사본에는 검토한 설정과 Qdrant 바이너리를 별도로 적용해 검증한다.
+
+최종 프런트 main 반영 후 운영자의 B 신호를 받아 다음 값을 새 날짜 태그에 반영하고 전체 리허설을 반복한다. `latest`나 기존 태그를 덮어쓰지 않는다.
+
+| 항목 | r1 | B에서 반영할 r2 |
 | --- | --- | --- |
-| Ubuntu | 24.04 LTS + 이미지 digest | 기존 22.04에서 LTS 기반 갱신 |
-| Node | 26.12.1 + 이미지 digest | 프런트 업그레이드 담당자의 실행 환경과 일치. 2026-10-27 기준 Current이며 LTS로 표기하지 않음 |
-| Java 런타임 | Temurin 25.0.5+8 JRE + SHA-256 | 백엔드 담당자의 Java 25 LTS 결정 반영 |
-| Java 빌드 | Temurin 21.0.13+9 JDK + SHA-256 | 현재 main의 Gradle 8.14.5 / Java 21 소스 호환. Java 25 소스가 main에 반영되면 빌더도 함께 변경 |
-| MongoDB | 8.0.34 | 지정된 8.0 계열의 패치 고정 |
-| MongoDB 도구 | mongosh 2.14.0, database-tools 100.20.0 | 서버와 별도로 고정 |
-| Python | CPython 3.13.18 + SHA-256, `/opt/agent-venv` | Agent 담당자의 3.13 결정 반영 |
-| Qdrant | 1.19.0 공식 ARM64 바이너리 + SHA-256 | 기존 데이터 형식을 먼저 검증. 1.20 이전은 별도 작업 |
+| Ubuntu | 24.04 LTS, ARM64 | 동일 |
+| Java 실행 / 빌드 | Temurin 25.0.5+8 / 21.0.13+9 | 모두 Temurin 25.0.5+8 |
+| Node | 26.12.1 | 26.12.1 |
+| pnpm | 고정 소스 packageManager | 12.15.0, pnpm-workspace.yaml의 overrides 포함 |
+| MongoDB | 8.0.34, FCV 7.0 유지 | 동일 |
+| Python | CPython 3.13.18 | 동일 버전, 최종 Agent 잠금 파일 반영 |
+| Qdrant 서버 / 클라이언트 | 1.19.0 / 1.19.0 | 모두 1.20.0, query_points 사용 |
 
-근거: [Node 릴리스](https://nodejs.org/en/blog/release/v26.12.1), [Temurin 지원](https://adoptium.net/support/), [Python 릴리스](https://www.python.org/downloads/release/python-31318/), [Qdrant 릴리스](https://github.com/qdrant/qdrant/releases/tag/v1.19.0).
+Qdrant 데이터는 원본 1.19.0을 보존한 복사본에서 **1.19.2 → 1.20.0** 순서로 이전한다. 각 단계에서 컬렉션·포인트 수·실제 벡터 검색 순위와 점수를 비교한다. 이전 데이터로의 복귀는 원래 볼륨으로 수행하며 새 형식의 파일을 이전 서버로 열지 않는다. 상세 절차는 블로그 저장소의 `apps/agent/UPGRADING.md`를 따른다.
 
-대상은 운영 호스트와 같은 `linux/arm64`다. 다른 아키텍처는 명시적으로 실패한다. 기본 소스 커밋은 `source-revision`에 고정한다. 빌드 전에 블로그 저장소에서 `git fetch origin main`을 실행하고, 다음처럼 커밋을 지정한다.
+## 포트와 자원
 
-```bash
-export DOCKER_HOST=unix:///Users/kscold/.colima/default/docker.sock
-bash docker/blog/build.sh /path/to/kscold-blog-version-2 COMMIT_SHA kscold/ubuntu-blog:2026-10-27-r1
-```
+- 운영 이름은 `ubuntu-blog`, 네트워크는 `kscold-control_default`를 유지한다. nginx upstream은 내부 3000·8080이다.
+- 호스트 포트는 기존처럼 `0.0.0.0:3002:3000`, `0.0.0.0:8083:8080`, `0.0.0.0:27019:27017`을 유지한다. sshd가 없는 2225만 제거한다.
+- control 예약 백업은 `host.docker.internal:host-gateway`를 통해 27019로 접속한다. 따라서 이번 교체에서 27019를 닫거나 127.0.0.1로 좁히지 않는다. 내부망 백업 이전과 포트 축소는 별도 PR로 진행한다.
+- MongoDB는 인증을 유지하고 `--bind_ip_all`로 Docker 포트 전달을 받는다. Vault 동기화의 컨테이너 내부 `127.0.0.1:27017`도 유지한다.
+- CPU 3개·메모리 4GiB와 **cpu_shares 4096**을 사용한다. 기존 CPU 우선순위를 낮추지 않는다. Java heap 768MiB, Node heap 512MiB, WiredTiger cache 512MiB를 기본값으로 둔다.
+- Colima의 `host.docker.internal` DNS를 사용하므로 통합 컨테이너에 extra_hosts를 추가하지 않는다. QA 러너는 호스트 3305를 사용한다.
 
-스크립트는 `git archive`로 추적 파일만 추출한다. `.env.local`, `application-prod.yml`, private 문서, 배포 overlay, macOS node_modules는 컨텍스트에 들어가지 않는다. 기존 태그와 `latest` 덮어쓰기를 거부한다. 공개 저장소의 블로그 코드만 포함하므로 **git 밖 전용 페이지/강의 대본/개인 자료의 운영 동등성은 보장하지 않는다**. 이런 자산은 교체 전에 별도 런타임 마운트 및 경로를 확인해야 한다.
+## 환경과 파일 호환
 
-Next는 [CLI의 compile 모드](https://nextjs.org/docs/app/api-reference/cli/next)와 generate-env를 사용한다. 빌드 중 운영 API를 조회하거나 CI 가짜 콘텐츠를 이미지에 저장하지 않는다. lint와 타입 검사를 별도로 실행하고, 실제 데이터는 최초 요청에서 렌더링한다. 실험적 빌드 옵션이므로 Next 메이저 변경 때 standalone·SSR·클라이언트 번들을 다시 검증해야 한다. `API_INTERNAL_URL=http://127.0.0.1:8080/api`가 SSR 주소이고 브라우저는 `/api`를 사용한다. 앞단 nginx가 `/api`를 API로 전달해야 한다.
+기존 `/app/backend/.env`는 내용·권한을 보존해 복사한다. 실행에 필요한 기존 OCI/PM2/Agent 환경도 값 출력 없이 비공개 mode 600 파일로 전달한다. 이전 컨테이너가 롤백 시 그대로 사용할 원본 시크릿은 수정하지 않는다.
 
-Supervisor 4.2.5-1ubuntu0.1과 tini 0.19.0-1을 고정하고 Agent 전이 의존성도 `agent-requirements.lock`에 고정한다. 블로그 Agent 요구사항과 잠금 파일이 다르면 빌드가 실패하므로 함께 갱신한다. Ubuntu 일반 라이브러리는 보안 저장소의 업데이트를 받으므로 비트 단위 재현은 보장하지 않는다. 이미지의 `/usr/local/lib/blog/os-packages.txt`, `/app/agent/requirements.resolved.txt`와 최종 이미지 ID를 함께 보관한다.
+Supervisor는 API→Agent, web→API, Agent→Qdrant 주소를 loopback으로 덮어쓴다. launcher는 API와 Agent의 `.env`를 읽고 `BLOG_MONGODB_HOST=127.0.0.1:27017`을 적용해 MongoDB URI의 호스트 부분만 실행 환경에서 바꾼다. 사용자명·암호 인코딩·DB·authSource 등 옵션은 보존한다. 잘못된 URI나 SRV URI는 값을 출력하지 않고 실패한다.
 
-## 경로, 프로세스, 권한
-
-| 프로그램 | 경로 | 사용자 | 포트 |
+| 프로그램 | 경로 | 사용자 | 내부 포트 |
 | --- | --- | --- | --- |
-| api | `/app/backend/blog.jar`, 호환용 `/app/backend/.env` | 10001:10001 | 8080 |
-| web | `/app/frontend/apps/web/server.js` | 10001:10001 | 3000 |
-| agent | `/app/agent/src`, `/opt/agent-venv` | 10001:10001 | 9090, 외부에 게시하지 않음 |
-| mongod | `/data/db` | UID 999, 보조 그룹 999 | 127.0.0.1:27017, 인증 필수 |
-| qdrant | `/qdrant/storage`, `/qdrant/snapshots` | 1000:1000 | 127.0.0.1:6333/6334 |
-| 업로드 | `/app/uploads` | 10001:10001 | 해당 없음 |
+| api | /app/backend/blog.jar, /app/backend/.env | 10001:10001 | 8080 |
+| web | /app/frontend/apps/web/server.js | 10001:10001 | 3000 |
+| agent | /app/agent/src, /opt/agent-venv | 10001:10001 | 9090 |
+| mongod | /data/db | UID 999 | 27017, 인증 필수 |
+| qdrant | /qdrant/storage, /qdrant/snapshots | 1000:1000 | loopback 6333·6334 |
+| 업로드 | /app/uploads | 10001:10001 | 해당 없음 |
 
-Supervisor와 tini만 root로 실행한다. API launcher가 root 전용 `.env`를 읽은 후 권한을 낮춘다. 런타임 env가 `.env`보다 우선한다. Supervisor의 소켓은 `/run/blog/supervisor.sock`, mode 0700이다. 시작 시 데이터 소유권·FCV·사용자를 변경하지 않는다. 기존 root 소유 MongoDB 데이터는 **정지한 복사본**에 한해 999:999로 이전해야 한다.
+Supervisor 소켓은 `/run/blog/supervisor.sock`, mode 0700이다. 코드 배포는 api/web/agent만 갱신하고 mongod/qdrant PID를 보존한다. `restart all`, Supervisor reload, 컨테이너 재시작을 앱 배포에 사용하지 않는다. 이미지 시작 시 데이터 소유권이나 FCV를 암묵적으로 변경하지 않는다.
 
-모든 프로그램 로그는 stdout/stderr이며 `docker logs`로 읽는다. Compose는 20 MB × 5개로 로그를 제한한다. 파일 로그 및 PM2 로그는 새로 만들지 않는다. `healthcheck.py`는 API `/api/health`, web `/`, Qdrant `/readyz`, Agent gRPC 채널 연결을 확인한다. Agent 연결 확인은 모델 응답의 정확성을 보장하지 않는다.
+로컬 배포 도구는 Git 밖에 두며 기존 도구를 백업한다. standalone에 비공개 소스·자료·공개 자산·.env.local을 포함하고 macOS 빌드에는 Linux ARM64 sharp를 보강한다. 새 릴리스 디렉터리와 링크로 교체하며 실패하면 이전 릴리스로 복원한다. Docker 하위 이미지 레이어의 EXDEV에는 백업 복사를 완료한 뒤 첫 링크 전환을 수행한다. 백엔드 운영 프로필 yml을 JAR에 포함하고 기존 `.env` 해시를 보존한다. Agent의 의존성이 같으면 소스만 바꾸고 설치를 생략한다.
 
-```bash
-docker exec ubuntu-blog supervisorctl status
-docker exec ubuntu-blog supervisorctl restart api web agent
-```
+SEO가 게시하는 `/app/frontend/data/search-insights/index-coverage.json`은 릴리스 밖 `/app/frontend-data`로 연결한다. root 소유 mode 644로 docker cp한 파일을 UID 10001이 읽고, 다음 프런트 배포에서도 보존해야 한다. 비공개 검색 설정·지원 페이지·강사 자료는 운영 전용 overlay 검증 대상이다.
 
-`restart all`, `reload`, 컨테이너 재시작은 코드 배포 명령으로 사용하지 않는다. 위의 세 프로그램 재시작은 mongod·qdrant를 건드리지 않는다. 종료 순서는 web → api → agent → 데이터 저장소이며 MongoDB 종료 대기 90초, Qdrant 60초, 컨테이너 전체 유예 180초다.
+## 복사본 검증과 교체 순서
 
-기존 sshd가 2225에서 대기하지만 조사 시 활성 SSH 세션은 없고 배포 overlay는 `docker cp/exec`를 사용했다. 새 이미지에는 sshd와 cron을 설치하지 않는다. 2225를 사용하는 별도 운영 도구가 있다면 교체 전에 Docker exec 방식으로 바꿔야 한다. 기존 cron에는 e2scrub 작업만 있었고 cron 데몬은 실행되지 않았다. MongoDB 호스트 포트 27019도 게시하지 않는다.
+운영 컨테이너·볼륨에는 쓰지 않는다. 검증은 `ubuntu-blog-verify-*` 컨테이너, `blog-verify-*` 볼륨, 별도 internal 네트워크에서 수행한다. 외부 발송 키는 비우고 OpenAI는 접근 불가능한 loopback으로 지정한다. 검증 프록시만 별도 edge 네트워크를 사용하며 운영 nginx·네트워크를 사용하지 않는다. 다 쓴 컨테이너는 stop만 한다.
 
-## 메모리
+1. `df -h ~`로 호스트 여유 공간 15GiB 이상을 확인한다. 빌드·전체 테스트·대용량 다운로드 전에 반복한다. 본 작업의 빌드 캐시·임시 산출물만 단계마다 정리한다.
+2. 이미지·overlay를 준비하고 원본과 다른 MongoDB·업로드·Qdrant·스냅샷 볼륨 4개를 명시한다. Compose는 새 볼륨 이름을 생략하면 실패한다.
+3. 기존 서비스가 동작하는 동안 새 볼륨에 warm copy한다. 이 복사본은 아직 새 DB로 열지 않는다. 최종 복사 전 데이터 일관성을 보장하지 않는 상태다.
+4. 쓰기를 차단하고 이전 Agent, API/web, MongoDB, Qdrant를 정지한다. 기존 PID 1 Python Agent는 SIGTERM을 무시할 수 있으므로 복사본에서 검증한 SIGINT 종료와 제한 시간을 사용한다. 강제 종료 여부를 확인한다.
+5. 정지한 원본을 readonly로 붙여 변경 파일만 새 볼륨에 동기화하고 모든 파일 checksum을 대조한다. 대상의 불필요한 파일만 제거하며 원본에는 쓰지 않는다. 새 볼륨의 UID를 각각 999·10001·1000으로 맞춘다.
+6. Qdrant 복사본을 1.19.2, 1.20.0 순서로 열어 검증하고 각 서버를 정상 종료한다. MongoDB 7의 FCV 7.0과 정상 종료도 확인한다.
+7. 이전 컨테이너를 날짜가 붙은 이름으로 보존하고 새 컨테이너를 ubuntu-blog 이름·기존 네트워크로 시작한다. 준비한 overlay를 반영하고 API/web/Agent/Qdrant health를 검사한다.
+8. control 내부 덤프와 host-gateway 덤프, QA 인증, Vault mongosh/mongoimport·/tmp, SEO 게시, 관리자/비공개/강사 화면, 실제 ARM64 sharp 변환을 검사한다. nginx DNS 갱신은 실제 교체 담당자가 수행한다.
 
-기존 세 컨테이너의 관측 사용량은 약 1.25 GiB + 184 MiB + 106 MiB였다. 별도 Agent/Qdrant에는 제한이 없었다. 통합 한도는 4 GiB, CPU 3개로 잡고 Java heap 768 MiB, Node heap 512 MiB, WiredTiger cache 512 MiB를 지정했다. 나머지는 JVM native 메모리, Python, Qdrant, 파일 캐시 여유다. Qdrant와 Python 자체의 강제 한도는 없으며 전체 cgroup 한도를 공유한다. 병렬 Agent 요청·재색인·대용량 첨부는 이 스모크 검증 범위 밖이므로 실제 부하에서 OOM과 지연을 관찰한다.
+다운타임 목표는 1분 이내다. 리허설은 정지 시작부터 overlay 배포와 전체 health 성공까지 측정하고, 브라우저 확인 시간은 별도로 기록한다. 실제 데이터량·부하·최종 r2 이미지에서 다시 측정하며 A 수치를 운영 보장으로 사용하지 않는다.
 
-## 안전한 검증
+롤백은 새 컨테이너를 정지·이름 변경하고, 보존한 이전 컨테이너를 ubuntu-blog로 돌려 **원래 MongoDB 7/Qdrant 1.19 볼륨**으로 시작한다. MongoDB 8이 연 파일을 MongoDB 7로 열지 않는다. 새 볼륨의 전환 후 쓰기는 원본으로 자동 합쳐지지 않으므로 쓰기 재개 뒤에는 신규 데이터 이관/RPO를 판단해야 한다.
 
-운영 볼륨을 쓰기 가능하게 검증 컨테이너에 붙이지 않는다. MongoDB는 승인된 archive를 새 MongoDB 7 볼륨에 복원하고 FCV 7.0을 확인한 뒤 정상 종료한다. 이 볼륨만 MongoDB 8에 연결한다. Qdrant 1.19 저장소·스냅샷과 업로드는 원본을 `readonly`로 마운트한 복사 도우미를 사용한다. 실행 중인 Qdrant 파일 복사본은 리허설 자료이며 최종 이전 백업으로 사용하지 않는다. 최종 교체는 정지 후 복사한다.
+## 빌드와 CI
 
-검증 이름은 `ubuntu-blog-verify`, 데이터 볼륨은 `blog-verify-*`, 네트워크는 새 `--internal` 네트워크를 사용한다. localhost 13002/18083을 게시하더라도 Colima의 internal 네트워크에서는 호스트 접근이 차단될 수 있다. 이때 새 검증 프록시만 별도 edge 네트워크에도 연결하고 localhost 13003에서 API/web을 프록시한다. 통합 컨테이너는 internal 네트워크에만 두며 운영 네트워크에 연결하지 않는다. 별도의 mode 600 env 파일에 임의 JWT/MongoDB 자격증명과 가짜 OpenAI 키를 넣고 Discord 토큰, SMTP 자격증명, IndexNow 키는 비운다. 알림·메일·결제·웹 검색을 끄고 OpenAI/SMTP/MinIO 주소를 접근 불가능한 loopback 주소로 둔다. 네트워크의 egress 차단을 함께 검증한다.
+`build.sh`는 소스를 git archive로 추출하고 기존 이미지 태그 덮어쓰기를 거부한다. 기본 소스는 source-revision이며 B에서 최종 main 커밋과 의존성 잠금을 함께 갱신한다. Next의 compile/generate-env 모드로 운영 API를 조회하지 않고 standalone을 만든다. 최종 프런트에서 빌드 모드·공개 변수·SSR·hydration을 다시 확인한다.
 
-앱을 시작하기 전 `API_AUTOSTART=false`, `WEB_AUTOSTART=false`, `AGENT_AUTOSTART=false`로 데이터 저장소만 시작한다. `counts.py`를 컨테이너의 Python stdin으로 실행해 archive와 컬렉션별 수가 정확히 같은지 비교한다. Qdrant 컬렉션/포인트 수, FCV 7.0도 확인한다. 그 후 `supervisorctl start api web agent`로 앱을 시작한다. GET 글 조회도 조회수/로그를 쓸 수 있으므로 반드시 복사본에서만 수행한다.
-
-```bash
-docker exec -i ubuntu-blog-verify /opt/agent-venv/bin/python < docker/blog/counts.py
-docker exec ubuntu-blog-verify supervisorctl start api web agent
-docker exec ubuntu-blog-verify /opt/agent-venv/bin/python /usr/local/lib/blog/healthcheck.py
-bash docker/blog/verify.sh ubuntu-blog-verify
-```
-
-글 상세, 관리자 로그인 화면, Vault, 인증된 관리자 채팅 GET, Agent 검색을 확인하고 `supervisorctl restart api web agent` 전후 mongod/qdrant PID가 같은지도 확인한다. 외부 모델 호출을 차단했으므로 실제 LLM 답변 품질은 이 검증으로 인증하지 않는다.
-
-## 운영 교체 런북 — 이 작업에서는 실행하지 않음
-
-아래는 운영 교체 담당자가 실행할 절차다. 새 이미지와 Compose 파일을 준비하는 작업은 여기서 끝나며, 운영 stop·rename·nginx reload·compose up은 자동 실행하지 않는다.
-
-### 사전 준비
-
-1. 이미지 ID와 블로그 커밋, Agent·프런트 최종 결과를 대조한다. 나중에 main이 변경되면 새 날짜 접미사로 다시 빌드/검증한다. 기존 이미지 `latest`는 보존한다.
-2. `runtime.env.example`의 항목과 기존 Docker env, PM2 env, `/app/backend/.env`를 운영자가 비공개 파일에 합친다. `MONGODB_URI`는 인증 정보를 유지하고 호스트만 127.0.0.1로 바꾼다. `OPENAI_API_KEY`도 기존 Agent에서 런타임으로 전달한다. 값은 터미널/PR에 출력하지 않는다.
-3. 관리자 권한으로 원본 MongoDB의 FCV가 7.0인지 확인한다. 앱 계정으로 `getParameter`가 거부될 수 있다. FCV가 다르면 교체를 중단한다.
-4. `umask 077`로 비공개 백업 폴더를 만든다. 기존 컨테이너 inspect/env/PM2 설정, backend JAR·`.env`, frontend standalone, 별도 Agent 이미지 ID, Qdrant 이미지 ID, nginx 설정을 보관한다. 전체 mongodump에는 admin 사용자/역할도 포함한다. 현재 제공된 블로그 DB archive만으로는 운영 인증을 복구할 수 없다.
-5. 원본 MongoDB/Qdrant 볼륨을 보존하는 **새 볼륨으로의 전환**을 권장한다. Compose의 기본 이름은 기존 볼륨과 호환되지만, `BLOG_MONGO_VOLUME` 등으로 새 볼륨을 지정하면 롤백 시 원래 7.0 데이터를 그대로 사용할 수 있다. 두 mongod/Qdrant를 같은 볼륨에 동시에 실행하지 않는다.
-
-### 정지, 최종 복사, 시작
-
-쓰기를 차단한 뒤 최종 백업과 복사를 시작한다. 기존 Agent와 API를 정지해야 Qdrant·MongoDB에 새 쓰기가 생기지 않는다. 아래 명령은 해당 담당자가 교체 시점에만 실행한다.
-
-```bash
-docker stop --timeout 30 kscold-vault-agent
-docker exec ubuntu-blog pm2 stop kscold-blog-backend kscold-blog-frontend
-docker exec ubuntu-blog sh -c 'kill -TERM "$(pidof mongod)"'
-# mongod 프로세스가 사라지고 로그에 정상 종료가 기록되었는지 확인한다.
-docker stop --timeout 60 ubuntu-blog
-docker stop --timeout 60 kscold-vault-qdrant
-```
-
-원본 4개 볼륨을 각각 `readonly`로 마운트하여 **비어 있는** 새 cutover 볼륨에 `cp -a`한다. 대상이 비어 있지 않으면 중단한다. 새 MongoDB 볼륨만 `chown -R 999:999`, 새 업로드 볼륨만 `chown -R 10001:10001`, 새 Qdrant 저장소/스냅샷만 `chown -R 1000:1000`한다. 원본에는 쓰지 않는다. 복사본 크기·권한과 파일 백업 checksum을 기록한다.
-
-```bash
-export BLOG_IMAGE=kscold/ubuntu-blog:2026-10-27-r1
-export BLOG_ENV_FILE=/absolute/private/path/blog.env
-export BLOG_MONGO_VOLUME=blog-cutover-mongo-20261027
-export BLOG_UPLOADS_VOLUME=blog-cutover-uploads-20261027
-export BLOG_QDRANT_VOLUME=blog-cutover-qdrant-20261027
-export BLOG_SNAPSHOTS_VOLUME=blog-cutover-snapshots-20261027
-docker rename ubuntu-blog ubuntu-blog-before-20261027
-docker compose -f docker/blog/compose.yaml config --quiet
-docker compose -f docker/blog/compose.yaml up -d ubuntu-blog
-docker exec ubuntu-blog /opt/agent-venv/bin/python /usr/local/lib/blog/healthcheck.py
-docker exec kscold-nginx nginx -t
-docker exec kscold-nginx nginx -s reload
-```
-
-healthcheck가 성공하기 전 nginx를 전환하지 않는다. nginx의 `ubuntu-blog:3000/8080` 주소는 유지되며 reload로 새 IP를 해석하게 한다. 백업 수와 최종 복사본 수를 대조하고 글/Vault/채팅 읽기와 Agent 연결을 확인한 다음 쓰기를 다시 허용한다. 이전 Agent와 Qdrant는 계속 정지 상태로 보존한다.
-
-다운타임 목표는 1분 이내지만 standalone 저장소를 최종 복사하고 JVM을 시작하는 시간이 포함되어 보장할 수 없다. 사전에 이미지 로드·설정 검사·권한 이전 시간 측정을 마친다. 복사가 길면 수 분의 점검 시간을 예약한다. 더 짧은 전환은 독립 볼륨의 candidate를 미리 띄우고 쓰기를 동결한 뒤 최종 동기화/검증 후 nginx upstream을 전환하는 방식으로 별도 설계한다. 실행 중인 두 DB가 같은 디렉터리를 공유하는 방식은 사용하지 않는다.
-
-루트의 로컬 `docker-compose.yml`은 공개 추적 제외 파일이다. 운영 담당자는 교체 때 기존 ubuntu-blog 서비스를 새 정의와 일치시키거나 제거하고 이 전용 파일을 유일한 관리 경로로 정해야 한다. 구 정의를 포함한 전체 `up`으로 이전 이미지를 다시 생성하지 않도록 한다.
-
-### FCV 관찰 기간과 롤백
-
-MongoDB 7 → 8은 [FCV 7.0인 7.0 서버를 정상 종료한 뒤 8.0 바이너리를 사용하는 절차](https://www.mongodb.com/docs/v8.0/release-notes/8.0-upgrade-standalone/)를 따른다. 엔트리포인트는 FCV를 올리지 않는다. 이 배포에서는 최소 7일 관찰하고 백업·조회·인덱스·쓰기 동작 확인 후 별도 결정으로 FCV 8.0을 활성화한다.
-
-**FCV 7.0 유지가 Community Edition의 바이너리 다운그레이드를 지원하게 만들지는 않는다.** [MongoDB 8.0 공식 문서](https://www.mongodb.com/docs/v8.0/release-notes/8.0-downgrade/)는 Community의 바이너리 다운그레이드를 지원하지 않는다. 8.0이 연 파일을 7.0으로 다시 여는 롤백은 사용하지 않는다.
-
-위의 새 볼륨 전환 방식이면 원본 데이터와 컨테이너가 그대로 남는다. 문제가 있으면 쓰기를 막고 다음 순서로 되돌린다.
-
-```bash
-docker stop --timeout 180 ubuntu-blog
-docker rename ubuntu-blog ubuntu-blog-failed-20261027
-docker rename ubuntu-blog-before-20261027 ubuntu-blog
-docker start kscold-vault-qdrant
-docker start ubuntu-blog
-docker exec ubuntu-blog pm2 start kscold-blog-backend kscold-blog-frontend
-docker start kscold-vault-agent
-# 기존 API/web 상태 확인 후 DNS를 다시 해석한다.
-docker exec kscold-nginx nginx -t
-docker exec kscold-nginx nginx -s reload
-```
-
-이 롤백은 cutover 이후 새 볼륨에 기록된 데이터를 원본에 자동 합치지 않는다. 쓰기 허용 후 문제가 생기면 새 볼륨을 보존하고 신규 데이터 이관/RPO를 먼저 판단한다. 같은 기존 볼륨에서 직접 업그레이드했다면 위 명령을 사용할 수 없다. 사전 cold backup을 **새** 볼륨에 복원하고 원래 실행 설정과 앱 산출물로 7.0 컨테이너를 재구성해야 한다.
-
-## 배포 overlay 변경 사항
-
-블로그 저장소의 추적 제외 `scripts/deploy-live-container.sh`는 이번 작업에서 수정하지 않는다. 운영 교체 담당자는 다음을 반영해야 한다.
-
-- `pm2 restart kscold-blog-backend` → `supervisorctl restart api`, frontend → `web`. `pm2 save/list`는 제거하고 `supervisorctl status`로 확인한다.
-- Agent 소스/가상환경을 업데이트한 경우에만 `supervisorctl restart agent`를 실행한다. DB 두 프로그램은 코드 배포에서 제외한다.
-- API는 Java 25로 이관된 소스가 반영되면 Gradle 9와 JDK 25로 빌드한다. 기존 Java 21 전용 이미지/변수도 함께 갱신한다.
-- 프런트는 Linux ARM64에서 새 Node/pnpm lockfile로 빌드한다. macOS sharp 패키지 수동 보강을 계속하기보다 이 Dockerfile의 Linux 산출물을 사용한다.
-- `/app/backend/blog.jar`, `/app/backend/.env`, `/app/frontend/apps/web/server.js`, `/app/uploads` 경로를 유지한다. `docker cp`로 root 소유 파일을 덮어썼다면 읽기 권한과 10001 소유 캐시 디렉터리를 확인한다.
-- 교체 파일은 임시 경로로 복사하고 권한을 맞춘 후 rename한다. web의 node_modules를 지우기 전에 `supervisorctl stop web`을 실행하고 복원 후 start한다.
-- PM2 kill timeout 대신 Supervisor의 API stopwaitsecs 30초를 따른다. 기존 QA 러너 갱신 경로는 별도로 확인한다.
-
-Qdrant 1.20 서버/클라이언트 이전과 운영 nginx 설정 변경은 이 PR에 포함되지 않는다.
-
-## CI
-
-`Blog image` 워크플로는 GitHub의 ARM64 러너에서 고정한 공개 소스만 체크아웃하여 이미지를 빌드하고 런타임 실행 파일을 확인한다. 운영 데이터·환경 파일·키를 사용하지 않으며 이미지를 레지스트리에 푸시하지 않는다. 운영 복사본 데이터 검증은 위 로컬 절차로 별도 수행한다.
+PR의 Blog image 워크플로는 셸/Python 구문, 주소 보존 테스트, Compose 설정만 검사한다. 이미지 빌드와 런타임 실행 파일 검사는 B 승인 이후 workflow_dispatch로 실행한다. CI는 운영 데이터·키를 사용하거나 이미지를 레지스트리에 푸시하지 않는다.

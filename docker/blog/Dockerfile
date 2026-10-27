@@ -90,7 +90,7 @@ COPY --from=web-builder /repo/apps/web/.next/standalone/ /app/frontend/
 COPY --from=web-builder /repo/apps/web/public/ /app/frontend/apps/web/public/
 COPY supervisord.conf /etc/supervisor/supervisord.conf
 COPY qdrant.yaml /etc/qdrant/config.yaml
-COPY entrypoint.sh launch.py healthcheck.py /usr/local/lib/blog/
+COPY entrypoint.sh launch.py runtime_env.py healthcheck.py /usr/local/lib/blog/
 RUN usermod -u 999 mongodb && groupmod -g 999 mongodb \
     && groupadd -g 10001 blog && useradd -u 10001 -g blog -M -s /usr/sbin/nologin blog \
     && mkdir -p /data/db /app/uploads /qdrant/storage /qdrant/snapshots /run/blog \
@@ -109,7 +109,7 @@ ENV PATH=/opt/java/bin:/opt/agent-venv/bin:/usr/local/bin:/usr/sbin:/usr/bin:/sb
     VAULT_AGENT_GRPC_HOST=127.0.0.1 VAULT_AGENT_GRPC_PORT=9090 \
     API_INTERNAL_URL=http://127.0.0.1:8080/api \
     API_AUTOSTART=true WEB_AUTOSTART=true AGENT_AUTOSTART=true
-EXPOSE 3000 8080
+EXPOSE 3000 8080 27017
 HEALTHCHECK --interval=30s --timeout=12s --start-period=120s --retries=3 \
     CMD ["/opt/agent-venv/bin/python", "/usr/local/lib/blog/healthcheck.py"]
 ENTRYPOINT ["/usr/bin/tini", "--", "/usr/local/lib/blog/entrypoint.sh"]

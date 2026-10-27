@@ -1,6 +1,12 @@
 #!/bin/bash
 set -euo pipefail
 root=$(cd "$(dirname "$0")" && pwd)
+df -h "$HOME"
+available_kib=$(df -Pk "$HOME" | awk 'NR==2 { print $4 }')
+if [[ ! "$available_kib" =~ ^[0-9]+$ ]] || (( available_kib < 15 * 1024 * 1024 )); then
+  echo '호스트 여유 공간이 15GiB 미만이거나 확인에 실패하여 빌드를 중단합니다.' >&2
+  exit 1
+fi
 repo=${1:?블로그 git 저장소 경로가 필요합니다}
 ref=${2:-$(cat "$root/source-revision")}
 tag=${3:-kscold/ubuntu-blog:$(date +%F)}

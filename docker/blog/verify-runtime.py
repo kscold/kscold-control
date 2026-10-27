@@ -7,6 +7,7 @@ import json
 import os
 import re
 import socket
+import sys
 import time
 import urllib.request
 from urllib.parse import quote
@@ -16,6 +17,11 @@ from pymongo import MongoClient
 from pymongo.uri_parser import parse_uri
 from agent.grpc import vault_agent_pb2 as messages
 from agent.grpc import vault_agent_pb2_grpc as services
+
+sys.path.insert(0, "/usr/local/lib/blog")
+from runtime_env import local_mongodb_uri
+
+os.environ["MONGODB_URI"] = local_mongodb_uri(os.environ["MONGODB_URI"], "127.0.0.1:27017")
 
 assert os.environ.get("BLOG_VERIFY") == "1", "격리 검증 컨테이너에서만 실행 가능"
 assert not os.environ.get("DISCORD_BOT_TOKEN"), "검증 Discord 토큰은 비어 있어야 함"
