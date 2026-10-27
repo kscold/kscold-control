@@ -6,7 +6,8 @@ services:
     image: ${BLOG_IMAGE:?날짜 태그 또는 이미지 digest를 지정하세요}
     container_name: ubuntu-blog
     env_file:
-      - ${BLOG_ENV_FILE:?저장소 밖의 런타임 env 파일을 지정하세요}
+      - path: ${BLOG_ENV_FILE:?저장소 밖의 런타임 env 파일을 지정하세요}
+        format: raw
     environment:
       MONGODB_DATABASE: kscold-blog
       API_INTERNAL_URL: http://127.0.0.1:8080/api
