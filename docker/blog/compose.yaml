@@ -1,0 +1,63 @@
+# 검토용 배포 정의. 기존 전체 스택 파일과 합치지 않고 이 파일만 명시해서 사용한다.
+# 운영자가 교체 런북의 백업·종료·권한 이전을 마친 뒤에만 적용한다.
+name: blog-integrated
+services:
+  ubuntu-blog:
+    image: ${BLOG_IMAGE:-kscold/ubuntu-blog:2026-10-27-r2}
+    container_name: ubuntu-blog
+    env_file:
+      - path: ${BLOG_ENV_FILE:?저장소 밖의 런타임 env 파일을 지정하세요}
+        format: raw
+    environment:
+      MONGODB_DATABASE: kscold-blog
+      API_INTERNAL_URL: http://127.0.0.1:8080/api
+      QDRANT_URL: http://127.0.0.1:6333
+      VAULT_AGENT_GRPC_HOST: 127.0.0.1
+      VAULT_AGENT_GRPC_PORT: '9090'
+      FILE_UPLOAD_DIR: /app/uploads
+    ports:
+      - '0.0.0.0:3002:3000'
+      - '0.0.0.0:8083:8080'
+      - '0.0.0.0:27019:27017'
+    volumes:
+      - blog-mongo-data:/data/db
+      - blog-uploads:/app/uploads
+      - blog-qdrant-data:/qdrant/storage
+      - blog-qdrant-snapshots:/qdrant/snapshots
+    networks:
+      - blog-network
+    cpus: '3'
+    cpu_shares: 4096
+    mem_limit: 4g
+    pids_limit: 512
+    ulimits:
+      nofile:
+        soft: 64000
+        hard: 64000
+    stop_grace_period: 180s
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    logging:
+      driver: json-file
+      options:
+        max-size: 20m
+        max-file: '5'
+
+networks:
+  blog-network:
+    external: true
+    name: kscold-control_default
+volumes:
+  blog-mongo-data:
+    external: true
+    name: ${BLOG_MONGO_VOLUME:-ubuntu-blog-mongo}
+  blog-uploads:
+    external: true
+    name: ${BLOG_UPLOADS_VOLUME:-ubuntu-blog-uploads}
+  blog-qdrant-data:
+    external: true
+    name: ${BLOG_QDRANT_VOLUME:-ubuntu-blog-qdrant}
+  blog-qdrant-snapshots:
+    external: true
+    name: ${BLOG_SNAPSHOTS_VOLUME:-ubuntu-blog-qdrant-snapshots}

@@ -1,0 +1,9 @@
+*
+!Dockerfile
+!entrypoint.sh
+!launch.py
+!runtime_env.py
+!healthcheck.py
+!supervisord.conf
+!qdrant.yaml
+!agent-requirements.lock
