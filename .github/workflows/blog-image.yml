@@ -60,9 +60,12 @@ jobs:
         run: |
           docker run --name blog-verify-runtime --network none --entrypoint sh kscold/ubuntu-blog:2026-10-27-ci -ec '
             node --version
+            test "$(pnpm --version)" = 12.15.0
             java -version
             python --version
             qdrant --version
             mongod --version
-            python -c "import ssl, sqlite3, grpc, pymongo, qdrant_client"
+            mongosh --version
+            mongodump --version
+            python -c "import ssl, sqlite3, grpc, pymongo, qdrant_client, importlib.util; assert importlib.util.find_spec(\"pip\") is None"
           '

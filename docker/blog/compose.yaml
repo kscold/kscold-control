@@ -3,7 +3,7 @@
 name: blog-integrated
 services:
   ubuntu-blog:
-    image: ${BLOG_IMAGE:?날짜 태그 또는 이미지 digest를 지정하세요}
+    image: ${BLOG_IMAGE:-kscold/ubuntu-blog:2026-10-27-r2}
     container_name: ubuntu-blog
     env_file:
       - path: ${BLOG_ENV_FILE:?저장소 밖의 런타임 env 파일을 지정하세요}
@@ -51,13 +51,13 @@ networks:
 volumes:
   blog-mongo-data:
     external: true
-    name: ${BLOG_MONGO_VOLUME:?원본과 다른 새 MongoDB 볼륨을 지정하세요}
+    name: ${BLOG_MONGO_VOLUME:-ubuntu-blog-mongo}
   blog-uploads:
     external: true
-    name: ${BLOG_UPLOADS_VOLUME:?원본과 다른 새 업로드 볼륨을 지정하세요}
+    name: ${BLOG_UPLOADS_VOLUME:-ubuntu-blog-uploads}
   blog-qdrant-data:
     external: true
-    name: ${BLOG_QDRANT_VOLUME:?원본과 다른 새 Qdrant 볼륨을 지정하세요}
+    name: ${BLOG_QDRANT_VOLUME:-ubuntu-blog-qdrant}
   blog-qdrant-snapshots:
     external: true
-    name: ${BLOG_SNAPSHOTS_VOLUME:?원본과 다른 새 스냅샷 볼륨을 지정하세요}
+    name: ${BLOG_SNAPSHOTS_VOLUME:-ubuntu-blog-qdrant-snapshots}
