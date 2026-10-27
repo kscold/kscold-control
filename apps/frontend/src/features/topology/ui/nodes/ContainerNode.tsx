@@ -6,8 +6,8 @@ import type {
   Pm2Process,
   SystemService,
 } from '@/entities/container';
-import { pm2Dot } from '../../lib/topology.utils';
-import { formatBytes } from '@/shared/lib';
+import { processDot } from '../../lib/topology.utils';
+import { formatBytes, formatUptime } from '@/shared/lib';
 
 export const ContainerNode = memo(function ContainerNode({ data }: NodeProps) {
   const d = data as unknown as ContainerNodeData;
@@ -16,6 +16,7 @@ export const ContainerNode = memo(function ContainerNode({ data }: NodeProps) {
   const processes = d.processes || { pm2: [], services: [] };
 
   const pm2List: Pm2Process[] = processes.pm2;
+  const supervisorList = processes.supervisor ?? [];
   const runtimeServices: SystemService[] =
     processes.services.length > 0
       ? processes.services
@@ -40,9 +41,14 @@ export const ContainerNode = memo(function ContainerNode({ data }: NodeProps) {
       <div
         className={`${meta.headerBg} rounded-t-xl px-3 py-2 flex items-center gap-2`}
       >
-        <span className="text-white font-bold text-xs truncate flex-1">
-          {d.label}
-        </span>
+        <div className="min-w-0 flex-1">
+          <p className="text-white font-bold text-xs truncate" title={d.label}>
+            {d.label}
+          </p>
+          {meta.label && meta.label !== d.label && (
+            <p className="text-[9px] text-gray-400 truncate">{meta.label}</p>
+          )}
+        </div>
         <span
           className={`flex-shrink-0 text-[9px] px-1.5 py-0.5 rounded font-medium ${
             isRunning
@@ -146,7 +152,7 @@ export const ContainerNode = memo(function ContainerNode({ data }: NodeProps) {
           {pm2List.map((p, i) => (
             <div key={i} className="flex items-center gap-1.5 mb-1 last:mb-0">
               <span
-                className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${pm2Dot(p.status)}`}
+                className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${processDot(p.status)}`}
               />
               <span className="text-[10px] text-gray-200 font-mono truncate flex-1">
                 {p.name}
@@ -157,6 +163,43 @@ export const ContainerNode = memo(function ContainerNode({ data }: NodeProps) {
                 {p.restarts > 0 && (
                   <span className="text-yellow-600">↺{p.restarts}</span>
                 )}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {supervisorList.length > 0 && (
+        <div className="px-3 py-1.5 border-t border-gray-800">
+          <div className="flex items-center gap-1 mb-1.5">
+            <Cpu size={9} className="text-indigo-400" />
+            <p className="text-[8px] text-indigo-400 uppercase tracking-wider">
+              Supervisor Processes
+            </p>
+          </div>
+          {supervisorList.map((process) => (
+            <div key={process.name} className="mb-1.5 last:mb-0">
+              <div className="flex items-center gap-1.5">
+                <span
+                  className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${processDot(process.status)}`}
+                />
+                <span className="text-[10px] text-gray-200 font-mono truncate flex-1">
+                  {process.name}
+                </span>
+                <span className="text-[8px] text-gray-400">
+                  {process.status}
+                </span>
+              </div>
+              <div className="ml-3 flex gap-2 text-[8px] text-gray-500 font-mono">
+                <span>PID {process.pid ?? '—'}</span>
+                <span>
+                  가동{' '}
+                  {process.uptimeSeconds === null
+                    ? '—'
+                    : process.uptimeSeconds < 60
+                      ? `${process.uptimeSeconds}s`
+                      : formatUptime(process.uptimeSeconds)}
+                </span>
               </div>
             </div>
           ))}

@@ -62,6 +62,14 @@ export interface DockerPm2Process {
   restarts: number;
 }
 
+/** Supervisor 프로그램 상태이며 종료된 프로그램의 PID·가동시간은 비워 둠. */
+export interface DockerSupervisorProcess {
+  name: string;
+  status: string;
+  pid: number | null;
+  uptimeSeconds: number | null;
+}
+
 /** 컨테이너 안에서 감지된 서비스 한 건 (토폴로지 연결용) */
 export interface DockerDetectedService {
   name: string;
@@ -72,12 +80,13 @@ export interface DockerDetectedService {
 /**
  * 컨테이너 내부 프로세스를 토폴로지와 상세 화면에서 공통으로 쓰는 형태임.
  *
- * PM2 원본 응답에서 화면에 필요한 필드만 뽑아 정규화하므로 구조가 고정돼 있다.
+ * 프로세스 관리자 응답에서 화면에 필요한 필드만 뽑아 정규화한다.
  * 도메인 계약에 any 를 두면 인프라의 불확실성이 상위 계층까지 새어 나가므로
  * 실제 정규화 결과를 그대로 타입으로 표현한다.
  */
 export interface DockerContainerProcesses {
   pm2: DockerPm2Process[];
+  supervisor?: DockerSupervisorProcess[];
   services: DockerDetectedService[];
 }
 

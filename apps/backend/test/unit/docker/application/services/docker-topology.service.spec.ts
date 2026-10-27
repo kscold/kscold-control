@@ -18,6 +18,8 @@ import {
 describe('DockerTopologyService', () => {
   let service: DockerTopologyService;
   let layoutRepository: jest.Mocked<ITopologyLayoutRepository>;
+  let listContainers: jest.Mocked<ListContainersUseCase>;
+  let dockerClient: jest.Mocked<IDockerClient>;
 
   beforeEach(async () => {
     layoutRepository = {
@@ -240,6 +242,105 @@ describe('DockerTopologyService', () => {
     }).compile();
 
     service = module.get(DockerTopologyService);
+    listContainers = module.get(ListContainersUseCase);
+    dockerClient = module.get(DOCKER_CLIENT);
+  });
+
+  it('모든 컨테이너 제목에 실제 이름을 쓰고 친근한 이름과 비컨테이너 제목을 보존한다', async () => {
+    const snapshot = await service.getSnapshot('user-1');
+    for (const [id, name, alias] of [
+      ['infra-nginx', 'kscold-nginx', 'Nginx Proxy'],
+      ['infra-db', 'kscold-infra-db', 'PostgreSQL'],
+      ['blog-app', 'ubuntu-blog', 'Blog'],
+      ['blog-agent', 'kscold-vault-agent', 'Vault Agent'],
+      ['blog-qdrant', 'kscold-vault-qdrant', 'Vault Qdrant'],
+      ['projectdelta-app', 'ubuntu-projectdelta', 'ProjectDelta'],
+    ]) {
+      expect(
+        snapshot.nodes.find((node) => node.id === `container-${id}`)?.data,
+      ).toMatchObject({
+        label: name,
+        meta: { label: alias },
+      });
+    }
+    for (const [id, label] of [
+      ['internet', 'Internet'],
+      ['host', 'Mac Mini (Host)'],
+      ['local-control', 'kscold-control'],
+    ]) {
+      expect(snapshot.nodes.find((node) => node.id === id)?.data).toMatchObject(
+        { label },
+      );
+    }
+  });
+
+  it('통합 이미지 프로세스와 서비스 포트를 전달하고 사라진 companion 노드는 만들지 않는다', async () => {
+    const containers = await listContainers.execute(undefined);
+    listContainers.execute.mockResolvedValue(
+      containers.filter(
+        (container) => !['blog-agent', 'blog-qdrant'].includes(container.id),
+      ),
+    );
+    const supervisor = ['api', 'web', 'agent', 'mongod', 'qdrant'].map(
+      (name, index) => ({
+        name,
+        status: 'running',
+        pid: 10 + index,
+        uptimeSeconds: 60,
+      }),
+    );
+    const services = [
+      { name: 'API', port: 8080, icon: 'api' },
+      { name: 'Web', port: 3000, icon: 'web' },
+      { name: 'Vault Agent', port: 9090, icon: 'agent' },
+      { name: 'MongoDB', port: 27017, icon: 'mongo' },
+      { name: 'Qdrant', port: 6333, icon: 'vector' },
+    ];
+    dockerClient.getContainerProcesses.mockImplementation(async (id) =>
+      id === 'dock-blog'
+        ? { pm2: [], supervisor, services }
+        : { pm2: [], supervisor: [], services: [] },
+    );
+    const snapshot = await service.getSnapshot('user-1');
+
+    expect(
+      snapshot.nodes.find((node) => node.id === 'container-blog-app')?.data,
+    ).toMatchObject({
+      label: 'ubuntu-blog',
+      processes: { supervisor, services },
+    });
+    expect(snapshot.summary.containerCount).toBe(4);
+    expect(
+      snapshot.nodes.filter((node) =>
+        node.id.startsWith('container-blog-app-service-'),
+      ),
+    ).toHaveLength(5);
+    expect(
+      snapshot.nodes.some((node) =>
+        ['container-blog-agent', 'container-blog-qdrant'].includes(node.id),
+      ),
+    ).toBe(false);
+    const ids = new Set(snapshot.nodes.map((node) => node.id));
+    expect(
+      snapshot.edges.every(
+        (edge) => ids.has(edge.source) && ids.has(edge.target),
+      ),
+    ).toBe(true);
+  });
+
+  it('PM2와 Supervisor가 모두 없어도 컨테이너 이름과 빈 프로세스 목록을 제공한다', async () => {
+    dockerClient.getContainerProcesses.mockResolvedValue({
+      pm2: [],
+      supervisor: [],
+      services: [],
+    });
+    const snapshot = await service.getSnapshot('user-1');
+    expect(
+      snapshot.nodes.find((node) => node.id === 'container-blog-app')?.data,
+    ).toMatchObject({
+      label: 'ubuntu-blog',
+      processes: { pm2: [], supervisor: [], services: [] },
+    });
   });
 
   it('구성과 실행 상태를 합쳐 토폴로지 스냅샷을 만든다', async () => {
@@ -276,9 +377,9 @@ describe('DockerTopologyService', () => {
       true,
     );
     expect(snapshot.nodes.some((node) => node.id === 'nginx-blog')).toBe(true);
-    expect(snapshot.nodes.some((node) => node.id === 'nginx-projectdelta')).toBe(
-      true,
-    );
+    expect(
+      snapshot.nodes.some((node) => node.id === 'nginx-projectdelta'),
+    ).toBe(true);
     expect(
       snapshot.nodes.some(
         (node) => node.id === 'container-blog-app-service-SSH-22',

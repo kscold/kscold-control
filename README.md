@@ -355,6 +355,12 @@ removes the ones that can be recreated from the remote, once a day.
 
 ## Production Deployment
 
+Topology container nodes use the actual Docker container name as their title;
+friendly stack names remain as subtitles. Existing PM2 process lists are retained.
+When PM2 is absent, Supervisor programs show status, PID and uptime. The integrated
+blog socket (`/run/blog/supervisor.sock`) also supplies running service ports for
+API (8080), web (3000), Agent (9090), MongoDB (27017) and Qdrant (6333).
+
 ```bash
 # 1. Configure .env (DATABASE_URL and JWT_SECRET are required)
 cp .env.example .env
