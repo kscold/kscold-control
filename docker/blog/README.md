@@ -4,7 +4,7 @@ API·Next standalone·Agent·MongoDB·Qdrant를 별도 Supervisor 프로그램�
 
 ## r2 이미지
 
-`kscold/ubuntu-blog:2026-10-27-r2`는 최종 블로그 main `856a27c75b7f8bee9213ea40d617e1e0a8d364f3`를 사용한다. `latest`와 r1은 보존한다. 운영 교체는 운영자가 실행하며 이 PR은 스왑 확인 뒤에 병합한다.
+`kscold/ubuntu-blog:2026-10-27-r2`는 블로그 main `856a27c75b7f8bee9213ea40d617e1e0a8d364f3`를 사용한다. 2026-10-27 운영자가 교체를 완료했으며 중단 51초와 전환 후 점검 9항목 통과를 확인했다. `latest`와 r1은 보존한다.
 
 | 항목 | r2 |
 | --- | --- |
@@ -46,6 +46,10 @@ Supervisor는 API→Agent, web→API, Agent→Qdrant 주소를 loopback으로 �
 | 업로드 | /app/uploads | 10001:10001 | 해당 없음 |
 
 Supervisor 소켓은 `/run/blog/supervisor.sock`, mode 0700이다. 코드 배포는 api/web/agent만 갱신하고 mongod/qdrant PID를 보존한다. `restart all`, Supervisor reload, 컨테이너 재시작을 앱 배포에 사용하지 않는다. 이미지 시작 시 데이터 소유권이나 FCV를 암묵적으로 변경하지 않는다.
+
+백엔드 파일 로그 경로 `/var/log/kscold-blog`는 blog:blog(10001:10001)가 쓸 수 있어야 한다. 운영 r2에는 교체 후 이 폴더를 수동 보완했으며, Dockerfile의 자동 생성은 다음 새 태그 이미지 빌드부터 반영한다. 이 보완으로 현재 이미지나 실행 중인 API를 재시작하지 않는다.
+
+클러스터 권한이 없는 앱 계정은 FCV getParameter 조회에서 code 13을 받을 수 있다. 교체 도구는 이 경우에만 mongod 시작 로그의 FCV 기록을 읽고 `fcvSource=mongodStartupLog`를 남긴다. 기존 컨테이너의 MongoDB 파일 로그와 통합 컨테이너 로그를 모두 검증하며, 그 밖의 조회 실패는 숨기지 않는다.
 
 로컬 배포 도구는 Git 밖에 두며 기존 도구를 백업한다. standalone에 비공개 소스·자료·공개 자산·.env.local을 포함하고 macOS 빌드에는 Linux ARM64 sharp를 보강한다. 새 릴리스 디렉터리와 링크로 교체하며 실패하면 이전 릴리스로 복원한다. Docker 하위 이미지 레이어의 EXDEV에는 백업 복사를 완료한 뒤 첫 링크 전환을 수행한다. 백엔드 운영 프로필 yml을 JAR에 포함하고 기존 `.env` 해시를 보존한다. Agent의 의존성이 같으면 소스만 바꾸고 설치를 생략한다.
 

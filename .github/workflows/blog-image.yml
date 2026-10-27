@@ -67,5 +67,6 @@ jobs:
             mongod --version
             mongosh --version
             mongodump --version
+            test "$(stat -c %u:%g /var/log/kscold-blog)" = 10001:10001
             python -c "import ssl, sqlite3, grpc, pymongo, qdrant_client, importlib.util; assert importlib.util.find_spec(\"pip\") is None"
           '

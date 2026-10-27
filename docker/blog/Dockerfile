@@ -105,8 +105,9 @@ RUN usermod -u 999 mongodb && groupmod -g 999 mongodb \
     && echo /opt/python/lib > /etc/ld.so.conf.d/blog-python.conf && ldconfig \
     && ln -s /opt/pnpm/pnpm /usr/local/bin/pnpm && test "$(pnpm --version)" = 12.15.0 \
     && groupadd -g 10001 blog && useradd -u 10001 -g blog -M -s /usr/sbin/nologin blog \
-    && mkdir -p /data/db /app/uploads /qdrant/storage /qdrant/snapshots /run/blog \
+    && mkdir -p /data/db /app/uploads /qdrant/storage /qdrant/snapshots /run/blog /var/log/kscold-blog \
     && chown -R blog:blog /app \
+    && chown blog:blog /var/log/kscold-blog \
     && chown mongodb:mongodb /data/db \
     && chown -R 1000:1000 /qdrant \
     && chmod 755 /usr/local/lib/blog/entrypoint.sh \
