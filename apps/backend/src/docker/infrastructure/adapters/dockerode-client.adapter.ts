@@ -8,6 +8,7 @@ import {
   DockerContainerConfig,
   DockerContainerProcesses,
   DockerPm2Process,
+  DockerSupervisorProcess,
   DockerDetectedService,
 } from '../../domain/gateways/docker-client.gateway.interface';
 import {
@@ -16,6 +17,11 @@ import {
 } from '../../../common/exceptions';
 import { ResourceConfig } from '../../domain/value-objects/resource-config.vo';
 import { resolveDockerConnectionOptions } from '../lib/docker-host';
+import {
+  getBlogSupervisorServices,
+  parseSupervisorStatus,
+  READ_MANAGED_PROCESSES,
+} from '../lib/supervisor-processes';
 
 /**
  * Dockerode를 Docker 게이트웨이 계약으로 변환하는 인프라 어댑터임.
@@ -199,27 +205,37 @@ export class DockerodeClientAdapter implements IDockerClient, OnModuleInit {
   ): Promise<DockerContainerProcesses> {
     const container = this.docker.getContainer(dockerId);
     const pm2List: DockerPm2Process[] = [];
+    let supervisor: DockerSupervisorProcess[] = [];
     const services: DockerDetectedService[] = [];
 
     try {
-      const pm2Json = await this.execCommand(container, [
+      const output = await this.execCommand(container, [
         'sh',
         '-c',
-        'pm2 jlist 2>/dev/null || echo "[]"',
+        READ_MANAGED_PROCESSES,
       ]);
-      const parsed = JSON.parse(pm2Json.trim() || '[]');
-      for (const p of parsed) {
-        pm2List.push({
-          name: p.name,
-          status: p.pm2_env?.status || 'unknown',
-          pid: p.pid,
-          cpu: p.monit?.cpu ?? 0,
-          memory: p.monit?.memory ?? 0,
-          restarts: p.pm2_env?.restart_time ?? 0,
-        });
+      const [manager, ...lines] = output.trim().split(/\r?\n/);
+      const body = lines.join('\n');
+      if (manager === 'PM2') {
+        const parsed = JSON.parse(body || '[]');
+        for (const p of parsed) {
+          pm2List.push({
+            name: p.name,
+            status: p.pm2_env?.status || 'unknown',
+            pid: p.pid,
+            cpu: p.monit?.cpu ?? 0,
+            memory: p.monit?.memory ?? 0,
+            restarts: p.pm2_env?.restart_time ?? 0,
+          });
+        }
+      } else if (manager === 'SUPERVISOR' || manager === 'SUPERVISOR_BLOG') {
+        supervisor = parseSupervisorStatus(body);
+        if (manager === 'SUPERVISOR_BLOG') {
+          services.push(...getBlogSupervisorServices(supervisor));
+        }
       }
     } catch {
-      // PM2를 쓰지 않는 컨테이너는 정상적인 경우이므로 하위 목록만 비워 둠.
+      // 관리자가 없거나 조회가 실패해도 별도 시스템 서비스 감지는 계속함.
     }
 
     try {
@@ -244,7 +260,17 @@ export class DockerodeClientAdapter implements IDockerClient, OnModuleInit {
       // 최소 이미지에는 ps가 없을 수 있으므로 서비스 추론만 생략함.
     }
 
-    return { pm2: pm2List, services };
+    return {
+      pm2: pm2List,
+      supervisor,
+      services: services.filter(
+        (service, index) =>
+          services.findIndex(
+            (entry) =>
+              entry.name === service.name && entry.port === service.port,
+          ) === index,
+      ),
+    };
   }
 
   private async execCommand(

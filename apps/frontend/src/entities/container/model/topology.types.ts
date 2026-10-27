@@ -12,8 +12,16 @@ export interface SystemService {
   icon: string;
 }
 
+export interface SupervisorProcess {
+  name: string;
+  status: string;
+  pid: number | null;
+  uptimeSeconds: number | null;
+}
+
 export interface ContainerProcesses {
   pm2: Pm2Process[];
+  supervisor?: SupervisorProcess[];
   services: SystemService[];
 }
 

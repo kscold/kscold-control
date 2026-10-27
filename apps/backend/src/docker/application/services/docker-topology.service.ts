@@ -217,7 +217,7 @@ export class DockerTopologyService {
           type: 'container',
           position: { x: infraStartX + index * COL_GAP, y: INFRA_Y },
           data: {
-            label: meta.label || entry.container.name,
+            label: entry.container.name,
             image: entry.container.image,
             status: entry.container.liveStatus,
             ports: entry.container.ports,
@@ -292,7 +292,7 @@ export class DockerTopologyService {
           type: 'container',
           position: { x, y },
           data: {
-            label: meta.label || container.name,
+            label: container.name,
             image: container.image,
             status: container.liveStatus,
             ports: container.ports,
