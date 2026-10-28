@@ -1,8 +1,13 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { Terminal } from '@xterm/xterm';
-import { readTerminalText } from './terminal-text.utils';
+import { copyText, readTerminalText } from './terminal-text.utils';
 
-function fakeTerminal(lines: Array<{ text: string; isWrapped?: boolean }>) {
+interface FixtureLine {
+  text: string;
+  isWrapped?: boolean;
+}
+
+function fakeTerminal(lines: FixtureLine[]): Terminal {
   return {
     buffer: {
       active: {
@@ -21,26 +26,54 @@ function fakeTerminal(lines: Array<{ text: string; isWrapped?: boolean }>) {
   } as unknown as Terminal;
 }
 
-describe('readTerminalText', () => {
-  it('화면 폭 때문에 줄바꿈된 줄은 원래 한 줄로 합친다', () => {
+describe('터미널 출력 평문 변환', () => {
+  it('자동 줄바꿈된 줄은 원래 한 줄로 잇는다', () => {
     const xterm = fakeTerminal([
       { text: '$ echo orca://pair?code=abc' },
       { text: 'def', isWrapped: true },
       { text: 'done' },
     ]);
-
     expect(readTerminalText(xterm)).toBe(
       '$ echo orca://pair?code=abcdef\ndone',
     );
   });
 
-  it('끝에 남은 빈 줄은 버린다', () => {
+  it('끝에 남은 빈 줄은 버리고 중간 빈 줄은 유지한다', () => {
     const xterm = fakeTerminal([
-      { text: 'hello' },
+      { text: 'a' },
       { text: '' },
-      { text: ' ' },
+      { text: 'b' },
+      { text: '' },
+      { text: '   ' },
     ]);
+    expect(readTerminalText(xterm)).toBe('a\n\nb');
+  });
+});
 
-    expect(readTerminalText(xterm)).toBe('hello');
+describe('클립보드 복사', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+  });
+
+  it('Clipboard API 로 복사한다', async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    vi.stubGlobal('navigator', { clipboard: { writeText } });
+    await expect(copyText('hello')).resolves.toBe(true);
+    expect(writeText).toHaveBeenCalledWith('hello');
+  });
+
+  it('Clipboard API 가 막히면 execCommand 로 대신한다', async () => {
+    vi.stubGlobal('navigator', {
+      clipboard: { writeText: vi.fn().mockRejectedValue(new Error('denied')) },
+    });
+    const execCommand = vi.fn().mockReturnValue(true);
+    Object.defineProperty(document, 'execCommand', {
+      value: execCommand,
+      configurable: true,
+    });
+    await expect(copyText('hello')).resolves.toBe(true);
+    expect(execCommand).toHaveBeenCalledWith('copy');
+    expect(document.querySelector('textarea')).toBeNull();
   });
 });

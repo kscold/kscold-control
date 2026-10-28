@@ -61,7 +61,7 @@ export function TerminalCopySheet({ xterm }: TerminalCopySheetProps) {
             role="dialog"
             aria-modal="true"
             aria-label="터미널 출력"
-            className="fixed inset-0 z-50 flex flex-col bg-slate-950/95 p-2 pt-[max(0.5rem,env(safe-area-inset-top))] pb-[max(0.5rem,env(safe-area-inset-bottom))] sm:p-6"
+            className="fixed inset-0 z-50 flex flex-col bg-slate-950p-2 pt-[max(0.5rem,env(safe-area-inset-top))] pb-[max(0.5rem,env(safe-area-inset-bottom))] sm:p-6"
           >
             <div className="flex items-center justify-between gap-2 pb-2">
               <p className="min-w-0 truncate text-xs text-slate-400">
