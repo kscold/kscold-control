@@ -1,8 +1,27 @@
 # GaDoc Instance Migration
 
-Status: a staged copy, not a production cutover. The public domain remains
-`https://slacord.cloud`. The running `ubuntu-slacord` and its original MongoDB
-volume must stay intact until an explicitly approved write-stop window.
+Status: production cutover verified on 2026-10-28. The active runtime is
+`ubuntu-gadoc`, with its public origin stored in private deployment settings.
+The old source is retired; its original MongoDB volume and private backups
+remain intact. Existing domain aliases remain only for client migration.
+
+## Production Operation
+
+- Use the dedicated `gadoc-runtime` Compose project, never the old shared service.
+- The active private environment file selects runtime mode and the approved SSH
+  port. Do not apply rehearsal environment files to production.
+- The application origin is an exact HTTPS origin in root-only
+  `/app/slacord-deploy/private/public.env` (`GADOC_PUBLIC_ORIGIN`).
+- Control imports the existing runtime as a managed container. Its topology
+  derives the actual domain/upstream edge from Nginx, not a hardcoded label.
+- The final backup was captured with application writers stopped and a MongoDB
+  filesystem write lock. All 22 collections, counts, indexes, and database
+  accounts matched after a real restore. Production JWT/storage settings and
+  deployment SSH identity were preserved.
+- Public browser password login/logout, secure session cookies, both domain
+  aliases' authenticated WebSockets, workspace authorization, and external
+  forced-command SSH were checked. Evidence and private recovery archives
+  belong outside Git. Never publish domain account details, keys, or DB dumps.
 
 ## Boundaries
 
@@ -24,6 +43,9 @@ volume must stay intact until an explicitly approved write-stop window.
   an installer is separate from app login, SSH authentication, and HTTPS.
 
 ## Rehearsal
+
+The commands below describe a new isolated rehearsal. They are not production
+restart instructions and must not overwrite an existing production target.
 
 `node docker/gadoc/backup-instance.mjs capture` creates a live rehearsal backup
 of the legacy `ubuntu-slacord` in `~/.config/gadoc/backups`. It does not stop
@@ -79,7 +101,7 @@ starts. An empty DB is rejected instead of being silently initialized.
 For remote development, tunnel only the development web/API ports:
 
 ```sh
-ssh -N -p 2226 -L 3302:127.0.0.1:3302 -L 18086:127.0.0.1:18086 gadoc@kscold.com
+ssh -N -p 2226 -L 3302:127.0.0.1:3302 -L 18086:127.0.0.1:18086 gadoc@host.example.test
 ```
 
 This final SSH port is available only after the approved cutover. Until then,
@@ -133,13 +155,13 @@ These steps require explicit downtime approval; the preparer does not run them.
 ## Validation Evidence (2026-10-28)
 
 The rehearsal restored 20 collections and 2 DB users on MongoDB 7.0.31, with
-matching counts and index definitions. The source revision was
-`1e998ca1d19475cd7b892c4a2e04b31155e7d44f`. Authentication/permission verification
+matching counts and index definitions. Authentication/permission verification
 passed nine live checks. A separate, network-isolated disposable container
 passed real PM2 non-root activation, secret filtering, cross-user `/proc`
 denial, Next writable-cache checks, and failed-deployment rollback. No production
 cutover, final consistent backup, external candidate SSH, or developer login
-service is claimed by this evidence.
+service is claimed by that rehearsal alone; the separate production checks
+above cover the final cutover.
 
 PM2 6.0.14's implementation ignores boolean `filter_env: true`; the deployment
 uses `filter_env: [""]` to match every inherited key, confirmed against real
