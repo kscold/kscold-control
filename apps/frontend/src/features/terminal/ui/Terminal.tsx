@@ -4,6 +4,7 @@ import { useTerminalSession } from '../model/useTerminalSession';
 import { useTerminalSetup } from '../model/useTerminalSetup';
 import { useTerminalSocket } from '../model/useTerminalSocket';
 import { getTerminalSessionStorageKey } from '../lib/terminal.constants';
+import { TerminalCopySheet } from './TerminalCopySheet';
 import { TerminalHeader } from './TerminalHeader';
 
 interface TerminalProps {
@@ -80,10 +81,13 @@ export function Terminal({ terminalId, onSwitchToClaude }: TerminalProps) {
         onClaudeCommand={handleClaudeCommand}
         onCloseSession={handleCloseSession}
       />
-      <div
-        ref={terminalRef}
-        className="flex-1 overflow-x-auto p-2 sm:p-4 bg-[#1e1e1e]"
-      />
+      <div className="relative flex min-h-0 flex-1">
+        <div
+          ref={terminalRef}
+          className="min-w-0 flex-1 overflow-hidden p-2 sm:p-4 bg-[#1e1e1e]"
+        />
+        <TerminalCopySheet xterm={xterm} />
+      </div>
     </div>
   );
 }
