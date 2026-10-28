@@ -34,6 +34,9 @@ jobs:
       - name: Check dependency security
         run: pnpm audit --audit-level low
 
+      - name: Test dependency security regressions
+        run: pnpm test:dependency-security
+
       - name: Check public source boundary
         run: pnpm check:public-source
 

@@ -1,0 +1,13 @@
+{
+  "name": "@kscold-control/deepmerge-safe",
+  "version": "4.3.1-patched.1",
+  "private": true,
+  "license": "MIT",
+  "main": "index.cjs",
+  "description": "Build-only deepmerge 4.3.1 compatibility with prototype-key hardening",
+  "files": [
+    "index.cjs",
+    "LICENSE",
+    "README.md"
+  ]
+}
