@@ -26,6 +26,7 @@ import { useWorkspaceFileEditor } from '../model/useWorkspaceFileEditor';
 import { getTerminalSessionStorageKey } from '../lib/terminal.constants';
 import type { ClaudeRuntimeCheck } from '../model/terminal.types';
 import { ClaudeWorkspaceFilePanel } from './ClaudeWorkspaceFilePanel';
+import { TerminalCopySheet } from './TerminalCopySheet';
 
 interface ClaudeCodeWorkspaceProps {
   terminalId: string;
@@ -569,11 +570,14 @@ export function ClaudeCodeWorkspace({
                   </span>
                 </div>
 
-                <div
-                  ref={terminalRef}
-                  className="min-h-[340px] flex-1 overflow-x-auto px-2 py-2 sm:px-4 sm:py-3"
-                  data-testid="claude-code-terminal"
-                />
+                <div className="relative flex min-h-[340px] flex-1">
+                  <div
+                    ref={terminalRef}
+                    className="min-w-0 flex-1 overflow-hidden px-2 py-2 sm:px-4 sm:py-3"
+                    data-testid="claude-code-terminal"
+                  />
+                  <TerminalCopySheet xterm={xterm} />
+                </div>
               </div>
             </div>
 
