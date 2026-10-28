@@ -24,6 +24,14 @@
   color-scheme: dark;
 }
 
+/* 앱처럼 쓰는 관리 화면이라 모바일에서 핀치 확대와 화면 전체가 끌려가는 바운스를 막는다.
+   iOS Safari 는 viewport 의 user-scalable=no 를 무시하므로 touch-action 으로 막는다. */
+html,
+body {
+  touch-action: pan-x pan-y;
+  overscroll-behavior: none;
+}
+
 body {
   font-family:
     'IBM Plex Sans KR',
