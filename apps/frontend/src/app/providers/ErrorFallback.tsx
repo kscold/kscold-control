@@ -1,18 +1,14 @@
 import { useEffect, useState } from 'react';
 import { AlertTriangle, RefreshCw } from 'lucide-react';
+import {
+  canReloadChunk,
+  isChunkLoadError,
+  reserveChunkReload,
+} from '@/shared/lib/chunk-recovery';
 
 interface ErrorFallbackProps {
   error: Error;
   resetErrorBoundary: () => void;
-}
-
-function isChunkLoadError(error: Error): boolean {
-  return (
-    error.message.includes('Failed to fetch dynamically imported module') ||
-    error.message.includes('Importing a module script failed') ||
-    error.message.includes('error loading dynamically imported module') ||
-    (error.name === 'TypeError' && error.message.includes('Failed to fetch'))
-  );
 }
 
 export function ErrorFallback({
@@ -21,16 +17,18 @@ export function ErrorFallback({
 }: ErrorFallbackProps) {
   const chunkError = isChunkLoadError(error);
   const [countdown, setCountdown] = useState(3);
+  const [autoReload, setAutoReload] = useState(canReloadChunk);
 
   useEffect(() => {
-    if (!chunkError) return;
+    if (!chunkError || !autoReload) return;
     if (countdown <= 0) {
-      window.location.reload();
+      if (reserveChunkReload()) window.location.reload();
+      else setAutoReload(false);
       return;
     }
     const timer = setTimeout(() => setCountdown((c) => c - 1), 1000);
     return () => clearTimeout(timer);
-  }, [chunkError, countdown]);
+  }, [chunkError, countdown, autoReload]);
 
   if (chunkError) {
     return (
@@ -42,12 +40,14 @@ export function ErrorFallback({
               size={36}
             />
             <h1 className="text-xl font-bold text-white mb-2">
-              새 버전이 배포되었습니다
+              화면 파일을 다시 불러와야 합니다
             </h1>
             <p className="text-gray-400 text-sm mb-4">
-              {countdown > 0
-                ? `${countdown}초 후 자동으로 새로고침됩니다.`
-                : '새로고침 중...'}
+              {autoReload
+                ? countdown > 0
+                  ? `${countdown}초 후 자동으로 새로고침됩니다.`
+                  : '새로고침 중...'
+                : '자동 재시도를 멈췄습니다. 연결을 확인한 뒤 다시 불러와 주세요.'}
             </p>
             <button
               onClick={() => window.location.reload()}

@@ -1,4 +1,5 @@
 import { ApiError } from '../api/api-error';
+import { isChunkLoadError } from './chunk-recovery';
 
 export type DiagnosticKind =
   'render' | 'runtime' | 'unhandled-rejection' | 'resource' | 'upload';
@@ -58,7 +59,6 @@ export function frontendDiagnostic(
 ) {
   const isError = error instanceof Error || error instanceof DOMException;
   const name = isError ? error.name : '';
-  const message = isError ? error.message : '';
   const status = error instanceof ApiError ? error.status : undefined;
   let code = 'unexpected';
   if (name === 'RepositoryUploadIntegrityError') code = 'integrity';
@@ -76,12 +76,7 @@ export function frontendDiagnostic(
     (error instanceof ApiError && error.code === 'ERR_CANCELED')
   )
     code = 'aborted';
-  else if (
-    /Failed to fetch dynamically imported module|Importing a module script failed|Unable to preload CSS/.test(
-      message,
-    )
-  )
-    code = 'chunk-load';
+  else if (isChunkLoadError(error)) code = 'chunk-load';
   else if (status === 401) code = 'unauthorized';
   else if (status === 403) code = 'forbidden';
   else if (status === 409) code = 'conflict';
