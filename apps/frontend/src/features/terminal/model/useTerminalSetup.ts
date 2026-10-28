@@ -6,9 +6,9 @@ import '@xterm/xterm/css/xterm.css';
 import { TERMINAL_THEME, TERMINAL_FONT } from '../lib/terminal.constants';
 
 const MOBILE_BREAKPOINT = 768;
-// Claude Code TUI는 80+ cols 를 가정해 그리므로, 모바일에선 cols 를 고정하고
-// 컨테이너 가로 스크롤로 처리한다 (FitAddon 으로 폭에 맞추면 박스/테두리가 깨진다).
-const MOBILE_FIXED_COLS = 100;
+// 모바일에서도 화면 폭에 맞춰 cols 를 정한다. 고정 cols + 가로 스크롤은 줄이 잘려
+// 읽기도 복사하기도 어려웠다. 너무 좁으면 TUI 가 무너지므로 하한만 둔다.
+const MOBILE_MIN_COLS = 40;
 
 interface UseTerminalSetupProps {
   onData: (data: string) => void;
@@ -67,8 +67,9 @@ export function useTerminalSetup({
         try {
           if (isMobile()) {
             const proposed = fitAddon.proposeDimensions();
+            const cols = proposed?.cols ?? xterm.cols;
             const rows = proposed?.rows ?? xterm.rows;
-            xterm.resize(MOBILE_FIXED_COLS, Math.max(rows, 10));
+            xterm.resize(Math.max(cols, MOBILE_MIN_COLS), Math.max(rows, 10));
           } else {
             fitAddon.fit();
           }
