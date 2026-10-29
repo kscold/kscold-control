@@ -47,6 +47,8 @@ export class ListContainersUseCase {
 
         const isManaged = !!dbContainer;
         const isComposeManaged = composeServices.has(dc.name);
+        const composeProject =
+          dc.labels?.['com.docker.compose.project'] || null;
 
         // 포트 매핑을 API 응답 형식으로 정리함.
         const ports: Record<string, number> = {};
@@ -85,12 +87,14 @@ export class ListContainersUseCase {
             await this.containerRepo.save(dbContainer);
           }
 
-          return ContainerResponseDto.fromEntity(
+          const response = ContainerResponseDto.fromEntity(
             { ...dbContainer, resources },
             dc.state,
             externalAccess,
             isComposeManaged,
           );
+          response.composeProject = composeProject;
+          return response;
         }
 
         // 사용자 범위 조회에서는 관리되지 않는 외부 컨테이너를 숨김.
@@ -99,13 +103,15 @@ export class ListContainersUseCase {
         }
 
         // 외부 컨테이너는 가상 DTO로 내려줌.
-        return ContainerResponseDto.fromDockerContainer(
+        const response = ContainerResponseDto.fromDockerContainer(
           dc,
           ports,
           resources,
           externalAccess,
           isComposeManaged,
         );
+        response.composeProject = composeProject;
+        return response;
       }),
     );
 

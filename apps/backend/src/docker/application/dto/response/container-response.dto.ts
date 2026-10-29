@@ -82,6 +82,10 @@ export class ContainerResponseDto {
   @Expose()
   isComposeManaged!: boolean;
 
+  /** 컨테이너를 만든 compose 프로젝트. compose 밖에서 띄웠으면 null */
+  @Expose()
+  composeProject?: string | null;
+
   /** 관리 대상 엔티티를 응답 구조로 변환함. */
   static fromEntity(
     container: Container,

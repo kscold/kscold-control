@@ -75,13 +75,19 @@ export class DockerTopologyService {
   ) {}
 
   async getSnapshot(userId: string): Promise<TopologySnapshot> {
-    const [containers, configuredSites] = await Promise.all([
+    const [allContainers, configuredSites] = await Promise.all([
       this.listContainersUseCase.execute(undefined),
       this.nginxConfigRepository.list(),
     ]);
+    // 토폴로지에는 실제로 돌고 있는 서비스만 그린다.
+    const containers = allContainers.filter((container) =>
+      this.isLiveService(container, configuredSites),
+    );
     // 사이트가 아닌 공용 include(ip-blocklist.conf 등) 제외는
     // 사이트 개념을 소유한 nginx 설정 리포지토리에서 이미 처리한다.
-    const sites = this.mergeSites(configuredSites, containers);
+    const sites = this.mergeSites(configuredSites, containers).filter((site) =>
+      this.isLiveSite(site, containers),
+    );
 
     const processMap = await this.fetchProcesses(containers);
     const composeServices = new Set(this.composeService.listServices());
@@ -477,6 +483,61 @@ export class DockerTopologyService {
     );
 
     return Object.fromEntries(entries);
+  }
+
+  /**
+   * 꺼진 컨테이너와, compose·nginx·Control 어디에도 묶이지 않고
+   * 검증용으로 잠깐 띄운 컨테이너는 운영 중인 서비스로 보지 않는다.
+   */
+  private isLiveService(
+    container: ContainerResponseDto,
+    sites: NginxSite[],
+  ): boolean {
+    if (container.liveStatus !== 'running') {
+      return false;
+    }
+
+    return (
+      container.isManaged ||
+      container.isComposeManaged ||
+      Boolean(container.composeProject) ||
+      sites.some((site) =>
+        this.matchesUpstreamHost(site.upstream, container.name),
+      )
+    );
+  }
+
+  /**
+   * 뒤에 살아 있는 서비스가 없는 사이트는 그리지 않는다.
+   * 꺼진 컨테이너를 가리키거나 proxy_pass 없이 안내 페이지만 돌려주는 설정이 여기에 해당한다.
+   */
+  private isLiveSite(
+    site: NginxSite,
+    containers: ContainerResponseDto[],
+  ): boolean {
+    if (
+      this.isLocalControlUpstream(site.upstream) ||
+      site.name === 'control' ||
+      this.isStorageSite(site)
+    ) {
+      return true;
+    }
+
+    const host = this.extractUpstreamHost(site.upstream);
+    if (!host) {
+      return false;
+    }
+
+    if (
+      containers.some((container) =>
+        this.matchesUpstreamHost(site.upstream, container.name),
+      )
+    ) {
+      return true;
+    }
+
+    // 점이 없는 호스트는 도커 네트워크의 컨테이너 이름이다. 그런데 살아 있는 컨테이너가 없으면 꺼진 서비스다
+    return host.includes('.');
   }
 
   private isInfraContainer(container: ContainerResponseDto): boolean {
