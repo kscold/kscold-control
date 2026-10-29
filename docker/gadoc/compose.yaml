@@ -2,7 +2,8 @@ name: gadoc-runtime
 
 services:
   ubuntu-gadoc:
-    image: kscold/ubuntu-gadoc:2026-10-29-r2
+    # 이미지 태그와 DB 볼륨은 env 파일로 함께 바꾼다 (MongoDB 9.0 이미지는 9.0 으로 옮긴 새 볼륨에서만 띄운다)
+    image: kscold/ubuntu-gadoc:${GADOC_IMAGE_TAG:-2026-10-29-r2}
     container_name: ubuntu-gadoc
     hostname: ubuntu-gadoc
     restart: unless-stopped
@@ -12,6 +13,7 @@ services:
     environment:
       TZ: Asia/Seoul
       GADOC_START_RUNTIME: ${GADOC_START_RUNTIME:-0}
+      GADOC_MONGO_VOLUME: ${GADOC_MONGO_VOLUME:-gadoc-mongo-data}
     ports:
       - '${GADOC_SSH_BIND:-127.0.0.1}:${GADOC_SSH_PORT:-2228}:22'
     volumes:
@@ -42,7 +44,7 @@ networks:
 volumes:
   gadoc-mongo-data:
     external: true
-    name: gadoc-mongo-data
+    name: ${GADOC_MONGO_VOLUME:-gadoc-mongo-data}
   gadoc-app-data:
     external: true
     name: gadoc-app-data
