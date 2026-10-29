@@ -5,7 +5,9 @@ export function assertUploadFilesWithinLimits(
   files: Array<{ relativePath: string; file: { size: number } }>,
   limits: RepositoryUploadLimits,
 ): void {
-  const maxFileBytes = limits.maxFileBytes ?? 50 * 1024 * 1024;
+  // 파일 한도는 서버 정책을 그대로 쓴다. 서버가 정하지 않았으면 화면에서 따로 막지 않는다
+  const maxFileBytes = limits.maxFileBytes;
+  if (maxFileBytes === undefined) return;
   const oversized = files.filter(({ file }) => file.size > maxFileBytes);
   if (oversized.length > 0) {
     const paths = oversized.slice(0, 5).map(({ relativePath }) => relativePath);

@@ -115,6 +115,7 @@ export function filterFiles<
 /** 청크 업로드용 — 파일 배열을 N개씩 또는 M바이트 이내 배치로 자름 */
 export function chunkFiles<T extends { file: { size: number } }>(
   files: T[],
+  // 서버 정책(upload-limits)이 없을 때만 쓰는 기본값
   maxBatchFiles = 50,
   maxBatchBytes = 8 * 1024 * 1024,
 ): T[][] {

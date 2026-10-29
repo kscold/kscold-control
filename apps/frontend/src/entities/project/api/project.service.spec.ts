@@ -156,4 +156,55 @@ describe('RepositoryService upload errors', () => {
     );
     await expect(execution).rejects.toThrow('민감한 키 자료');
   });
+
+  it('조각 크기보다 큰 파일은 받은 위치부터 이어서 조각으로 보낸다', async () => {
+    const file = new File(
+      [Uint8Array.from({ length: 10 }, (_, i) => i)],
+      'app.war',
+    );
+    const put = vi
+      .spyOn(api, 'put')
+      .mockResolvedValueOnce({ data: { receivedBytes: 4, completed: false } })
+      .mockRejectedValueOnce(
+        axiosError({ message: '이미 받음', receivedBytes: 8 }, 409),
+      )
+      .mockResolvedValueOnce({
+        data: { receivedBytes: 10, completed: true, failedFiles: [] },
+      });
+    const post = vi.spyOn(api, 'post');
+    const result = await new RepositoryService().uploadSessionBatch(
+      'project-id',
+      'session-id',
+      3,
+      [{ relativePath: 'dist/app.war', file }],
+      { chunkBytes: 4 },
+    );
+    expect(result).toMatchObject({ completed: true });
+    expect(post).not.toHaveBeenCalled();
+    expect(put.mock.calls[0][0]).toBe(
+      '/repository/projects/project-id/upload-sessions/session-id/batches/3/content',
+    );
+    expect(
+      put.mock.calls.map(
+        (call) => (call[2] as { params: { offset: number } }).params.offset,
+      ),
+    ).toEqual([0, 4, 8]);
+    expect((put.mock.calls[2][1] as Blob).size).toBe(2);
+  });
+
+  it('조각 크기 이하 파일은 기존 multipart 배치로 보낸다', async () => {
+    const put = vi.spyOn(api, 'put');
+    const post = vi
+      .spyOn(api, 'post')
+      .mockResolvedValue({ data: { uploadedCount: 1, failedFiles: [] } });
+    await new RepositoryService().uploadSessionBatch(
+      'project-id',
+      'session-id',
+      0,
+      [{ relativePath: 'README.md', file: new File(['hi'], 'README.md') }],
+      { chunkBytes: 4 },
+    );
+    expect(post).toHaveBeenCalledTimes(1);
+    expect(put).not.toHaveBeenCalled();
+  });
 });
