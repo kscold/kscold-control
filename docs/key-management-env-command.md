@@ -80,11 +80,15 @@ infra 담당자가 기존 두 대상의 행과 권한을 유지하면서 별도 
     "username": "root",
     "credentialRef": "storage-production",
     "protocol": "env-v1",
-    "allowedKeys": ["<MANAGED_ENV_KEYS 전체>"]
+    "allowedKeys": ["*"]
   },
   "deploymentConfig": { "protocol": "env-v1" }
 }
 ```
+
+`allowedKeys`를 `["*"]` 하나로 두면 예약 키를 뺀 모든 키를 관리한다(GaDoc #160과 같은 예약 키 규칙,
+`domain/policies/env-command-key.policy.ts`). 새 기능 키는 대상 설정이나 서버 도구를 고치지 않고 운영 키 화면에서 바로 넣는다.
+명시 목록을 쓰면 목록에 있는 키만 받는다. 어느 쪽이든 서버가 같은 규칙으로 다시 검사한다.
 
 target의 ID·표시명·설명·instance·location·정렬값과 실제 host/port는 설치 담당자가 결정한다.
 비공개 connection metadata는 기존과 같이 API에 반환하지 않는다. `allowedKeys`만 관리 범위로 표시한다.
