@@ -166,6 +166,10 @@ npm install -g @openai/codex
 | `STORAGE_HOST_VOLUME`             | `/System/Volumes/Data`     | Mac volume shown as free space            |
 | `COLIMA_DATA_DISK`                | Colima default data disk   | Docker VM disk file to measure            |
 | `COLIMA_BIN`                      | `colima`                   | Used for VM `df` and `fstrim`             |
+| `STORAGE_TRIM_TIME`               | `05:00`                    | Daily Docker VM trim, `off` to disable    |
+| `AUTOMATION_LAUNCHD_PREFIXES`     | —                          | launchd labels shown on 자동 작업         |
+| `AUTOMATION_DESCRIPTIONS`         | —                          | JSON names/descriptions per label         |
+| `AUTOMATION_RELEASE_DIRS`         | —                          | JSON container release dirs to watch      |
 
 ## Multi-target Key Management API
 
@@ -351,6 +355,25 @@ deleting anything.
 
 Measuring folder sizes can take tens of seconds, so results are reused for
 10 minutes; **다시 재기** measures again.
+
+**공간 반환** also runs every day at `STORAGE_TRIM_TIME` (default `05:00`, after the
+worktree cleanup), so space freed inside the VM by automatic cleanups reaches the
+Mac. Scheduled and manual runs are both kept as history.
+
+### 자동 작업 tab
+
+`/maintenance?tab=automations` lists every automatic job in one place and refreshes
+every minute. It only reads; nothing is run from here.
+
+- **kscold-control jobs** — each worktree cleanup target and the daily trim, with
+  the last run's result.
+- **macOS launchd jobs** — agents and daemons whose label starts with one of
+  `AUTOMATION_LAUNCHD_PREFIXES`: schedule, whether launchd has it loaded, the last
+  exit code, and the last line of its stdout log (its change time stands in for
+  the last run time). Jobs that run once at login are not reported as stopped after
+  they finish. Names and descriptions come from `AUTOMATION_DESCRIPTIONS`.
+- **Inside containers** — release directories listed in `AUTOMATION_RELEASE_DIRS`
+  (count, size, last deployment), for deploy tools that prune old releases.
 
 ## Worktree Cleanup
 
