@@ -55,7 +55,7 @@ export function TopologyCanvas({ snapshot }: TopologyCanvasProps) {
       proOptions={{ hideAttribution: true }}
       minZoom={0.35}
       maxZoom={1.2}
-      style={{ background: '#030712' }}
+      className="[--xy-background-color:var(--color-gray-950)]"
     >
       <Background
         variant={BackgroundVariant.Dots}
