@@ -76,6 +76,10 @@ module.exports = {
           'STORAGE_HOST_VOLUME',
           'COLIMA_DATA_DISK',
           'COLIMA_BIN',
+          'STORAGE_TRIM_TIME',
+          'AUTOMATION_LAUNCHD_PREFIXES',
+          'AUTOMATION_DESCRIPTIONS',
+          'AUTOMATION_RELEASE_DIRS',
         ]),
       },
       // 자동 재시작
