@@ -1,6 +1,7 @@
 import { api } from '@/shared/api/client';
 import { BaseApiService } from '@/shared/api/base.service';
 import type {
+  AutomationsOverview,
   DockerDiskTrimResult,
   StorageOverview,
 } from '../model/maintenance.types';
@@ -20,6 +21,19 @@ export class StorageService extends BaseApiService {
       ).data;
     } catch (error) {
       this.handleError(error, '저장공간 현황 조회 실패');
+    }
+  }
+
+  /** 맥 자동 실행 작업과 컨테이너 안 폴더를 읽느라 몇 초 걸릴 수 있다. */
+  async getAutomations(): Promise<AutomationsOverview> {
+    try {
+      return (
+        await api.get<AutomationsOverview>('/maintenance/automations', {
+          timeout: 120_000,
+        })
+      ).data;
+    } catch (error) {
+      this.handleError(error, '자동 작업 현황 조회 실패');
     }
   }
 
