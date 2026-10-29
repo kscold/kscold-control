@@ -14,6 +14,9 @@ import type {
   KeyManagementTarget,
   SshBlueGreenDeploymentConfig,
   SshSecretStoreConfig,
+  SshConnectionConfig,
+  SshEnvCommandSecretStoreConfig,
+  SshEnvCommandDeploymentConfig,
 } from '../../domain/types/key-management-target.type';
 
 const TARGET_ID = /^[a-z0-9][a-z0-9-]{1,79}$/;
@@ -73,6 +76,11 @@ export class KeyManagementTargetService {
         this.assertGcpConfig(input.secretConfig as GcpSecretStoreConfig);
       } else if (input.provider === 'ssh-env-file') {
         this.assertSshConfig(input.secretConfig as SshSecretStoreConfig);
+      } else if (input.provider === 'ssh-env-command') {
+        this.assertCommandConfig(
+          input.secretConfig as SshEnvCommandSecretStoreConfig,
+          input.requiredKeys,
+        );
       } else {
         throw new Error('invalid secret provider');
       }
@@ -85,6 +93,14 @@ export class KeyManagementTargetService {
         this.assertSshDeploymentConfig(
           input.deploymentConfig as SshBlueGreenDeploymentConfig,
         );
+      } else if (input.deploymentProvider === 'ssh-env-command') {
+        const config = input.deploymentConfig as SshEnvCommandDeploymentConfig;
+        if (
+          !config ||
+          config.protocol !== 'env-v1' ||
+          Object.keys(config).some((key) => key !== 'protocol')
+        )
+          throw new Error('invalid command deployment config');
       } else {
         throw new Error('invalid deployment provider');
       }
@@ -93,7 +109,9 @@ export class KeyManagementTargetService {
         (input.provider === 'gcp-secret-manager' &&
           input.deploymentProvider !== 'github-actions') ||
         (input.provider === 'ssh-env-file' &&
-          input.deploymentProvider !== 'ssh-blue-green')
+          input.deploymentProvider !== 'ssh-blue-green') ||
+        (input.provider === 'ssh-env-command' &&
+          input.deploymentProvider !== 'ssh-env-command')
       ) {
         throw new Error('invalid provider pairing');
       }
@@ -135,6 +153,12 @@ export class KeyManagementTargetService {
   }
 
   private assertSshConfig(config: SshSecretStoreConfig): void {
+    this.assertConnection(config);
+    if (!SAFE_PATH.test(config.envPath))
+      throw new Error('invalid SSH env path');
+  }
+
+  private assertConnection(config: SshConnectionConfig): void {
     if (
       !config ||
       !SAFE_HOST.test(config.host) ||
@@ -142,11 +166,44 @@ export class KeyManagementTargetService {
       config.port < 1 ||
       config.port > 65_535 ||
       !SAFE_USERNAME.test(config.username) ||
-      !SAFE_PATH.test(config.envPath) ||
       !SAFE_CREDENTIAL_REF.test(config.credentialRef)
     ) {
       throw new Error('invalid SSH config');
     }
+  }
+
+  private assertCommandConfig(
+    config: SshEnvCommandSecretStoreConfig,
+    requiredKeys: string[],
+  ): void {
+    this.assertConnection(config);
+    if (
+      config.protocol !== 'env-v1' ||
+      !Array.isArray(config.allowedKeys) ||
+      !config.allowedKeys.length ||
+      config.allowedKeys.length > 256 ||
+      new Set(config.allowedKeys).size !== config.allowedKeys.length ||
+      !config.allowedKeys.every(
+        (key) =>
+          ENV_KEY.test(key) &&
+          !/^(?:PATH|NODE_OPTIONS|LD_.*|DYLD_.*|BASH_ENV|ENV|SHELLOPTS|NODE_PATH)$/.test(
+            key,
+          ),
+      ) ||
+      !requiredKeys.every((key) => config.allowedKeys.includes(key)) ||
+      Object.keys(config).some(
+        (key) =>
+          ![
+            'host',
+            'port',
+            'username',
+            'credentialRef',
+            'protocol',
+            'allowedKeys',
+          ].includes(key),
+      )
+    )
+      throw new Error('invalid command config');
   }
 
   private assertGithubConfig(config: GithubActionsDeploymentConfig): void {
