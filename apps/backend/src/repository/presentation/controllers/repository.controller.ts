@@ -5,9 +5,11 @@ import {
   Delete,
   Get,
   Header,
+  Headers,
   Param,
   ParseIntPipe,
   Post,
+  Put,
   Query,
   Request,
   Res,
@@ -154,7 +156,7 @@ export class RepositoryController {
   @UseInterceptors(
     FilesInterceptor('files', 1000, {
       limits: {
-        fileSize: REPOSITORY_UPLOAD_LIMITS.maxFileBytes,
+        fileSize: REPOSITORY_UPLOAD_LIMITS.maxMultipartBytes,
         fieldSize: 10 * 1024 * 1024,
         fields: 5000,
         files: 1000,
@@ -282,7 +284,7 @@ export class RepositoryController {
   @UseInterceptors(
     FilesInterceptor('files', 200, {
       limits: {
-        fileSize: REPOSITORY_UPLOAD_LIMITS.maxFileBytes,
+        fileSize: REPOSITORY_UPLOAD_LIMITS.maxMultipartBytes,
         fieldSize: 10 * 1024 * 1024,
         files: 200,
         fields: 100,
@@ -341,6 +343,65 @@ export class RepositoryController {
       sessionId,
       batchIndex,
       uploadFiles,
+      getProjectOwnerScope(req),
+    );
+    return {
+      ...result,
+      session: uploadSessionResponse(result.session, summary),
+    };
+  }
+
+  @Put('projects/:id/upload-sessions/:sessionId/batches/:batchIndex/content')
+  @RequirePermissions(PERMISSIONS.REPOSITORY_WRITE)
+  @Audit({
+    domain: 'repository',
+    action: 'upload.batch.complete',
+    summary: (ctx) =>
+      `프로젝트 ${ctx.params.id} 업로드 배치 ${parseInt(ctx.params.batchIndex, 10) + 1}(큰 파일 조각 업로드)을 반영했습니다.`,
+    targetType: 'project',
+    targetId: (ctx) => ctx.params.id,
+    // 조각마다 남기지 않고 파일을 다 받은 요청만 기록한다
+    when: (ctx) => (ctx.response as { completed?: boolean }).completed === true,
+    metadata: (ctx) => {
+      const r = ctx.response as {
+        receivedBytes: number;
+        session: { status: string };
+      };
+      return {
+        sessionId: ctx.params.sessionId,
+        batchIndex: parseInt(ctx.params.batchIndex, 10),
+        uploadedCount: 1,
+        uploadedBytes: r.receivedBytes,
+        chunked: true,
+        status: r.session.status,
+      };
+    },
+  })
+  async uploadSessionBatchContent(
+    @Param('id') id: string,
+    @Param('sessionId') sessionId: string,
+    @Param('batchIndex', ParseIntPipe) batchIndex: number,
+    @Query('offset') offsetRaw: string,
+    @Headers('content-type') contentType: string | undefined,
+    @Request() req: JwtRequest,
+    @Query('summary') summary?: string,
+  ) {
+    const body = req as unknown as import('stream').Readable;
+    if (!contentType?.startsWith('application/octet-stream')) {
+      body.resume();
+      throw new BadRequestException(
+        '조각 업로드는 application/octet-stream 본문이어야 합니다.',
+      );
+    }
+    const offset = /^\d{1,16}$/.test(offsetRaw ?? '')
+      ? Number(offsetRaw)
+      : Number.NaN;
+    const result = await this.uploadSessionBatchUseCase.writeContent(
+      id,
+      sessionId,
+      batchIndex,
+      offset,
+      body,
       getProjectOwnerScope(req),
     );
     return {

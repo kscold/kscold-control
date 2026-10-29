@@ -125,6 +125,12 @@ export interface UploadSessionBatchResult {
   failedFiles: string[];
 }
 
+/** 큰 파일 조각 업로드 응답 — 서버가 받은 위치와 파일이 끝났는지 */
+export interface UploadSessionContentResult extends UploadSessionBatchResult {
+  receivedBytes: number;
+  completed: boolean;
+}
+
 export interface FinalizeUploadSessionResult {
   project: RepositoryProject;
   session: RepositoryUploadSession;
@@ -159,10 +165,15 @@ export interface ProjectVersion {
   compressedSize: number;
   filename: string;
 }
+/** 업로드 정책은 서버가 정한다 (GET /repository/upload-limits). 화면은 받은 값을 그대로 쓴다. */
 export interface RepositoryUploadLimits {
   maxFiles: number;
   maxTotalBytes: number;
-  /** 구버전 서버 응답은 파일당 50MiB 제한을 사용한다. */
   maxFileBytes?: number;
   maxBatches: number;
+  /** 작은 파일을 한 요청으로 묶을 때의 파일 수·크기 */
+  maxBatchFiles?: number;
+  batchBytes?: number;
+  /** 이보다 큰 파일은 혼자 한 배치로 이 크기씩 조각 업로드한다 */
+  chunkBytes?: number;
 }

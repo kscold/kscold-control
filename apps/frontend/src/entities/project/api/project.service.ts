@@ -12,6 +12,7 @@ import type {
   CreateUploadSessionInput,
   RepositoryUploadSession,
   UploadSessionBatchResult,
+  UploadSessionContentResult,
   FinalizeUploadSessionResult,
   ProjectVersion,
   RepositoryUploadLimits,
@@ -207,8 +208,24 @@ export class RepositoryService extends BaseApiService {
     sessionId: string,
     batchIndex: number,
     files: ClientFile[],
-    options?: { onProgress?: (percent: number) => void },
+    options?: { onProgress?: (percent: number) => void; chunkBytes?: number },
   ): Promise<UploadSessionBatchResult> {
+    // 서버 정책의 조각 크기보다 큰 파일은 혼자 한 배치로 계획되어 있다. 조각으로 나눠 보낸다
+    const single = files.length === 1 ? files[0] : null;
+    if (
+      single &&
+      options?.chunkBytes &&
+      single.file.size > options.chunkBytes
+    ) {
+      return this.uploadSessionBatchContent(
+        projectId,
+        sessionId,
+        batchIndex,
+        single,
+        options.chunkBytes,
+        options.onProgress,
+      );
+    }
     const url = `${this.basePath}/projects/${projectId}/upload-sessions/${sessionId}/batches/${batchIndex}`;
     // 대형 프로젝트는 배치 수십 개를 순차 전송한다. 한 배치가 일시적 네트워크
     // 단절/타임아웃으로 실패해도 전체 업로드가 멈추지 않도록 배치 단위로 재시도한다.
@@ -307,6 +324,80 @@ export class RepositoryService extends BaseApiService {
       }
     }
     throw new Error('업로드 최종 반영 실패');
+  }
+
+  /**
+   * 큰 파일 하나를 chunkBytes 조각으로 이어 보낸다. 서버가 받은 위치(receivedBytes)를 기준으로 보내므로
+   * 응답을 놓치거나 연결이 끊겨도 처음부터 다시 보내지 않고 받은 데까지 이어서 보낸다.
+   */
+  private async uploadSessionBatchContent(
+    projectId: string,
+    sessionId: string,
+    batchIndex: number,
+    clientFile: ClientFile,
+    chunkBytes: number,
+    onProgress?: (percent: number) => void,
+  ): Promise<UploadSessionContentResult> {
+    const url = `${this.basePath}/projects/${projectId}/upload-sessions/${sessionId}/batches/${batchIndex}/content`;
+    const total = clientFile.file.size;
+    const maxAttempts = 4;
+    let offset = 0;
+    let failures = 0;
+
+    for (;;) {
+      const start = offset;
+      const end = Math.min(start + chunkBytes, total);
+      try {
+        const { data } = await api.put<UploadSessionContentResult>(
+          url,
+          clientFile.file.slice(start, end),
+          {
+            headers: { 'Content-Type': 'application/octet-stream' },
+            params: { offset: start, summary: true },
+            // 조각 1건당 2분 — 멈춘 연결을 빨리 실패 처리해 같은 위치부터 다시 보낸다
+            timeout: 120_000,
+            onUploadProgress: (event) => {
+              const sent = Math.min(event.loaded ?? 0, end - start);
+              onProgress?.(Math.round(((start + sent) / total) * 100));
+            },
+            maxContentLength: Infinity,
+            maxBodyLength: Infinity,
+          },
+        );
+        failures = 0;
+        if (data.completed) return data;
+        offset = data.receivedBytes;
+      } catch (error) {
+        // 서버가 이미 받은 위치가 다르면(앞 조각 응답 유실 등) 그 위치부터 이어서 보낸다
+        const received = this.receivedBytesFromConflict(error);
+        if (received !== null) {
+          offset = received;
+          continue;
+        }
+        failures += 1;
+        this.logError(
+          'RepositoryService',
+          `uploadSessionBatchContent(batch ${batchIndex}, offset ${start}, attempt ${failures}/${maxAttempts})`,
+          error,
+        );
+        if (!this.isRetryableError(error) || failures >= maxAttempts) {
+          this.throwUploadSessionError(error, '큰 파일 조각 전송 실패');
+        }
+        const backoffMs = Math.min(1000 * 2 ** (failures - 1), 8000);
+        await this.delay(backoffMs + Math.floor(Math.random() * 400));
+      }
+    }
+  }
+
+  private receivedBytesFromConflict(error: unknown): number | null {
+    if (!axios.isAxiosError(error) || error.response?.status !== 409) {
+      return null;
+    }
+    const received = (error.response.data as { receivedBytes?: unknown })
+      ?.receivedBytes;
+    return typeof received === 'number' && Number.isSafeInteger(received)
+      ? received
+      : null;
   }
 
   private throwUploadSessionError(

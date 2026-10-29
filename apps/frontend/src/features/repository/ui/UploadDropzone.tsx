@@ -30,6 +30,7 @@ import type {
   CreateUploadSessionInput,
   RepositoryProject,
   RepositoryUploadActivity,
+  RepositoryUploadLimits,
   RepositoryUploadSession,
 } from '@/entities/project';
 
@@ -61,6 +62,7 @@ interface PendingUpload {
 async function buildPendingUpload(
   kept: ClientFile[],
   stats: FilterStats,
+  limits: RepositoryUploadLimits,
   onProgress?: (processed: number, total: number) => void,
 ): Promise<PendingUpload> {
   const manifest = await buildUploadManifest(kept, onProgress);
@@ -84,7 +86,12 @@ async function buildPendingUpload(
     unreadablePaths: manifest.unreadablePaths,
     totalSize: frozenTotalSize,
   };
-  const rawBatches = chunkFiles(frozenFiles, 50, 8 * 1024 * 1024);
+  // 묶음 크기는 서버 정책을 따른다. 묶음 크기보다 큰 파일은 혼자 한 배치가 되어 조각 업로드된다
+  const rawBatches = chunkFiles(
+    frozenFiles,
+    limits.maxBatchFiles,
+    limits.batchBytes,
+  );
   const batches = rawBatches.map((files, index) => ({
     index,
     files,
@@ -379,13 +386,14 @@ export function UploadDropzone({
         assertUploadWithinLimits(
           kept.length,
           stats.totalSize,
-          chunkFiles(kept).length,
+          chunkFiles(kept, limits.maxBatchFiles, limits.batchBytes).length,
           limits,
         );
         setHashTotal(kept.length);
         const nextPendingUpload = await buildPendingUpload(
           kept,
           stats,
+          limits,
           setHashedCount,
         );
         assertUploadFilesWithinLimits(nextPendingUpload.kept, limits);
@@ -551,6 +559,7 @@ export function UploadDropzone({
               batch.index,
               localBatch.files,
               {
+                chunkBytes: limits.chunkBytes,
                 onProgress: (transportProgress) => {
                   const inFlightActivity = buildActivityFromSession(
                     project,

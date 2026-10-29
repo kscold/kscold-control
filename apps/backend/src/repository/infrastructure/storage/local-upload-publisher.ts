@@ -76,6 +76,7 @@ export class LocalUploadPublisher {
         recursive: true,
         force: true,
       });
+      await this.removeParts(projectName, sessionId);
       return {
         stats: (
           await this.inspectDirectory(this.layout.projectPath(projectName))
@@ -116,6 +117,7 @@ export class LocalUploadPublisher {
 
     await this.writeReceipt(receiptPath, receipt);
     await this.publishPreparedStage(receipt);
+    await this.removeParts(projectName, sessionId);
     return { stats: inspection.stats, version, publishedAt };
   }
 
@@ -137,6 +139,7 @@ export class LocalUploadPublisher {
       recursive: true,
       force: true,
     });
+    await this.removeParts(projectName, sessionId);
     if (receipt?.state === 'prepared') {
       if (receipt.ownsVersion !== false) {
         await fs.rm(
@@ -149,6 +152,14 @@ export class LocalUploadPublisher {
       }
       await fs.rm(receiptPath, { force: true });
     }
+  }
+
+  /** 조각으로 받다 만 큰 파일 정리 (세션이 끝나거나 버려질 때) */
+  private async removeParts(projectName: string, sessionId: string) {
+    await fs.rm(this.layout.sessionPartsPath(projectName, sessionId), {
+      recursive: true,
+      force: true,
+    });
   }
 
   async recoverInterruptedPublishes(): Promise<void> {
