@@ -29,7 +29,8 @@ A self-hosted infrastructure governance panel for managing Docker containers, Ng
 | **Security**    | IP ban management, JWT RBAC, permission guards                                                |
 | **Key Vault**   | DB-driven targets, encrypted `.env` backups, GCP/SSH versioned deploys                        |
 | **Logs**        | Unified viewer — backend · PM2 · Nginx · Docker · blog container logs                         |
-| **Network**     | Topology graph (React Flow), UPnP port management                                             |
+| **Network**     | Topology graph (React Flow) of running services only, UPnP port management                    |
+| **Storage**     | Mac disk, Docker VM disk with one-click trim, container layers, idle images/volumes, folders  |
 | **Maintenance** | Daily cleanup of finished git worktrees with local-file backup and run history                |
 | **Backups**     | DB-managed MongoDB backup targets, per-target daily schedule, retention pruning, run history  |
 | **System**      | Real-time CPU / memory / disk, Nginx status, host info                                        |
@@ -161,6 +162,10 @@ npm install -g @openai/codex
 | `KEY_MANAGEMENT_GH_PATH`          | `/opt/homebrew/bin/gh`     | Path to the GitHub CLI                    |
 | `KEY_MANAGEMENT_SSH_PATH`         | `/usr/bin/ssh`             | Path to the OpenSSH client                |
 | `KEY_MANAGEMENT_SSH_IDENTITY_DIR` | `$HOME/.ssh`               | Directory containing target SSH keys      |
+| `STORAGE_EXTRA_FOLDERS`           | —                          | JSON list of extra folders to measure     |
+| `STORAGE_HOST_VOLUME`             | `/System/Volumes/Data`     | Mac volume shown as free space            |
+| `COLIMA_DATA_DISK`                | Colima default data disk   | Docker VM disk file to measure            |
+| `COLIMA_BIN`                      | `colima`                   | Used for VM `df` and `fstrim`             |
 
 ## Multi-target Key Management API
 
@@ -322,11 +327,37 @@ docker run --rm -i -e MONGODB_URI mongo:7 \
 
 ---
 
+## Storage
+
+The **저장공간** page (`/maintenance`) shows where the Mac's disk went, without
+deleting anything.
+
+- **Mac free space** of the data volume.
+- **Docker VM disk** — how much the Colima disk file takes on the Mac versus what
+  Docker uses inside the VM. Deleting images or containers frees space only inside
+  the VM; **공간 반환** runs `fstrim` on `/var/lib/docker` to hand it back to the
+  Mac. It does not stop any service. It needs `system:write` and is audited.
+- **Space returned on restart** — Mac files the VM still holds open after they were
+  deleted (files read through the shared home folder). They come back when the VM
+  or the Mac restarts.
+- **Inside Docker** — each container's writable layer (flagged above 5 GiB, which
+  usually means package caches or logs piled up inside), images no container uses,
+  and volumes no container mounts. Use the Docker page to remove them; a volume
+  kept on purpose for rollback also shows up here.
+- **Large folders** — folders development tools keep filling per version or
+  session (Codex and Claude Code sessions and runtimes, pnpm store, Playwright
+  browsers, VS Code server, Trash, `/private/tmp`). Add machine-specific folders
+  with `STORAGE_EXTRA_FOLDERS`.
+
+Measuring folder sizes can take tens of seconds, so results are reused for
+10 minutes; **다시 재기** measures again.
+
 ## Worktree Cleanup
 
 Long-running agent work leaves many `git worktree` checkouts behind (each with its
-own `node_modules` and build output). The **작업 폴더 정리** page (`/maintenance`)
-removes the ones that can be recreated from the remote, once a day.
+own `node_modules` and build output). The **작업 폴더 정리** tab of the 저장공간 page
+(`/maintenance?tab=worktrees`) removes the ones that can be recreated from the
+remote, once a day.
 
 | Setting       | Default                                  | Description                                          |
 | ------------- | ---------------------------------------- | ---------------------------------------------------- |
