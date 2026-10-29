@@ -72,6 +72,10 @@ module.exports = {
           'SECURITY_ALLOWLIST',
           'CONTROL_COMPOSE_FILE',
           'PUBLIC_HOST',
+          'STORAGE_EXTRA_FOLDERS',
+          'STORAGE_HOST_VOLUME',
+          'COLIMA_DATA_DISK',
+          'COLIMA_BIN',
         ]),
       },
       // 자동 재시작
