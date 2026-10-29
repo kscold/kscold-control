@@ -12,6 +12,8 @@ import { StorageFolderList } from './StorageFolderList';
 
 /** 이보다 적게 돌려받을 수 있으면 공간 반환을 권하지 않는다 */
 const MIN_RECLAIM_BYTES = 1024 ** 3;
+/** 파일시스템 메타데이터 정도의 차이는 돌려줄 공간이 없는 것으로 보여준다 */
+const MIN_SHOWN_RECLAIM_BYTES = 64 * 1024 ** 2;
 
 type Tone = 'ok' | 'warn' | 'danger';
 type Notice = { tone: 'success' | 'error'; message: string };
@@ -210,7 +212,9 @@ export function StorageOverviewView() {
                       >
                         {vm.reclaimableBytes === null
                           ? '알 수 없음'
-                          : formatSize(vm.reclaimableBytes)}
+                          : vm.reclaimableBytes < MIN_SHOWN_RECLAIM_BYTES
+                            ? '없음'
+                            : formatSize(vm.reclaimableBytes)}
                       </dd>
                     </div>
                   </dl>
