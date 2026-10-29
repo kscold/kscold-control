@@ -1,10 +1,10 @@
 import { useModalStore } from '../model/modal.store';
-import { createPortal } from 'react-dom';
+import { Dialog } from './Dialog';
+import { dialogButtonClass } from './dialog.styles';
 
+/** 앱 전체에서 쓰는 알림·확인 창 (useModalStore 로 띄운다) */
 export const Modal = () => {
   const { isOpen, title, message, type, onConfirm, close } = useModalStore();
-
-  if (!isOpen) return null;
 
   const handleConfirm = () => {
     close();
@@ -13,46 +13,41 @@ export const Modal = () => {
     }
   };
 
-  return createPortal(
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div
-        role="alertdialog"
-        aria-modal="true"
-        aria-labelledby="global-modal-title"
-        aria-describedby="global-modal-message"
-        className="bg-gray-800 rounded-lg p-6 max-w-md w-full border border-gray-700 max-h-[85dvh] overflow-auto"
-      >
-        <h2
-          id="global-modal-title"
-          className="text-xl font-bold text-white mb-4"
-        >
-          {title}
-        </h2>
-        <p
-          id="global-modal-message"
-          className="text-gray-300 mb-6 whitespace-pre-wrap break-words"
-        >
-          {message}
-        </p>
-
-        <div className="flex justify-end gap-3">
+  return (
+    <Dialog
+      open={isOpen}
+      role="alertdialog"
+      size="sm"
+      title={title}
+      describedById="global-modal-message"
+      onClose={close}
+      footer={
+        <>
           {type === 'confirm' && (
             <button
+              type="button"
               onClick={close}
-              className="px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-500 transition-colors"
+              className={dialogButtonClass()}
             >
               취소
             </button>
           )}
           <button
+            type="button"
             onClick={handleConfirm}
-            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-500 transition-colors"
+            className={dialogButtonClass('blue')}
           >
             확인
           </button>
-        </div>
-      </div>
-    </div>,
-    document.body,
+        </>
+      }
+    >
+      <p
+        id="global-modal-message"
+        className="whitespace-pre-wrap break-words text-sm leading-6 text-gray-300"
+      >
+        {message}
+      </p>
+    </Dialog>
   );
 };
