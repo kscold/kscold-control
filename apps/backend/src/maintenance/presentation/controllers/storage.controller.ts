@@ -5,12 +5,14 @@ import {
   HttpStatus,
   Post,
   Query,
+  Req,
   UseGuards,
 } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { PERMISSIONS } from '../../../common/constants/permissions';
 import { Audit, RequirePermissions } from '../../../common/decorators';
 import { PermissionsGuard } from '../../../common/guards';
+import type { JwtRequest } from '../../../common/types/jwt-request.type';
 import { GetStorageOverviewDto } from '../../application/dto';
 import {
   GetStorageOverviewUseCase,
@@ -70,7 +72,10 @@ export class StorageController {
       };
     },
   })
-  async trim(): Promise<DockerDiskTrimResult> {
-    return this.trimDockerDisk.execute();
+  async trim(@Req() req: JwtRequest): Promise<DockerDiskTrimResult> {
+    return this.trimDockerDisk.execute({
+      trigger: 'manual',
+      actorEmail: req.user?.email ?? null,
+    });
   }
 }
