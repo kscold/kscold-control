@@ -54,6 +54,18 @@ export class TypeOrmTopologyLayoutRepository implements ITopologyLayoutRepositor
     );
   }
 
+  async deletePositionsByUser(userId: string): Promise<number> {
+    await this.ensureLayoutTable();
+    // PostgreSQL DELETE 결과는 [행 목록, 지운 행 수] 형태로 돌아옴
+    const result: unknown = await this.repository.query(
+      'DELETE FROM topology_node_layouts WHERE user_id = $1',
+      [userId],
+    );
+    return Array.isArray(result) && typeof result[1] === 'number'
+      ? result[1]
+      : 0;
+  }
+
   async findPositionsByUser(userId: string): Promise<TopologyNodePosition[]> {
     await this.ensureLayoutTable();
     const rows: Array<{ nodeId: string; x: number; y: number }> =
