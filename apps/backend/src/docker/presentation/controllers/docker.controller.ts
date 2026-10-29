@@ -30,6 +30,7 @@ import {
   ListComposeServicesUseCase,
   GetTopologySnapshotUseCase,
   SaveTopologyLayoutUseCase,
+  ResetTopologyLayoutUseCase,
   GetDockerCleanupCandidatesUseCase,
   PruneDanglingImagesUseCase,
   PruneBuildCacheUseCase,
@@ -69,6 +70,7 @@ export class DockerController {
     private readonly listComposeServicesUseCase: ListComposeServicesUseCase,
     private readonly getTopologySnapshotUseCase: GetTopologySnapshotUseCase,
     private readonly saveTopologyLayoutUseCase: SaveTopologyLayoutUseCase,
+    private readonly resetTopologyLayoutUseCase: ResetTopologyLayoutUseCase,
     private readonly getDockerCleanupCandidatesUseCase: GetDockerCleanupCandidatesUseCase,
     private readonly pruneDanglingImagesUseCase: PruneDanglingImagesUseCase,
     private readonly pruneBuildCacheUseCase: PruneBuildCacheUseCase,
@@ -169,6 +171,23 @@ export class DockerController {
     );
 
     return { success: true };
+  }
+
+  /** 끌어다 놓은 노드 배치를 지워 기본 배치로 되돌림 */
+  @Delete('topology/layout/nodes')
+  @RequirePermissions(PERMISSIONS.DOCKER_UPDATE)
+  @Audit({
+    domain: 'docker',
+    action: 'topology.layout.reset',
+    summary: '토폴로지 노드 배치를 기본 배치로 되돌렸습니다.',
+    targetType: 'topology',
+    targetId: () => 'layout',
+    metadata: (ctx) => ({
+      removed: (ctx.response as { removed?: number } | undefined)?.removed ?? 0,
+    }),
+  })
+  async resetTopologyLayout(@Request() req: JwtRequest) {
+    return this.resetTopologyLayoutUseCase.execute(req.user.id);
   }
 
   @Get('cleanup/candidates')

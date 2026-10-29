@@ -387,6 +387,15 @@ export class DockerTopologyService {
     };
   }
 
+  /** 사용자가 끌어다 놓은 배치를 지워 다음 조회부터 기본 배치로 그림 */
+  async resetNodePositions(userId: string): Promise<number> {
+    if (!userId) {
+      throw new Error('A user ID is required to reset topology layout.');
+    }
+
+    return this.topologyLayoutRepository.deletePositionsByUser(userId);
+  }
+
   async saveNodePositions(
     userId: string,
     positions: TopologyNodePositionInput[],

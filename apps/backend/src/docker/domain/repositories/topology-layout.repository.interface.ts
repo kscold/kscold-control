@@ -16,4 +16,6 @@ export interface ITopologyLayoutRepository {
     positions: TopologyNodePosition[],
   ): Promise<void>;
   findPositionsByUser(userId: string): Promise<TopologyNodePosition[]>;
+  /** 사용자가 저장한 배치를 모두 지우고 지운 개수를 돌려줌 */
+  deletePositionsByUser(userId: string): Promise<number>;
 }
