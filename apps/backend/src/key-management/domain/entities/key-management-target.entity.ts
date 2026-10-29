@@ -13,6 +13,8 @@ import type {
   SecretStoreProvider,
   SshBlueGreenDeploymentConfig,
   SshSecretStoreConfig,
+  SshEnvCommandSecretStoreConfig,
+  SshEnvCommandDeploymentConfig,
 } from '../types/key-management-target.type';
 
 @Entity('key_management_targets')
@@ -53,11 +55,16 @@ export class KeyManagementTargetEntity {
   requiredKeys: string[];
 
   @Column({ name: 'secret_config', type: 'jsonb', select: false })
-  secretConfig: GcpSecretStoreConfig | SshSecretStoreConfig;
+  secretConfig:
+    | GcpSecretStoreConfig
+    | SshSecretStoreConfig
+    | SshEnvCommandSecretStoreConfig;
 
   @Column({ name: 'deployment_config', type: 'jsonb', select: false })
   deploymentConfig:
-    GithubActionsDeploymentConfig | SshBlueGreenDeploymentConfig;
+    | GithubActionsDeploymentConfig
+    | SshBlueGreenDeploymentConfig
+    | SshEnvCommandDeploymentConfig;
 
   @Column({ type: 'boolean', default: true })
   enabled: boolean;

@@ -25,3 +25,11 @@ export interface IDeploymentGateway {
 }
 
 export const DEPLOYMENT_GATEWAY = Symbol('DEPLOYMENT_GATEWAY');
+
+// Only use after an explicit remote rejection that proves this UUID did not start.
+// Transport failures leave the durable deployment intent unresolved.
+export class DeploymentRejectedError extends Error {
+  constructor() {
+    super('서버가 환경 적용 요청을 거절했습니다.');
+  }
+}

@@ -10,6 +10,7 @@ import {
   DEPLOYMENT_GATEWAY,
   DeploymentRun,
   IDeploymentGateway,
+  DeploymentRejectedError,
 } from '../../domain/gateways/deployment.gateway.interface';
 import {
   ISecretStoreGateway,
@@ -26,7 +27,10 @@ import {
 import { EnvDocumentService } from './env-document.service';
 import { KeyManagementTargetService } from './key-management-target.service';
 import { SecretEncryptionService } from '../../../common/crypto/secret-encryption.service';
-import type { KeyManagementTarget } from '../../domain/types/key-management-target.type';
+import type {
+  KeyManagementTarget,
+  SshEnvCommandSecretStoreConfig,
+} from '../../domain/types/key-management-target.type';
 
 export interface KeyManagementActor {
   id: string;
@@ -223,18 +227,7 @@ export class KeyManagementService {
         );
       }
 
-      const requestId = randomUUID();
-      await this.deployments.trigger({
-        targetId,
-        version: backup.newVersion,
-        requestId,
-      });
-      backup.deploymentRequestId = requestId;
-      backup.deploymentRunId = null;
-      backup.deploymentUrl = null;
-      backup.errorMessage = null;
-      backup.status = 'deployment_queued';
-      await this.backups.save(backup);
+      const requestId = await this.queueDeployment(backup, backup.newVersion);
 
       return {
         requestId,
@@ -316,15 +309,7 @@ export class KeyManagementService {
       backup.status = 'secret_created';
       await this.backups.save(backup);
 
-      const requestId = randomUUID();
-      await this.deployments.trigger({
-        targetId,
-        version: added.version,
-        requestId,
-      });
-      backup.deploymentRequestId = requestId;
-      backup.status = 'deployment_queued';
-      await this.backups.save(backup);
+      const requestId = await this.queueDeployment(backup, added.version);
 
       return {
         backupId: backup.id,
@@ -340,6 +325,47 @@ export class KeyManagementService {
       await this.backups.save(backup);
       throw error;
     }
+  }
+
+  private async queueDeployment(
+    backup: SecretBackup,
+    version: string,
+  ): Promise<string> {
+    const requestId = randomUUID();
+    backup.deploymentRequestId = requestId;
+    backup.deploymentRunId = null;
+    backup.deploymentUrl = null;
+    backup.errorMessage = null;
+    backup.status = 'deployment_queued';
+    // Persist UUID + intent BEFORE the remote side can accept an apply.
+    await this.backups.save(backup);
+    try {
+      await this.deployments.trigger({
+        targetId: backup.targetId,
+        version,
+        requestId,
+      });
+    } catch (error) {
+      if (
+        error instanceof DeploymentRejectedError ||
+        error instanceof BadRequestException ||
+        error instanceof ConflictException
+      ) {
+        backup.status = 'failed';
+        backup.errorMessage = '서버가 환경 적용 요청을 거절했습니다.';
+        await this.backups.save(backup);
+        if (error instanceof DeploymentRejectedError)
+          throw new ConflictException(backup.errorMessage);
+        throw error;
+      }
+      // An unavailable ack/status is not proof of failure. Keep this UUID queued
+      // and poll it after reconnection; active intent blocks a fresh retry UUID.
+      backup.errorMessage = '환경 적용 요청의 응답을 확인 중입니다.';
+      // The queued intent is already durable. A diagnostic-write outage must
+      // never turn an uncertain remote apply into a confirmed failure.
+      await this.backups.save(backup).catch(() => undefined);
+    }
+    return requestId;
   }
 
   private async applyDeploymentState(
@@ -455,6 +481,14 @@ export class KeyManagementService {
       instanceName: target.instanceName,
       location: target.location,
       requiredKeys: [...target.requiredKeys],
+      ...(target.provider === 'ssh-env-command'
+        ? {
+            managedKeys: [
+              ...(target.secretConfig as SshEnvCommandSecretStoreConfig)
+                .allowedKeys,
+            ],
+          }
+        : {}),
       version: state.version,
       updatedAt: state.updatedAt,
       checksum: state.checksum,

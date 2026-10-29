@@ -40,6 +40,9 @@ jobs:
       - name: Check public source boundary
         run: pnpm check:public-source
 
+      - name: Test GaDoc runtime recovery boundary
+        run: pnpm test:gadoc-runtime
+
       - name: Check release version contract
         run: pnpm check:version && pnpm test:release-version
 

@@ -5,7 +5,7 @@ import { homedir } from 'node:os';
 import path from 'node:path';
 import type {
   KeyManagementTarget,
-  SshSecretStoreConfig,
+  SshConnectionConfig,
 } from '../../domain/types/key-management-target.type';
 import { runProcess } from './process-runner';
 
@@ -34,13 +34,13 @@ export class SshTargetCommandService {
     remoteCommand: string,
     options: SshCommandOptions = {},
   ): Promise<string> {
-    if (target.provider !== 'ssh-env-file') {
+    if (!['ssh-env-file', 'ssh-env-command'].includes(target.provider)) {
       throw new ServiceUnavailableException(
         'SSH 키 관리 대상 설정이 올바르지 않습니다.',
       );
     }
 
-    const connection = target.secretConfig as SshSecretStoreConfig;
+    const connection = target.secretConfig as SshConnectionConfig;
     const identityFile = path.resolve(
       this.identityDirectory,
       `kscold-control-${connection.credentialRef}`,
@@ -60,6 +60,7 @@ export class SshTargetCommandService {
       const { stdout } = await runProcess(
         this.sshPath,
         [
+          '-T',
           '-i',
           identityFile,
           '-p',

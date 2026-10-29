@@ -63,12 +63,14 @@ function formatVersion(value: string | null) {
 function providerLabel(provider: string | null | undefined) {
   if (provider === 'gcp-secret-manager') return 'GCP Secret Manager';
   if (provider === 'ssh-env-file') return 'SSH env file';
+  if (provider === 'ssh-env-command') return 'SSH 관리 명령';
   return '저장소 메타데이터 동기화 중';
 }
 
 function deploymentLabel(provider: string | null | undefined) {
   if (provider === 'github-actions') return 'GitHub Actions';
   if (provider === 'ssh-blue-green') return 'SSH blue/green';
+  if (provider === 'ssh-env-command') return '현재 버전에 환경 적용';
   return '배포 메타데이터 동기화 중';
 }
 
@@ -395,6 +397,19 @@ curl -X PUT '${apiOrigin}/api/key-management/targets/${target.id}/environment' \
                 연결 전에는 공개·수정·복원이 차단됩니다.
               </p>
             </div>
+          </div>
+        )}
+
+        {target.provider === 'ssh-env-command' && (
+          <div className="mt-4 rounded-xl border border-sky-900/60 bg-sky-950/20 px-4 py-3 text-sm text-sky-200">
+            <p>
+              관리 가능 키:{' '}
+              {target.managedKeys?.join(', ') || target.requiredKeys.join(', ')}
+            </p>
+            <p className="mt-1 text-xs text-sky-300/80">
+              이 범위의 서버 설정을 백업·복원하고 현재 실행 중인 소스 버전에
+              적용합니다. 적용 결과는 백업 이력에서 확인할 수 있습니다.
+            </p>
           </div>
         )}
 
