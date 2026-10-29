@@ -174,6 +174,21 @@ describe('AuditInterceptor', () => {
     });
   });
 
+  it('when 이 false 를 돌려주면 기록하지 않고, true 면 기록한다', async () => {
+    const meta: AuditMeta = {
+      domain: 'repository',
+      action: 'upload.batch.complete',
+      summary: '조각 업로드를 반영했습니다.',
+      when: (ctx) =>
+        (ctx.response as { completed?: boolean }).completed === true,
+    };
+    await runInterceptor(meta, { response: { completed: false } });
+    expect(recordMock).not.toHaveBeenCalled();
+    await expect(
+      runInterceptor(meta, { response: { completed: true } }),
+    ).resolves.toMatchObject({ action: 'upload.batch.complete' });
+  });
+
   it('targetId 가 없으면 null 로 기록한다', async () => {
     const recorded = await runInterceptor({
       domain: 'nginx',

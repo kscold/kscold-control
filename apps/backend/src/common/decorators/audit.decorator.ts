@@ -30,6 +30,8 @@ export interface AuditMeta {
   /** 파라미터명 문자열 또는 컨텍스트 기반 팩토리 */
   targetId?: string | ((ctx: AuditCtx) => string | null);
   metadata?: (ctx: AuditCtx) => Record<string, unknown>;
+  /** 주면 true 일 때만 기록한다 (예: 조각 업로드는 파일이 완성된 요청만 남김) */
+  when?: (ctx: AuditCtx) => boolean;
 }
 
 /**
