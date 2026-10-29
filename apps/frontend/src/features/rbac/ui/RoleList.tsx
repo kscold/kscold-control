@@ -19,7 +19,7 @@ export function RoleList({ roles }: RoleListProps) {
         {roles.map((role) => (
           <div
             key={role.id}
-            className="bg-gray-750 p-2.5 sm:p-3 rounded border border-gray-600"
+            className="bg-gray-900/40 p-2.5 sm:p-3 rounded border border-gray-600"
           >
             <div className="flex items-start justify-between mb-2">
               <div>

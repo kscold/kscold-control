@@ -38,7 +38,7 @@ export function DockerCleanupSection({
         </div>
         <SkeletonBlock className="h-9 w-24 rounded-full" />
       </div>
-      <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+      <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
         {Array.from({ length: 4 }).map((_, index) => (
           <div
             key={index}
@@ -64,7 +64,7 @@ export function DockerCleanupSection({
           <SkeletonBlock className="h-10 w-10 rounded-xl" />
         </div>
         <div className="mt-4">{summarySkeleton}</div>
-        <div className="mt-4 grid gap-4 xl:grid-cols-2">
+        <div className="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-2">
           {Array.from({ length: 4 }).map((_, index) => (
             <div
               key={index}
@@ -144,7 +144,7 @@ export function DockerCleanupSection({
 
       <DockerCleanupSummaryCard candidates={candidates} />
 
-      <div className="grid gap-4 xl:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
         <DockerCleanupCategoryCard
           title="Dangling 이미지"
           description="태그가 끊긴 이미지입니다. 현재 서비스에 연결되지 않은 경우만 정리 대상입니다."

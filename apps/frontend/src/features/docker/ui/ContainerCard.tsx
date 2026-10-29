@@ -75,7 +75,7 @@ export function ContainerCard({
   };
 
   return (
-    <div className="h-full rounded-lg border border-gray-700 bg-gray-800 p-4 transition-colors hover:border-gray-600">
+    <div className="@container h-full rounded-lg border border-gray-700 bg-gray-800 p-4 transition-colors hover:border-gray-600">
       <div className="flex items-start justify-between mb-3">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1">
@@ -179,7 +179,8 @@ export function ContainerCard({
         </div>
       )}
 
-      <div className="flex gap-2">
+      {/* 버튼 글자는 화면이 아니라 카드 폭을 보고 보인다 (여러 열 배치에서 카드가 좁아지므로) */}
+      <div className="flex flex-wrap gap-2">
         {container.liveStatus === 'running' ? (
           <button
             onClick={() =>
@@ -191,7 +192,7 @@ export function ContainerCard({
             title="중지"
           >
             <Square size={16} />
-            <span className="hidden sm:inline">중지</span>
+            <span className="hidden @[17rem]:inline">중지</span>
           </button>
         ) : (
           <button
@@ -204,7 +205,7 @@ export function ContainerCard({
             title="시작"
           >
             <Play size={16} />
-            <span className="hidden sm:inline">시작</span>
+            <span className="hidden @[17rem]:inline">시작</span>
           </button>
         )}
         <button
@@ -230,7 +231,7 @@ export function ContainerCard({
             title="MongoDB 백업"
           >
             <Database size={14} />
-            <span className="hidden sm:inline">
+            <span className="hidden max-w-[9rem] truncate align-bottom @[19rem]:inline-block">
               {backupState === 'loading'
                 ? '백업중...'
                 : backupState === 'done'

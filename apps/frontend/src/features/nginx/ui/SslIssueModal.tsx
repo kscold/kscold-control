@@ -1,4 +1,10 @@
 import { Lock } from 'lucide-react';
+import {
+  DIALOG_LABEL_CLASS,
+  Dialog,
+  dialogButtonClass,
+  dialogInputClass,
+} from '@/shared/ui';
 
 interface SslIssueModalProps {
   certForm: { domain: string; email: string; mode: string };
@@ -8,6 +14,13 @@ interface SslIssueModalProps {
   onSubmit: () => void;
 }
 
+const FIELD_CLASS = dialogInputClass('green');
+
+const MODES = [
+  { value: 'webroot', label: 'Webroot' },
+  { value: 'standalone', label: 'Standalone' },
+] as const;
+
 export function SslIssueModal({
   certForm,
   setCertForm,
@@ -16,87 +29,90 @@ export function SslIssueModal({
   onSubmit,
 }: SslIssueModalProps) {
   return (
-    <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
-      <div className="bg-gray-900 border border-gray-700 rounded-2xl w-full max-w-md p-6">
-        <h3 className="text-lg font-bold text-white mb-5 flex items-center gap-2">
-          <Lock size={18} className="text-green-400" />
-          SSL 인증서 발급
-        </h3>
-        <div className="space-y-4">
-          <div>
-            <label className="block text-sm text-gray-400 mb-1">도메인</label>
-            <input
-              className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-blue-500"
-              placeholder="예: app.example.com"
-              value={certForm.domain}
-              onChange={(e) =>
-                setCertForm({ ...certForm, domain: e.target.value })
-              }
-            />
-          </div>
-          <div>
-            <label className="block text-sm text-gray-400 mb-1">
-              이메일 (Let's Encrypt 알림)
-            </label>
-            <input
-              className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-blue-500"
-              placeholder="admin@example.com"
-              value={certForm.email}
-              onChange={(e) =>
-                setCertForm({ ...certForm, email: e.target.value })
-              }
-            />
-          </div>
-          <div>
-            <label className="block text-sm text-gray-400 mb-1">
-              발급 방식
-            </label>
-            <div className="flex gap-3">
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="radio"
-                  checked={certForm.mode === 'webroot'}
-                  onChange={() => setCertForm({ ...certForm, mode: 'webroot' })}
-                  className="w-4 h-4"
-                />
-                <span className="text-sm text-gray-300">Webroot</span>
-              </label>
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="radio"
-                  checked={certForm.mode === 'standalone'}
-                  onChange={() =>
-                    setCertForm({ ...certForm, mode: 'standalone' })
-                  }
-                  className="w-4 h-4"
-                />
-                <span className="text-sm text-gray-300">Standalone</span>
-              </label>
-            </div>
-            <p className="text-xs text-gray-500 mt-1">
-              {certForm.mode === 'webroot'
-                ? 'Nginx가 실행 중일 때 사용 (도메인이 이미 프록시 설정됨)'
-                : 'Nginx 일시 중지 후 발급 (새 도메인)'}
-            </p>
-          </div>
-        </div>
-        <div className="flex gap-3 mt-6">
+    <Dialog
+      open
+      title="SSL 인증서 발급"
+      icon={<Lock size={18} className="text-green-400" />}
+      onClose={onClose}
+      busy={issuing}
+      footer={
+        <>
           <button
+            type="button"
             onClick={onClose}
             disabled={issuing}
-            className="flex-1 py-2 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-lg transition text-sm disabled:opacity-50"
+            className={dialogButtonClass()}
           >
             취소
           </button>
           <button
+            type="button"
             onClick={onSubmit}
             disabled={issuing}
-            className="flex-1 py-2 bg-green-600 hover:bg-green-500 text-white rounded-lg transition text-sm font-semibold disabled:opacity-50"
+            className={dialogButtonClass('green')}
           >
             {issuing ? '발급 중...' : '발급'}
           </button>
+        </>
+      }
+    >
+      <div className="space-y-4">
+        <div>
+          <label htmlFor="ssl-issue-domain" className={DIALOG_LABEL_CLASS}>
+            도메인
+          </label>
+          <input
+            id="ssl-issue-domain"
+            className={FIELD_CLASS}
+            placeholder="예: app.example.com"
+            value={certForm.domain}
+            onChange={(e) =>
+              setCertForm({ ...certForm, domain: e.target.value })
+            }
+          />
         </div>
+        <div>
+          <label htmlFor="ssl-issue-email" className={DIALOG_LABEL_CLASS}>
+            이메일 (Let's Encrypt 알림)
+          </label>
+          <input
+            id="ssl-issue-email"
+            type="email"
+            className={FIELD_CLASS}
+            placeholder="admin@example.com"
+            value={certForm.email}
+            onChange={(e) =>
+              setCertForm({ ...certForm, email: e.target.value })
+            }
+          />
+        </div>
+        <fieldset>
+          <legend className={DIALOG_LABEL_CLASS}>발급 방식</legend>
+          <div className="flex flex-wrap gap-x-4 gap-y-2">
+            {MODES.map((mode) => (
+              <label
+                key={mode.value}
+                className="flex cursor-pointer items-center gap-2 text-sm text-gray-300"
+              >
+                <input
+                  type="radio"
+                  checked={certForm.mode === mode.value}
+                  onChange={() =>
+                    setCertForm({ ...certForm, mode: mode.value })
+                  }
+                  className="h-4 w-4 accent-green-500"
+                />
+                {mode.label}
+              </label>
+            ))}
+          </div>
+          <p className="mt-1 text-xs text-gray-500">
+            {certForm.mode === 'webroot'
+              ? 'Nginx가 실행 중일 때 사용 (도메인이 이미 프록시 설정됨)'
+              : 'Nginx 일시 중지 후 발급 (새 도메인)'}
+          </p>
+        </fieldset>
       </div>
-    </div>
+    </Dialog>
   );
 }

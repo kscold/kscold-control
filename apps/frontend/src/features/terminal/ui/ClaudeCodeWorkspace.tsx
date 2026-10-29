@@ -640,7 +640,7 @@ export function ClaudeCodeWorkspace({
           </div>
 
           {activePanel && (
-            <div className="pointer-events-none absolute inset-0 z-20 bg-slate-950/35 backdrop-blur-[2px] xl:bg-transparent xl:backdrop-blur-0">
+            <div className="pointer-events-none absolute inset-0 z-20 bg-slate-950/35 backdrop-blur-[2px] xl:bg-transparent xl:backdrop-blur-none">
               <div
                 className={`pointer-events-auto absolute inset-x-3 bottom-3 top-3 flex flex-col overflow-hidden rounded-[28px] border border-white/10 bg-slate-950/95 shadow-[0_24px_80px_rgba(2,6,23,0.65)] xl:inset-y-3 xl:right-4 xl:left-auto ${
                   activePanel === 'files'

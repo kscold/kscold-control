@@ -2,6 +2,29 @@
 @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap');
 @import 'tailwindcss';
 
+/* 글꼴·애니메이션은 테마 변수로 두어 font-sans·font-mono·animate-* 유틸리티가 그대로 쓰게 한다 */
+@theme {
+  --font-sans:
+    'IBM Plex Sans KR', 'Pretendard Variable', 'Pretendard', 'Inter',
+    -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-mono: 'JetBrains Mono', 'SFMono-Regular', ui-monospace, monospace;
+
+  --animate-fade-in: fade-in 150ms ease-out;
+  --animate-sheet-in: sheet-in 200ms cubic-bezier(0.2, 0.8, 0.2, 1);
+
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+    }
+  }
+  @keyframes sheet-in {
+    from {
+      opacity: 0;
+      transform: translateY(16px);
+    }
+  }
+}
+
 /* D2Coding — 한글 글리프가 정확히 2셀 폭이라 xterm Unicode11 (CJK = 2cells) 와 정렬이 맞는다 */
 @font-face {
   font-family: 'D2Coding';
@@ -20,39 +43,60 @@
   font-display: swap;
 }
 
-:root {
-  color-scheme: dark;
-}
+@layer base {
+  :root {
+    color-scheme: dark;
+  }
 
-/* 앱처럼 쓰는 관리 화면이라 모바일에서 핀치 확대와 화면 전체가 끌려가는 바운스를 막는다.
-   iOS Safari 는 viewport 의 user-scalable=no 를 무시하므로 touch-action 으로 막는다. */
-html,
-body {
-  touch-action: pan-x pan-y;
-  overscroll-behavior: none;
-}
+  /* 앱처럼 쓰는 관리 화면이라 모바일에서 핀치 확대와 화면 전체가 끌려가는 바운스를 막는다.
+     iOS Safari 는 viewport 의 user-scalable=no 를 무시하므로 touch-action 으로 막는다. */
+  html,
+  body {
+    touch-action: pan-x pan-y;
+    overscroll-behavior: none;
+  }
 
-body {
-  font-family:
-    'IBM Plex Sans KR',
-    'Pretendard Variable',
-    'Pretendard',
-    'Inter',
-    -apple-system,
-    BlinkMacSystemFont,
-    sans-serif;
-  background-color: #0f172a;
-  color: #e2e8f0;
-}
+  body {
+    @apply bg-slate-900 text-slate-200 antialiased;
+  }
 
-#root {
-  min-height: 100vh;
-}
+  /* 모바일 브라우저 주소창이 접혔다 펴져도 화면 높이를 정확히 따라가도록 dvh 를 쓴다 */
+  #root {
+    @apply min-h-dvh;
+  }
 
-code,
-pre,
-.font-mono {
-  font-family: 'JetBrains Mono', 'SFMono-Regular', ui-monospace, monospace;
+  code,
+  pre {
+    @apply font-mono;
+  }
+
+  /* Tailwind 4 는 버튼 커서를 기본 화살표로 둔다. 누를 수 있는 것은 손가락 커서로 되돌린다 */
+  button:not(:disabled),
+  [role='button']:not([aria-disabled='true']),
+  select:not(:disabled),
+  summary {
+    cursor: pointer;
+  }
+
+  /* 스크롤바 */
+  * {
+    scrollbar-color: var(--color-slate-600) var(--color-slate-800);
+    scrollbar-width: thin;
+  }
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: var(--color-slate-800);
+  }
+  ::-webkit-scrollbar-thumb {
+    background: var(--color-slate-600);
+    border-radius: 3px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--color-slate-500);
+  }
 }
 
 /* xterm.js 컨테이너 */
@@ -61,22 +105,4 @@ pre,
   /* iOS Safari 가 셀 안 글자를 자동 확대하면 셀 너비와 어긋나 깨져 보인다 */
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;
-}
-
-/* 스크롤바 커스텀 */
-::-webkit-scrollbar {
-  width: 6px;
-}
-
-::-webkit-scrollbar-track {
-  background: #1e293b;
-}
-
-::-webkit-scrollbar-thumb {
-  background: #475569;
-  border-radius: 3px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: #64748b;
 }

@@ -26,7 +26,7 @@ export function DockerCleanupSummaryCard({
         </div>
       </div>
 
-      <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+      <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
         <div className="rounded-xl border border-gray-800 bg-gray-900/70 p-4">
           <p className="text-xs uppercase tracking-[0.24em] text-gray-400">
             예상 절감량

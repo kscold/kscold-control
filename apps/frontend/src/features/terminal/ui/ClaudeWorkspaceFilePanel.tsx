@@ -761,7 +761,7 @@ export function ClaudeWorkspaceFilePanel({
           </div>
         </div>
 
-        <div className="mt-4 grid gap-3 xl:grid-cols-[minmax(0,1fr)_220px_220px]">
+        <div className="mt-4 grid grid-cols-1 gap-3 xl:grid-cols-[minmax(0,1fr)_220px_220px]">
           <input
             value={branchName}
             onChange={(event) => setBranchName(event.target.value)}
@@ -845,7 +845,7 @@ export function ClaudeWorkspaceFilePanel({
           </div>
         )}
 
-        <div className="mt-4 grid gap-3 xl:grid-cols-[minmax(0,1fr)_220px_220px]">
+        <div className="mt-4 grid grid-cols-1 gap-3 xl:grid-cols-[minmax(0,1fr)_220px_220px]">
           <input
             value={commitMessage}
             onChange={(event) => setCommitMessage(event.target.value)}
@@ -916,7 +916,7 @@ export function ClaudeWorkspaceFilePanel({
             </div>
           </div>
 
-          <div className="mt-4 grid gap-3">
+          <div className="mt-4 grid grid-cols-1 gap-3">
             <input
               value={draftTitle}
               onChange={(event) => setDraftTitle(event.target.value)}
@@ -964,7 +964,7 @@ export function ClaudeWorkspaceFilePanel({
         </div>
       </section>
 
-      <div className="mt-4 grid gap-4 xl:grid-cols-[220px_minmax(0,1fr)]">
+      <div className="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-[220px_minmax(0,1fr)]">
         <div className="rounded-[24px] border border-white/8 bg-slate-950/75">
           <div className="flex items-center justify-between border-b border-white/8 px-4 py-3">
             <div>
