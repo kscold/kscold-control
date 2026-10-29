@@ -1,9 +1,12 @@
-import { RefreshCw, Server } from 'lucide-react';
+import { LayoutGrid, RefreshCw, Server } from 'lucide-react';
 
 interface TopologyLegendProps {
   loading: boolean;
   onRefresh: () => void;
   generatedAt: number | null;
+  /** 넘기지 않으면 자동 정렬 버튼을 숨김 (배치 변경 권한이 없을 때) */
+  onResetLayout?: () => void;
+  resettingLayout?: boolean;
 }
 
 const LEGEND_ITEMS = [
@@ -18,6 +21,8 @@ export function TopologyLegend({
   loading,
   onRefresh,
   generatedAt,
+  onResetLayout,
+  resettingLayout = false,
 }: TopologyLegendProps) {
   return (
     <div className="absolute left-3 right-3 top-3 z-10 flex items-center gap-2">
@@ -37,6 +42,19 @@ export function TopologyLegend({
       >
         <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
       </button>
+
+      {onResetLayout && (
+        <button
+          type="button"
+          onClick={onResetLayout}
+          disabled={loading || resettingLayout}
+          title="옮겨 둔 노드 배치를 지우고 기본 배치로 다시 그립니다"
+          className="flex flex-shrink-0 items-center gap-1.5 rounded-xl border border-gray-700 bg-gray-900/90 px-3 py-2 text-xs text-gray-300 transition hover:text-white disabled:opacity-50"
+        >
+          <LayoutGrid size={14} />
+          <span>자동 정렬</span>
+        </button>
+      )}
 
       <div className="ml-auto flex flex-wrap items-center gap-x-2.5 gap-y-1 overflow-hidden rounded-xl border border-gray-700 bg-gray-900/90 px-3 py-2 text-[10px] backdrop-blur">
         {LEGEND_ITEMS.map((item) => (
