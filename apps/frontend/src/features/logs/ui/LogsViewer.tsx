@@ -519,7 +519,7 @@ export function LogsViewer() {
         </div>
 
         {isDockerLog && dockerSince === 'custom' && (
-          <div className="grid gap-2 rounded-xl border border-blue-500/20 bg-blue-500/5 p-3 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-2 rounded-xl border border-blue-500/20 bg-blue-500/5 p-3 sm:grid-cols-2">
             <label className="space-y-1 text-sm text-gray-300">
               <span className="text-xs uppercase tracking-[0.24em] text-gray-500">
                 Start
@@ -575,7 +575,7 @@ export function LogsViewer() {
         )}
 
         {isDockerLog && selectedContainerInfo && (
-          <div className="grid gap-2 sm:grid-cols-4">
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-4">
             <div className="rounded-lg border border-white/10 bg-gray-800/80 p-3">
               <div className="text-[11px] uppercase tracking-[0.24em] text-gray-500">
                 Container

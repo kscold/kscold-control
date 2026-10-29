@@ -93,7 +93,7 @@ export function StorageDockerSection({ docker }: { docker: DockerUsage }) {
         </ul>
       </Panel>
 
-      <div className="grid gap-4 xl:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
         <Panel
           title="쓰는 컨테이너가 없는 이미지"
           summary={`${docker.unusedImages.length}개 · ${formatSize(sum(docker.unusedImages.map((image) => image.uniqueBytes)))}`}

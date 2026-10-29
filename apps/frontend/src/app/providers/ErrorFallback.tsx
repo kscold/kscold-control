@@ -34,7 +34,7 @@ export function ErrorFallback({
 
   if (chunkError) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-950 p-4">
+      <div className="min-h-dvh flex items-center justify-center bg-gray-950 p-4">
         <div className="w-full max-w-md">
           <div className="bg-gray-900 border border-gray-800 rounded-xl p-6 sm:p-8 text-center">
             <RefreshCw
@@ -62,7 +62,7 @@ export function ErrorFallback({
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-950 p-4">
+    <div className="min-h-dvh flex items-center justify-center bg-gray-950 p-4">
       <div className="w-full max-w-md">
         <div className="bg-gray-900 border border-gray-800 rounded-xl p-6 sm:p-8">
           <div className="flex items-center gap-3 mb-4">

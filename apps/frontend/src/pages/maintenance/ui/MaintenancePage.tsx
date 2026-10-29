@@ -26,7 +26,7 @@ export function MaintenancePage() {
       <div
         role="tablist"
         aria-label="저장공간 메뉴"
-        className="mb-6 flex gap-1 border-b border-gray-800"
+        className="-mx-4 mb-6 flex gap-1 overflow-x-auto border-b border-gray-800 px-4 [scrollbar-width:none] sm:mx-0 sm:px-0 [&::-webkit-scrollbar]:hidden"
       >
         {TABS.map((tab) => {
           const selected = tab.key === active;
@@ -42,7 +42,7 @@ export function MaintenancePage() {
                   replace: true,
                 })
               }
-              className={`-mb-px inline-flex items-center gap-2 border-b-2 px-3 py-2 text-sm transition-colors ${selected ? 'border-sky-400 text-white' : 'border-transparent text-gray-500 hover:text-gray-300'}`}
+              className={`-mb-px inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap border-b-2 px-2.5 py-2 text-sm transition-colors sm:gap-2 sm:px-3 ${selected ? 'border-sky-400 text-white' : 'border-transparent text-gray-500 hover:text-gray-300'}`}
             >
               <Icon size={15} />
               {tab.label}

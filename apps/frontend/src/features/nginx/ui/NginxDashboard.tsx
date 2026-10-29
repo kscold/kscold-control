@@ -136,7 +136,7 @@ export function NginxDashboard() {
       {/* 설정 테스트 결과 출력 */}
       {configHook.testOutput && (
         <div
-          className={`mb-4 p-3 rounded-lg border text-sm font-mono whitespace-pre-wrap ${
+          className={`mb-4 p-3 rounded-lg border text-sm font-mono whitespace-pre-wrap break-words ${
             configHook.testOutput.success
               ? 'bg-green-950 border-green-700 text-green-300'
               : 'bg-red-950 border-red-700 text-red-300'

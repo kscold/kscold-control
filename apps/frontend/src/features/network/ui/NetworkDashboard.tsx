@@ -93,7 +93,7 @@ export function NetworkDashboard() {
         </div>
       )}
 
-      <div className="mb-4 grid gap-3 md:grid-cols-2">
+      <div className="mb-4 grid grid-cols-1 gap-3 md:grid-cols-2">
         <section
           className="min-w-0 rounded-xl border border-gray-800 bg-gray-900 p-4"
           aria-label="외부 IP 상태"
