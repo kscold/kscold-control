@@ -63,6 +63,7 @@ export class AuditInterceptor implements NestInterceptor {
           response,
           extra: req._auditExtra ?? {},
         };
+        if (meta.when && !meta.when(ctx)) return;
 
         const action =
           typeof meta.action === 'function' ? meta.action(ctx) : meta.action;

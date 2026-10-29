@@ -62,6 +62,38 @@ export interface IFileStorage {
     buffer: Buffer,
   ): Promise<void>;
 
+  /** 업로드 저장 위치의 디스크 여유 공간 (바이트) */
+  getFreeBytes(): Promise<number>;
+
+  /** 조각으로 받는 큰 파일의 지금까지 받은 크기 (없으면 0) */
+  stagedContentSize(
+    projectName: string,
+    sessionId: string,
+    batchIndex: number,
+  ): Promise<number>;
+
+  /**
+   * 조각 하나를 offset 위치에 이어 쓴다. 지금 받은 크기가 offset 과 다르면 쓰지 않고
+   * UploadContentOffsetError 를 던진다. maxBytes 를 넘으면 쓰던 조각을 되돌린다. 새 크기를 돌려준다.
+   */
+  appendStagedContent(
+    projectName: string,
+    sessionId: string,
+    batchIndex: number,
+    offset: number,
+    source: Readable,
+    maxBytes: number,
+  ): Promise<number>;
+
+  /** 다 받은 큰 파일의 해시를 확인하고 스테이징 경로로 옮긴다. 해시가 다르면 받은 내용을 지우고 false */
+  commitStagedContent(
+    projectName: string,
+    sessionId: string,
+    batchIndex: number,
+    relativePath: string,
+    sha256: string,
+  ): Promise<boolean>;
+
   /** 최종 반영 전 스테이징 파일 전체를 다시 해시해 무결성 확인 */
   inspectStagedUpload(
     projectName: string,
@@ -110,4 +142,18 @@ export interface IFileStorage {
 
   /** 특정 버전 복원 (해당 tar.gz로 파일 교체) */
   restoreVersion(projectName: string, versionId: string): Promise<void>;
+}
+
+/** 조각 업로드 offset 이 서버가 받은 크기와 다를 때 (클라이언트는 receivedBytes 부터 이어서 보냄) */
+export class UploadContentOffsetError extends Error {
+  constructor(readonly receivedBytes: number) {
+    super(`업로드 위치가 맞지 않습니다. 서버가 받은 크기: ${receivedBytes}`);
+  }
+}
+
+/** 조각 하나가 허용 크기를 넘었을 때 */
+export class UploadContentTooLargeError extends Error {
+  constructor(readonly maxBytes: number) {
+    super(`업로드 조각이 허용 크기 ${maxBytes} 바이트를 넘었습니다.`);
+  }
 }

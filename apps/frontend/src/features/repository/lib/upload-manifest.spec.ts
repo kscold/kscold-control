@@ -123,4 +123,37 @@ describe('buildUploadManifest', () => {
     ]);
     expect(result.unreadablePaths).toEqual(['logs-now/run.txt']);
   });
+
+  it('기준보다 큰 파일은 조각씩 읽어 해시하고, 같은 내용이면 같은 digest 를 낸다', async () => {
+    const content = 'x'.repeat(1000) + 'tail';
+    const whole = await buildUploadManifest([
+      clientFile('dist/app.war', content),
+    ]);
+    const bytes = new TextEncoder().encode(content);
+    const sliced: Array<[number, number]> = [];
+    const large = {
+      relativePath: 'dist/app.war',
+      file: {
+        name: 'app.war',
+        size: bytes.byteLength,
+        arrayBuffer: async () => {
+          throw new Error('큰 파일은 통째로 읽지 않는다');
+        },
+        slice: (start: number, end: number) => {
+          sliced.push([start, end]);
+          return {
+            arrayBuffer: async () =>
+              Uint8Array.from(bytes.subarray(start, end)).buffer,
+          };
+        },
+      } as unknown as File,
+    };
+    const streamed = await buildUploadManifest([large], undefined, {
+      streamHashBytes: 10,
+    });
+    expect(streamed.digest).toBe(whole.digest);
+    expect(streamed.files[0].metadata).toEqual(whole.files[0].metadata);
+    expect(streamed.files[0].clientFile).toBe(large);
+    expect(sliced.length).toBeGreaterThan(0);
+  });
 });

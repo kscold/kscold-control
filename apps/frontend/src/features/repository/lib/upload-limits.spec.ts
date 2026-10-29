@@ -26,19 +26,13 @@ describe('upload preflight', () => {
     ).toThrow('data/backup.zip');
   });
 
-  it('구버전 서버에서도 1MiB가 아니라 실제 50MiB 한도를 사용한다', () => {
+  it('서버가 파일 한도를 정하지 않으면 화면에서 따로 막지 않는다', () => {
     expect(() =>
       assertUploadFilesWithinLimits(
-        [{ relativePath: '.env', file: { size: 2 * 1024 ** 2 } }],
+        [{ relativePath: 'dist/app.war', file: { size: 3 * 1024 ** 3 } }],
         limits,
       ),
     ).not.toThrow();
-    expect(() =>
-      assertUploadFilesWithinLimits(
-        [{ relativePath: 'archive.zip', file: { size: 51 * 1024 ** 2 } }],
-        limits,
-      ),
-    ).toThrow('파일을 임의로 제외하지 않았습니다');
   });
 
   it('운영 요청 규모와 정확한 한도는 허용한다', () => {

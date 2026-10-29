@@ -9,6 +9,8 @@ export const VERSION_STORE_DIR = '.repository-versions';
 export const STAGING_DIR = '.upload-staging';
 export const RECEIPT_DIR = '.upload-receipts';
 export const BACKUP_DIR = '.upload-backups';
+// 조각으로 받는 큰 파일을 다 받을 때까지 모아 두는 곳 (스테이징과 같은 디스크라 완성 뒤 rename 으로 옮김)
+export const PARTS_DIR = '.upload-parts';
 
 const PROJECT_NAME_PATTERN = /^[a-z0-9][a-z0-9_-]{0,99}$/;
 const SESSION_ID_PATTERN = /^[0-9a-f-]{36}$/i;
@@ -24,6 +26,7 @@ export class LocalStorageLayout {
       this.internalPath(STAGING_DIR),
       this.internalPath(RECEIPT_DIR),
       this.internalPath(BACKUP_DIR),
+      this.internalPath(PARTS_DIR),
     ];
     await Promise.all(
       directories.map(async (directory) => {
@@ -54,6 +57,28 @@ export class LocalStorageLayout {
     return path.join(
       this.internalProjectPath(RECEIPT_DIR, projectName),
       `${sessionId}.json`,
+    );
+  }
+
+  sessionPartsPath(projectName: string, sessionId: string): string {
+    this.assertSessionId(sessionId);
+    return path.join(
+      this.internalProjectPath(PARTS_DIR, projectName),
+      sessionId,
+    );
+  }
+
+  contentPartPath(
+    projectName: string,
+    sessionId: string,
+    batchIndex: number,
+  ): string {
+    if (!Number.isSafeInteger(batchIndex) || batchIndex < 0) {
+      throw new Error('업로드 배치 번호가 올바르지 않습니다.');
+    }
+    return path.join(
+      this.sessionPartsPath(projectName, sessionId),
+      `${batchIndex}.part`,
     );
   }
 

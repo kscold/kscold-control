@@ -1,6 +1,8 @@
 import { randomUUID } from 'crypto';
 import {
   BadRequestException,
+  HttpException,
+  HttpStatus,
   Inject,
   Injectable,
   NotFoundException,
@@ -94,6 +96,7 @@ export class CreateUploadSessionUseCase {
         );
       }
 
+      await this.assertEnoughDiskSpace(input.totalBytes);
       await this.fileStorage.prepareStagedUpload(
         project.name,
         sessionId,
@@ -136,6 +139,18 @@ export class CreateUploadSessionUseCase {
         throw error;
       }
     });
+  }
+
+  /** 업로드가 끝난 뒤에도 정해 둔 여유 공간이 남는지 세션을 만들기 전에 확인한다 */
+  private async assertEnoughDiskSpace(totalBytes: number): Promise<void> {
+    const free = await this.fileStorage.getFreeBytes();
+    const needed = totalBytes + REPOSITORY_UPLOAD_LIMITS.reservedFreeBytes;
+    if (free >= needed) return;
+    const gib = (bytes: number) => `${(bytes / 1024 ** 3).toFixed(1)} GiB`;
+    throw new HttpException(
+      `서버 디스크 여유 공간이 부족합니다. 이 업로드에는 ${gib(needed)}가 필요한데 ${gib(free)}만 남아 있습니다. 아직 서버에는 전송되지 않았습니다.`,
+      HttpStatus.INSUFFICIENT_STORAGE,
+    );
   }
 
   private validateAndNormalizeInput(
@@ -228,6 +243,15 @@ export class CreateUploadSessionUseCase {
     if (computedTotalBytes !== batch.totalBytes) {
       throw new BadRequestException(
         '배치 파일 바이트가 메타데이터와 일치하지 않습니다.',
+      );
+    }
+    // 여러 파일 배치는 한 요청에 메모리로 받으므로 작게 제한하고, 큰 파일은 혼자 한 배치로 조각 업로드한다
+    if (
+      files.length > 1 &&
+      batch.totalBytes > REPOSITORY_UPLOAD_LIMITS.maxMultipartBytes
+    ) {
+      throw new BadRequestException(
+        '여러 파일을 묶은 배치가 너무 큽니다. 큰 파일은 따로 한 배치로 보내야 합니다.',
       );
     }
 
