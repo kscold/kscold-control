@@ -38,7 +38,8 @@ RUN set -eu; \
 COPY sshd_config /etc/ssh/sshd_config
 COPY entrypoint.sh /usr/local/bin/gadoc-entrypoint
 COPY healthcheck.sh /usr/local/bin/gadoc-healthcheck
-RUN chmod 755 /usr/local/bin/gadoc-entrypoint /usr/local/bin/gadoc-healthcheck
+COPY gadoc-kms-env.sh /usr/local/sbin/gadoc-kms-env
+RUN chmod 755 /usr/local/bin/gadoc-entrypoint /usr/local/bin/gadoc-healthcheck /usr/local/sbin/gadoc-kms-env
 
 ENV GADOC_START_RUNTIME=0
 WORKDIR /home/gadoc

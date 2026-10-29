@@ -41,6 +41,7 @@
     "dev": "turbo run dev",
     "build": "turbo run build && node ./scripts/write-release-manifest.mjs",
     "test:backend": "pnpm --filter @kscold-control/backend test",
+    "test:gadoc-runtime": "node --test scripts/test/gadoc-runtime.test.mjs",
     "test:frontend": "pnpm --filter @kscold-control/frontend test",
     "test:claude-smoke": "node ./scripts/claude-smoke.mjs",
     "test:repository-live-smoke": "node ./scripts/repository-live-smoke.mjs",

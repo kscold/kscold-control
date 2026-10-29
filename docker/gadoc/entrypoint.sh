@@ -5,11 +5,31 @@ umask 077
 state=/app/slacord-deploy
 root_keys=/run/gadoc-private/authorized/root
 developer_keys=/run/gadoc-private/authorized/developer
+runtime_allowed=0
+rm -f /run/gadoc-env-apply-blocked
+if [[ "${GADOC_START_RUNTIME:-0}" == 1 ]]; then
+    if node - "$state" <<'ENV_APPLY_GUARD'
+const fs = require('node:fs');
+try {
+    if (!fs.lstatSync(process.argv[2]).isDirectory()) process.exit(1);
+    fs.lstatSync(process.argv[2] + '/env-apply-pending.json');
+    process.exit(1);
+} catch (error) {
+    process.exit(error.code === 'ENOENT' && error.path?.endsWith('/env-apply-pending.json') ? 0 : 1);
+}
+ENV_APPLY_GUARD
+    then
+        runtime_allowed=1
+    else
+        echo 'Application startup deferred: environment apply recovery is required.' >&2
+        : > /run/gadoc-env-apply-blocked
+    fi
+fi
 # Colima bind mounts may map host ownership to the developer UID. Protect their parent.
 mkdir -p /run/gadoc-private
 chown root:root /run/gadoc-private
 chmod 700 /run/gadoc-private
-if [[ "${GADOC_START_RUNTIME:-0}" == 1 ]]; then
+if [[ "$runtime_allowed" == 1 ]]; then
     node - "$state" <<'NODE'
 const fs = require('node:fs');
 const state = process.argv[2];
@@ -32,8 +52,8 @@ fi
 [[ -s /data/db/WiredTiger ]] || { echo 'Refusing an empty database: restore and verify a backup first.' >&2; exit 1; }
 [[ -s /run/gadoc-private/hostkeys/ssh_host_ed25519_key && -s /run/gadoc-private/hostkeys/ssh_host_rsa_key ]]
 [[ -s "$root_keys" && -s "$developer_keys" ]]
-if grep -Ev '^($|#|restrict,command="/app/slacord-deploy/tools/ssh-entrypoint.sh" )' "$root_keys" >/dev/null; then
-    echo 'Root keys must be restricted to the deployment command.' >&2
+if grep -Ev '^($|#|restrict,command="(/app/slacord-deploy/tools/ssh-entrypoint\.sh|/usr/local/sbin/gadoc-kms-env)" )' "$root_keys" >/dev/null; then
+    echo 'Root keys must be restricted to approved forced commands.' >&2
     exit 1
 fi
 mkdir -p /run/sshd /run/mongodb /var/log/mongodb /var/log/slacord /root/.ssh /home/gadoc/.ssh
@@ -64,7 +84,7 @@ trap cleanup EXIT TERM INT
 gosu mongodb mongod --dbpath /data/db --bind_ip 127.0.0.1 --auth \
     --port 27017 --fork --logpath /var/log/mongodb/mongod.log --pidfilepath /run/mongodb/mongod.pid
 
-if [[ "${GADOC_START_RUNTIME:-0}" == 1 ]]; then
+if [[ "$runtime_allowed" == 1 ]]; then
     env -i PATH="$PATH" HOME=/root PM2_HOME=/root/.pm2 NODE_ENV=production \
         pm2 start "$state/current/ecosystem.config.json"
     runtime_started=1

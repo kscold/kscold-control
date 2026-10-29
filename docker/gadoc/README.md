@@ -60,7 +60,7 @@ dedicated buildx builder, then remove only that builder's cache after validation
 ```sh
 docker buildx create --name gadoc-migration --driver docker-container colima
 docker buildx build --builder gadoc-migration --load \
-  -t kscold/ubuntu-gadoc:2026-10-28-r1 docker/gadoc
+  -t kscold/ubuntu-gadoc:2026-10-29-r2 docker/gadoc
 ```
 
 A backup directory must be `0700`, with files `0600`, outside Git. Required
