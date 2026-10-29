@@ -147,8 +147,8 @@ export function DnsChecker({
       </div>
 
       {/* 전체 사이트 DNS 상태 */}
-      <div className="mb-3 flex items-center gap-2">
-        <h3 className="text-sm font-semibold text-gray-300">
+      <div className="mb-3 flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+        <h3 className="whitespace-nowrap text-sm font-semibold text-gray-300">
           프록시 사이트 DNS 상태
         </h3>
         <span className="text-xs text-gray-500">
@@ -163,19 +163,19 @@ export function DnsChecker({
           등록된 프록시 사이트가 없습니다. 프록시 탭에서 사이트를 추가하세요.
         </div>
       ) : (
-        <div className="grid gap-3">
+        <div className="grid grid-cols-1 gap-3">
           {dnsResults.map((result) => (
             <div
               key={result.domain}
               className="bg-gray-900 border border-gray-700 rounded-xl p-4"
             >
-              <div className="flex items-center gap-2 mb-3">
+              <div className="mb-3 flex flex-wrap items-center gap-2">
                 {result.allOk ? (
                   <CheckCircle size={16} className="text-green-400" />
                 ) : (
                   <AlertTriangle size={16} className="text-yellow-400" />
                 )}
-                <span className="text-white font-semibold">
+                <span className="min-w-0 break-all font-semibold text-white">
                   {result.domain}
                 </span>
                 <span
@@ -187,7 +187,8 @@ export function DnsChecker({
 
               {/* 레코드 테이블 */}
               <div className="bg-gray-950 rounded-lg overflow-hidden">
-                <div className="grid grid-cols-[auto_60px_100px_1fr_auto_auto] gap-2 px-3 py-1.5 text-xs text-gray-500 border-b border-gray-800">
+                {/* 넓은 화면은 표, 휴대폰은 값·현재값을 아래 줄로 내린 카드형으로 보여준다 */}
+                <div className="hidden grid-cols-[auto_60px_100px_minmax(0,1fr)_auto_auto] gap-2 border-b border-gray-800 px-3 py-1.5 text-xs text-gray-500 sm:grid">
                   <span></span>
                   <span>타입</span>
                   <span>호스트</span>
@@ -198,32 +199,39 @@ export function DnsChecker({
                 {result.records.map((rec, i) => (
                   <div
                     key={i}
-                    className="grid grid-cols-[auto_60px_100px_1fr_auto_auto] gap-2 items-center px-3 py-2 text-sm border-b border-gray-800/50 last:border-0"
+                    className="grid grid-cols-[auto_auto_minmax(0,1fr)_auto] items-center gap-x-2 gap-y-1 border-b border-gray-800/50 px-3 py-2 text-sm last:border-0 sm:grid-cols-[auto_60px_100px_minmax(0,1fr)_auto_auto]"
                   >
                     <DnsStatusIcon status={rec.status} size={14} />
-                    <span className="text-blue-400 font-mono text-xs">
+                    <span className="font-mono text-xs text-blue-400">
                       {rec.type}
                     </span>
-                    <span className="text-gray-400 font-mono text-xs">
+                    <span className="min-w-0 truncate font-mono text-xs text-gray-400">
                       {rec.host}
                     </span>
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-white font-mono text-xs">
+                    <div className="order-last col-span-full flex min-w-0 items-center gap-1.5 pl-6 sm:order-none sm:col-span-1 sm:pl-0">
+                      <span className="shrink-0 text-[11px] text-gray-600 sm:hidden">
+                        값
+                      </span>
+                      <span className="min-w-0 break-all font-mono text-xs text-white">
                         {rec.value}
                       </span>
                       <button
                         onClick={() => copyToClipboard(rec.value)}
-                        className="text-gray-600 hover:text-white transition"
+                        className="shrink-0 text-gray-600 transition hover:text-white"
                         title="복사"
+                        aria-label={`${rec.value} 복사`}
                       >
                         <Copy size={11} />
                       </button>
                     </div>
-                    <span className="text-xs text-gray-500 font-mono">
+                    <span className="order-last col-span-full min-w-0 break-all pl-6 font-mono text-xs text-gray-500 sm:order-none sm:col-span-1 sm:pl-0">
+                      <span className="font-sans text-[11px] text-gray-600 sm:hidden">
+                        현재{' '}
+                      </span>
                       {rec.actual || '-'}
                     </span>
                     <span
-                      className={`text-xs px-1.5 py-0.5 rounded ${getDnsStatusColor(rec.status)}`}
+                      className={`justify-self-end whitespace-nowrap rounded px-1.5 py-0.5 text-xs ${getDnsStatusColor(rec.status)}`}
                     >
                       {getDnsStatusText(rec.status)}
                     </span>

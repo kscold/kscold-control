@@ -19,7 +19,7 @@ export function LoginForm() {
   } = useAuth();
 
   return (
-    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[#071018] p-4">
+    <div className="relative flex min-h-dvh items-center justify-center overflow-hidden bg-[#071018] p-4">
       <div className="absolute -left-24 top-1/4 h-80 w-80 rounded-full bg-sky-500/10 blur-3xl" />
       <div className="absolute -right-24 bottom-1/4 h-80 w-80 rounded-full bg-amber-400/10 blur-3xl" />
       <div className="relative w-full max-w-md">

@@ -18,7 +18,7 @@ function CleanupSkeletonCard() {
           </div>
           <SkeletonBlock className="h-9 w-24 rounded-full" />
         </div>
-        <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+        <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
           {Array.from({ length: 4 }).map((_, index) => (
             <div
               key={`summary-${index}`}
@@ -31,7 +31,7 @@ function CleanupSkeletonCard() {
           ))}
         </div>
       </div>
-      <div className="mt-4 grid gap-4 xl:grid-cols-2">
+      <div className="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-2">
         {Array.from({ length: 6 }).map((_, index) => (
           <div
             key={index}

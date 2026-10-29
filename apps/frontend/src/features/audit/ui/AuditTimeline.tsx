@@ -374,7 +374,7 @@ export function AuditTimeline() {
       </div>
 
       <div className={toolsOpen ? 'contents' : 'hidden lg:contents'}>
-        <div className="mb-4 grid gap-3 lg:grid-cols-[220px_180px_minmax(0,1fr)]">
+        <div className="mb-4 grid grid-cols-1 gap-3 lg:grid-cols-[220px_180px_minmax(0,1fr)]">
           <select
             value={domain}
             onChange={(event) => setDomain(event.target.value as AuditDomain)}
@@ -405,7 +405,7 @@ export function AuditTimeline() {
           </div>
         </div>
 
-        <div className="mb-4 grid gap-3 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_repeat(2,220px)]">
+        <div className="mb-4 grid grid-cols-1 gap-3 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_repeat(2,220px)]">
           <label className="relative">
             <Search
               size={16}
@@ -442,7 +442,7 @@ export function AuditTimeline() {
           </button>
         </div>
 
-        <div className="mb-4 grid gap-3 xl:grid-cols-[1.05fr_0.95fr]">
+        <div className="mb-4 grid grid-cols-1 gap-3 xl:grid-cols-[1.05fr_0.95fr]">
           <section className="rounded-2xl border border-white/10 bg-gray-900/70 p-4">
             <div className="text-sm font-medium text-white">시간 프리셋</div>
             <div
@@ -558,7 +558,7 @@ export function AuditTimeline() {
           })}
 
           {/* 도메인 카드 옆 남는 칸을 모두 써서 날짜 입력이 좁아지지 않게 한다. */}
-          <div className="col-span-full grid gap-3 sm:grid-cols-2 xl:col-span-4">
+          <div className="col-span-full grid grid-cols-1 gap-3 sm:grid-cols-2 xl:col-span-4">
             <label className="rounded-xl border border-white/10 bg-gray-900/70 px-3 py-2 text-xs text-gray-400">
               시작 시각
               <input
@@ -587,13 +587,13 @@ export function AuditTimeline() {
           className="mb-4 rounded-2xl border border-white/10 bg-gray-900/70 p-4"
           data-testid="audit-top-actors"
         >
-          <div className="grid gap-4 xl:grid-cols-2">
+          <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
             <div>
               <div className="flex items-center gap-2 text-sm font-medium text-white">
                 <Users size={16} />
                 Top Actors
               </div>
-              <div className="mt-3 grid gap-3">
+              <div className="mt-3 grid grid-cols-1 gap-3">
                 {summary.topActors.length > 0 ? (
                   summary.topActors.map((actorEntry) => {
                     const maxCount = summary.topActors[0]?.count ?? 1;
@@ -644,7 +644,7 @@ export function AuditTimeline() {
                 <History size={16} />
                 Top Targets
               </div>
-              <div className="mt-3 grid gap-3">
+              <div className="mt-3 grid grid-cols-1 gap-3">
                 {summary.topTargets.length > 0 ? (
                   summary.topTargets.map((targetEntry) => {
                     const maxCount = summary.topTargets[0]?.count ?? 1;
@@ -800,7 +800,7 @@ export function AuditTimeline() {
                 <h2 className="mt-3 break-words text-base font-semibold text-white sm:text-lg">
                   {selectedItem.summary}
                 </h2>
-                <div className="mt-3 grid gap-1.5 text-sm">
+                <div className="mt-3 grid grid-cols-1 gap-1.5 text-sm">
                   <div className="flex min-w-0 items-baseline gap-2">
                     <span className="shrink-0 text-xs uppercase tracking-[0.18em] text-gray-500">
                       actor
@@ -853,7 +853,7 @@ export function AuditTimeline() {
                             {entry.changeType}
                           </span>
                         </div>
-                        <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                        <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
                           <div className="rounded-lg border border-rose-400/20 bg-rose-500/10 p-2">
                             <div className="text-[11px] uppercase tracking-[0.18em] text-rose-200/80">
                               Before

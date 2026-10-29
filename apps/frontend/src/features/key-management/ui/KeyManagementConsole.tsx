@@ -328,7 +328,7 @@ curl -X PUT '${apiOrigin}/api/key-management/targets/${target.id}/environment' \
               PostgreSQL registry · {targets.length} targets
             </span>
           </div>
-          <div className="mt-4 grid gap-3 md:grid-cols-2">
+          <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
             {targets.map((item) => {
               const selected = item.id === selectedTargetId;
               const healthy =
@@ -398,7 +398,7 @@ curl -X PUT '${apiOrigin}/api/key-management/targets/${target.id}/environment' \
           </div>
         )}
 
-        <section className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <section className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
           {[
             ['Target', target.id, ServerCog],
             ['Current version', formatVersion(target.version), FileClock],
@@ -423,7 +423,7 @@ curl -X PUT '${apiOrigin}/api/key-management/targets/${target.id}/environment' \
           ))}
         </section>
 
-        <div className="mt-5 grid min-w-0 gap-5 xl:grid-cols-[minmax(0,1fr)_380px]">
+        <div className="mt-5 grid grid-cols-1 min-w-0 gap-5 xl:grid-cols-[minmax(0,1fr)_380px]">
           <section className="min-w-0 overflow-hidden rounded-2xl border border-slate-800 bg-slate-900/45">
             <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 px-4 py-3 sm:px-5">
               <div>
@@ -474,14 +474,16 @@ curl -X PUT '${apiOrigin}/api/key-management/targets/${target.id}/environment' \
                   <CheckCircle2 size={18} /> 값은 숨겨져 있으며 키 이름만 표시
                   중입니다.
                 </div>
-                <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
                   {target.keys.map((key) => (
                     <div
                       key={key}
                       className="flex items-center justify-between rounded-lg border border-slate-800 bg-slate-900/60 px-3 py-2.5 font-mono text-xs text-slate-300"
                     >
-                      <span className="truncate">{key}</span>
-                      <span className="ml-3 text-slate-700">••••••</span>
+                      <span className="min-w-0 truncate">{key}</span>
+                      <span className="ml-3 shrink-0 text-slate-700">
+                        ••••••
+                      </span>
                     </div>
                   ))}
                 </div>
@@ -537,7 +539,7 @@ curl -X PUT '${apiOrigin}/api/key-management/targets/${target.id}/environment' \
             </span>
           </button>
           {showApi && (
-            <div className="grid gap-4 border-t border-slate-800 p-5 lg:grid-cols-2">
+            <div className="grid grid-cols-1 gap-4 border-t border-slate-800 p-5 lg:grid-cols-2">
               <div>
                 <div className="mb-2 flex items-center justify-between">
                   <h3 className="text-sm font-semibold text-slate-200">

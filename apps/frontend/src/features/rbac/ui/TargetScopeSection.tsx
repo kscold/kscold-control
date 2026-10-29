@@ -116,10 +116,10 @@ export function TargetScopeSection({
               key={item.id}
               className="flex cursor-pointer items-center justify-between gap-3 rounded-md border border-white/10 bg-slate-900/70 px-2.5 py-2 text-xs text-slate-200"
             >
-              <span>
+              <span className="min-w-0 break-words">
                 {item.label}
                 {item.hint && (
-                  <span className="ml-2 text-[10px] uppercase text-slate-500">
+                  <span className="ml-2 inline-block text-[10px] uppercase text-slate-500">
                     {item.hint}
                   </span>
                 )}
@@ -134,7 +134,7 @@ export function TargetScopeSection({
                       : current.filter((id) => id !== item.id),
                   )
                 }
-                className={`h-4 w-4 ${colors.checkbox}`}
+                className={`h-4 w-4 shrink-0 ${colors.checkbox}`}
               />
             </label>
           ))}
