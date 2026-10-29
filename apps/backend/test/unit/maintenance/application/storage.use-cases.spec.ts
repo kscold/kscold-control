@@ -5,6 +5,7 @@ import {
   TrimDockerDiskUseCase,
 } from '@/maintenance/application/use-cases';
 import type { IStorageInspectionGateway } from '@/maintenance/domain/repositories/storage-inspection.gateway';
+import { trimRunRepository } from '../storage-trim-run.fake';
 
 const GiB = 1024 ** 3;
 
@@ -89,7 +90,11 @@ describe('저장공간 유스케이스', () => {
         .mockResolvedValue(28 * GiB),
     });
     const overview = new GetStorageOverviewUseCase(inspection);
-    const trim = new TrimDockerDiskUseCase(inspection, overview);
+    const trim = new TrimDockerDiskUseCase(
+      inspection,
+      trimRunRepository(),
+      overview,
+    );
 
     await overview.execute();
     await overview.execute();
@@ -119,6 +124,7 @@ describe('저장공간 유스케이스', () => {
     });
     const trim = new TrimDockerDiskUseCase(
       inspection,
+      trimRunRepository(),
       new GetStorageOverviewUseCase(inspection),
     );
 

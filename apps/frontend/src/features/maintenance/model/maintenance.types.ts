@@ -169,3 +169,38 @@ export interface DockerDiskTrimResult {
   allocatedBeforeBytes: number;
   allocatedAfterBytes: number;
 }
+
+/** 자동 작업 — Control 안 예약 작업, 맥 launchd 작업, 컨테이너 안 자동 정리 */
+export type AutomationKind = 'control' | 'launchd' | 'container';
+export type AutomationHealth =
+  'ok' | 'failed' | 'stopped' | 'running' | 'unknown';
+
+export interface AutomationJob {
+  key: string;
+  kind: AutomationKind;
+  name: string;
+  description: string;
+  schedule: string;
+  health: AutomationHealth;
+  lastRunAt: string | null;
+  lastMessage: string | null;
+}
+
+export interface StorageTrimRun {
+  id: string;
+  trigger: 'schedule' | 'manual';
+  status: 'running' | 'succeeded' | 'failed';
+  message: string;
+  allocatedBeforeBytes: number | null;
+  allocatedAfterBytes: number | null;
+  actorEmail: string | null;
+  startedAt: string;
+  finishedAt: string | null;
+}
+
+export interface AutomationsOverview {
+  generatedAt: string;
+  jobs: AutomationJob[];
+  trimRuns: StorageTrimRun[];
+  warnings: string[];
+}
