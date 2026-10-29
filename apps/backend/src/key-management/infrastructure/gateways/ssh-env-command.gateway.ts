@@ -24,6 +24,7 @@ import type {
 import { KeyManagementTargetService } from '../../application/services/key-management-target.service';
 import { EnvDocumentService } from '../../application/services/env-document.service';
 import { SshTargetCommandService } from './ssh-target-command.service';
+import { isAllowedEnvCommandKey } from '../../domain/policies/env-command-key.policy';
 
 const SHA = /^[a-f0-9]{64}$/;
 const UUID =
@@ -224,7 +225,7 @@ export class SshEnvCommandGateway
     if (
       this.documents
         .listKeys(normalized)
-        .some((key) => !config.allowedKeys.includes(key))
+        .some((key) => !isAllowedEnvCommandKey(config.allowedKeys, key))
     )
       throw new BadRequestException(
         '이 대상에서 관리할 수 없는 환경 변수입니다.',

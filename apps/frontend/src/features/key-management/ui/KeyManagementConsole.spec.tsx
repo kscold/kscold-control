@@ -166,6 +166,30 @@ describe('KeyManagementConsole multi-target view', () => {
     ).toBeInTheDocument();
   });
 
+  it('전체 관리(*) 대상은 키 목록 대신 예약 키 제외 안내와 필수 키를 표시한다', () => {
+    const open: KeyManagementTarget = {
+      ...projectbeta,
+      id: 'open-production',
+      displayName: 'Open Production',
+      provider: 'ssh-env-command',
+      deploymentProvider: 'ssh-env-command',
+      envFileName: 'server.env',
+      requiredKeys: ['MONGODB_URI', 'JWT_SECRET'],
+      managedKeys: ['*'],
+    };
+    mocks.useKeyManagement.mockReturnValue({
+      ...hookState(open),
+      targets: [projectalpha, projectbeta, open],
+    });
+    render(<KeyManagementConsole />);
+    expect(
+      screen.getByText(/관리 가능 키: 예약 키를 뺀 모든 키/),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText('필수 키: MONGODB_URI, JWT_SECRET'),
+    ).toBeInTheDocument();
+  });
+
   it('이전 API 응답이 잠시 섞여도 잘못된 배포 방식과 undefined를 표시하지 않는다', () => {
     const legacy = {
       ...projectalpha,

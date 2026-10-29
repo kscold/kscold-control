@@ -167,6 +167,43 @@ describe('SshEnvCommandGateway', () => {
     expect(ssh.execute).not.toHaveBeenCalled();
   });
 
+  describe('allowedKeys 가 전체(*)인 대상', () => {
+    const anyTarget = {
+      ...target,
+      secretConfig: { ...target.secretConfig, allowedKeys: ['*'] },
+    };
+    const anyFixture = () => {
+      const result = fixture();
+      result.targets.get.mockResolvedValue(anyTarget);
+      return result;
+    };
+
+    it('예약 키가 아닌 새 기능 키는 그대로 서버로 보낸다', async () => {
+      const { ssh, gateway } = anyFixture();
+      const payload = `${next}OPENAI_API_KEY=sk-synthetic\n`;
+      ssh.execute.mockResolvedValue(
+        response({ version: sha(payload), createdAt: at }),
+      );
+      await expect(
+        gateway.addVersion(target.id, payload, sha(current)),
+      ).resolves.toEqual({ version: sha(payload), createdAt: at });
+    });
+
+    it.each([
+      'NODE_OPTIONS=--require=/tmp/a',
+      'PORT=9999',
+      'NEXT_PUBLIC_API_URL=https://example.test',
+      'PM2_HOME=/tmp/pm2',
+      'PATH=/tmp',
+    ])('예약 키 %s 는 SSH 전에 차단한다', async (extra) => {
+      const { ssh, gateway } = anyFixture();
+      await expect(
+        gateway.addVersion(target.id, `${next}${extra}\n`, sha(current)),
+      ).rejects.toBeInstanceOf(BadRequestException);
+      expect(ssh.execute).not.toHaveBeenCalled();
+    });
+  });
+
   it.each(['version_conflict', 'request_conflict', 'deployment_busy'])(
     '서버 %s는 재시도 쓰기 없이 충돌로 반환한다',
     async (code) => {
@@ -321,9 +358,28 @@ describe('env-v1 target registration contract and routing', () => {
       allowedKeys: ['MINIO_ACCESS_KEY', 'MINIO_ACCESS_KEY'],
     },
     { ...target.secretConfig, credentialRef: '../../existing-key' },
+    { ...target.secretConfig, allowedKeys: ['*', 'MINIO_BUCKET'] },
   ])('잘못된 command provider 설정을 거절한다', async (secretConfig) => {
     await expect(
       serviceFor({ ...target, secretConfig }).get(target.id),
+    ).rejects.toBeInstanceOf(ServiceUnavailableException);
+  });
+
+  it('allowedKeys 를 * 하나로 두면 예약 키를 뺀 전체 관리 대상으로 받는다', async () => {
+    const row = {
+      ...target,
+      secretConfig: { ...target.secretConfig, allowedKeys: ['*'] },
+    };
+    await expect(serviceFor(row).get(target.id)).resolves.toEqual(row);
+  });
+
+  it('전체 관리 대상이라도 예약 키를 필수 키로 둘 수 없다', async () => {
+    await expect(
+      serviceFor({
+        ...target,
+        requiredKeys: ['PORT'],
+        secretConfig: { ...target.secretConfig, allowedKeys: ['*'] },
+      }).get(target.id),
     ).rejects.toBeInstanceOf(ServiceUnavailableException);
   });
 
