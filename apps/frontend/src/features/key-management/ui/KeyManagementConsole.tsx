@@ -404,8 +404,16 @@ curl -X PUT '${apiOrigin}/api/key-management/targets/${target.id}/environment' \
           <div className="mt-4 rounded-xl border border-sky-900/60 bg-sky-950/20 px-4 py-3 text-sm text-sky-200">
             <p>
               관리 가능 키:{' '}
-              {target.managedKeys?.join(', ') || target.requiredKeys.join(', ')}
+              {target.managedKeys?.includes('*')
+                ? '예약 키를 뺀 모든 키 (새 키도 여기서 바로 추가)'
+                : target.managedKeys?.join(', ') ||
+                  target.requiredKeys.join(', ')}
             </p>
+            {target.managedKeys?.includes('*') && (
+              <p className="mt-1 text-xs text-sky-300/80">
+                필수 키: {target.requiredKeys.join(', ')}
+              </p>
+            )}
             <p className="mt-1 text-xs text-sky-300/80">
               이 범위의 서버 설정을 백업·복원하고 현재 실행 중인 소스 버전에
               적용합니다. 적용 결과는 백업 이력에서 확인할 수 있습니다.
