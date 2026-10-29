@@ -119,7 +119,7 @@ export function WorktreeCleanupView() {
     );
 
   return (
-    <div className="h-full overflow-auto bg-gray-950 p-4 sm:p-6">
+    <div>
       <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
           <h1 className="flex items-center gap-3 text-xl font-bold text-white sm:text-2xl">

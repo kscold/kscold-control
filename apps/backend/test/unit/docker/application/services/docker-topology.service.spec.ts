@@ -20,6 +20,7 @@ describe('DockerTopologyService', () => {
   let layoutRepository: jest.Mocked<ITopologyLayoutRepository>;
   let listContainers: jest.Mocked<ListContainersUseCase>;
   let dockerClient: jest.Mocked<IDockerClient>;
+  let nginxRepository: jest.Mocked<Pick<INginxConfigRepository, 'list'>>;
 
   beforeEach(async () => {
     layoutRepository = {
@@ -244,6 +245,93 @@ describe('DockerTopologyService', () => {
     service = module.get(DockerTopologyService);
     listContainers = module.get(ListContainersUseCase);
     dockerClient = module.get(DOCKER_CLIENT);
+    nginxRepository = module.get(NGINX_CONFIG_REPOSITORY);
+  });
+
+  it('꺼진 컨테이너, 검증용으로 잠깐 띄운 컨테이너, 뒤에 서비스가 없는 사이트는 그리지 않는다', async () => {
+    const containers = await listContainers.execute(undefined);
+    const extra = {
+      resources: { cpus: 1, memory: '1g' },
+      createdAt: new Date().toISOString(),
+      isComposeManaged: false,
+    };
+    listContainers.execute.mockResolvedValueOnce([
+      ...containers,
+      {
+        ...extra,
+        id: 'paused-app',
+        dockerId: 'dock-paused',
+        name: 'ubuntu-projectzeta',
+        image: 'example/ubuntu-projectzeta:latest',
+        status: 'exited',
+        liveStatus: 'exited',
+        ports: {},
+        isManaged: true,
+      },
+      {
+        ...extra,
+        id: 'verify-db',
+        dockerId: 'dock-verify',
+        name: 'projectdelta-ui-verify-mongo',
+        image: 'mongo:7',
+        status: 'running',
+        liveStatus: 'running',
+        ports: { '27017': 27127 },
+        isManaged: false,
+        composeProject: null,
+      },
+      {
+        ...extra,
+        id: 'worker',
+        dockerId: 'dock-worker',
+        name: 'projectomega-worker-1',
+        image: 'example/projectomega-worker:latest',
+        status: 'running',
+        liveStatus: 'running',
+        ports: {},
+        isManaged: false,
+        composeProject: 'projectomega',
+      },
+    ] as Awaited<ReturnType<ListContainersUseCase['execute']>>);
+    const sites = await nginxRepository.list();
+    const site = {
+      ssl: true,
+      sslCert: '',
+      sslKey: '',
+      websocket: false,
+      enabled: true,
+    };
+    nginxRepository.list.mockResolvedValueOnce([
+      ...sites,
+      {
+        ...site,
+        name: 'projectzeta',
+        domain: 'projectzeta.example.com',
+        upstream: 'http://ubuntu-projectzeta:3000',
+      },
+      {
+        ...site,
+        name: 'paused-notice',
+        domain: 'paused.example.com',
+        upstream: '',
+      },
+    ]);
+
+    const snapshot = await service.getSnapshot('user-1');
+    const ids = snapshot.nodes.map((node) => node.id);
+
+    expect(ids).not.toContain('container-paused-app');
+    expect(ids).not.toContain('container-verify-db');
+    expect(ids).toContain('container-worker');
+    expect(ids).not.toContain('nginx-projectzeta');
+    expect(ids).not.toContain('nginx-paused-notice');
+    expect(ids).toEqual(
+      expect.arrayContaining([
+        'nginx-blog',
+        'nginx-control',
+        'nginx-projectdelta',
+      ]),
+    );
   });
 
   it('모든 컨테이너 제목에 실제 이름을 쓰고 친근한 이름과 비컨테이너 제목을 보존한다', async () => {
