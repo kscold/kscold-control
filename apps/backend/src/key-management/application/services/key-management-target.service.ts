@@ -18,6 +18,10 @@ import type {
   SshEnvCommandSecretStoreConfig,
   SshEnvCommandDeploymentConfig,
 } from '../../domain/types/key-management-target.type';
+import {
+  acceptsAnyEnvKey,
+  isReservedEnvKey,
+} from '../../domain/policies/env-command-key.policy';
 
 const TARGET_ID = /^[a-z0-9][a-z0-9-]{1,79}$/;
 const ENV_KEY = /^[A-Za-z_][A-Za-z0-9_]*$/;
@@ -177,20 +181,26 @@ export class KeyManagementTargetService {
     requiredKeys: string[],
   ): void {
     this.assertConnection(config);
+    // ['*'] 는 예약 키를 뺀 모든 키를 관리한다는 뜻 (서버도 같은 규칙으로 다시 검사)
+    const anyKey =
+      Array.isArray(config.allowedKeys) && acceptsAnyEnvKey(config.allowedKeys);
     if (
       config.protocol !== 'env-v1' ||
       !Array.isArray(config.allowedKeys) ||
       !config.allowedKeys.length ||
       config.allowedKeys.length > 256 ||
       new Set(config.allowedKeys).size !== config.allowedKeys.length ||
-      !config.allowedKeys.every(
-        (key) =>
-          ENV_KEY.test(key) &&
-          !/^(?:PATH|NODE_OPTIONS|LD_.*|DYLD_.*|BASH_ENV|ENV|SHELLOPTS|NODE_PATH)$/.test(
-            key,
-          ),
-      ) ||
-      !requiredKeys.every((key) => config.allowedKeys.includes(key)) ||
+      (!anyKey &&
+        !config.allowedKeys.every(
+          (key) =>
+            ENV_KEY.test(key) &&
+            !/^(?:PATH|NODE_OPTIONS|LD_.*|DYLD_.*|BASH_ENV|ENV|SHELLOPTS|NODE_PATH)$/.test(
+              key,
+            ),
+        )) ||
+      (anyKey
+        ? requiredKeys.some((key) => isReservedEnvKey(key))
+        : !requiredKeys.every((key) => config.allowedKeys.includes(key))) ||
       Object.keys(config).some(
         (key) =>
           ![
