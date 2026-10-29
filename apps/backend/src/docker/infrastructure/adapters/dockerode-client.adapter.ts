@@ -57,6 +57,7 @@ export class DockerodeClientAdapter implements IDockerClient, OnModuleInit {
           type: p.Type,
         })),
         created: c.Created,
+        labels: c.Labels ?? {},
       }));
     } catch (error) {
       throw new DockerOperationException('list containers', error.message);

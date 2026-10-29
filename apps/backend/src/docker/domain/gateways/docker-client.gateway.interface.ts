@@ -16,6 +16,8 @@ export interface DockerContainerInfo {
     type: string;
   }>;
   created: number;
+  /** 컨테이너 라벨. compose로 만든 컨테이너는 com.docker.compose.project가 붙음 */
+  labels?: Record<string, string>;
 }
 
 /**
