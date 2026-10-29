@@ -100,3 +100,72 @@ export const WORKTREE_CLEANUP_DEFAULTS = {
   scheduleTime: '04:30',
   baseRefs: ['origin/dev', 'origin/main', 'origin/master'],
 } as const;
+
+/** 저장공간 현황 — 맥 디스크, 도커 VM 디스크, 도커 안 사용량, 맥의 큰 폴더 */
+export interface StorageDiskUsage {
+  totalBytes: number;
+  usedBytes: number;
+  freeBytes: number;
+}
+
+export interface StorageDockerVmDisk {
+  path: string;
+  /** 맥에서 VM 디스크 파일이 실제로 차지하는 크기 */
+  allocatedBytes: number;
+  /** VM 안 도커 파일시스템이 쓰는 크기 */
+  usedBytes: number | null;
+  /** 공간 반환으로 맥에 돌려줄 수 있는 크기 */
+  reclaimableBytes: number | null;
+  /** VM이 열어 둔 채 지워진 맥 파일 — VM을 다시 시작해야 돌아온다 */
+  heldDeletedBytes: number | null;
+  heldDeletedFiles: number;
+}
+
+export interface StorageContainer {
+  name: string;
+  image: string;
+  state: string;
+  writableBytes: number;
+  oversized: boolean;
+}
+
+export interface StorageImage {
+  id: string;
+  reference: string | null;
+  sizeBytes: number;
+  uniqueBytes: number;
+}
+
+export interface StorageVolume {
+  name: string;
+  sizeBytes: number;
+  project: string | null;
+}
+
+export interface StorageFolder {
+  key: string;
+  label: string;
+  description: string;
+  path: string;
+  sizeBytes: number | null;
+}
+
+export interface StorageOverview {
+  measuredAt: string;
+  host: StorageDiskUsage | null;
+  dockerVm: StorageDockerVmDisk | null;
+  docker: {
+    containers: StorageContainer[];
+    unusedImages: StorageImage[];
+    unreferencedVolumes: StorageVolume[];
+    buildCacheBytes: number;
+  } | null;
+  folders: StorageFolder[];
+  warnings: string[];
+}
+
+export interface DockerDiskTrimResult {
+  trimmedBytes: number | null;
+  allocatedBeforeBytes: number;
+  allocatedAfterBytes: number;
+}

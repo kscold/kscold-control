@@ -4,10 +4,10 @@ import {
   Container,
   DatabaseBackup,
   FileText,
-  FolderX,
   FolderGit2,
   GitBranch,
   Globe,
+  HardDrive,
   History,
   Eye,
   KeyRound,
@@ -94,8 +94,8 @@ const NAV_ITEMS = [
   },
   {
     to: '/maintenance',
-    label: '작업 폴더 정리',
-    icon: FolderX,
+    label: '저장공간',
+    icon: HardDrive,
     permission: PERMISSIONS.SYSTEM_READ,
   },
   {
