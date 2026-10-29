@@ -48,7 +48,7 @@ import {
   ImpersonationReadOnlyInterceptor,
 } from './common/interceptors';
 import { shouldSynchronizeDatabase } from './common/utils/database-synchronize.util';
-import { resolveFrontendDistPath } from './common/utils/frontend-dist-path.util';
+import { frontendServingOptions } from './common/utils/frontend-serving.util';
 
 @Module({
   imports: [
@@ -59,11 +59,7 @@ import { resolveFrontendDistPath } from './common/utils/frontend-dist-path.util'
     ScheduleModule.forRoot(),
 
     // React 빌드 파일 서빙 (프로덕션)
-    ServeStaticModule.forRoot({
-      rootPath: resolveFrontendDistPath(),
-      // Express 5 / path-to-regexp v8에서는 '/api/(.*)' 형식을 쓸 수 없다.
-      exclude: ['/api/{*any}'], // API 라우트만 제외, SPA 라우팅(/docker, /claude 등)은 index.html로
-    }),
+    ServeStaticModule.forRoot(frontendServingOptions()),
 
     // TypeORM + PostgreSQL
     TypeOrmModule.forRoot({
