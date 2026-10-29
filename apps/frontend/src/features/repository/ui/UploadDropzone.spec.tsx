@@ -251,7 +251,13 @@ describe('UploadDropzone session recovery', () => {
     ).toEqual([...paths].sort());
   });
 
-  it('큰 파일을 몰래 제외하지 않고 해시 계산과 서버 전송 전에 경고한다', async () => {
+  it('서버 정책의 파일 한도를 넘는 파일은 몰래 제외하지 않고 해시 계산과 서버 전송 전에 경고한다', async () => {
+    vi.spyOn(repositoryService, 'getUploadLimits').mockResolvedValue({
+      maxFiles: 100000,
+      maxTotalBytes: 2 * 1024 ** 3,
+      maxFileBytes: 50 * 1024 ** 2,
+      maxBatches: 4000,
+    });
     vi.spyOn(repositoryService, 'getLatestUploadSession').mockResolvedValue(
       null,
     );
