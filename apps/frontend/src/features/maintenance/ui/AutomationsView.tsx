@@ -16,7 +16,7 @@ const GROUPS: Array<{ kind: AutomationKind; title: string; hint: string }> = [
   {
     kind: 'launchd',
     title: '맥 자동 실행 작업',
-    hint: 'macOS launchd에 등록된 작업 — 마지막 실행 시각은 출력 기록이 바뀐 시각',
+    hint: 'macOS launchd에 등록된 작업 — 출력 기록에 아무것도 안 남기는 작업은 마지막 출력 시각이 오래돼 보일 수 있음',
   },
   {
     kind: 'container',
@@ -76,8 +76,10 @@ function JobRow({ job }: { job: AutomationJob }) {
       </div>
       <p className="mt-1.5 break-all text-xs text-gray-400">
         {job.lastRunAt
-          ? `마지막 실행 ${formatShortDateTime(job.lastRunAt)}`
-          : '아직 실행 기록이 없습니다'}
+          ? `${job.kind === 'launchd' ? '마지막 출력' : '마지막 실행'} ${formatShortDateTime(job.lastRunAt)}`
+          : job.kind === 'launchd'
+            ? '출력 기록이 없습니다'
+            : '아직 실행 기록이 없습니다'}
         {job.lastMessage && (
           <span className="text-gray-500"> · {job.lastMessage}</span>
         )}
