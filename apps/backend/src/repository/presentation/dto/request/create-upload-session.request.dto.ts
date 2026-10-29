@@ -25,7 +25,7 @@ class UploadSessionFileRequestDto {
 
   @IsInt()
   @Min(0)
-  @Max(50 * 1024 * 1024)
+  @Max(REPOSITORY_UPLOAD_LIMITS.maxFileBytes)
   size: number;
 
   @IsString()
@@ -43,9 +43,10 @@ class UploadSessionBatchRequestDto {
   @Max(200)
   totalFiles: number;
 
+  // 큰 파일 하나짜리 배치는 조각으로 올라오므로 파일 한도까지 받는다 (여러 파일 배치 한도는 유스케이스에서 확인)
   @IsInt()
   @Min(0)
-  @Max(100 * 1024 * 1024)
+  @Max(REPOSITORY_UPLOAD_LIMITS.maxFileBytes)
   totalBytes: number;
 
   @IsArray()
@@ -74,7 +75,7 @@ export class CreateUploadSessionRequestDto {
   @IsInt()
   @Min(0)
   @Max(REPOSITORY_UPLOAD_LIMITS.maxTotalBytes, {
-    message: '한 번에 업로드할 수 있는 전체 용량은 최대 2 GiB입니다.',
+    message: `한 번에 업로드할 수 있는 전체 용량은 최대 ${REPOSITORY_UPLOAD_LIMITS.maxTotalBytes / 1024 ** 3} GiB입니다.`,
   })
   totalBytes: number;
 

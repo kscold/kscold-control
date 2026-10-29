@@ -1,9 +1,14 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { createHash, randomUUID } from 'crypto';
-import { createReadStream as createNodeReadStream, promises as fs } from 'fs';
+import {
+  createReadStream as createNodeReadStream,
+  createWriteStream,
+  promises as fs,
+} from 'fs';
 import * as os from 'os';
 import * as path from 'path';
-import { Readable } from 'stream';
+import { Readable, Transform } from 'stream';
+import { pipeline } from 'stream/promises';
 import {
   FileTreeNode,
   FinalizedUpload,
@@ -13,6 +18,8 @@ import {
   RepositoryFileInspection,
   StagedUploadFile,
   StagedUploadInspection,
+  UploadContentOffsetError,
+  UploadContentTooLargeError,
 } from '../../domain/repositories/file-storage.interface';
 import { isReservedRepositoryPath } from '../../domain/policies/repository-path.policy';
 import {
@@ -99,6 +106,104 @@ export class LocalFileStorageService implements IFileStorage, OnModuleInit {
       throw new Error('업로드 스테이징 디렉토리가 없습니다.');
     }
     await this.writeBuffer(stage, relativePath, buffer);
+  }
+
+  async getFreeBytes(): Promise<number> {
+    const stats = await fs.statfs(this.layout.baseDir);
+    return stats.bavail * stats.bsize;
+  }
+
+  async stagedContentSize(
+    projectName: string,
+    sessionId: string,
+    batchIndex: number,
+  ): Promise<number> {
+    const part = this.layout.contentPartPath(
+      projectName,
+      sessionId,
+      batchIndex,
+    );
+    try {
+      return (await fs.stat(part)).size;
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === 'ENOENT') return 0;
+      throw error;
+    }
+  }
+
+  async appendStagedContent(
+    projectName: string,
+    sessionId: string,
+    batchIndex: number,
+    offset: number,
+    source: Readable,
+    maxBytes: number,
+  ): Promise<number> {
+    const part = this.layout.contentPartPath(
+      projectName,
+      sessionId,
+      batchIndex,
+    );
+    await fs.mkdir(path.dirname(part), { recursive: true, mode: 0o700 });
+    const current = await this.stagedContentSize(
+      projectName,
+      sessionId,
+      batchIndex,
+    );
+    if (current !== offset) throw new UploadContentOffsetError(current);
+
+    let written = 0;
+    // 메모리에 모으지 않고 받는 대로 디스크에 이어 쓴다. 허용 크기를 넘으면 그 즉시 끊는다
+    const limiter = new Transform({
+      transform(chunk: Buffer, _encoding, callback) {
+        written += chunk.length;
+        if (written > maxBytes) {
+          callback(new UploadContentTooLargeError(maxBytes));
+          return;
+        }
+        callback(null, chunk);
+      },
+    });
+    try {
+      await pipeline(
+        source,
+        limiter,
+        createWriteStream(part, { flags: 'a', mode: 0o600 }),
+      );
+    } catch (error) {
+      // 반쯤 쓴 조각은 되돌려서 다음 요청이 같은 offset 부터 다시 보낼 수 있게 한다
+      await fs.truncate(part, offset).catch(() => undefined);
+      throw error;
+    }
+    return offset + written;
+  }
+
+  async commitStagedContent(
+    projectName: string,
+    sessionId: string,
+    batchIndex: number,
+    relativePath: string,
+    sha256: string,
+  ): Promise<boolean> {
+    const part = this.layout.contentPartPath(
+      projectName,
+      sessionId,
+      batchIndex,
+    );
+    if ((await this.inspectFile(part)).sha256 !== sha256) {
+      await fs.rm(part, { force: true });
+      return false;
+    }
+    const stage = this.layout.stagingPath(projectName, sessionId);
+    if (!(await this.layout.exists(stage))) {
+      throw new Error('업로드 스테이징 디렉토리가 없습니다.');
+    }
+    const target = this.layout.safeRelativePath(stage, relativePath);
+    await fs.mkdir(path.dirname(target), { recursive: true });
+    await this.layout.assertNoSymlink(stage, target);
+    // 조각 폴더와 스테이징은 같은 저장 위치 안이라 rename 한 번으로 옮겨진다
+    await fs.rename(part, target);
+    return true;
   }
 
   inspectStagedUpload(
