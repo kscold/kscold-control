@@ -6,3 +6,8 @@ export {
   RunWorktreeCleanupUseCase,
 } from './run-worktree-cleanup.use-case';
 export type { WorktreeCleanupTargetStatus } from './get-worktree-cleanup-overview.use-case';
+export {
+  GetStorageOverviewUseCase,
+  storageFolders,
+} from './get-storage-overview.use-case';
+export { TrimDockerDiskUseCase } from './trim-docker-disk.use-case';
