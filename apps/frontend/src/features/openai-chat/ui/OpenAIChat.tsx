@@ -271,8 +271,7 @@ export function OpenAIChat({
                   ? 'Codex에게 코딩 작업을 지시하세요...'
                   : `${session.model || 'GPT'}에게 질문하세요...`
             }
-            className="flex-1 resize-none bg-transparent text-sm text-white placeholder-gray-600 focus:outline-none disabled:opacity-50 max-h-32"
-            style={{ fieldSizing: 'content' } as any}
+            className="field-sizing-content max-h-32 flex-1 resize-none bg-transparent text-sm text-white placeholder-gray-600 focus:outline-none disabled:opacity-50"
           />
           {isStreaming ? (
             <button
