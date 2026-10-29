@@ -38,7 +38,8 @@ try {
     const stat = fs.statSync(file);
     const record = JSON.parse(fs.readFileSync(file));
     if (stat.uid !== 0 || (stat.mode & 0o077) || record.stage !== 'final-cutover' ||
-        record.consistency !== 'writers-stopped' || record.targetVolume !== 'gadoc-mongo-data' ||
+        record.consistency !== 'writers-stopped' ||
+        record.targetVolume !== (process.env.GADOC_MONGO_VOLUME || 'gadoc-mongo-data') ||
         record.restored !== true || record.verified !== true) throw new Error();
     const config = JSON.parse(fs.readFileSync(state + '/current/ecosystem.config.json'));
     if (config.apps.length !== 2 || config.apps.some((app, i) => app.uid !== 1002 + i ||

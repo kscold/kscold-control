@@ -60,7 +60,7 @@ dedicated buildx builder, then remove only that builder's cache after validation
 ```sh
 docker buildx create --name gadoc-migration --driver docker-container colima
 docker buildx build --builder gadoc-migration --load \
-  -t kscold/ubuntu-gadoc:2026-10-29-r2 docker/gadoc
+  -t kscold/ubuntu-gadoc:2026-10-29-r3 docker/gadoc
 ```
 
 A backup directory must be `0700`, with files `0600`, outside Git. Required
@@ -137,7 +137,7 @@ These steps require explicit downtime approval; the preparer does not run them.
 5. Only after successful verification, create root-owned `0600`
    `/app/slacord-deploy/private/migration-verified.json` with
    `stage: "final-cutover"`, `consistency: "writers-stopped"`,
-   `targetVolume: "gadoc-mongo-data"`, `restored: true`, `verified: true`, and
+   `targetVolume`이 `GADOC_MONGO_VOLUME`(기본 `gadoc-mongo-data`)과 같고, `restored: true`, `verified: true`, and
    the verified backup/revision/time. This is an activation record, not a way
    to bypass restoration checks.
 6. Stop the old container without deleting it or its volume. Set candidate
