@@ -3,3 +3,4 @@
 !entrypoint.sh
 !healthcheck.sh
 !sshd_config
+!gadoc-kms-env.sh

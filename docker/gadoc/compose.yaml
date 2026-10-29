@@ -2,7 +2,7 @@ name: gadoc-runtime
 
 services:
   ubuntu-gadoc:
-    image: kscold/ubuntu-gadoc:2026-10-28-r1
+    image: kscold/ubuntu-gadoc:2026-10-29-r2
     container_name: ubuntu-gadoc
     hostname: ubuntu-gadoc
     restart: unless-stopped

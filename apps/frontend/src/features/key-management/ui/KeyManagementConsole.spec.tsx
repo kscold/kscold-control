@@ -128,6 +128,44 @@ describe('KeyManagementConsole multi-target view', () => {
     ).toBeInTheDocument();
   });
 
+  it('전용 서버 명령 대상은 관리 가능한 키와 현재 소스 적용 범위를 표시한다', () => {
+    const storage: KeyManagementTarget = {
+      ...projectbeta,
+      id: 'storage-production',
+      displayName: 'Storage Production',
+      provider: 'ssh-env-command',
+      deploymentProvider: 'ssh-env-command',
+      envFileName: 'server.env',
+      requiredKeys: [
+        'MINIO_ACCESS_KEY',
+        'MINIO_SECRET_KEY',
+        'MINIO_ENDPOINT',
+        'MINIO_BUCKET',
+      ],
+      managedKeys: [
+        'MINIO_ACCESS_KEY',
+        'MINIO_SECRET_KEY',
+        'MINIO_ENDPOINT',
+        'MINIO_BUCKET',
+      ],
+    };
+    mocks.useKeyManagement.mockReturnValue({
+      ...hookState(storage),
+      targets: [projectalpha, projectbeta, storage],
+    });
+    render(<KeyManagementConsole />);
+    expect(screen.getByText('SSH 관리 명령')).toBeInTheDocument();
+    expect(screen.getByText('현재 버전에 환경 적용')).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        /관리 가능 키: MINIO_ACCESS_KEY, MINIO_SECRET_KEY, MINIO_ENDPOINT, MINIO_BUCKET/,
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/현재 실행 중인 소스 버전에 적용합니다/),
+    ).toBeInTheDocument();
+  });
+
   it('이전 API 응답이 잠시 섞여도 잘못된 배포 방식과 undefined를 표시하지 않는다', () => {
     const legacy = {
       ...projectalpha,

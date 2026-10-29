@@ -1,5 +1,7 @@
-export type SecretStoreProvider = 'gcp-secret-manager' | 'ssh-env-file';
-export type DeploymentProvider = 'github-actions' | 'ssh-blue-green';
+export type SecretStoreProvider =
+  'gcp-secret-manager' | 'ssh-env-file' | 'ssh-env-command';
+export type DeploymentProvider =
+  'github-actions' | 'ssh-blue-green' | 'ssh-env-command';
 
 export interface GcpSecretStoreConfig {
   projectId: string;
@@ -7,12 +9,24 @@ export interface GcpSecretStoreConfig {
   serviceAccount: string;
 }
 
-export interface SshSecretStoreConfig {
+export interface SshConnectionConfig {
   host: string;
   port: number;
   username: string;
-  envPath: string;
   credentialRef: string;
+}
+
+export interface SshSecretStoreConfig extends SshConnectionConfig {
+  envPath: string;
+}
+
+export interface SshEnvCommandSecretStoreConfig extends SshConnectionConfig {
+  protocol: 'env-v1';
+  allowedKeys: string[];
+}
+
+export interface SshEnvCommandDeploymentConfig {
+  protocol: 'env-v1';
 }
 
 export interface GithubActionsDeploymentConfig {
@@ -38,9 +52,14 @@ export interface KeyManagementTarget {
   instanceName: string;
   location: string;
   requiredKeys: string[];
-  secretConfig: GcpSecretStoreConfig | SshSecretStoreConfig;
+  secretConfig:
+    | GcpSecretStoreConfig
+    | SshSecretStoreConfig
+    | SshEnvCommandSecretStoreConfig;
   deploymentConfig:
-    GithubActionsDeploymentConfig | SshBlueGreenDeploymentConfig;
+    | GithubActionsDeploymentConfig
+    | SshBlueGreenDeploymentConfig
+    | SshEnvCommandDeploymentConfig;
   enabled: boolean;
   sortOrder: number;
 }

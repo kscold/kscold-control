@@ -3,12 +3,13 @@ export interface KeyManagementTarget {
   displayName: string;
   description: string;
   environment: string;
-  provider: 'gcp-secret-manager' | 'ssh-env-file';
-  deploymentProvider: 'github-actions' | 'ssh-blue-green';
+  provider: 'gcp-secret-manager' | 'ssh-env-file' | 'ssh-env-command';
+  deploymentProvider: 'github-actions' | 'ssh-blue-green' | 'ssh-env-command';
   envFileName: string;
   instanceName: string;
   location: string;
   requiredKeys: string[];
+  managedKeys?: string[];
   version: string | null;
   updatedAt: string | null;
   checksum: string | null;
