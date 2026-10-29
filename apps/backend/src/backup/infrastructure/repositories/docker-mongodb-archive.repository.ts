@@ -93,7 +93,13 @@ export class DockerMongodbArchiveRepository implements IBackupArchiveRepository 
       // 덤프가 끝난 뒤에만 백업 목록에 나타나도록 완성본을 한 번에 옮긴다.
       fs.renameSync(partialDir, backupDir);
     } catch (error) {
-      fs.rmSync(partialDir, { recursive: true, force: true });
+      // 실패 직후에는 덤프 출력 스트림이 아직 파일을 만들고 있을 수 있어 ENOTEMPTY 로 실패하므로 잠깐 다시 시도한다
+      fs.rmSync(partialDir, {
+        recursive: true,
+        force: true,
+        maxRetries: 5,
+        retryDelay: 50,
+      });
       throw error;
     }
 
