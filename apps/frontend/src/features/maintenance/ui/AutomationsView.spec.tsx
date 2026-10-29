@@ -75,6 +75,9 @@ describe('AutomationsView', () => {
       within(launchd).getByText(/마지막 종료 코드 1 · 복구 실패/),
     ).toBeInTheDocument();
 
+    // 맥 작업의 시각은 실행 시각이 아니라 출력 기록이 바뀐 시각이다
+    expect(within(launchd).getByText(/^마지막 출력 /)).toBeInTheDocument();
+
     const container = screen
       .getByRole('heading', { name: '컨테이너 안 자동 정리' })
       .closest('section')!;
