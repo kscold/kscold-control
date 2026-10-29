@@ -16,6 +16,7 @@ describe('DockerController', () => {
   const listComposeServicesUseCase = { execute: jest.fn() };
   const getTopologySnapshotUseCase = { execute: jest.fn() };
   const saveTopologyLayoutUseCase = { execute: jest.fn() };
+  const resetTopologyLayoutUseCase = { execute: jest.fn() };
   const getDockerCleanupCandidatesUseCase = { execute: jest.fn() };
   const pruneDanglingImagesUseCase = { execute: jest.fn() };
   const pruneBuildCacheUseCase = { execute: jest.fn() };
@@ -35,6 +36,7 @@ describe('DockerController', () => {
     listComposeServicesUseCase as any,
     getTopologySnapshotUseCase as any,
     saveTopologyLayoutUseCase as any,
+    resetTopologyLayoutUseCase as any,
     getDockerCleanupCandidatesUseCase as any,
     pruneDanglingImagesUseCase as any,
     pruneBuildCacheUseCase as any,
@@ -44,6 +46,18 @@ describe('DockerController', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+  });
+
+  it('토폴로지 배치 되돌리기는 배치 저장과 같은 권한으로 현재 사용자 배치만 지운다', async () => {
+    resetTopologyLayoutUseCase.execute.mockResolvedValueOnce({ removed: 4 });
+
+    expect(
+      Reflect.getMetadata('permissions', controller.resetTopologyLayout),
+    ).toEqual([PERMISSIONS.DOCKER_UPDATE]);
+    await expect(
+      controller.resetTopologyLayout({ user: { id: 'user-1' } } as any),
+    ).resolves.toEqual({ removed: 4 });
+    expect(resetTopologyLayoutUseCase.execute).toHaveBeenCalledWith('user-1');
   });
 
   it('대시보드 컨테이너 집계는 전용 읽기 권한만 요구한다', () => {

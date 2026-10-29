@@ -26,6 +26,7 @@ describe('DockerTopologyService', () => {
     layoutRepository = {
       upsertPositions: jest.fn().mockResolvedValue(undefined),
       findPositionsByUser: jest.fn().mockResolvedValue([]),
+      deletePositionsByUser: jest.fn().mockResolvedValue(3),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -562,6 +563,14 @@ describe('DockerTopologyService', () => {
 
     expect(blogNode?.position).toEqual({ x: 123, y: 456 });
     expect(layoutRepository.findPositionsByUser).toHaveBeenCalledWith('user-1');
+  });
+
+  it('사용자가 옮겨 둔 배치를 지워 기본 배치로 되돌린다', async () => {
+    await expect(service.resetNodePositions('user-1')).resolves.toBe(3);
+    expect(layoutRepository.deletePositionsByUser).toHaveBeenCalledWith(
+      'user-1',
+    );
+    await expect(service.resetNodePositions('')).rejects.toThrow();
   });
 
   it('유효한 노드 좌표만 저장소 포트로 upsert한다', async () => {

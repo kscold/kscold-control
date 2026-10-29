@@ -183,6 +183,20 @@ export class DockerService extends BaseApiService {
     }
   }
 
+  /** 끌어다 놓은 노드 배치를 지워 기본 배치로 되돌림 */
+  async resetTopologyLayout(): Promise<{ removed: number }> {
+    try {
+      return (
+        await api.delete<{ removed: number }>(
+          `${this.basePath}/topology/layout/nodes`,
+        )
+      ).data;
+    } catch (error) {
+      this.logError('DockerService', 'resetTopologyLayout', error);
+      this.handleError(error, 'Failed to reset topology layout');
+    }
+  }
+
   async getCleanupCandidates(): Promise<DockerCleanupCandidates> {
     try {
       const { data } = await api.get<DockerCleanupCandidates>(

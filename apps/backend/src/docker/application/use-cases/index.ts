@@ -11,6 +11,7 @@ export * from './remove-compose-service.use-case';
 export * from './list-compose-services.use-case';
 export * from './get-topology-snapshot.use-case';
 export * from './save-topology-layout.use-case';
+export * from './reset-topology-layout.use-case';
 export * from './get-docker-cleanup-candidates.use-case';
 export * from './prune-dangling-images.use-case';
 export * from './prune-build-cache.use-case';
