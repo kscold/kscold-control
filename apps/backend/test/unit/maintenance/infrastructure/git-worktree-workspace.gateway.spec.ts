@@ -11,6 +11,9 @@ import type { WorktreeInspection } from '@/maintenance/domain/types/worktree.typ
  * 원격은 같은 임시 디렉터리 안의 bare 저장소라 네트워크를 쓰지 않는다.
  */
 describe('GitWorktreeWorkspaceGateway', () => {
+  // 실제 git 저장소·작업 폴더를 여러 개 만들어 보는 테스트라 기계가 바쁘면 기본 5초를 넘긴다
+  jest.setTimeout(30_000);
+
   let work: string;
   let repo: string;
   let root: string;
