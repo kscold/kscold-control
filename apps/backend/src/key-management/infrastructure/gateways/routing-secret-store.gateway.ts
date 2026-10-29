@@ -7,6 +7,7 @@ import {
 import { KeyManagementTargetService } from '../../application/services/key-management-target.service';
 import { GcpSecretManagerGateway } from './gcp-secret-manager.gateway';
 import { SshEnvFileSecretStoreGateway } from './ssh-env-file-secret-store.gateway';
+import { SshEnvCommandGateway } from './ssh-env-command.gateway';
 
 @Injectable()
 export class RoutingSecretStoreGateway implements ISecretStoreGateway {
@@ -14,6 +15,7 @@ export class RoutingSecretStoreGateway implements ISecretStoreGateway {
     private readonly targets: KeyManagementTargetService,
     private readonly gcp: GcpSecretManagerGateway,
     private readonly ssh: SshEnvFileSecretStoreGateway,
+    private readonly command: SshEnvCommandGateway,
   ) {}
 
   async readLatest(targetId: string): Promise<SecretStoreVersion> {
@@ -43,6 +45,7 @@ export class RoutingSecretStoreGateway implements ISecretStoreGateway {
     const target = await this.targets.get(targetId);
     if (target.provider === 'gcp-secret-manager') return this.gcp;
     if (target.provider === 'ssh-env-file') return this.ssh;
+    if (target.provider === 'ssh-env-command') return this.command;
     throw new ServiceUnavailableException(
       '지원하지 않는 운영 시크릿 저장소입니다.',
     );

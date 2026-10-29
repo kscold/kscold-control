@@ -46,6 +46,8 @@ export function runProcess(
 
     // stderr는 비밀값이 섞일 가능성을 없애기 위해 수집하거나 반환하지 않는다.
     child.stderr.resume();
+    // A forced command may reject input before it has consumed stdin.
+    child.stdin.on('error', () => undefined);
 
     child.once('error', () => {
       if (settled) return;
