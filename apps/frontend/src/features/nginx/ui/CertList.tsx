@@ -111,7 +111,7 @@ export function CertList({
           등록된 인증서가 없습니다.
         </div>
       ) : (
-        <div className="grid gap-3">
+        <div className="grid grid-cols-1 gap-3">
           {certs.map((cert) => (
             <div
               key={cert.domain}

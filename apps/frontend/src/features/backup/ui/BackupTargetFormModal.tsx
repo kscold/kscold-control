@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Eye, EyeOff, X } from 'lucide-react';
+import { Eye, EyeOff } from 'lucide-react';
+import { Dialog, dialogButtonClass } from '@/shared/ui';
 import {
   BACKUP_TARGET_DEFAULTS,
   BACKUP_TARGET_NAME_PATTERN,
@@ -168,213 +169,193 @@ export function BackupTargetFormModal({
   };
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="backup-target-form-title"
-    >
-      <div className="flex max-h-full w-full max-w-lg flex-col rounded-xl border border-gray-800 bg-gray-900 shadow-xl">
-        <div className="flex items-center justify-between border-b border-gray-800 px-5 py-3">
-          <h2
-            id="backup-target-form-title"
-            className="text-base font-semibold text-white"
-          >
-            {isEdit ? '백업 대상 수정' : '백업 대상 추가'}
-          </h2>
+    <Dialog
+      open
+      size="lg"
+      title={isEdit ? '백업 대상 수정' : '백업 대상 추가'}
+      onClose={onClose}
+      busy={submitting}
+      onSubmit={handleSubmit}
+      autoComplete="off"
+      footer={
+        <>
           <button
             type="button"
             onClick={onClose}
-            aria-label="닫기"
-            className="rounded p-1 text-gray-400 hover:bg-gray-800 hover:text-white"
+            disabled={submitting}
+            className={dialogButtonClass()}
           >
-            <X size={18} />
+            취소
           </button>
-        </div>
-
-        <form
-          onSubmit={handleSubmit}
-          className="space-y-4 overflow-y-auto px-5 py-4"
-          autoComplete="off"
+          <button
+            type="submit"
+            disabled={submitting}
+            className={dialogButtonClass('emerald')}
+          >
+            {submitting ? '저장 중…' : isEdit ? '저장' : '대상 추가'}
+          </button>
+        </>
+      }
+    >
+      <div className="space-y-4">
+        <Field
+          id="backup-target-name"
+          label="이름"
+          hint={
+            isEdit
+              ? '백업이 저장되는 폴더 이름이라 바꿀 수 없습니다.'
+              : '백업이 저장되는 폴더 이름으로 쓰이며, 등록한 뒤에는 바꿀 수 없습니다.'
+          }
         >
-          <Field
+          <input
             id="backup-target-name"
-            label="이름"
-            hint={
-              isEdit
-                ? '백업이 저장되는 폴더 이름이라 바꿀 수 없습니다.'
-                : '백업이 저장되는 폴더 이름으로 쓰이며, 등록한 뒤에는 바꿀 수 없습니다.'
-            }
+            type="text"
+            value={form.name}
+            onChange={(event) => update('name', event.target.value)}
+            placeholder="예: my-app-prod"
+            disabled={isEdit}
+            autoFocus={!isEdit}
+            aria-describedby="backup-target-name-hint"
+            className={`${FIELD_CLASS} font-mono`}
+          />
+        </Field>
+
+        <Field id="backup-target-description" label="설명 (선택)">
+          <input
+            id="backup-target-description"
+            type="text"
+            value={form.description}
+            onChange={(event) => update('description', event.target.value)}
+            placeholder="예: 운영 DB (Atlas)"
+            maxLength={500}
+            className={FIELD_CLASS}
+          />
+        </Field>
+
+        <Field
+          id="backup-target-uri"
+          label={isEdit ? '접속 URI (바꿀 때만 입력)' : '접속 URI'}
+          hint={
+            <>
+              {isEdit && target
+                ? `현재 접속 위치: ${target.connectionSummary} · `
+                : ''}
+              URI 경로에 적힌 데이터베이스만 덤프합니다. 암호화해 저장하며 다시
+              보여주지 않습니다. 읽기 전용 계정을 권장합니다. 이 서버의
+              컨테이너에서 도는 DB 는 localhost 대신{' '}
+              <code className="font-mono">host.docker.internal:포트</code> 로
+              적습니다.
+            </>
+          }
+        >
+          <div className="relative">
+            <input
+              id="backup-target-uri"
+              type={showUri ? 'text' : 'password'}
+              value={form.uri}
+              onChange={(event) => update('uri', event.target.value)}
+              placeholder={
+                isEdit
+                  ? '비워 두면 저장된 접속 정보를 그대로 씁니다'
+                  : 'mongodb+srv://user:password@host/database'
+              }
+              autoComplete="new-password"
+              spellCheck={false}
+              aria-describedby="backup-target-uri-hint"
+              className={`${FIELD_CLASS} pr-10 font-mono`}
+            />
+            <button
+              type="button"
+              onClick={() => setShowUri((visible) => !visible)}
+              aria-label={showUri ? '접속 URI 가리기' : '접속 URI 보기'}
+              className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1 text-gray-500 hover:text-white"
+            >
+              {showUri ? <EyeOff size={15} /> : <Eye size={15} />}
+            </button>
+          </div>
+        </Field>
+
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <Field
+            id="backup-target-schedule-time"
+            label="매일 실행 시각"
+            hint={`${timeZone} 기준`}
           >
             <input
-              id="backup-target-name"
-              type="text"
-              value={form.name}
-              onChange={(event) => update('name', event.target.value)}
-              placeholder="예: my-app-prod"
-              disabled={isEdit}
-              autoFocus={!isEdit}
-              aria-describedby="backup-target-name-hint"
-              className={`${FIELD_CLASS} font-mono`}
-            />
-          </Field>
-
-          <Field id="backup-target-description" label="설명 (선택)">
-            <input
-              id="backup-target-description"
-              type="text"
-              value={form.description}
-              onChange={(event) => update('description', event.target.value)}
-              placeholder="예: 운영 DB (Atlas)"
-              maxLength={500}
+              id="backup-target-schedule-time"
+              type="time"
+              value={form.scheduleTime}
+              onChange={(event) => update('scheduleTime', event.target.value)}
+              aria-describedby="backup-target-schedule-time-hint"
               className={FIELD_CLASS}
             />
           </Field>
 
           <Field
-            id="backup-target-uri"
-            label={isEdit ? '접속 URI (바꿀 때만 입력)' : '접속 URI'}
-            hint={
-              <>
-                {isEdit && target
-                  ? `현재 접속 위치: ${target.connectionSummary} · `
-                  : ''}
-                URI 경로에 적힌 데이터베이스만 덤프합니다. 암호화해 저장하며
-                다시 보여주지 않습니다. 읽기 전용 계정을 권장합니다. 이 서버의
-                컨테이너에서 도는 DB 는 localhost 대신{' '}
-                <code className="font-mono">host.docker.internal:포트</code> 로
-                적습니다.
-              </>
-            }
+            id="backup-target-retention-days"
+            label="보관 기간 (일)"
+            hint="새 백업이 성공한 뒤 이보다 오래된 백업을 지웁니다."
           >
-            <div className="relative">
-              <input
-                id="backup-target-uri"
-                type={showUri ? 'text' : 'password'}
-                value={form.uri}
-                onChange={(event) => update('uri', event.target.value)}
-                placeholder={
-                  isEdit
-                    ? '비워 두면 저장된 접속 정보를 그대로 씁니다'
-                    : 'mongodb+srv://user:password@host/database'
-                }
-                autoComplete="new-password"
-                spellCheck={false}
-                aria-describedby="backup-target-uri-hint"
-                className={`${FIELD_CLASS} pr-10 font-mono`}
-              />
-              <button
-                type="button"
-                onClick={() => setShowUri((visible) => !visible)}
-                aria-label={showUri ? '접속 URI 가리기' : '접속 URI 보기'}
-                className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1 text-gray-500 hover:text-white"
-              >
-                {showUri ? <EyeOff size={15} /> : <Eye size={15} />}
-              </button>
-            </div>
-          </Field>
-
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <Field
-              id="backup-target-schedule-time"
-              label="매일 실행 시각"
-              hint={`${timeZone} 기준`}
-            >
-              <input
-                id="backup-target-schedule-time"
-                type="time"
-                value={form.scheduleTime}
-                onChange={(event) => update('scheduleTime', event.target.value)}
-                aria-describedby="backup-target-schedule-time-hint"
-                className={FIELD_CLASS}
-              />
-            </Field>
-
-            <Field
+            <input
               id="backup-target-retention-days"
-              label="보관 기간 (일)"
-              hint="새 백업이 성공한 뒤 이보다 오래된 백업을 지웁니다."
-            >
-              <input
-                id="backup-target-retention-days"
-                type="number"
-                min={1}
-                max={MAX_BACKUP_RETENTION_DAYS}
-                value={form.retentionDays}
-                onChange={(event) =>
-                  update('retentionDays', event.target.value)
-                }
-                aria-describedby="backup-target-retention-days-hint"
-                className={FIELD_CLASS}
-              />
-            </Field>
-          </div>
-
-          <Field
-            id="backup-target-dump-image"
-            label="덤프 이미지"
-            hint="mongodump 를 실행할 Docker 이미지입니다. 서버 버전에 맞춰 바꿀 수 있습니다."
-          >
-            <input
-              id="backup-target-dump-image"
-              type="text"
-              value={form.dumpImage}
-              onChange={(event) => update('dumpImage', event.target.value)}
-              spellCheck={false}
-              aria-describedby="backup-target-dump-image-hint"
-              className={`${FIELD_CLASS} font-mono`}
+              type="number"
+              min={1}
+              max={MAX_BACKUP_RETENTION_DAYS}
+              value={form.retentionDays}
+              onChange={(event) => update('retentionDays', event.target.value)}
+              aria-describedby="backup-target-retention-days-hint"
+              className={FIELD_CLASS}
             />
           </Field>
+        </div>
 
-          <div className="flex items-start gap-2.5 rounded-lg border border-gray-800 bg-gray-950/50 px-3 py-2.5">
-            <input
-              id="backup-target-enabled"
-              type="checkbox"
-              checked={form.enabled}
-              onChange={(event) => update('enabled', event.target.checked)}
-              aria-describedby="backup-target-enabled-hint"
-              className="mt-0.5 h-4 w-4 rounded border-gray-600 bg-gray-900 accent-emerald-500"
-            />
-            <div>
-              <label
-                htmlFor="backup-target-enabled"
-                className="block text-sm text-gray-200"
-              >
-                예약 백업 사용
-              </label>
-              <p id="backup-target-enabled-hint" className={HINT_CLASS}>
-                끄면 예약 실행을 멈춥니다. 수동 실행은 계속 할 수 있습니다.
-              </p>
-            </div>
+        <Field
+          id="backup-target-dump-image"
+          label="덤프 이미지"
+          hint="mongodump 를 실행할 Docker 이미지입니다. 서버 버전에 맞춰 바꿀 수 있습니다."
+        >
+          <input
+            id="backup-target-dump-image"
+            type="text"
+            value={form.dumpImage}
+            onChange={(event) => update('dumpImage', event.target.value)}
+            spellCheck={false}
+            aria-describedby="backup-target-dump-image-hint"
+            className={`${FIELD_CLASS} font-mono`}
+          />
+        </Field>
+
+        <div className="flex items-start gap-2.5 rounded-lg border border-gray-800 bg-gray-950/50 px-3 py-2.5">
+          <input
+            id="backup-target-enabled"
+            type="checkbox"
+            checked={form.enabled}
+            onChange={(event) => update('enabled', event.target.checked)}
+            aria-describedby="backup-target-enabled-hint"
+            className="mt-0.5 h-4 w-4 rounded border-gray-600 bg-gray-900 accent-emerald-500"
+          />
+          <div>
+            <label
+              htmlFor="backup-target-enabled"
+              className="block text-sm text-gray-200"
+            >
+              예약 백업 사용
+            </label>
+            <p id="backup-target-enabled-hint" className={HINT_CLASS}>
+              끄면 예약 실행을 멈춥니다. 수동 실행은 계속 할 수 있습니다.
+            </p>
           </div>
+        </div>
 
-          {error && (
-            <div
-              role="alert"
-              className="rounded-lg border border-red-900/50 bg-red-950/30 px-3 py-2 text-sm text-red-300"
-            >
-              {error}
-            </div>
-          )}
-
-          <div className="flex justify-end gap-2 pt-1">
-            <button
-              type="button"
-              onClick={onClose}
-              className="rounded-lg px-4 py-2 text-sm text-gray-400 hover:bg-gray-800 hover:text-white"
-            >
-              취소
-            </button>
-            <button
-              type="submit"
-              disabled={submitting}
-              className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-500 disabled:opacity-50"
-            >
-              {submitting ? '저장 중…' : isEdit ? '저장' : '대상 추가'}
-            </button>
+        {error && (
+          <div
+            role="alert"
+            className="rounded-lg border border-red-900/50 bg-red-950/30 px-3 py-2 text-sm text-red-300"
+          >
+            {error}
           </div>
-        </form>
+        )}
       </div>
-    </div>
+    </Dialog>
   );
 }

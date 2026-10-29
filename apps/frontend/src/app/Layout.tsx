@@ -177,7 +177,7 @@ export function Layout() {
   });
 
   return (
-    <div className="flex h-screen">
+    <div className="flex h-dvh">
       <div className="fixed left-0 right-0 top-0 z-50 flex items-center justify-between border-b border-gray-800 bg-gray-900 px-4 py-3 md:hidden">
         <div>
           <h1 className="text-lg font-bold text-white">kscold-control</h1>
@@ -205,7 +205,7 @@ export function Layout() {
       <aside
         className={`${
           isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
-        } fixed z-40 flex h-screen w-60 flex-col border-r border-gray-800 bg-gray-900 transition-transform duration-300 ease-in-out md:relative md:translate-x-0`}
+        } fixed z-40 flex h-dvh w-60 flex-col border-r border-gray-800 bg-gray-900 transition-transform duration-300 ease-in-out md:relative md:translate-x-0`}
       >
         <div className="hidden border-b border-gray-800 p-4 md:block">
           <h1 className="text-lg font-bold text-white">kscold-control</h1>

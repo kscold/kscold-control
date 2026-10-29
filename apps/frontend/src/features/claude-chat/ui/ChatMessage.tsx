@@ -59,18 +59,9 @@ export function ChatMessage({ message }: ChatMessageProps) {
               <MarkdownRenderer content={message.content} />
               {message.isStreaming && !message.content && (
                 <span className="inline-flex gap-1">
-                  <span
-                    className="h-2 w-2 animate-bounce rounded-full bg-slate-400"
-                    style={{ animationDelay: '0ms' }}
-                  />
-                  <span
-                    className="h-2 w-2 animate-bounce rounded-full bg-slate-400"
-                    style={{ animationDelay: '150ms' }}
-                  />
-                  <span
-                    className="h-2 w-2 animate-bounce rounded-full bg-slate-400"
-                    style={{ animationDelay: '300ms' }}
-                  />
+                  <span className="h-2 w-2 animate-bounce rounded-full bg-slate-400" />
+                  <span className="h-2 w-2 animate-bounce rounded-full bg-slate-400 [animation-delay:150ms]" />
+                  <span className="h-2 w-2 animate-bounce rounded-full bg-slate-400 [animation-delay:300ms]" />
                 </span>
               )}
               {message.isStreaming && message.content && (

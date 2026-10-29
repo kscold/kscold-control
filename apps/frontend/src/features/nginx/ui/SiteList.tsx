@@ -66,7 +66,7 @@ export function SiteList({
           등록된 사이트가 없습니다.
         </div>
       ) : (
-        <div className="grid gap-3">
+        <div className="grid grid-cols-1 gap-3">
           {sites.map((site) => (
             <div
               key={site.name}

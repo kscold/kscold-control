@@ -34,28 +34,32 @@ export function DashboardOverview() {
 
   return (
     <div className="h-full overflow-auto p-4 sm:p-6 bg-gray-950">
-      <div className="flex items-center justify-between mb-4 sm:mb-6">
-        <h2 className="text-xl sm:text-2xl font-bold text-white">Dashboard</h2>
-        <div className="flex items-center gap-3">
+      {/* 휴대폰에서는 수집 시각·가동 시간을 제목 아래 줄로 내린다 */}
+      <div className="mb-4 flex flex-wrap items-center gap-x-3 gap-y-1 sm:mb-6">
+        <h2 className="mr-auto text-xl font-bold text-white sm:text-2xl">
+          Dashboard
+        </h2>
+        <div className="order-last flex w-full flex-wrap gap-x-3 text-xs text-gray-500 sm:order-none sm:w-auto">
           {lastLoadedAt ? (
-            <span className="text-xs text-gray-500">
+            <span className="whitespace-nowrap">
               수집 {new Date(lastLoadedAt).toLocaleTimeString('ko-KR')}
             </span>
           ) : null}
           {liveStats && (
-            <span className="text-xs text-gray-500">
+            <span className="whitespace-nowrap">
               Uptime {formatUptime(liveStats.uptime)}
             </span>
           )}
-          <button
-            type="button"
-            onClick={loadSystemInfo}
-            disabled={loading}
-            className="rounded-lg border border-gray-700 px-3 py-2 text-gray-300 transition hover:text-white disabled:opacity-50"
-          >
-            <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
-          </button>
         </div>
+        <button
+          type="button"
+          onClick={loadSystemInfo}
+          disabled={loading}
+          aria-label="대시보드 새로고침"
+          className="shrink-0 rounded-lg border border-gray-700 px-3 py-2 text-gray-300 transition hover:text-white disabled:opacity-50"
+        >
+          <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
+        </button>
       </div>
 
       {error ? (

@@ -154,7 +154,7 @@ export function UserList({
               className={`p-2.5 sm:p-3 rounded border ${
                 isPending
                   ? 'border-amber-500/60 bg-amber-950/20'
-                  : 'border-gray-600 bg-gray-750'
+                  : 'border-gray-600 bg-gray-900/40'
               }`}
             >
               <div className="flex items-start justify-between mb-2">

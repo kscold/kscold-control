@@ -36,7 +36,7 @@ export function PortMappingList({
   }
 
   return (
-    <div className="grid gap-3" aria-busy={loading}>
+    <div className="grid grid-cols-1 gap-3" aria-busy={loading}>
       {(error || loading) && (
         <p className="text-xs text-amber-300">
           이전 조회 결과입니다. 상태 확인 전까지 변경 작업이 잠깁니다.
