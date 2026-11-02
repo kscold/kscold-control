@@ -37,7 +37,7 @@ RUN set -eu; \
     groupadd --gid 1001 gadoc; useradd --uid 1001 --gid gadoc --create-home --shell /bin/bash gadoc; \
     groupadd --gid 1002 gadoc-server; useradd --uid 1002 --gid gadoc-server --no-create-home --shell /usr/sbin/nologin gadoc-server; \
     groupadd --gid 1003 gadoc-web; useradd --uid 1003 --gid gadoc-web --no-create-home --shell /usr/sbin/nologin gadoc-web; \
-    mkdir -p /data/db /app /run/sshd /run/mongodb /run/gadoc-private /var/log/mongodb /var/log/slacord /root/.ssh /root/.pm2; \
+    mkdir -p /data/db /app /run/sshd /run/mongodb /run/gadoc-private /var/log/mongodb /var/log/slacord /var/log/gadoc /root/.ssh /root/.pm2; \
     chmod 700 /root/.ssh /root/.pm2 /run/gadoc-private
 
 # 앱 프로세스(uid 1002)는 홈이 없어 기본 브라우저 경로를 못 쓰므로 공용 경로에 두고,
