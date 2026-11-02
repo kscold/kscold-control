@@ -9,7 +9,7 @@ services:
     restart: unless-stopped
     stop_grace_period: 45s
     cpus: '2'
-    mem_limit: 3g
+    mem_limit: 4g
     environment:
       TZ: Asia/Seoul
       GADOC_START_RUNTIME: ${GADOC_START_RUNTIME:-0}
