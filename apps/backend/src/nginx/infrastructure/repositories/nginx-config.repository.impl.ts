@@ -6,6 +6,7 @@ import type {
   NginxSite,
   NginxSiteConfiguration,
 } from '../../domain/types/nginx-site.type';
+import { renderNginxSiteConfig } from '../lib/nginx-site-config.template';
 
 const NGINX_CONF_DIR = path.resolve(
   __dirname,
@@ -86,7 +87,7 @@ export class NginxConfigRepositoryImpl implements INginxConfigRepository {
 
     // 기존 파일이 없을 때만 활성 설정 파일을 새로 생성함.
     const filePath = existingPath || enabledPath;
-    const config = this.generateConfig(configuration);
+    const config = renderNginxSiteConfig(configuration);
     fs.writeFileSync(filePath, config, 'utf-8');
 
     return {
@@ -141,89 +142,6 @@ export class NginxConfigRepositoryImpl implements INginxConfigRepository {
       sslKey: keyMatch?.[1] || '',
       websocket: wsMatch,
     };
-  }
-
-  private generateConfig(configuration: NginxSiteConfiguration): string {
-    const sslCert =
-      configuration.sslCert ||
-      `/etc/nginx/ssl/${configuration.domain}/fullchain.pem`;
-    const sslKey =
-      configuration.sslKey ||
-      `/etc/nginx/ssl/${configuration.domain}/privkey.pem`;
-
-    const wsBlock = configuration.websocket
-      ? `
-    location /socket.io/ {
-        proxy_pass ${configuration.upstream};
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection "upgrade";
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-    }`
-      : '';
-
-    const proxyHeaders = `
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection 'upgrade';
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-        proxy_cache_bypass $http_upgrade;`;
-
-    if (!configuration.ssl) {
-      return `server {
-    listen 80;
-    server_name ${configuration.domain};
-
-    location /.well-known/acme-challenge/ {
-        root /var/www/certbot;
-    }
-
-    location / {
-        proxy_pass ${configuration.upstream};${proxyHeaders}
-    }${wsBlock}
-}
-`;
-    }
-
-    return `# HTTP → HTTPS 리다이렉트
-server {
-    listen 80;
-    server_name ${configuration.domain};
-
-    location /.well-known/acme-challenge/ {
-        root /var/www/certbot;
-    }
-
-    location / {
-        return 301 https://$server_name$request_uri;
-    }
-}
-
-# HTTPS
-server {
-    listen 443 ssl;
-    http2 on;
-    server_name ${configuration.domain};
-
-    ssl_certificate ${sslCert};
-    ssl_certificate_key ${sslKey};
-
-    ssl_protocols TLSv1.2 TLSv1.3;
-    ssl_prefer_server_ciphers on;
-    ssl_ciphers HIGH:!aNULL:!MD5;
-
-    client_max_body_size 20M;
-
-    location / {
-        proxy_pass ${configuration.upstream};${proxyHeaders}
-    }${wsBlock}
-}
-`;
   }
 
   private getFilePath(name: string): string {

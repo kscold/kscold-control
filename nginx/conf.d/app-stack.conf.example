@@ -4,6 +4,8 @@
 
 server {
     listen 80;
+    # 호스트 TCP 프록시가 PROXY protocol로 실제 접속 주소를 넘기는 리스너
+    listen 8080 proxy_protocol;
     server_name app.example.com www.app.example.com;
 
     location /.well-known/acme-challenge/ {
@@ -17,6 +19,7 @@ server {
 
 server {
     listen 443 ssl;
+    listen 8443 ssl proxy_protocol;
     http2 on;
     server_name app.example.com www.app.example.com;
 
