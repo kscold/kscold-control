@@ -3,6 +3,7 @@
 ## Unreleased
 
 - Nginx 사이트 설정에 PROXY protocol 리스너(8080/8443)와 실제 접속 주소(realip) 설정을 추가하고, 사이트 생성기도 같은 리스너를 쓰도록 함.
+- Nginx access 로그 끝에 실제 접속 주소(client) 필드를 추가함.
 - 블로그 API·웹·Agent·MongoDB·Qdrant를 고정 버전의 ARM64 이미지와 Supervisor로 구성함.
 - 기존 포트·CPU 우선순위와 원본 데이터를 보존하는 별도 Compose 및 교체·검증 절차를 추가함.
 - 다음 이미지 빌드부터 백엔드 파일 로그 디렉터리를 UID 10001 소유로 생성하도록 보완함.
