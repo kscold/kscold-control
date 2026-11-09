@@ -12,6 +12,7 @@ export interface CreateBackupTargetInput extends SealedBackupUri {
   description: string;
   connectionSummary: string;
   dumpImage: string;
+  networkContainer: string | null;
   retentionDays: number;
   scheduleTime: string;
   enabled: boolean;

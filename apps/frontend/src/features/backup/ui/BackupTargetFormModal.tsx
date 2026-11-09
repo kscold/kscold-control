@@ -26,6 +26,7 @@ interface FormState {
   scheduleTime: string;
   retentionDays: string;
   dumpImage: string;
+  networkContainer: string;
   enabled: boolean;
 }
 
@@ -40,6 +41,7 @@ function initialState(target: BackupTargetStatus | null): FormState {
       target?.retentionDays ?? BACKUP_TARGET_DEFAULTS.retentionDays,
     ),
     dumpImage: target?.dumpImage ?? BACKUP_TARGET_DEFAULTS.dumpImage,
+    networkContainer: target?.networkContainer ?? '',
     enabled: target?.enabled ?? true,
   };
 }
@@ -115,7 +117,10 @@ export function BackupTargetFormModal({
       return '접속 URI 는 mongodb:// 또는 mongodb+srv:// 로 시작해야 합니다.';
     }
     // 덤프는 별도 컨테이너에서 실행되므로 localhost 는 이 서버를 가리키지 않는다.
-    if (/^mongodb(\+srv)?:\/\/([^@/]*@)?(localhost|127\.)/i.test(uri)) {
+    if (
+      !form.networkContainer.trim() &&
+      /^mongodb(\+srv)?:\/\/([^@/]*@)?(localhost|127\.)/i.test(uri)
+    ) {
       return '덤프는 별도 컨테이너에서 실행됩니다. 이 서버의 DB 는 localhost 대신 host.docker.internal:포트 로 적어 주세요.';
     }
     if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(form.scheduleTime)) {
@@ -147,6 +152,7 @@ export function BackupTargetFormModal({
       retentionDays: Number(form.retentionDays),
       scheduleTime: form.scheduleTime,
       dumpImage: form.dumpImage.trim(),
+      networkContainer: form.networkContainer.trim(),
       enabled: form.enabled,
     };
     const uri = form.uri.trim();
@@ -321,6 +327,22 @@ export function BackupTargetFormModal({
             onChange={(event) => update('dumpImage', event.target.value)}
             spellCheck={false}
             aria-describedby="backup-target-dump-image-hint"
+            className={`${FIELD_CLASS} font-mono`}
+          />
+        </Field>
+
+        <Field
+          id="backup-target-network-container"
+          label="접속 컨테이너 (선택)"
+          hint="포트를 공개하지 않은 컨테이너의 DB 일 때 컨테이너 이름을 적습니다. 그 안의 127.0.0.1 로 접속합니다."
+        >
+          <input
+            id="backup-target-network-container"
+            type="text"
+            value={form.networkContainer}
+            onChange={(event) => update('networkContainer', event.target.value)}
+            spellCheck={false}
+            aria-describedby="backup-target-network-container-hint"
             className={`${FIELD_CLASS} font-mono`}
           />
         </Field>

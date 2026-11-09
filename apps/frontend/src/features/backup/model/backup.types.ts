@@ -37,6 +37,8 @@ export interface BackupTarget {
   /** 자격증명을 뺀 접속 위치 */
   connectionSummary: string;
   dumpImage: string;
+  /** 네트워크를 함께 쓰는 컨테이너. 포트 없는 컨테이너의 DB 를 덤프할 때 쓴다 */
+  networkContainer: string | null;
   retentionDays: number;
   /** 매일 실행 시각 (`HH:mm`) */
   scheduleTime: string;
@@ -67,6 +69,7 @@ export interface CreateBackupTargetInput {
   retentionDays?: number;
   scheduleTime?: string;
   dumpImage?: string;
+  networkContainer?: string;
   enabled?: boolean;
 }
 

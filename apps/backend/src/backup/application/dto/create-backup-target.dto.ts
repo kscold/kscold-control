@@ -59,6 +59,14 @@ export class CreateBackupTargetDto {
   })
   dumpImage?: string;
 
+  /** 지정하면 덤프 컨테이너가 이 컨테이너의 네트워크를 함께 쓴다. 빈 값은 해제다. */
+  @IsOptional()
+  @IsString()
+  @Matches(/^$|^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$/, {
+    message: '접속 컨테이너 이름 형식이 올바르지 않습니다.',
+  })
+  networkContainer?: string;
+
   @IsOptional()
   @IsBoolean()
   enabled?: boolean;
