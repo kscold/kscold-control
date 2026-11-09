@@ -3,6 +3,13 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { SecretEncryptionModule } from '../common/crypto/secret-encryption.module';
 import { RbacModule } from '../rbac/rbac.module';
 import { SecretBackup } from './domain/entities/secret-backup.entity';
+import { SshKeyVaultEntry } from './domain/entities/ssh-key-vault.entity';
+import { SSH_KEY_INSPECTOR } from './domain/gateways/ssh-key-inspector.gateway.interface';
+import { SSH_KEY_VAULT_REPOSITORY } from './domain/repositories/ssh-key-vault.repository.interface';
+import { SshKeyVaultService } from './application/services/ssh-key-vault.service';
+import { SshKeygenInspectorGateway } from './infrastructure/gateways/ssh-keygen-inspector.gateway';
+import { TypeOrmSshKeyVaultRepository } from './infrastructure/repositories/typeorm-ssh-key-vault.repository';
+import { SshKeyVaultController } from './presentation/controllers/ssh-key-vault.controller';
 import { KeyManagementTargetEntity } from './domain/entities/key-management-target.entity';
 import { DEPLOYMENT_GATEWAY } from './domain/gateways/deployment.gateway.interface';
 import { SECRET_STORE_GATEWAY } from './domain/gateways/secret-store.gateway.interface';
@@ -26,12 +33,22 @@ import { KeyManagementTargetAccessGuard } from './presentation/guards/key-manage
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([SecretBackup, KeyManagementTargetEntity]),
+    TypeOrmModule.forFeature([
+      SecretBackup,
+      KeyManagementTargetEntity,
+      SshKeyVaultEntry,
+    ]),
     RbacModule,
     SecretEncryptionModule,
   ],
-  controllers: [KeyManagementController],
+  controllers: [KeyManagementController, SshKeyVaultController],
   providers: [
+    SshKeyVaultService,
+    {
+      provide: SSH_KEY_VAULT_REPOSITORY,
+      useClass: TypeOrmSshKeyVaultRepository,
+    },
+    { provide: SSH_KEY_INSPECTOR, useClass: SshKeygenInspectorGateway },
     EnvDocumentService,
     KeyManagementService,
     KeyManagementTargetService,

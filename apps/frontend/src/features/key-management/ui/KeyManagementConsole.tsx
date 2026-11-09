@@ -20,6 +20,7 @@ import {
 import { useModalStore } from '@/shared/model';
 import type { BackupStatus, SecretBackup } from '../model/types';
 import { useKeyManagement } from '../model/useKeyManagement';
+import { SshKeyVaultPanel } from './SshKeyVaultPanel';
 import { API_URL } from '@/shared/config';
 
 const STATUS: Record<BackupStatus, { label: string; className: string }> = {
@@ -607,6 +608,8 @@ curl -X PUT '${apiOrigin}/api/key-management/targets/${target.id}/environment' \
             </div>
           )}
         </section>
+
+        <SshKeyVaultPanel />
       </div>
     </div>
   );
