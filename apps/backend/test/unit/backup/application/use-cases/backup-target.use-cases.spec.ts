@@ -76,6 +76,7 @@ describe('백업 대상 관리 유스케이스', () => {
         ...sealed,
         connectionSummary: 'mongodb+srv://cluster.example.net/prod',
         dumpImage: 'mongo:7',
+        networkContainer: null,
         retentionDays: 14,
         scheduleTime: '04:00',
         enabled: true,
@@ -136,6 +137,31 @@ describe('백업 대상 관리 유스케이스', () => {
       expect(targetRepository.create).not.toHaveBeenCalled();
     });
 
+    it('접속 컨테이너를 지정하면 127.0.0.1 주소를 저장한다', async () => {
+      await useCase.execute({
+        name: 'gadoc',
+        uri: 'mongodb://user:pass@127.0.0.1:27017/gadoc',
+        networkContainer: 'ubuntu-gadoc',
+        createdBy: null,
+      });
+
+      expect(targetRepository.create).toHaveBeenCalledWith(
+        expect.objectContaining({ networkContainer: 'ubuntu-gadoc' }),
+      );
+    });
+
+    it('옵션처럼 보이는 접속 컨테이너 이름은 거절한다', async () => {
+      await expect(
+        useCase.execute({
+          name: 'gadoc',
+          uri: 'mongodb://user:pass@db.example.net:27017/gadoc',
+          networkContainer: '--privileged',
+          createdBy: null,
+        }),
+      ).rejects.toThrow('접속 컨테이너 이름');
+      expect(targetRepository.create).not.toHaveBeenCalled();
+    });
+
     it('URI 형식 오류 메시지에 입력한 URI 를 싣지 않는다', async () => {
       const error = await useCase
         .execute({
@@ -186,6 +212,19 @@ describe('백업 대상 관리 유스케이스', () => {
       await expect(
         useCase.execute('target-1', { uri: 'mongodb://localhost:27017/app' }),
       ).rejects.toThrow('host.docker.internal:<포트>');
+      expect(targetRepository.update).not.toHaveBeenCalled();
+    });
+
+    it('127.0.0.1 대상의 접속 컨테이너만 해제하면 거절한다', async () => {
+      targetRepository.findById.mockResolvedValueOnce({
+        ...existing,
+        connectionSummary: 'mongodb://127.0.0.1:27017/gadoc',
+        networkContainer: 'ubuntu-gadoc',
+      });
+
+      await expect(
+        useCase.execute('target-1', { networkContainer: '' }),
+      ).rejects.toThrow('접속 컨테이너를 해제할 수 없습니다');
       expect(targetRepository.update).not.toHaveBeenCalled();
     });
 

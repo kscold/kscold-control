@@ -204,6 +204,7 @@ function toTargetResponse(target: BackupTarget) {
     engine: target.engine,
     connectionSummary: target.connectionSummary,
     dumpImage: target.dumpImage,
+    networkContainer: target.networkContainer,
     retentionDays: target.retentionDays,
     scheduleTime: target.scheduleTime,
     enabled: target.enabled,

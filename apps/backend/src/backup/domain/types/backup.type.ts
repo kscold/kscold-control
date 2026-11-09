@@ -16,6 +16,8 @@ export interface BackupDumpRequest {
   name: string;
   uri: string;
   image: string;
+  /** 지정하면 덤프 컨테이너가 이 컨테이너의 네트워크를 함께 쓴다 */
+  networkContainer?: string | null;
 }
 
 /** 방금 만든 백업 아카이브의 위치와 크기 */

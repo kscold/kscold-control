@@ -8,8 +8,10 @@ import type { BackupTarget } from '../../domain/entities/backup-target.entity';
 import { isValidBackupScheduleTime } from '../../domain/policies/backup-schedule.policy';
 import {
   isValidDumpImage,
+  isValidNetworkContainer,
   isValidRetentionDays,
   summarizeMongodbUri,
+  usesLoopbackHost,
 } from '../../domain/policies/backup-target.policy';
 import {
   BACKUP_TARGET_REPOSITORY,
@@ -25,6 +27,7 @@ export interface UpdateBackupTargetParams {
   retentionDays?: number;
   scheduleTime?: string;
   dumpImage?: string;
+  networkContainer?: string;
   enabled?: boolean;
 }
 
@@ -99,13 +102,35 @@ export class UpdateBackupTargetUseCase {
       changedFields.push('enabled');
     }
 
+    const networkContainer =
+      params.networkContainer === undefined
+        ? current.networkContainer
+        : params.networkContainer.trim() || null;
+    if (networkContainer !== current.networkContainer) {
+      if (networkContainer && !isValidNetworkContainer(networkContainer)) {
+        throw new BadRequestException(
+          '접속 컨테이너 이름 형식이 올바르지 않습니다.',
+        );
+      }
+      changes.networkContainer = networkContainer;
+      changedFields.push('networkContainer');
+    }
+
     // 저장된 URI 는 읽지 않으므로 값이 같은지 비교하지 않고, 보냈으면 바꾼 것으로 본다.
     const uri = params.uri?.trim();
     if (uri) {
-      assertValidMongodbUri(uri);
+      assertValidMongodbUri(uri, networkContainer);
       Object.assign(changes, this.secretService.seal(current.name, uri));
       changes.connectionSummary = summarizeMongodbUri(uri);
       changedFields.push('uri');
+    } else if (
+      !networkContainer &&
+      usesLoopbackHost(current.connectionSummary)
+    ) {
+      // 접속 컨테이너만 해제하면 저장된 127.0.0.1 이 덤프 컨테이너 자신을 가리키게 된다.
+      throw new BadRequestException(
+        '접속 위치가 127.0.0.1 인 대상은 접속 컨테이너를 해제할 수 없습니다. 접속 URI 를 함께 바꿔 주세요.',
+      );
     }
 
     // 실행 시각을 바꾸거나 다시 켠 직후에는, 이미 지나간 예약 시각을 뒤늦게 실행하지 않는다.

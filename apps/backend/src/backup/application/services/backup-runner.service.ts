@@ -141,6 +141,7 @@ export class BackupRunnerService implements OnModuleInit {
         name: target.name,
         uri: this.secretService.open(target),
         image: target.dumpImage,
+        networkContainer: target.networkContainer,
       });
       const { pruned, message } = await this.pruneExpired(target);
 

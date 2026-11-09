@@ -187,8 +187,10 @@ export class DockerMongodbArchiveRepository implements IBackupArchiveRepository 
           '--rm',
           '--name',
           containerName,
-          '--add-host',
-          HOST_ALIAS,
+          // 컨테이너 네트워크를 함께 쓸 때는 docker 가 --add-host 를 거절한다.
+          ...(request.networkContainer
+            ? ['--network', `container:${request.networkContainer}`]
+            : ['--add-host', HOST_ALIAS]),
           // 값 없이 이름만 주면 docker 가 자기 환경에서 읽어 컨테이너로 넘긴다.
           '-e',
           URI_ENV_KEY,
