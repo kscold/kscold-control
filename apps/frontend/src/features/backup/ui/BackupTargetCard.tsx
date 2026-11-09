@@ -154,6 +154,11 @@ export function BackupTargetCard({
           <dt className="text-[11px] font-medium text-gray-500">접속 위치</dt>
           <dd className="mt-1 break-all font-mono text-xs leading-5 text-gray-200">
             {target.connectionSummary}
+            {target.networkContainer && (
+              <span className="mt-1 block text-[11px] text-gray-500">
+                {target.networkContainer} 컨테이너 안에서 접속
+              </span>
+            )}
           </dd>
         </div>
         <div className="bg-gray-900 px-4 py-3 sm:px-5">

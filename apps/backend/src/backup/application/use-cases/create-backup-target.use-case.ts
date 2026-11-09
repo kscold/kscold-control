@@ -14,6 +14,7 @@ import {
   DEFAULT_MONGODB_DUMP_IMAGE,
   isValidBackupTargetName,
   isValidDumpImage,
+  isValidNetworkContainer,
   isValidRetentionDays,
   summarizeMongodbUri,
 } from '../../domain/policies/backup-target.policy';
@@ -31,6 +32,7 @@ export interface CreateBackupTargetParams {
   retentionDays?: number;
   scheduleTime?: string;
   dumpImage?: string;
+  networkContainer?: string;
   enabled?: boolean;
   createdBy: string | null;
 }
@@ -50,11 +52,17 @@ export class CreateBackupTargetUseCase {
     const retentionDays = params.retentionDays ?? DEFAULT_BACKUP_RETENTION_DAYS;
     const scheduleTime = params.scheduleTime ?? DEFAULT_BACKUP_SCHEDULE_TIME;
     const dumpImage = params.dumpImage?.trim() || DEFAULT_MONGODB_DUMP_IMAGE;
+    const networkContainer = params.networkContainer?.trim() || null;
 
     if (!isValidBackupTargetName(name)) {
       throw new BadRequestException('백업 대상 이름 형식이 올바르지 않습니다.');
     }
-    assertValidMongodbUri(uri);
+    if (networkContainer && !isValidNetworkContainer(networkContainer)) {
+      throw new BadRequestException(
+        '접속 컨테이너 이름 형식이 올바르지 않습니다.',
+      );
+    }
+    assertValidMongodbUri(uri, networkContainer);
     if (!isValidRetentionDays(retentionDays)) {
       throw new BadRequestException('보관 기간이 올바르지 않습니다.');
     }
@@ -74,6 +82,7 @@ export class CreateBackupTargetUseCase {
       ...this.secretService.seal(name, uri),
       connectionSummary: summarizeMongodbUri(uri),
       dumpImage,
+      networkContainer,
       retentionDays,
       scheduleTime,
       enabled: params.enabled ?? true,

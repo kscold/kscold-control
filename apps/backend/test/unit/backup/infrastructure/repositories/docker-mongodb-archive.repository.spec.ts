@@ -131,6 +131,19 @@ describe('DockerMongodbArchiveRepository', () => {
       expect(fs.readdirSync(path.join(backupRoot, '.partial'))).toEqual([]);
     });
 
+    it('접속 컨테이너를 지정하면 그 컨테이너의 네트워크를 함께 쓴다', async () => {
+      await createRepository().create({
+        ...target,
+        networkContainer: 'ubuntu-gadoc',
+      });
+
+      const args = fs
+        .readFileSync(path.join(logDir, 'args'), 'utf8')
+        .split('\n');
+      expect(args.slice(4, 6)).toEqual(['--network', 'container:ubuntu-gadoc']);
+      expect(args).not.toContain('--add-host');
+    });
+
     it('접속 URI 를 docker 인자가 아니라 환경변수로만 넘긴다', async () => {
       await createRepository().create(target);
 

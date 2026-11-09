@@ -54,6 +54,15 @@ export class BackupTarget {
   })
   dumpImage: string;
 
+  /** 포트를 공개하지 않은 컨테이너의 DB 를 덤프할 때 네트워크를 함께 쓸 컨테이너 */
+  @Column({
+    name: 'network_container',
+    type: 'varchar',
+    length: 64,
+    nullable: true,
+  })
+  networkContainer: string | null;
+
   /** 이 일수보다 오래된 백업은 새 백업이 성공한 뒤 지운다. */
   @Column({ name: 'retention_days', type: 'integer', default: 10 })
   retentionDays: number;

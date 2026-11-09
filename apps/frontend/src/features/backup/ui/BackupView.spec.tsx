@@ -36,6 +36,7 @@ function buildTarget(
     engine: 'mongodb',
     connectionSummary: 'mongodb+srv://cluster.example.net/prod',
     dumpImage: 'mongo:7',
+    networkContainer: null,
     retentionDays: 10,
     scheduleTime: '03:30',
     enabled: true,
@@ -308,6 +309,7 @@ describe('BackupView', () => {
         retentionDays: 14,
         scheduleTime: '03:30',
         dumpImage: 'mongo:7',
+        networkContainer: '',
         enabled: true,
       }),
     );
@@ -429,6 +431,7 @@ describe('BackupView', () => {
         retentionDays: 30,
         scheduleTime: '03:30',
         dumpImage: 'mongo:7',
+        networkContainer: '',
         enabled: true,
       }),
     );
