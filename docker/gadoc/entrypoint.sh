@@ -57,12 +57,27 @@ if grep -Ev '^($|#|restrict,command="(/app/slacord-deploy/tools/ssh-entrypoint\.
     echo 'Root keys must be restricted to approved forced commands.' >&2
     exit 1
 fi
-mkdir -p /run/sshd /run/mongodb /var/log/mongodb /var/log/slacord /root/.ssh /home/gadoc/.ssh
+mkdir -p /run/sshd /run/mongodb /var/log/mongodb /var/log/slacord /var/log/gadoc /root/.ssh /home/gadoc/.ssh
 install -m 600 "$root_keys" /root/.ssh/authorized_keys
 install -m 600 -o gadoc -g gadoc "$developer_keys" /home/gadoc/.ssh/authorized_keys
 chown gadoc:gadoc /home/gadoc /home/gadoc/.ssh
 chmod 700 /home/gadoc/.ssh /root/.ssh
 chown -R mongodb:mongodb /data/db /run/mongodb /var/log/mongodb
+
+# 이슈·폼 저장 트랜잭션은 레플리카셋에서만 되므로 단일 노드 레플리카셋으로 띄움.
+# 인증을 켠 레플리카셋은 내부 인증 키 파일이 필요하고, 이미지를 바꿔도 같은 키를 쓰도록 DB 볼륨 안에 둠.
+# 처음 한 번의 rs.initiate 는 관리자 계정으로 따로 실행하고(설정은 local DB에 남음), 비우면 예전처럼 단독으로 띄움
+mongo_replset="${GADOC_MONGO_REPLSET-gadoc}"
+mongo_repl_args=()
+if [[ -n "$mongo_replset" ]]; then
+    mongo_keyfile=/data/db/gadoc-rs.key
+    if [[ ! -s "$mongo_keyfile" ]]; then
+        (umask 077; head -c 600 /dev/urandom | base64 | tr -d '\n' > "$mongo_keyfile")
+    fi
+    chown mongodb:mongodb "$mongo_keyfile"
+    chmod 400 "$mongo_keyfile"
+    mongo_repl_args=(--replSet "$mongo_replset" --keyFile "$mongo_keyfile")
+fi
 /usr/sbin/sshd -t
 
 runtime_started=0
@@ -83,7 +98,8 @@ cleanup() {
 }
 trap cleanup EXIT TERM INT
 gosu mongodb mongod --dbpath /data/db --bind_ip 127.0.0.1 --auth \
-    --port 27017 --fork --logpath /var/log/mongodb/mongod.log --pidfilepath /run/mongodb/mongod.pid
+    --port 27017 --fork --logpath /var/log/mongodb/mongod.log --pidfilepath /run/mongodb/mongod.pid \
+    "${mongo_repl_args[@]}"
 
 if [[ "$runtime_allowed" == 1 ]]; then
     env -i PATH="$PATH" HOME=/root PM2_HOME=/root/.pm2 NODE_ENV=production \
