@@ -42,13 +42,6 @@ export function SecurityView() {
           <p className="mt-1 text-sm text-gray-500">
             IP 차단 기록 + 감사 로그. 활성 {active.length}건.
           </p>
-          <p className="mt-2 rounded-lg border border-amber-500/20 bg-amber-500/5 px-3 py-2 text-xs text-amber-200/90">
-            ⚠ 현재는 UI/감사 로그 용도로만 동작합니다. colima의 QEMU 네트워킹이
-            외부 트래픽을 VM-level SNAT 처리해 nginx가 실제 client IP 대신{' '}
-            <code className="font-mono">172.18.0.1</code>로 보고 있어, 등록된
-            IP가 실제로 차단되지 않습니다. Cloudflare proxy 또는 colima bridged
-            network 적용 뒤에 실제 차단이 동작합니다.
-          </p>
         </div>
 
         <div className="flex shrink-0 gap-2 self-start sm:self-auto">
