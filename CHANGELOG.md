@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- 실제 접속 주소 전환에 맞춰 보안 화면의 "차단이 동작하지 않음" 경고를 없애고, 본인 IP 차단 방지 판단이 nginx의 X-Real-IP를 쓰도록 함.
 - Nginx 사이트 설정에 PROXY protocol 리스너(8080/8443)와 실제 접속 주소(realip) 설정을 추가하고, 사이트 생성기도 같은 리스너를 쓰도록 함.
 - Nginx access 로그 끝에 실제 접속 주소(client) 필드를 추가함.
 - 블로그 API·웹·Agent·MongoDB·Qdrant를 고정 버전의 ARM64 이미지와 Supervisor로 구성함.

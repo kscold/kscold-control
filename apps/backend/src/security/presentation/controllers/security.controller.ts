@@ -147,6 +147,11 @@ function toResponse(ban: IpBan) {
 }
 
 function extractIp(req: Request): string | null {
+  // nginx가 실제 접속 주소로 덮어쓰는 값이라 클라이언트가 위조할 수 없음
+  const realIp = req.headers['x-real-ip'];
+  if (typeof realIp === 'string' && realIp.length > 0) {
+    return realIp.trim();
+  }
   const fwd = req.headers['x-forwarded-for'];
   if (typeof fwd === 'string' && fwd.length > 0) {
     return fwd.split(',')[0]?.trim() || null;
