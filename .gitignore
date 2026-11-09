@@ -63,3 +63,7 @@ apps/backend/src/seed.ts
 # Keep tracked examples for local setup
 !env/*.example
 !nginx/conf.d/*.conf.example
+
+# 에이전트 작업 폴더와 운영 점검 화면은 저장소 밖 로컬 파일로 둠
+.claude/
+nginx/conf.d/gadoc-maintenance/
