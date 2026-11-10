@@ -1,10 +1,35 @@
 import { useState } from 'react';
 import { Shield, Plus, Loader2, RefreshCw } from 'lucide-react';
+import { SshAccessPanel } from './SshAccessPanel';
 import { useIpBans } from '../model/useIpBans';
 import { BanList } from './BanList';
 import { AddBanModal } from './AddBanModal';
 
+type SecurityTab = 'ssh' | 'bans';
+
+const TAB_KEY = 'security-tab';
+
+function initialTab(): SecurityTab {
+  if (typeof window === 'undefined') return 'ssh';
+  const fromUrl = new URLSearchParams(window.location.search).get('tab');
+  if (fromUrl === 'bans' || fromUrl === 'ssh') return fromUrl;
+  try {
+    return window.localStorage.getItem(TAB_KEY) === 'bans' ? 'bans' : 'ssh';
+  } catch {
+    return 'ssh';
+  }
+}
+
 export function SecurityView() {
+  const [tab, setTab] = useState<SecurityTab>(initialTab);
+  const selectTab = (next: SecurityTab) => {
+    setTab(next);
+    try {
+      window.localStorage.setItem(TAB_KEY, next);
+    } catch {
+      // 저장 못 해도 화면은 그대로 동작
+    }
+  };
   const { bans, loading, error, reload, create, remove, resync } = useIpBans();
   const [addOpen, setAddOpen] = useState(false);
   const [resyncing, setResyncing] = useState(false);
@@ -37,66 +62,102 @@ export function SecurityView() {
         <div className="min-w-0">
           <h1 className="flex items-center gap-3 text-xl font-bold text-white sm:text-2xl">
             <Shield size={24} className="shrink-0 text-red-400 sm:h-7 sm:w-7" />
-            보안 / IP 차단
+            보안
           </h1>
           <p className="mt-1 text-sm text-gray-500">
-            IP 차단 기록 + 감사 로그. 활성 {active.length}건.
+            {tab === 'ssh'
+              ? '맥미니 SSH 접속 기록 · 열린 세션 · 공격 IP 차단'
+              : `웹(nginx) IP 차단 기록. 활성 ${active.length}건.`}
           </p>
         </div>
 
-        <div className="flex shrink-0 gap-2 self-start sm:self-auto">
-          <button
-            onClick={handleResync}
-            disabled={resyncing}
-            className="inline-flex items-center gap-2 rounded-lg border border-gray-800 bg-gray-900 px-3 py-2 text-sm text-gray-300 hover:border-gray-700 hover:text-white disabled:opacity-50"
-          >
-            <RefreshCw size={14} className={resyncing ? 'animate-spin' : ''} />
-            재동기화
-          </button>
-          <button
-            onClick={() => setAddOpen(true)}
-            className="inline-flex items-center gap-2 whitespace-nowrap rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700"
-          >
-            <Plus size={16} />
-            차단 추가
-          </button>
-        </div>
+        {tab === 'bans' && (
+          <div className="flex shrink-0 gap-2 self-start sm:self-auto">
+            <button
+              onClick={handleResync}
+              disabled={resyncing}
+              className="inline-flex items-center gap-2 rounded-lg border border-gray-800 bg-gray-900 px-3 py-2 text-sm text-gray-300 hover:border-gray-700 hover:text-white disabled:opacity-50"
+            >
+              <RefreshCw
+                size={14}
+                className={resyncing ? 'animate-spin' : ''}
+              />
+              재동기화
+            </button>
+            <button
+              onClick={() => setAddOpen(true)}
+              className="inline-flex items-center gap-2 whitespace-nowrap rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700"
+            >
+              <Plus size={16} />
+              차단 추가
+            </button>
+          </div>
+        )}
       </div>
 
-      {error && (
-        <div className="mb-4 rounded-lg border border-red-900/50 bg-red-950/30 px-4 py-3 text-sm text-red-400">
-          {error}
-        </div>
-      )}
+      <div className="mb-6 flex gap-1 border-b border-gray-800" role="tablist">
+        {(
+          [
+            ['ssh', 'SSH 접속'],
+            ['bans', '웹 IP 차단'],
+          ] as const
+        ).map(([key, label]) => (
+          <button
+            key={key}
+            role="tab"
+            aria-selected={tab === key}
+            onClick={() => selectTab(key)}
+            className={`-mb-px border-b-2 px-4 py-2 text-sm ${
+              tab === key
+                ? 'border-red-500 text-white'
+                : 'border-transparent text-gray-500 hover:text-gray-300'
+            }`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
 
-      {resyncMsg && (
-        <div className="mb-4 rounded-lg border border-blue-900/50 bg-blue-950/30 px-4 py-3 text-sm text-blue-200">
-          {resyncMsg}
-        </div>
-      )}
-
-      {loading && bans.length === 0 ? (
-        <div className="flex items-center justify-center py-12">
-          <Loader2 size={24} className="animate-spin text-gray-600" />
-        </div>
+      {tab === 'ssh' ? (
+        <SshAccessPanel />
       ) : (
-        <div className="space-y-6">
-          <section>
-            <h2 className="mb-3 text-xs font-bold uppercase tracking-wider text-gray-500">
-              활성 차단 ({active.length})
-            </h2>
-            <BanList bans={active} onRemove={remove} />
-          </section>
-
-          {inactive.length > 0 && (
-            <section>
-              <h2 className="mb-3 text-xs font-bold uppercase tracking-wider text-gray-500">
-                과거 기록 ({inactive.length})
-              </h2>
-              <BanList bans={inactive} onRemove={remove} />
-            </section>
+        <>
+          {error && (
+            <div className="mb-4 rounded-lg border border-red-900/50 bg-red-950/30 px-4 py-3 text-sm text-red-400">
+              {error}
+            </div>
           )}
-        </div>
+
+          {resyncMsg && (
+            <div className="mb-4 rounded-lg border border-blue-900/50 bg-blue-950/30 px-4 py-3 text-sm text-blue-200">
+              {resyncMsg}
+            </div>
+          )}
+
+          {loading && bans.length === 0 ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 size={24} className="animate-spin text-gray-600" />
+            </div>
+          ) : (
+            <div className="space-y-6">
+              <section>
+                <h2 className="mb-3 text-xs font-bold uppercase tracking-wider text-gray-500">
+                  활성 차단 ({active.length})
+                </h2>
+                <BanList bans={active} onRemove={remove} />
+              </section>
+
+              {inactive.length > 0 && (
+                <section>
+                  <h2 className="mb-3 text-xs font-bold uppercase tracking-wider text-gray-500">
+                    과거 기록 ({inactive.length})
+                  </h2>
+                  <BanList bans={inactive} onRemove={remove} />
+                </section>
+              )}
+            </div>
+          )}
+        </>
       )}
 
       <AddBanModal

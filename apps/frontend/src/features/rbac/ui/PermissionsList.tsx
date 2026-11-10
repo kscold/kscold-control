@@ -80,8 +80,8 @@ const PERMISSION_GROUPS = [
   {
     id: 'security',
     title: '접근 보안',
-    description: 'IP 차단 목록 조회와 정책 변경',
-    routes: ['IP 차단'],
+    description: 'SSH 접속 기록·세션 끊기·SSH 차단, 웹 IP 차단 목록과 정책 변경',
+    routes: ['접속 보안'],
     icon: ShieldAlert,
     accent: 'border-rose-500/30 bg-rose-500/5 text-rose-300',
     permissions: [PERMISSIONS.SECURITY_READ, PERMISSIONS.SECURITY_MANAGE],
