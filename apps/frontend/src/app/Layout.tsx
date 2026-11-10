@@ -35,6 +35,12 @@ const NAV_ITEMS = [
     permission: PERMISSIONS.DASHBOARD_READ,
   },
   {
+    to: '/remote-desktop',
+    label: '원격 데스크톱',
+    icon: Monitor,
+    administratorOnly: true,
+  },
+  {
     to: '/keys',
     label: '운영 키',
     icon: KeyRound,
@@ -121,7 +127,12 @@ export function Layout() {
   const [remainingSeconds, setRemainingSeconds] = useState(0);
   const permissions = new Set(user?.permissions ?? []);
   const visibleItems = NAV_ITEMS.filter((item) =>
-    permissions.has(item.permission),
+    'administratorOnly' in item
+      ? !impersonation &&
+        user?.roles.some(
+          (role) => role === ROLES.ADMIN || role === ROLES.SUPER_ADMIN,
+        )
+      : permissions.has(item.permission),
   );
 
   useEffect(() => {
@@ -215,21 +226,6 @@ export function Layout() {
         </div>
 
         <nav className="mt-16 flex-1 space-y-1 overflow-auto p-3 md:mt-0">
-          {!impersonation &&
-            user?.roles.some(
-              (role) => role === ROLES.ADMIN || role === ROLES.SUPER_ADMIN,
-            ) && (
-              <NavLink
-                to="/remote-desktop"
-                onClick={() => setIsMobileMenuOpen(false)}
-                className={({ isActive }) =>
-                  `flex items-center gap-3 rounded-lg px-3 py-2 text-sm ${isActive ? 'bg-blue-600 text-white' : 'text-gray-400 hover:bg-gray-800 hover:text-white'}`
-                }
-              >
-                <Monitor size={18} />
-                원격 데스크톱
-              </NavLink>
-            )}
           {navLinks}
           {visibleItems.length === 0 && (
             <div className="rounded-lg border border-amber-900/50 bg-amber-950/20 p-3 text-xs leading-5 text-amber-200">
