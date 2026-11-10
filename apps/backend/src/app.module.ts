@@ -6,6 +6,7 @@ import { ScheduleModule } from '@nestjs/schedule';
 import { ServeStaticModule } from '@nestjs/serve-static';
 import { AuthModule } from './auth/auth.module';
 import { TerminalModule } from './terminal/terminal.module';
+import { RemoteDesktopModule } from './remote-desktop/remote-desktop.module';
 import { DockerModule } from './docker/docker.module';
 import { SystemModule } from './system/system.module';
 import { RbacModule } from './rbac/rbac.module';
@@ -98,6 +99,7 @@ import { resolveFrontendDistPath } from './common/utils/frontend-dist-path.util'
     // 기능 모듈
     AuthModule,
     TerminalModule,
+    RemoteDesktopModule,
     DockerModule,
     SystemModule,
     RbacModule,
