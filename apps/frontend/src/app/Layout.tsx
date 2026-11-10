@@ -114,7 +114,7 @@ const NAV_ITEMS = [
   },
   {
     to: '/security',
-    label: 'IP 차단',
+    label: '접속 보안',
     icon: ShieldAlert,
     permission: PERMISSIONS.SECURITY_READ,
   },

@@ -3,6 +3,9 @@ import { BaseApiService } from '@/shared/api/base.service';
 import type {
   IpBan,
   CreateIpBanInput,
+  SshAccessOverview,
+  SshBlock,
+  SshSession,
 } from '../model/security.types';
 
 export class SecurityService extends BaseApiService {
@@ -49,6 +52,75 @@ export class SecurityService extends BaseApiService {
     } catch (error) {
       this.logError('SecurityService', 'resync', error);
       this.handleError(error, 'nginx 재동기화 실패');
+    }
+  }
+
+  async getSshAccess(days: number): Promise<SshAccessOverview> {
+    try {
+      const { data } = await api.get<SshAccessOverview>(
+        `${this.basePath}/ssh`,
+        {
+          params: { days },
+        },
+      );
+      return data;
+    } catch (error) {
+      this.logError('SecurityService', 'getSshAccess', error);
+      this.handleError(error, 'SSH 접속 기록 조회 실패');
+    }
+  }
+
+  async terminateSshSession(pid: number): Promise<SshSession> {
+    try {
+      const { data } = await api.post<SshSession>(
+        `${this.basePath}/ssh/sessions/${pid}/terminate`,
+      );
+      return data;
+    } catch (error) {
+      this.logError('SecurityService', 'terminateSshSession', error);
+      this.handleError(error, 'SSH 세션 끊기 실패');
+    }
+  }
+
+  async blockSshIp(ip: string, reason?: string): Promise<SshBlock> {
+    try {
+      const { data } = await api.post<SshBlock>(`${this.basePath}/ssh/blocks`, {
+        ip,
+        reason: reason || undefined,
+      });
+      return data;
+    } catch (error) {
+      this.logError('SecurityService', 'blockSshIp', error);
+      this.handleError(error, 'SSH 차단 실패');
+    }
+  }
+
+  async unblockSshIp(ip: string): Promise<void> {
+    try {
+      await api.delete(`${this.basePath}/ssh/blocks/${encodeURIComponent(ip)}`);
+    } catch (error) {
+      this.logError('SecurityService', 'unblockSshIp', error);
+      this.handleError(error, 'SSH 차단 해제 실패');
+    }
+  }
+
+  async addSshKnownIp(ip: string): Promise<void> {
+    try {
+      await api.post(`${this.basePath}/ssh/known-ips`, { ip });
+    } catch (error) {
+      this.logError('SecurityService', 'addSshKnownIp', error);
+      this.handleError(error, '내 IP 등록 실패');
+    }
+  }
+
+  async removeSshKnownIp(ip: string): Promise<void> {
+    try {
+      await api.delete(
+        `${this.basePath}/ssh/known-ips/${encodeURIComponent(ip)}`,
+      );
+    } catch (error) {
+      this.logError('SecurityService', 'removeSshKnownIp', error);
+      this.handleError(error, '내 IP 삭제 실패');
     }
   }
 }
