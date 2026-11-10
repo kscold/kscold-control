@@ -68,10 +68,15 @@ test(
     const target = page.getByRole('region', { name: '원격 화면' });
     await expect(page.getByRole('button', { name: '도구 접기' })).toBeVisible();
     const initial = await target.boundingBox();
-    await page.getByText('원격 접속 대상 · 접기', { exact: true }).click();
+    await page.screenshot({ path: '/tmp/control-remote-desktop.png' });
+    await page.getByRole('button', { name: '접속 대상', exact: true }).click();
+    await expect(
+      page.getByRole('complementary', { name: '접속 대상 관리' }),
+    ).toBeVisible();
     await expect
       .poll(async () => (await target.boundingBox()).height)
-      .toBeGreaterThan(initial.height);
+      .toBe(initial.height);
+    await page.getByRole('button', { name: '접속 대상 닫기' }).click();
     await page.getByRole('button', { name: '도구 접기' }).click();
     await expect
       .poll(async () => (await target.boundingBox()).height)
@@ -93,11 +98,16 @@ test(
     await page.evaluate(() => document.exitFullscreen());
     await expect(page.getByRole('button', { name: '도구 접기' })).toBeVisible();
     await page.setViewportSize({ width: 390, height: 844 });
+    await page.screenshot({
+      path: '/tmp/control-remote-mobile-normal.png',
+      animations: 'disabled',
+    });
     await page.getByRole('button', { name: '도구 접기' }).click();
     await expect
       .poll(async () => (await target.boundingBox()).height)
       .toBe(844);
     await expect.poll(async () => (await target.boundingBox()).width).toBe(390);
     await expect(page.getByRole('button', { name: '화면 복원' })).toBeVisible();
+    await page.screenshot({ path: '/tmp/control-remote-mobile.png' });
   },
 );

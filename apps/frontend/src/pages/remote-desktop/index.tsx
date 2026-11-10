@@ -1,11 +1,21 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import RFB from '@novnc/novnc';
+import {
+  Monitor,
+  ShieldCheck,
+  Loader2,
+  X,
+  PanelsTopLeft,
+  Clipboard,
+  Maximize,
+} from 'lucide-react';
 import { api } from '@/shared/api';
 import { API_URL } from '@/shared/config';
 import { ROLES } from '@/shared/config/roles';
 import { useAuthStore } from '@/shared/model/auth.store';
 import { RemoteTargets } from './RemoteTargets';
+import './remote-desktop.css';
 
 export default function RemoteDesktopPage() {
   const { user, token, impersonation } = useAuthStore();
@@ -29,14 +39,28 @@ export default function RemoteDesktopPage() {
   const [clipboard, setClipboard] = useState('');
   const [viewOnly, setViewOnly] = useState(false);
   const [focused, setFocused] = useState(false);
-  const [targetsOpen, setTargetsOpen] = useState(true);
+  const [targetsOpen, setTargetsOpen] = useState(false);
   const [clipboardOpen, setClipboardOpen] = useState(false);
+  const [selected, setSelected] = useState({ id: 'local', name: '맥미니' });
 
   const restore = () => {
     setFocused(false);
+    setClipboardOpen(false);
+    setTargetsOpen(false);
     if (document.fullscreenElement === frame.current)
       void document.exitFullscreen().catch(() => {});
   };
+
+  useEffect(() => {
+    const dismiss = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return;
+      setTargetsOpen(false);
+      setClipboardOpen(false);
+      if (!document.fullscreenElement) setFocused(false);
+    };
+    document.addEventListener('keydown', dismiss);
+    return () => document.removeEventListener('keydown', dismiss);
+  }, []);
 
   useEffect(() => {
     const changed = () => {
@@ -68,21 +92,27 @@ export default function RemoteDesktopPage() {
     };
   }, [token, allowed]);
 
-  async function connect(targetId = 'local') {
+  async function connect(target = selected) {
     disconnect();
+    setSelected(target);
+    setTargetsOpen(false);
+    setClipboardOpen(false);
+    setUsername('');
     const attempt = generation.current;
     setStatus('connecting');
     setMessage('보안 연결 중입니다.');
     try {
       const { data } = await api.post<{
         ticket: string;
+        suggestedUsername?: string;
         credentials?: { username: string; password: string };
       }>(
-        `/remote-desktop/targets/${encodeURIComponent(targetId)}/ticket`,
+        `/remote-desktop/targets/${encodeURIComponent(target.id)}/ticket`,
         {},
         { timeout: 10_000 },
       );
       if (generation.current !== attempt || !screen.current) return;
+      setUsername(data.credentials?.username ?? data.suggestedUsername ?? '');
       const url = new URL(
         `${API_URL}/api/remote-desktop/socket`,
         window.location.origin,
@@ -107,7 +137,9 @@ export default function RemoteDesktopPage() {
         setPassword('');
       });
       rfb.addEventListener('credentialsrequired', () => {
-        if (client.current === rfb) setStatus('credentials');
+        if (client.current !== rfb) return;
+        setStatus('credentials');
+        setMessage('화면 공유 계정으로 인증해 주세요.');
       });
       rfb.addEventListener('clipboard', (event) => {
         if (client.current === rfb)
@@ -141,15 +173,14 @@ export default function RemoteDesktopPage() {
       </div>
     );
 
-  const button =
-    'rounded-lg border border-gray-700 px-3 py-2 text-sm disabled:opacity-40 hover:bg-gray-800';
+  const button = 'desktop-button';
   return (
     <div
       ref={frame}
       className={
         focused
-          ? 'fixed inset-0 z-[70] flex h-dvh flex-col overflow-hidden bg-black text-gray-100'
-          : 'relative flex h-full min-h-0 flex-col gap-2 overflow-hidden bg-gray-950 p-2 text-gray-100'
+          ? 'desktop-workspace fixed inset-0 z-[70] flex h-dvh flex-col overflow-hidden text-gray-100'
+          : 'desktop-workspace relative flex h-full min-h-0 flex-col overflow-hidden text-gray-100'
       }
     >
       {focused && (
@@ -166,25 +197,55 @@ export default function RemoteDesktopPage() {
           </button>
         </div>
       )}
-      <header
-        className={
-          focused ? 'hidden' : 'flex shrink-0 flex-wrap items-center gap-2'
-        }
-      >
-        <h1 className="mr-auto text-xl font-semibold">원격 데스크톱</h1>
-        <Link to="/terminal" className={button}>
-          복구용 터미널
-        </Link>
+      <header className={focused ? 'hidden' : 'desktop-toolbar'}>
+        <div className="desktop-heading">
+          <Monitor size={21} />
+          <div>
+            <h1>원격 데스크톱</h1>
+            <span>
+              {selected.name} ·{' '}
+              {status === 'connected'
+                ? '연결됨'
+                : status === 'credentials'
+                  ? '인증 필요'
+                  : status === 'connecting'
+                    ? '연결 중'
+                    : '연결 대기'}
+            </span>
+          </div>
+        </div>
         <button
           className={button}
-          disabled={status !== 'idle'}
+          aria-expanded={targetsOpen}
+          onClick={() => {
+            setTargetsOpen(!targetsOpen);
+            setClipboardOpen(false);
+          }}
+        >
+          <PanelsTopLeft size={16} />
+          접속 대상
+        </button>
+        <button
+          className={button}
+          aria-expanded={clipboardOpen}
+          onClick={() => {
+            setClipboardOpen(!clipboardOpen);
+            setTargetsOpen(false);
+          }}
+        >
+          <Clipboard size={16} />
+          클립보드
+        </button>
+        <button
+          className={`${button} desktop-primary`}
+          hidden={status !== 'idle'}
           onClick={() => void connect()}
         >
           연결
         </button>
         <button
           className={button}
-          disabled={status === 'idle'}
+          hidden={status === 'idle'}
           onClick={disconnect}
         >
           연결 종료
@@ -201,6 +262,7 @@ export default function RemoteDesktopPage() {
               });
           }}
         >
+          <Maximize size={16} />
           전체 화면
         </button>
         <button className={button} onClick={() => setFocused(true)}>
@@ -219,109 +281,169 @@ export default function RemoteDesktopPage() {
           보기 전용
         </label>
       </header>
-      <details
-        hidden={focused}
-        open={targetsOpen}
-        onToggle={(event) => setTargetsOpen(event.currentTarget.open)}
-        className="max-h-[45%] shrink-0 overflow-auto rounded-lg border border-gray-800 p-2"
-      >
-        <summary className="cursor-pointer text-xs text-gray-400">
-          원격 접속 대상 · {targetsOpen ? '접기' : '펼치기'}
-        </summary>
-        <RemoteTargets
-          disabled={status !== 'idle'}
-          onConnect={(id) => void connect(id)}
-        />
-      </details>
-      <p
-        role="status"
-        className={focused ? 'sr-only' : 'shrink-0 text-xs text-gray-400'}
-      >
+      {targetsOpen && !focused && (
+        <aside className="desktop-panel" aria-label="접속 대상 관리">
+          <button
+            className="desktop-panel-close"
+            aria-label="접속 대상 닫기"
+            onClick={() => setTargetsOpen(false)}
+          >
+            <X size={18} />
+          </button>
+          <RemoteTargets
+            disabled={status !== 'idle'}
+            onConnect={(id, name) => void connect({ id, name })}
+          />
+          <Link to="/terminal" className="desktop-recovery">
+            연결 문제 해결 · 복구용 터미널
+          </Link>
+        </aside>
+      )}
+      <p role="status" className={focused ? 'sr-only' : 'desktop-status'}>
         {message}
       </p>
-      {status === 'credentials' && (
-        <form
-          className="flex flex-wrap gap-2"
-          onSubmit={(event) => {
-            event.preventDefault();
-            client.current?.sendCredentials({ username, password, target: '' });
-            setPassword('');
-            setStatus('connecting');
-          }}
-        >
-          <input
-            aria-label="맥 사용자 이름"
-            autoComplete="off"
-            className="rounded bg-gray-800 p-2"
-            placeholder="맥 사용자 이름"
-            value={username}
-            onChange={(event) => setUsername(event.target.value)}
-          />
-          <input
-            aria-label="화면 공유 암호"
-            type="password"
-            autoComplete="off"
-            className="rounded bg-gray-800 p-2"
-            placeholder="화면 공유 암호"
-            value={password}
-            onChange={(event) => setPassword(event.target.value)}
-          />
-          <button className={button}>인증</button>
-        </form>
-      )}
-      <div
-        ref={screen}
-        role="region"
-        aria-label="원격 화면"
-        className="min-h-0 flex-1 overflow-hidden bg-black"
-      />
-      <details
-        hidden={focused && !clipboardOpen}
-        open={clipboardOpen}
-        onToggle={(event) => setClipboardOpen(event.currentTarget.open)}
-        className={
-          focused
-            ? 'absolute bottom-2 left-2 right-2 z-10 max-h-[45%] overflow-auto rounded-lg border border-gray-700 bg-gray-950/95 p-2'
-            : 'max-h-[40%] shrink-0 overflow-auto rounded-lg border border-gray-800 p-2'
-        }
-      >
-        <summary>텍스트 복사·붙여넣기</summary>
-        <p className="my-2 text-xs text-gray-400">
-          맥에서 복사한 텍스트가 여기에 표시됩니다. 전송 후 맥에서 ⌘V로
-          붙여넣으세요. 한글 지원은 화면 공유 서버에 따라 다르며 파일 전송은
-          지원하지 않습니다.
-        </p>
-        <textarea
-          aria-label="클립보드 텍스트"
-          maxLength={65536}
-          className="w-full rounded bg-gray-900 p-2"
-          value={clipboard}
-          onChange={(event) => setClipboard(event.target.value)}
+      <div className="desktop-stage">
+        <div
+          ref={screen}
+          role="region"
+          aria-label="원격 화면"
+          className="absolute inset-0 overflow-hidden"
         />
-        <div className="mt-2 flex flex-wrap gap-2">
+        {status !== 'connected' && (
+          <div className="desktop-overlay">
+            <div className="desktop-connect-card">
+              <div className="desktop-device-icon">
+                <Monitor size={30} />
+              </div>
+              <p className="desktop-eyebrow">PRIVATE REMOTE WORKSPACE</p>
+              <h2>{selected.name}</h2>
+              <p className="desktop-card-description">
+                {status === 'credentials'
+                  ? '원격 컴퓨터의 화면 공유 계정으로 로그인하세요.'
+                  : status === 'connecting'
+                    ? '암호화된 연결을 준비하고 있습니다.'
+                    : '브라우저에서 내 컴퓨터를 그대로 사용하세요.'}
+              </p>
+              {status === 'connecting' && (
+                <Loader2
+                  className="mx-auto my-6 animate-spin text-blue-400"
+                  aria-label="연결 중"
+                />
+              )}
+              {status === 'idle' && (
+                <div className="desktop-idle-actions">
+                  <button
+                    className={`${button} desktop-primary`}
+                    onClick={() => void connect()}
+                  >
+                    화면 연결하기
+                  </button>
+                  <button
+                    className={button}
+                    onClick={() => setTargetsOpen(true)}
+                  >
+                    다른 컴퓨터 선택
+                  </button>
+                </div>
+              )}
+              {status === 'credentials' && (
+                <form
+                  className="desktop-auth-form"
+                  onSubmit={(event) => {
+                    event.preventDefault();
+                    client.current?.sendCredentials({
+                      username,
+                      password,
+                      target: '',
+                    });
+                    setPassword('');
+                    setStatus('connecting');
+                    setMessage('계정을 확인하고 있습니다.');
+                  }}
+                >
+                  <label>
+                    사용자 이름
+                    <input
+                      aria-label="맥 사용자 이름"
+                      autoComplete="off"
+                      className="desktop-input"
+                      placeholder="맥 사용자 이름"
+                      value={username}
+                      onChange={(event) => setUsername(event.target.value)}
+                    />
+                  </label>
+                  <label>
+                    암호
+                    <input
+                      aria-label="화면 공유 암호"
+                      type="password"
+                      autoComplete="off"
+                      className="desktop-input"
+                      autoFocus
+                      required
+                      placeholder="화면 공유 암호"
+                      value={password}
+                      onChange={(event) => setPassword(event.target.value)}
+                    />
+                  </label>
+                  <button className={`${button} desktop-primary`}>인증</button>
+                </form>
+              )}
+              <p className="desktop-trust">
+                <ShieldCheck size={14} />
+                관리자 전용 · 최대 15분 세션
+              </p>
+            </div>
+          </div>
+        )}
+      </div>
+      {clipboardOpen && (
+        <aside className="desktop-panel" aria-label="텍스트 복사·붙여넣기">
           <button
-            className={button}
-            disabled={status !== 'connected' || viewOnly}
-            onClick={() => client.current?.clipboardPasteFrom(clipboard)}
+            className="desktop-panel-close"
+            aria-label="클립보드 닫기"
+            onClick={() => setClipboardOpen(false)}
           >
-            맥으로 보내기
+            <X size={18} />
           </button>
-          <button
-            className={button}
-            onClick={async () => {
-              try {
-                await navigator.clipboard.writeText(clipboard);
-              } catch {
-                setMessage(
-                  '클립보드 권한이 없습니다. 텍스트를 선택해서 직접 복사하세요.',
-                );
-              }
-            }}
-          >
-            내 컴퓨터에 복사
-          </button>
-        </div>
-      </details>
+          <h2 className="text-lg font-semibold">텍스트 복사·붙여넣기</h2>
+          <p className="my-2 text-xs text-gray-400">
+            맥에서 복사한 텍스트가 여기에 표시됩니다. 전송 후 맥에서 ⌘V로
+            붙여넣으세요. 한글 지원은 화면 공유 서버에 따라 다르며 파일 전송은
+            지원하지 않습니다.
+          </p>
+          <textarea
+            aria-label="클립보드 텍스트"
+            maxLength={65536}
+            className="desktop-input min-h-48 w-full"
+            value={clipboard}
+            onChange={(event) => setClipboard(event.target.value)}
+          />
+          <div className="mt-2 flex flex-wrap gap-2">
+            <button
+              className={button}
+              disabled={status !== 'connected' || viewOnly}
+              onClick={() => client.current?.clipboardPasteFrom(clipboard)}
+            >
+              맥으로 보내기
+            </button>
+            <button
+              className={button}
+              onClick={async () => {
+                try {
+                  await navigator.clipboard.writeText(clipboard);
+                } catch {
+                  setMessage(
+                    '클립보드 권한이 없습니다. 텍스트를 선택해서 직접 복사하세요.',
+                  );
+                }
+              }}
+            >
+              내 컴퓨터에 복사
+            </button>
+          </div>
+        </aside>
+      )}
     </div>
   );
 }

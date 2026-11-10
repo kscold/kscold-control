@@ -92,6 +92,19 @@ describe('원격 데스크톱 보안 중계', () => {
     expect(() => service.issue(administrator)).toThrow();
   });
 
+  it('설치별 기본 계정은 기본 대상에만 전달한다', () => {
+    config.set('REMOTE_DESKTOP_USERNAME', 'default-user');
+    expect(service.issue(administrator).suggestedUsername).toBe('default-user');
+    expect(
+      service.issue(administrator, { id: 'local', port: 5900 })
+        .suggestedUsername,
+    ).toBe('default-user');
+    expect(
+      service.issue(administrator, { id: 'other', port: 5901 })
+        .suggestedUsername,
+    ).toBe('');
+  });
+
   it('정상 연결에서 바이너리를 양방향 전달하고 연결권 재사용을 거부한다', async () => {
     const { ticket } = service.issue(administrator);
     const client = connect(ticket);
