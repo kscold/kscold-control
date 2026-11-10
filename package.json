@@ -57,7 +57,7 @@
     "test:repository-live-smoke": "node ./scripts/repository-live-smoke.mjs",
     "test:release-publisher": "node --test ./scripts/test/frontend-release.test.mjs",
     "test:repository-maintenance": "node --test ./scripts/test/repository-rename.test.mjs",
-    "test:frontend-bundle": "node --test ./scripts/test/frontend-bundle.test.mjs ./scripts/test/network-bundle.test.mjs",
+    "test:frontend-bundle": "node --test ./scripts/test/frontend-bundle.test.mjs ./scripts/test/network-bundle.test.mjs ./scripts/test/remote-desktop-layout.test.mjs",
     "test:release-version": "node --test ./scripts/test/release-version.test.mjs",
     "test:dependency-security": "node --test ./scripts/test/dependency-security.test.mjs",
     "check:version": "node ./scripts/check-version.mjs",
