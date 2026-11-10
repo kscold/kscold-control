@@ -84,6 +84,7 @@ module.exports = {
           'AUTOMATION_LAUNCHD_PREFIXES',
           'AUTOMATION_DESCRIPTIONS',
           'AUTOMATION_RELEASE_DIRS',
+          'SSH_AUDIT_DIR',
         ]),
       },
       // 자동 재시작
