@@ -15,13 +15,16 @@ import {
   ResyncBlocklistUseCase,
 } from './application/use-cases';
 import { SecurityController } from './presentation/controllers/security.controller';
+import { SshAccessController } from './presentation/controllers/ssh-access.controller';
+import { SshAccessService } from './application/services/ssh-access.service';
 
 @Module({
   imports: [TypeOrmModule.forFeature([IpBan]), NginxInfrastructureModule],
-  controllers: [SecurityController],
+  controllers: [SecurityController, SshAccessController],
   providers: [
     IpBanService,
     IpAllowlistService,
+    SshAccessService,
     ListIpBansUseCase,
     CreateIpBanUseCase,
     DeleteIpBanUseCase,
