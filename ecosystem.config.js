@@ -63,6 +63,7 @@ module.exports = {
           'REMOTE_DESKTOP_ENABLED',
           'REMOTE_DESKTOP_ORIGIN',
           'REMOTE_DESKTOP_PORT',
+          'REMOTE_DESKTOP_USERNAME',
           'ADMIN_EMAIL',
           'ADMIN_PASSWORD',
           'SEED_ADMIN_BOOTSTRAP',
