@@ -124,6 +124,15 @@ describe('원격 데스크톱 화면', () => {
     expect(fixture.paste).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole('button', { name: '맥으로 보내기' }));
     expect(fixture.paste).toHaveBeenCalledWith('한글 텍스트');
+    const targetPanel = screen
+      .getByText('원격 접속 대상 · 펼치기')
+      .closest('details');
+    expect(targetPanel?.open).toBe(false);
+    fireEvent.click(screen.getByRole('button', { name: '도구 접기' }));
+    expect(fixture.disconnect).not.toHaveBeenCalled();
+    expect(screen.getByRole('button', { name: '화면 복원' })).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: '화면 복원' }));
+    expect(fixture.clients).toHaveLength(1);
     fireEvent.click(screen.getByRole('checkbox', { name: '보기 전용' }));
     expect(
       screen
