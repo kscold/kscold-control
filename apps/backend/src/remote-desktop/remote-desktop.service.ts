@@ -20,6 +20,7 @@ import {
 } from '../rbac/domain/repositories/user.repository.interface';
 import type { JwtPayload } from '../common/types/jwt-request.type';
 import { isGlobalAdministrator } from '../common/utils/role-access.util';
+import type { DesktopConnection } from './remote-desktop-targets.service';
 
 export function canControlDesktop(
   user: Pick<JwtPayload, 'roles' | 'impersonation'>,
@@ -34,7 +35,7 @@ export class RemoteDesktopService
   private readonly logger = new Logger(RemoteDesktopService.name);
   private readonly tickets = new Map<
     string,
-    { userId: string; expires: number }
+    { userId: string; expires: number; port: number }
   >();
   private readonly sockets = new Set<WebSocket>();
   private server?: Server;
@@ -51,12 +52,12 @@ export class RemoteDesktopService
     @Inject(USER_REPOSITORY) private readonly users: IUserRepository,
   ) {}
 
-  issue(user: JwtPayload) {
+  issue(user: JwtPayload, connection?: DesktopConnection) {
     if (!canControlDesktop(user))
       throw new ForbiddenException(
         '관리자 본인 계정으로만 원격 접속할 수 있습니다.',
       );
-    this.settings();
+    const settings = this.settings();
     const now = Date.now();
     for (const [key, value] of this.tickets) {
       if (value.expires <= now || value.userId === user.id)
@@ -65,8 +66,17 @@ export class RemoteDesktopService
     if (this.tickets.size >= 100 || this.sockets.size >= 3)
       throw new ServiceUnavailableException('원격 연결이 사용 중입니다.');
     const ticket = randomBytes(32).toString('hex');
-    this.tickets.set(ticket, { userId: user.id, expires: now + 30_000 });
-    return { ticket };
+    this.tickets.set(ticket, {
+      userId: user.id,
+      expires: now + 30_000,
+      port: connection?.port ?? settings.port,
+    });
+    return {
+      ticket,
+      ...(connection?.credentials
+        ? { credentials: connection.credentials }
+        : {}),
+    };
   }
 
   private settings() {
@@ -117,7 +127,7 @@ export class RemoteDesktopService
   };
 
   private async accept(request: IncomingMessage, socket: Duplex, head: Buffer) {
-    const { origin, port } = this.settings();
+    const { origin } = this.settings();
     if (
       request.url !== '/api/remote-desktop/socket' ||
       request.headers.origin !== origin ||
@@ -147,7 +157,7 @@ export class RemoteDesktopService
     )
       throw new Error('Rejected');
     this.ws.handleUpgrade(request, socket, head, (client) =>
-      this.connect(client, ticket.userId, port),
+      this.connect(client, ticket.userId, ticket.port),
     );
   }
 
