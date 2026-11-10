@@ -57,7 +57,7 @@ Create a topic branch off `main`:
 git checkout -b feat/your-feature      # or fix/, refactor/, docs/, chore/
 ```
 
-We use **[Conventional Commits](https://www.conventionalcommits.org/)** with a scope. The PR title is validated automatically by CI.
+커밋과 PR 제목은 범위를 포함한 **[Conventional Commits](https://www.conventionalcommits.org/)** 형식을 사용합니다. 자동 CI 대신 검토자가 제목과 로컬 검증 결과를 확인합니다.
 
 ```
 feat(frontend): add OpenAI provider toggle
@@ -73,11 +73,11 @@ Common scopes: `frontend`, `backend`, `infra`, `ci`, `deps`.
 
 1. **Open or link an issue** describing the change.
 2. Push your branch and open a PR against `main`. The [PR template](.github/PULL_REQUEST_TEMPLATE.md) fills in automatically.
-3. Make sure **CI passes** (build + PR title lint).
+3. `pnpm lint`, `pnpm test:backend`, `pnpm test:frontend`, `pnpm build`를 로컬에서 실행하고 결과를 PR에 기록합니다.
 4. A maintainer reviews; address feedback by pushing new commits.
 5. Once approved, the PR is **squash-merged** and the branch is deleted.
 
-> PRs that don't follow the Conventional Commit title format will fail the `PR Title Lint` check.
+> 자동 PR 제목 검사는 실행하지 않지만 제목 형식은 유지합니다.
 
 ## Architecture guidelines
 
@@ -90,14 +90,8 @@ Common scopes: `frontend`, `backend`, `infra`, `ci`, `deps`.
 
 ## Automation
 
-This repo runs several GitHub Actions on every PR:
-
-| Workflow | What it does |
-|---|---|
-| **CI** | Installs deps, lints, and builds the monorepo |
-| **PR Title Lint** | Enforces Conventional Commit PR titles |
-| **PR Labeler** | Auto-labels PRs by changed paths (`frontend`, `backend`, `ci`, …) |
-| **Greetings** | Welcomes first-time contributors |
-| **Dependabot** | Weekly grouped dependency update PRs |
+반복 실행과 알림을 줄이기 위해 저장소의 GitHub Actions를 비활성화했습니다.
+워크플로 파일은 이력과 복구를 위해 보존하지만 자동 실행하지 않습니다.
+Dependabot 정기 버전 업데이트 PR도 중지했습니다. 보안 경고와 배포 전 로컬 검증은 유지합니다.
 
 Thanks again for contributing! ✨

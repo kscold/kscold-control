@@ -462,8 +462,9 @@ Please read the **[Contributing guide](CONTRIBUTING.md)** before you start.
 
 4. Push and open a Pull Request against `main` — the PR template fills in automatically
 
-Every PR runs CI (build + lint), Conventional-Commit title validation, and auto-labeling.
-Make sure `pnpm build` passes and relevant docs are updated before submitting.
+GitHub Actions 자동 실행과 정기 의존성 업데이트 PR은 중지되어 있습니다.
+PR 제출 전 `pnpm lint`, `pnpm test:backend`, `pnpm test:frontend`, `pnpm build`를 로컬에서 실행하고 결과를 기록하세요.
+운영 배포 스크립트의 테스트·검증 절차와 보안 경고는 유지합니다.
 
 ---
 
