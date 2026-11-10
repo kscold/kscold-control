@@ -18,18 +18,23 @@ const fixture = vi.hoisted(() => ({
     impersonation: false,
   },
   post: vi.fn(),
+  get: vi.fn().mockResolvedValue({ data: [] }),
   paste: vi.fn(),
   disconnect: vi.fn(),
   clients: [] as EventTarget[],
+  options: undefined as unknown,
 }));
 vi.mock('@/shared/model/auth.store', () => ({
   useAuthStore: () => fixture.auth,
 }));
-vi.mock('@/shared/api', () => ({ api: { post: fixture.post } }));
+vi.mock('@/shared/api', () => ({
+  api: { post: fixture.post, get: fixture.get },
+}));
 vi.mock('@novnc/novnc', () => ({
   default: class extends EventTarget {
-    constructor() {
+    constructor(...args: unknown[]) {
       super();
+      fixture.options = args[2];
       fixture.clients.push(this);
     }
     disconnect = fixture.disconnect;
@@ -54,6 +59,29 @@ function show() {
 }
 
 describe('원격 데스크톱 화면', () => {
+  it('저장된 계정은 연결할 때만 VNC 인증에 전달한다', async () => {
+    fixture.post.mockResolvedValue({
+      data: {
+        ticket: 'test-ticket',
+        credentials: { username: 'test-user', password: 'test-password' },
+      },
+    });
+    show();
+    expect(fixture.post).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: '연결' }));
+    await waitFor(() => expect(fixture.clients).toHaveLength(1));
+    expect(fixture.post.mock.calls[0][0]).toBe(
+      '/remote-desktop/targets/local/ticket',
+    );
+    expect(fixture.options).toMatchObject({
+      credentials: {
+        username: 'test-user',
+        password: 'test-password',
+        target: '',
+      },
+    });
+    expect(screen.queryByDisplayValue('test-password')).toBeNull();
+  });
   it('일반 사용자에게 연결 버튼을 노출하지 않는다', () => {
     fixture.auth.user.roles = ['guest'];
     show();
