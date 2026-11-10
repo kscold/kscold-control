@@ -98,6 +98,13 @@ test(
     await page.evaluate(() => document.exitFullscreen());
     await expect(page.getByRole('button', { name: '도구 접기' })).toBeVisible();
     await page.setViewportSize({ width: 390, height: 844 });
+    await expect.poll(async () => (await target.boundingBox()).width).toBe(390);
+    await expect
+      .poll(
+        async () =>
+          (await page.locator('.desktop-connect-card').boundingBox()).width,
+      )
+      .toBeLessThanOrEqual(362);
     await page.screenshot({
       path: '/tmp/control-remote-mobile-normal.png',
       animations: 'disabled',
