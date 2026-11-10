@@ -152,6 +152,9 @@ importers:
       winston-daily-rotate-file:
         specifier: ^5.0.0
         version: 5.0.0(winston@3.19.0)
+      ws:
+        specifier: 8.21.0
+        version: 8.21.0
     devDependencies:
       '@nestjs/cli':
         specifier: ^11.0.24
@@ -180,6 +183,9 @@ importers:
       '@types/passport-jwt':
         specifier: ^4.0.1
         version: 4.0.1
+      '@types/ws':
+        specifier: ^8.18.2
+        version: 8.18.2
       jest:
         specifier: ^30.5.2
         version: 30.5.2(@types/node@20.19.33)(ts-node@10.9.2(@types/node@20.19.33)(typescript@5.9.3))
@@ -198,6 +204,9 @@ importers:
 
   apps/frontend:
     dependencies:
+      '@novnc/novnc':
+        specifier: ^1.7.0
+        version: 1.7.0
       '@types/diff':
         specifier: ^8.0.0
         version: 8.0.0
@@ -265,6 +274,9 @@ importers:
       '@types/node':
         specifier: ^20.11.16
         version: 20.19.33
+      '@types/novnc__novnc':
+        specifier: ^1.6.0
+        version: 1.6.0
       '@types/react':
         specifier: ^18.2.55
         version: 18.3.28
@@ -1147,6 +1159,9 @@ packages:
       '@nestjs/platform-socket.io':
         optional: true
 
+  '@novnc/novnc@1.7.0':
+    resolution: {integrity: sha512-ucEJOx4T2avIRCleodk7YobZj5O2Ga2AeLfQ69A/yjG9HHba2+PDgwSkN3FttrmG+70ZGx21sElNFouK13RzyA==}
+
   '@oxc-project/types@0.154.0':
     resolution: {integrity: sha512-KYOUGQFlLWR+s4QMV2Q9ko38TZm7EdO87Qm7rvZLqk/webse/cDjtyxKhg/47l0byCbs/k46LT8qc4PKjAikzA==}
 
@@ -1681,6 +1696,9 @@ packages:
 
   '@types/node@20.19.33':
     resolution: {integrity: sha512-Rs1bVAIdBs5gbTIKza/tgpMuG1k3U/UMJLWecIMxNdJFDMzcM5LOiLVRYh3PilWEYDIeUDv7bpiHPLPsbydGcw==}
+
+  '@types/novnc__novnc@1.6.0':
+    resolution: {integrity: sha512-kIH/PQACbf9qj6whiSXRKECpyzgs6IFNVsW4wohyqQUZfQHdLhuGRMLi9XEhBiISSh0lKCSbBa7kScuPu9Gk+Q==}
 
   '@types/passport-jwt@4.0.1':
     resolution: {integrity: sha512-Y0Ykz6nWP4jpxgEUYq8NoVZeCQPo1ZndJLfapI249g1jHChvRfZRO/LS3tqu26YgAS/laI1qx98sYGz0IalRXQ==}
@@ -6320,6 +6338,8 @@ snapshots:
     optionalDependencies:
       '@nestjs/platform-socket.io': 11.1.28(@nestjs/common@11.1.28(class-transformer@0.5.1)(class-validator@0.15.1)(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/websockets@11.1.26)(rxjs@7.8.2)
 
+  '@novnc/novnc@1.7.0': {}
+
   '@oxc-project/types@0.154.0': {}
 
   '@parcel/watcher-android-arm64@2.6.0':
@@ -6774,6 +6794,8 @@ snapshots:
   '@types/node@20.19.33':
     dependencies:
       undici-types: 6.21.0
+
+  '@types/novnc__novnc@1.6.0': {}
 
   '@types/passport-jwt@4.0.1':
     dependencies:

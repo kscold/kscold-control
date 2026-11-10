@@ -10,6 +10,7 @@ import { Modal } from '@/shared/ui/Modal';
 import { SkeletonBlock } from '@/shared/ui/SkeletonBlock';
 import { Layout } from './Layout';
 import { ErrorBoundary } from './providers';
+const RemoteDesktopPage = lazy(() => import('@/pages/remote-desktop'));
 
 const LoginPage = lazy(() =>
   import('@/pages/login').then((module) => ({ default: module.LoginPage })),
@@ -217,6 +218,14 @@ export default function App() {
           }
         >
           <Route index element={<HomeRoute />} />
+          <Route
+            path="remote-desktop"
+            element={
+              <Suspense fallback={<RoutePageSkeleton />}>
+                <RemoteDesktopPage />
+              </Suspense>
+            }
+          />
           <Route
             path="pending"
             element={
