@@ -28,6 +28,7 @@ export default function RemoteDesktopPage() {
   const frame = useRef<HTMLDivElement>(null);
   const client = useRef<RFB | null>(null);
   const generation = useRef(0);
+  const pending = useRef<AbortController | null>(null);
   const [status, setStatus] = useState<
     'idle' | 'connecting' | 'credentials' | 'connected'
   >('idle');
@@ -70,11 +71,17 @@ export default function RemoteDesktopPage() {
     return () => document.removeEventListener('fullscreenchange', changed);
   }, []);
 
-  const disconnect = () => {
+  const release = () => {
     generation.current += 1;
+    pending.current?.abort();
+    pending.current = null;
     const previous = client.current;
     client.current = null;
     previous?.disconnect();
+  };
+
+  const disconnect = () => {
+    release();
     setStatus('idle');
     setFocused(false);
     setPassword('');
@@ -85,10 +92,17 @@ export default function RemoteDesktopPage() {
     setStatus('idle');
     setPassword('');
     setClipboard('');
+    const leave = () => {
+      release();
+      setStatus('idle');
+      setPassword('');
+      setClipboard('');
+      setMessage('페이지를 떠나 원격 연결을 종료했습니다. 다시 연결하세요.');
+    };
+    window.addEventListener('pagehide', leave);
     return () => {
-      generation.current += 1;
-      client.current?.disconnect();
-      client.current = null;
+      window.removeEventListener('pagehide', leave);
+      release();
     };
   }, [token, allowed]);
 
@@ -99,6 +113,8 @@ export default function RemoteDesktopPage() {
     setClipboardOpen(false);
     setUsername('');
     const attempt = generation.current;
+    const controller = new AbortController();
+    pending.current = controller;
     setStatus('connecting');
     setMessage('보안 연결 중입니다.');
     try {
@@ -109,7 +125,7 @@ export default function RemoteDesktopPage() {
       }>(
         `/remote-desktop/targets/${encodeURIComponent(target.id)}/ticket`,
         {},
-        { timeout: 10_000 },
+        { timeout: 10_000, signal: controller.signal },
       );
       if (generation.current !== attempt || !screen.current) return;
       setUsername(data.credentials?.username ?? data.suggestedUsername ?? '');
@@ -163,6 +179,8 @@ export default function RemoteDesktopPage() {
       setMessage(
         '연결할 수 없습니다. 관리자 권한과 서버의 원격 데스크톱 설정을 확인하세요.',
       );
+    } finally {
+      if (pending.current === controller) pending.current = null;
     }
   }
 
