@@ -32,6 +32,7 @@ nginx/conf.d/*.private.conf
 docs/*
 !docs/operations-diagnostics.md
 !docs/key-management-env-command.md
+!docs/remote-desktop.md
 CLAUDE.md
 
 # Serena MCP 메타데이터

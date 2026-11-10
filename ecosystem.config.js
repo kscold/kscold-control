@@ -60,6 +60,9 @@ module.exports = {
         KEY_MANAGEMENT_SSH_IDENTITY_DIR:
           process.env.KEY_MANAGEMENT_SSH_IDENTITY_DIR,
         ...definedEnvironment([
+          'REMOTE_DESKTOP_ENABLED',
+          'REMOTE_DESKTOP_ORIGIN',
+          'REMOTE_DESKTOP_PORT',
           'ADMIN_EMAIL',
           'ADMIN_PASSWORD',
           'SEED_ADMIN_BOOTSTRAP',
