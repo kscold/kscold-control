@@ -1,0 +1,222 @@
+.desktop-workspace {
+  background: #090e17;
+}
+.desktop-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  border-bottom: 1px solid #243044;
+  background: #101722;
+}
+.desktop-heading {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-right: auto;
+  color: #a9c6ff;
+}
+.desktop-heading h1 {
+  font-size: 15px;
+  font-weight: 650;
+  color: #edf3fc;
+}
+.desktop-heading span {
+  font-size: 11px;
+  color: #8f9eb4;
+}
+.desktop-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  border: 1px solid #334156;
+  border-radius: 9px;
+  padding: 9px 12px;
+  font-size: 12px;
+  color: #d4deed;
+  transition: background 150ms;
+}
+.desktop-button[hidden] {
+  display: none;
+}
+.desktop-button:hover {
+  background: #263347;
+}
+.desktop-button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.desktop-button:focus-visible,
+.desktop-panel-close:focus-visible {
+  outline: 2px solid #8db5ff;
+  outline-offset: 3px;
+}
+.desktop-primary {
+  background: #3971df;
+  border-color: #588cf1;
+  color: white;
+  font-weight: 600;
+}
+.desktop-primary:hover {
+  background: #4c83ed;
+}
+.desktop-status {
+  padding: 6px 16px;
+  color: #91a4bf;
+  font-size: 11px;
+  border-bottom: 1px solid #1b2638;
+}
+.desktop-stage {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  background: #05080e;
+}
+.desktop-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: auto;
+  padding: 24px;
+  background: radial-gradient(
+    ellipse at 50% 20%,
+    #1b304a 0%,
+    #0d1624 40%,
+    #070c14 80%
+  );
+}
+.desktop-connect-card {
+  width: 100%;
+  max-width: 390px;
+  margin: auto;
+  text-align: center;
+  padding: 30px;
+  border: 1px solid #2c3b52;
+  border-radius: 20px;
+  background: #111c2be8;
+  box-shadow: 0 24px 80px #0005;
+}
+.desktop-device-icon {
+  display: grid;
+  place-items: center;
+  width: 64px;
+  height: 64px;
+  margin: 0 auto 22px;
+  border: 1px solid #3c5b86;
+  border-radius: 18px;
+  background: linear-gradient(135deg, #294568, #14253c);
+  color: #accfff;
+}
+.desktop-eyebrow {
+  font-size: 9px;
+  letter-spacing: 0.2em;
+  color: #8caad4;
+}
+.desktop-connect-card h2 {
+  margin-top: 8px;
+  font-size: 26px;
+  font-weight: 650;
+  letter-spacing: -0.04em;
+}
+.desktop-card-description {
+  margin: 10px 0 24px;
+  font-size: 12px;
+  line-height: 1.7;
+  color: #9aabc2;
+}
+.desktop-auth-form {
+  display: grid;
+  gap: 16px;
+  text-align: left;
+}
+.desktop-auth-form label {
+  font-size: 12px;
+  color: #b6c5d9;
+}
+.desktop-input {
+  display: block;
+  width: 100%;
+  margin-top: 7px;
+  padding: 11px 12px;
+  border: 1px solid #34465e;
+  border-radius: 9px;
+  background: #0a1320;
+  color: #ecf3ff;
+  outline: none;
+}
+.desktop-input:focus {
+  border-color: #81afff;
+  box-shadow: 0 0 0 3px #578eee20;
+}
+.desktop-trust {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  margin-top: 23px;
+  font-size: 10px;
+  color: #8094af;
+}
+.desktop-idle-actions {
+  display: grid;
+  gap: 10px;
+}
+.desktop-panel {
+  position: absolute;
+  z-index: 20;
+  top: 76px;
+  right: 12px;
+  bottom: 12px;
+  width: min(420px, calc(100% - 24px));
+  overflow: auto;
+  padding: 22px 18px;
+  border: 1px solid #35445b;
+  border-radius: 16px;
+  background: #101a29fa;
+  box-shadow: 0 16px 60px #0008;
+}
+.desktop-panel-close {
+  display: grid;
+  place-items: center;
+  margin: -8px -4px 12px auto;
+  padding: 8px;
+  border-radius: 8px;
+  color: #a7b9d2;
+}
+.desktop-panel-close:hover {
+  background: #263347;
+}
+.desktop-recovery {
+  display: block;
+  padding: 20px 0 0;
+  font-size: 12px;
+  color: #91b9fc;
+}
+@media (max-width: 640px) {
+  .desktop-toolbar {
+    gap: 6px;
+    padding: 10px;
+  }
+  .desktop-heading {
+    width: 100%;
+    margin-bottom: 4px;
+  }
+  .desktop-button {
+    padding: 8px 10px;
+    font-size: 11px;
+  }
+  .desktop-panel {
+    top: 12px;
+  }
+  .desktop-connect-card {
+    padding: 24px;
+  }
+  .desktop-overlay {
+    padding: 14px;
+  }
+}

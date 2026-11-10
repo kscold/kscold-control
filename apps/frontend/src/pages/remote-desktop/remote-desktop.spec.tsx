@@ -20,6 +20,7 @@ const fixture = vi.hoisted(() => ({
   post: vi.fn(),
   get: vi.fn().mockResolvedValue({ data: [] }),
   paste: vi.fn(),
+  credentials: vi.fn(),
   disconnect: vi.fn(),
   clients: [] as EventTarget[],
   options: undefined as unknown,
@@ -39,6 +40,7 @@ vi.mock('@novnc/novnc', () => ({
     }
     disconnect = fixture.disconnect;
     clipboardPasteFrom = fixture.paste;
+    sendCredentials = fixture.credentials;
   },
 }));
 
@@ -89,6 +91,52 @@ describe('원격 데스크톱 화면', () => {
     expect(screen.getByRole('alert').textContent).toContain('관리자 본인');
   });
 
+  it('인증 카드에 설치별 기본 계정을 채우고 암호만 전송 후 지운다', async () => {
+    fixture.post.mockResolvedValue({
+      data: { ticket: 'test', suggestedUsername: 'default-user' },
+    });
+    show();
+    fireEvent.click(screen.getByRole('button', { name: '연결' }));
+    await waitFor(() => expect(fixture.clients).toHaveLength(1));
+    act(() =>
+      fixture.clients[0].dispatchEvent(new Event('credentialsrequired')),
+    );
+    expect(screen.getByDisplayValue('default-user')).toBeTruthy();
+    expect(screen.getByRole('status').textContent).toContain('인증해 주세요');
+    fireEvent.change(screen.getByLabelText('화면 공유 암호'), {
+      target: { value: 'private-password' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: '인증' }));
+    expect(fixture.credentials).toHaveBeenCalledWith({
+      username: 'default-user',
+      password: 'private-password',
+      target: '',
+    });
+    expect(screen.queryByDisplayValue('private-password')).toBeNull();
+  });
+
+  it('다른 컴퓨터를 선택한 뒤 재연결해도 선택한 대상을 유지한다', async () => {
+    fixture.get.mockResolvedValueOnce({
+      data: [
+        { id: 'second', name: '작업 PC', port: 5901, hasCredentials: false },
+      ],
+    });
+    fixture.post.mockResolvedValue({ data: { ticket: 'test' } });
+    show();
+    fireEvent.click(screen.getByRole('button', { name: '접속 대상' }));
+    fireEvent.click(
+      await screen.findByRole('button', { name: '작업 PC · 연결' }),
+    );
+    await waitFor(() => expect(fixture.clients).toHaveLength(1));
+    fireEvent.click(screen.getByRole('button', { name: '연결 종료' }));
+    fireEvent.click(screen.getByRole('button', { name: '연결' }));
+    await waitFor(() => expect(fixture.clients).toHaveLength(2));
+    expect(fixture.post.mock.calls.map((call) => call[0])).toEqual([
+      '/remote-desktop/targets/second/ticket',
+      '/remote-desktop/targets/second/ticket',
+    ]);
+  });
+
   it('관리자도 사용자 미리보기에서는 접속할 수 없다', () => {
     fixture.auth.impersonation = true;
     show();
@@ -118,22 +166,23 @@ describe('원격 데스크톱 화면', () => {
     act(() => {
       fixture.clients[0].dispatchEvent(new Event('connect'));
     });
+    fireEvent.click(screen.getByRole('button', { name: '클립보드' }));
     fireEvent.change(screen.getByLabelText('클립보드 텍스트'), {
       target: { value: '한글 텍스트' },
     });
     expect(fixture.paste).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole('button', { name: '맥으로 보내기' }));
     expect(fixture.paste).toHaveBeenCalledWith('한글 텍스트');
-    const targetPanel = screen
-      .getByText('원격 접속 대상 · 펼치기')
-      .closest('details');
-    expect(targetPanel?.open).toBe(false);
+    expect(
+      screen.queryByRole('complementary', { name: '접속 대상 관리' }),
+    ).toBeNull();
     fireEvent.click(screen.getByRole('button', { name: '도구 접기' }));
     expect(fixture.disconnect).not.toHaveBeenCalled();
     expect(screen.getByRole('button', { name: '화면 복원' })).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: '화면 복원' }));
     expect(fixture.clients).toHaveLength(1);
     fireEvent.click(screen.getByRole('checkbox', { name: '보기 전용' }));
+    fireEvent.click(screen.getByRole('button', { name: '클립보드' }));
     expect(
       screen
         .getByRole('button', { name: '맥으로 보내기' })

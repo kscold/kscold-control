@@ -73,6 +73,10 @@ export class RemoteDesktopService
     });
     return {
       ticket,
+      suggestedUsername:
+        !connection || connection.id === 'local'
+          ? this.config.get<string>('REMOTE_DESKTOP_USERNAME') || ''
+          : '',
       ...(connection?.credentials
         ? { credentials: connection.credentials }
         : {}),
