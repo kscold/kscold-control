@@ -28,6 +28,23 @@ export default function RemoteDesktopPage() {
   const [password, setPassword] = useState('');
   const [clipboard, setClipboard] = useState('');
   const [viewOnly, setViewOnly] = useState(false);
+  const [focused, setFocused] = useState(false);
+  const [targetsOpen, setTargetsOpen] = useState(true);
+  const [clipboardOpen, setClipboardOpen] = useState(false);
+
+  const restore = () => {
+    setFocused(false);
+    if (document.fullscreenElement === frame.current)
+      void document.exitFullscreen().catch(() => {});
+  };
+
+  useEffect(() => {
+    const changed = () => {
+      if (!document.fullscreenElement) setFocused(false);
+    };
+    document.addEventListener('fullscreenchange', changed);
+    return () => document.removeEventListener('fullscreenchange', changed);
+  }, []);
 
   const disconnect = () => {
     generation.current += 1;
@@ -35,6 +52,7 @@ export default function RemoteDesktopPage() {
     client.current = null;
     previous?.disconnect();
     setStatus('idle');
+    setFocused(false);
     setPassword('');
     setClipboard('');
   };
@@ -83,6 +101,8 @@ export default function RemoteDesktopPage() {
       rfb.addEventListener('connect', () => {
         if (client.current !== rfb) return;
         setStatus('connected');
+        setTargetsOpen(false);
+        setClipboardOpen(false);
         setMessage('연결됨 · 최대 15분 후 종료됩니다.');
         setPassword('');
       });
@@ -126,9 +146,31 @@ export default function RemoteDesktopPage() {
   return (
     <div
       ref={frame}
-      className="flex h-full flex-col gap-3 overflow-auto bg-gray-950 p-4 text-gray-100"
+      className={
+        focused
+          ? 'fixed inset-0 z-[70] flex h-dvh flex-col overflow-hidden bg-black text-gray-100'
+          : 'relative flex h-full min-h-0 flex-col gap-2 overflow-hidden bg-gray-950 p-2 text-gray-100'
+      }
     >
-      <header className="flex flex-wrap items-center gap-3">
+      {focused && (
+        <div className="absolute right-2 top-2 z-10 flex gap-1 rounded-lg border border-gray-700 bg-gray-950/90 p-1">
+          <button
+            className={button}
+            onClick={() => setClipboardOpen(!clipboardOpen)}
+            aria-expanded={clipboardOpen}
+          >
+            클립보드
+          </button>
+          <button className={button} onClick={restore}>
+            화면 복원
+          </button>
+        </div>
+      )}
+      <header
+        className={
+          focused ? 'hidden' : 'flex shrink-0 flex-wrap items-center gap-2'
+        }
+      >
         <h1 className="mr-auto text-xl font-semibold">원격 데스크톱</h1>
         <Link to="/terminal" className={button}>
           복구용 터미널
@@ -149,15 +191,20 @@ export default function RemoteDesktopPage() {
         </button>
         <button
           className={button}
-          onClick={() =>
-            void frame.current
-              ?.requestFullscreen()
-              .catch(() =>
-                setMessage('이 브라우저에서는 전체 화면을 사용할 수 없습니다.'),
-              )
-          }
+          onClick={() => {
+            setFocused(true);
+            if (frame.current?.requestFullscreen)
+              void frame.current.requestFullscreen().catch(() => {
+                setMessage(
+                  '브라우저 전체 화면 대신 페이지 최대 화면을 사용합니다.',
+                );
+              });
+          }}
         >
           전체 화면
+        </button>
+        <button className={button} onClick={() => setFocused(true)}>
+          도구 접기
         </button>
         <label className="flex items-center gap-2 text-sm">
           <input
@@ -172,11 +219,24 @@ export default function RemoteDesktopPage() {
           보기 전용
         </label>
       </header>
-      <RemoteTargets
-        disabled={status !== 'idle'}
-        onConnect={(id) => void connect(id)}
-      />
-      <p role="status" className="text-sm text-gray-400">
+      <details
+        hidden={focused}
+        open={targetsOpen}
+        onToggle={(event) => setTargetsOpen(event.currentTarget.open)}
+        className="max-h-[45%] shrink-0 overflow-auto rounded-lg border border-gray-800 p-2"
+      >
+        <summary className="cursor-pointer text-xs text-gray-400">
+          원격 접속 대상 · {targetsOpen ? '접기' : '펼치기'}
+        </summary>
+        <RemoteTargets
+          disabled={status !== 'idle'}
+          onConnect={(id) => void connect(id)}
+        />
+      </details>
+      <p
+        role="status"
+        className={focused ? 'sr-only' : 'shrink-0 text-xs text-gray-400'}
+      >
         {message}
       </p>
       {status === 'credentials' && (
@@ -211,9 +271,20 @@ export default function RemoteDesktopPage() {
       )}
       <div
         ref={screen}
-        className="min-h-64 flex-1 overflow-hidden rounded-xl border border-gray-800 bg-black"
+        role="region"
+        aria-label="원격 화면"
+        className="min-h-0 flex-1 overflow-hidden bg-black"
       />
-      <details className="rounded-xl border border-gray-800 p-3">
+      <details
+        hidden={focused && !clipboardOpen}
+        open={clipboardOpen}
+        onToggle={(event) => setClipboardOpen(event.currentTarget.open)}
+        className={
+          focused
+            ? 'absolute bottom-2 left-2 right-2 z-10 max-h-[45%] overflow-auto rounded-lg border border-gray-700 bg-gray-950/95 p-2'
+            : 'max-h-[40%] shrink-0 overflow-auto rounded-lg border border-gray-800 p-2'
+        }
+      >
         <summary>텍스트 복사·붙여넣기</summary>
         <p className="my-2 text-xs text-gray-400">
           맥에서 복사한 텍스트가 여기에 표시됩니다. 전송 후 맥에서 ⌘V로
