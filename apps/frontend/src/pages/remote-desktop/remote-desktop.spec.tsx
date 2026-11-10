@@ -61,6 +61,35 @@ function show() {
 }
 
 describe('원격 데스크톱 화면', () => {
+  it('연결 요청 중 취소하면 HTTP를 중단하고 늦은 응답으로 소켓을 만들지 않는다', async () => {
+    let complete: ((value: { data: { ticket: string } }) => void) | undefined;
+    fixture.post.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          complete = resolve;
+        }),
+    );
+    show();
+    fireEvent.click(screen.getByRole('button', { name: '연결' }));
+    const signal: AbortSignal = fixture.post.mock.calls[0][2].signal;
+    fireEvent.click(screen.getByRole('button', { name: '연결 종료' }));
+    expect(signal.aborted).toBe(true);
+    await act(async () => {
+      complete?.({ data: { ticket: 'late' } });
+    });
+    expect(fixture.clients).toHaveLength(0);
+  });
+
+  it('페이지 이탈 시 열린 원격 연결을 정리한다', async () => {
+    fixture.post.mockResolvedValue({ data: { ticket: 'test' } });
+    show();
+    fireEvent.click(screen.getByRole('button', { name: '연결' }));
+    await waitFor(() => expect(fixture.clients).toHaveLength(1));
+    act(() => window.dispatchEvent(new Event('pagehide')));
+    expect(fixture.disconnect).toHaveBeenCalledTimes(1);
+    act(() => fixture.clients[0].dispatchEvent(new Event('connect')));
+    expect(screen.getByRole('button', { name: '연결' })).toBeTruthy();
+  });
   it('저장된 계정은 연결할 때만 VNC 인증에 전달한다', async () => {
     fixture.post.mockResolvedValue({
       data: {

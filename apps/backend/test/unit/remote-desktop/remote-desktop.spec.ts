@@ -62,11 +62,105 @@ describe('원격 데스크톱 보안 중계', () => {
       new Promise<void>((resolve) => http.close(() => resolve())),
       new Promise<void>((resolve) => tcp.close(() => resolve())),
     ]);
+    jest.restoreAllMocks();
   });
 
   function connect(ticket: string, origin = 'https://control.example.com') {
     return new WebSocket(url, ['binary', `ticket.${ticket}`], { origin });
   }
+
+  async function session(autoPong = true) {
+    const incoming = once(tcp, 'connection');
+    const client = new WebSocket(
+      url,
+      ['binary', `ticket.${service.issue(administrator).ticket}`],
+      {
+        origin: 'https://control.example.com',
+        autoPong,
+      },
+    );
+    await once(client, 'open');
+    const [target] = await incoming;
+    return { client, target };
+  }
+
+  it('반복 연결 종료와 강제 단절 시 TCP와 세션 타이머를 모두 해제한다', async () => {
+    const intervals = jest.spyOn(global, 'setInterval');
+    const clear = jest.spyOn(global, 'clearInterval');
+    for (let index = 0; index < 6; index += 1) {
+      const { client, target } = await session();
+      const closed = once(target, 'close');
+      const clientClosed = once(client, 'close');
+      if (index % 2) client.terminate();
+      else client.close();
+      await Promise.all([closed, clientClosed]);
+    }
+    expect(intervals.mock.results).toHaveLength(12);
+    for (const timer of intervals.mock.results)
+      expect(clear).toHaveBeenCalledWith(timer.value);
+    const count = await new Promise<number>((resolve, reject) =>
+      tcp.getConnections((error, count) =>
+        error ? reject(error) : resolve(count),
+      ),
+    );
+    expect(count).toBe(0);
+  });
+
+  it('응답 없는 브라우저의 heartbeat 만료 시 양쪽 소켓을 해제한다', async () => {
+    const intervals = jest.spyOn(global, 'setInterval');
+    const { client, target } = await session(false);
+    const heartbeat = intervals.mock.calls[1][0];
+    expect(typeof heartbeat).toBe('function');
+    const closed = once(target, 'close');
+    const clientClosed = once(client, 'close');
+    if (typeof heartbeat === 'function') {
+      heartbeat();
+      heartbeat();
+    }
+    await Promise.all([closed, clientClosed]);
+  });
+
+  it('원격 TCP 종료 시 브라우저 소켓도 종료한다', async () => {
+    const { client, target } = await session();
+    const closed = once(client, 'close');
+    target.destroy();
+    await closed;
+  });
+
+  it('서버 종료 시 활성 연결을 닫는다', async () => {
+    const { client, target } = await session();
+    const closed = once(target, 'close');
+    const clientClosed = once(client, 'close');
+    service.onModuleDestroy();
+    await Promise.all([closed, clientClosed]);
+  });
+
+  it('서버 종료 뒤 늦은 인증 응답으로 새 TCP 연결을 만들지 않는다', async () => {
+    let complete: ((user: typeof administrator) => void) | undefined;
+    users.findByIdWithRoles.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          complete = resolve;
+        }),
+    );
+    const upgraded = once(http, 'upgrade');
+    const client = connect(service.issue(administrator).ticket);
+    const error = once(client, 'error');
+    const opened = jest.fn();
+    client.on('open', opened);
+    await upgraded;
+    service.onModuleDestroy();
+    await error;
+    complete?.(administrator);
+    await new Promise<void>((resolve) => setImmediate(resolve));
+    expect(opened).not.toHaveBeenCalled();
+    const count = await new Promise<number>((resolve, reject) =>
+      tcp.getConnections((error, count) =>
+        error ? reject(error) : resolve(count),
+      ),
+    );
+    expect(count).toBe(0);
+  });
 
   it('관리자 이외의 계정과 사용자 미리보기를 차단한다', () => {
     expect(canControlDesktop({ roles: ['key_manager'] })).toBe(false);
