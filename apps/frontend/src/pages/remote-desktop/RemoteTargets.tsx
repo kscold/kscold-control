@@ -14,14 +14,13 @@ const emptyForm = {
   password: '',
   saveCredentials: true,
 };
-const button =
-  'rounded-lg border border-gray-700 px-3 py-2 text-sm disabled:opacity-40';
+const button = 'desktop-button';
 
 export function RemoteTargets({
   onConnect,
   disabled,
 }: {
-  onConnect: (id: string) => void;
+  onConnect: (id: string, name: string) => void;
   disabled: boolean;
 }) {
   const [targets, setTargets] = useState<Target[]>([]);
@@ -79,10 +78,7 @@ export function RemoteTargets({
   }
 
   return (
-    <section
-      aria-label="원격 접속 대상"
-      className="rounded-xl border border-gray-800 p-3"
-    >
+    <section aria-label="원격 접속 대상" className="space-y-5">
       <div className="flex items-center justify-between">
         <h2 className="font-semibold">원격 접속 대상</h2>
         <button
@@ -100,16 +96,16 @@ export function RemoteTargets({
         기본 대상은 맥미니입니다. 다른 컴퓨터는 SSH 터널의 로컬 포트로
         등록하세요. 암호는 서버에 암호화하여 보관하며 연결 시에만 사용합니다.
       </p>
-      <div className="flex flex-wrap gap-2">
+      <div className="grid gap-3">
         {targets.map((target) => (
           <div
             key={target.id}
-            className="rounded-lg border border-gray-700 p-2"
+            className="space-y-3 rounded-xl border border-gray-700 bg-gray-950/50 p-4"
           >
             <button
-              className={button}
+              className={`${button} w-full`}
               disabled={disabled || busy}
-              onClick={() => onConnect(target.id)}
+              onClick={() => onConnect(target.id, target.name)}
             >
               {target.name} ·{' '}
               {target.hasCredentials ? '저장된 계정으로 연결' : '연결'}
