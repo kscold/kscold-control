@@ -123,6 +123,10 @@ export function sanitizeHttpRequestBody(
   originalUrl: string,
 ): unknown {
   const path = originalUrl.split('?', 1)[0];
+  if (/\/remote-desktop(?:\/|$)/.test(path)) {
+    // 계정·암호와 연결 대상 입력은 검증 실패 시에도 로그에 남기지 않음.
+    return { remoteDesktop: '[접속 정보 기록 제외]' };
+  }
   if (/\/logs\/frontend-error\/?$/.test(path)) {
     // DTO 검증 전에도 구형 클라이언트의 스택·URL·원문을 절대 기록하지 않음.
     return { diagnostic: '[recorded separately without raw payload]' };

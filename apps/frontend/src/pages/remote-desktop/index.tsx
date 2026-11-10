@@ -5,6 +5,7 @@ import { api } from '@/shared/api';
 import { API_URL } from '@/shared/config';
 import { ROLES } from '@/shared/config/roles';
 import { useAuthStore } from '@/shared/model/auth.store';
+import { RemoteTargets } from './RemoteTargets';
 
 export default function RemoteDesktopPage() {
   const { user, token, impersonation } = useAuthStore();
@@ -49,14 +50,17 @@ export default function RemoteDesktopPage() {
     };
   }, [token, allowed]);
 
-  async function connect() {
+  async function connect(targetId = 'local') {
     disconnect();
     const attempt = generation.current;
     setStatus('connecting');
     setMessage('보안 연결 중입니다.');
     try {
-      const { data } = await api.post<{ ticket: string }>(
-        '/remote-desktop/ticket',
+      const { data } = await api.post<{
+        ticket: string;
+        credentials?: { username: string; password: string };
+      }>(
+        `/remote-desktop/targets/${encodeURIComponent(targetId)}/ticket`,
         {},
         { timeout: 10_000 },
       );
@@ -69,6 +73,9 @@ export default function RemoteDesktopPage() {
       const rfb = new RFB(screen.current, url.href, {
         shared: true,
         wsProtocols: ['binary', `ticket.${data.ticket}`],
+        ...(data.credentials
+          ? { credentials: { ...data.credentials, target: '' } }
+          : {}),
       });
       client.current = rfb;
       rfb.scaleViewport = true;
@@ -165,6 +172,10 @@ export default function RemoteDesktopPage() {
           보기 전용
         </label>
       </header>
+      <RemoteTargets
+        disabled={status !== 'idle'}
+        onConnect={(id) => void connect(id)}
+      />
       <p role="status" className="text-sm text-gray-400">
         {message}
       </p>
