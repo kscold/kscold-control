@@ -4,22 +4,16 @@ import type { LoginResult } from '@/auth/application/dto/login-result';
 import { LoginUseCase } from '@/auth/application/use-cases/login.use-case';
 import { PasswordHasher } from '@/common/utils/password-hasher.util';
 import { browser } from '../../auth-session.fake';
-import { mfaHarness } from '../../mfa.fake';
-import { loginGuardHarness } from '../../../security/login-guard.fake';
+import { closeMfaHarnesses, mfaHarness } from '../../mfa.fake';
 
 describe('LoginUseCase', () => {
-  const guards: Array<{ cleanup: () => Promise<void> }> = [];
-  afterEach(async () => {
-    await Promise.all(guards.splice(0).map((g) => g.cleanup()));
-  });
+  afterEach(closeMfaHarnesses);
 
   async function setup({
     role = 'operator',
     password = bcrypt.hash('correct horse', 4),
   }: { role?: string; password?: Promise<string> } = {}) {
-    const harness = mfaHarness();
-    const guard = await loginGuardHarness();
-    guards.push(guard);
+    const harness = await mfaHarness();
     const user = harness.addUser({
       id: 'user-1',
       email: 'admin@example.com',
@@ -34,7 +28,7 @@ describe('LoginUseCase', () => {
     const useCase = new LoginUseCase(
       users as any,
       harness.sessions,
-      guard.guard,
+      harness.loginGuard.guard,
       harness.mfa,
     );
     return { ...harness, useCase };

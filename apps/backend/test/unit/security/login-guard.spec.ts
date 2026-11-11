@@ -15,7 +15,7 @@ import {
   type LoginAttemptRecord,
   type LoginSubject,
 } from '@/security/domain/login-guard/login-block.policy';
-import { sessionHarness } from '../auth/auth-session.fake';
+import { mfaHarness } from '../auth/mfa.fake';
 import { loginGuardHarness } from './login-guard.fake';
 
 const MINUTE = 60_000;
@@ -281,11 +281,13 @@ describe('LoginUseCase with LoginGuardService', () => {
         email === admin.email ? admin : null,
       findByIdWithRoles: async (id: string) => (id === admin.id ? admin : null),
     };
-    harness = await loginGuardHarness(options);
+    const built = await mfaHarness(options);
+    harness = built.loginGuard;
     useCase = new LoginUseCase(
       users as never,
-      sessionHarness().sessions,
+      built.sessions,
       harness.guard,
+      built.mfa,
     );
   }
 

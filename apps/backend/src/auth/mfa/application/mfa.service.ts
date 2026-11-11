@@ -25,6 +25,7 @@ import {
 import {
   MFA_ATTEMPT_GUARD,
   type MfaAttemptGuard,
+  type MfaClient,
 } from '../domain/mfa-attempt-guard';
 import {
   generateRecoveryCodes,
@@ -57,6 +58,7 @@ export interface MfaStatus {
 }
 
 type Account = Pick<User, 'id' | 'email'>;
+type Client = SessionClient & MfaClient;
 
 function mfaError(
   status: HttpStatus,
@@ -148,115 +150,103 @@ export class MfaService {
   async startEnrollment(
     account: Account & { sessionId: string },
     password: string,
-    client: SessionClient,
+    client: Client,
   ) {
     if (await this.enrollments.find(account.id)) throw alreadyEnabled();
-    const attempt = this.guard.admit(account.id, client.ip);
-    const user = await this.users.findByIdWithRoles(account.id);
-    if (!user || !(await PasswordHasher.compare(password, user.password))) {
-      this.guard.failed(attempt, 'wrong-password', account.email);
-      throw passwordInvalid();
-    }
-    this.guard.succeeded(attempt);
+    const user = await this.guard.check(client, account.email, async () => {
+      const found = await this.users.findByIdWithRoles(account.id);
+      return found && (await PasswordHasher.compare(password, found.password))
+        ? { user: found }
+        : { failure: 'wrong-password' };
+    });
+    if (!user) throw passwordInvalid();
     return this.beginEnrollment(user, account.sessionId);
   }
 
   async verify(
     input: { challenge: string; method: MfaMethod; code: string },
-    client: SessionClient,
+    client: Client,
   ): Promise<AuthenticatedLogin> {
     const now = new Date();
-    return this.check(
-      input.challenge,
-      'verify',
-      now,
-      client,
-      async (challenge, attempt) => {
-        const user = await this.users.findByIdWithRoles(challenge.userId);
-        const enrollment = user && (await this.enrollments.find(user.id));
-        if (!user || !enrollment) {
-          this.challenges.consume(input.challenge);
-          throw challengeExpired();
+    return this.check(input.challenge, 'verify', now, async (challenge) => {
+      const user = await this.users.findByIdWithRoles(challenge.userId);
+      const enrollment = user && (await this.enrollments.find(user.id));
+      if (!user || !enrollment) {
+        this.challenges.consume(input.challenge);
+        throw challengeExpired();
+      }
+      const accepted = await this.guard.check(client, user.email, async () => {
+        if (input.method === 'totp') {
+          return (await this.acceptTotp(enrollment, input.code, now))
+            ? { user }
+            : { failure: 'wrong-otp' };
         }
-        const accepted =
-          input.method === 'totp'
-            ? await this.acceptTotp(enrollment, input.code, now)
-            : await this.acceptRecoveryCode(user.id, input.code);
-        if (!accepted) {
-          return this.reject(
-            input.challenge,
-            attempt,
-            input.method,
-            user.email,
-          );
-        }
-        this.guard.succeeded(attempt);
-        if (!this.challenges.consume(input.challenge)) throw challengeExpired();
+        return (await this.acceptRecoveryCode(user.id, input.code))
+          ? { user }
+          : { failure: 'wrong-recovery-code' };
+      });
+      if (!accepted) return this.reject(input.challenge, input.method);
+      if (!this.challenges.consume(input.challenge)) throw challengeExpired();
 
-        if (input.method === 'recovery') {
-          this.record(
-            user,
-            'mfa.recovery-code.use',
-            `${user.email} 계정이 복구 코드로 로그인했습니다. 남은 복구 코드 ${enrollment.recoveryCodeHashes.length - 1}개`,
-          );
-        } else {
-          this.record(
-            user,
-            'login.mfa-success',
-            `${user.email} 계정이 OTP 로 로그인했습니다 (IP ${client.ip ?? '알 수 없음'})`,
-          );
-        }
-        return this.authSessions.signIn(user, client, 'mfa');
-      },
-    );
+      if (input.method === 'recovery') {
+        this.record(
+          user,
+          'mfa.recovery-code.use',
+          `${user.email} 계정이 복구 코드로 로그인했습니다. 남은 복구 코드 ${enrollment.recoveryCodeHashes.length - 1}개`,
+        );
+      } else {
+        this.record(
+          user,
+          'login.mfa-success',
+          `${user.email} 계정이 OTP 로 로그인했습니다 (IP ${client.ip ?? '알 수 없음'})`,
+        );
+      }
+      return this.authSessions.signIn(user, client, 'mfa');
+    });
   }
 
   async completeEnrollment(
     input: { challenge: string; code: string },
-    client: SessionClient,
+    client: Client,
   ): Promise<AuthenticatedLogin & { recoveryCodes: string[] }> {
     const now = new Date();
-    return this.check(
-      input.challenge,
-      'enroll',
-      now,
-      client,
-      async (challenge, attempt) => {
-        const user = await this.users.findByIdWithRoles(challenge.userId);
-        if (!user) {
-          this.challenges.consume(input.challenge);
-          throw challengeExpired();
-        }
-        const step = matchTotp(challenge.secret, input.code, now, null);
-        if (step === null) {
-          return this.reject(input.challenge, attempt, 'totp', user.email);
-        }
-        this.guard.succeeded(attempt);
-        if (!this.challenges.consume(input.challenge)) throw challengeExpired();
+    return this.check(input.challenge, 'enroll', now, async (challenge) => {
+      const user = await this.users.findByIdWithRoles(challenge.userId);
+      if (!user) {
+        this.challenges.consume(input.challenge);
+        throw challengeExpired();
+      }
+      const step = matchTotp(challenge.secret, input.code, now, null);
+      const accepted = await this.guard.check(client, user.email, async () =>
+        step === null ? { failure: 'wrong-otp' } : { user },
+      );
+      if (!accepted || step === null) {
+        return this.reject(input.challenge, 'totp');
+      }
+      if (!this.challenges.consume(input.challenge)) throw challengeExpired();
 
-        const recoveryCodes = generateRecoveryCodes();
-        const created = await this.enrollments.createIfAbsent({
-          userId: user.id,
-          sealedTotpSecret: this.config.sealSecret(user.id, challenge.secret),
-          lastUsedStep: step,
-          recoveryCodeHashes: this.hashRecoveryCodes(recoveryCodes),
-          enabledAt: now,
-        });
-        if (!created) throw alreadyEnabled();
+      const recoveryCodes = generateRecoveryCodes();
+      const created = await this.enrollments.createIfAbsent({
+        userId: user.id,
+        sealedTotpSecret: this.config.sealSecret(user.id, challenge.secret),
+        lastUsedStep: step,
+        recoveryCodeHashes: this.hashRecoveryCodes(recoveryCodes),
+        enabledAt: now,
+      });
+      if (!created) throw alreadyEnabled();
 
-        this.record(
-          user,
-          'mfa.enable',
-          `${user.email} 계정이 2단계 인증을 켰습니다.`,
-        );
-        // 시작한 세션이 그사이 끝났어도 비밀번호와 OTP 를 모두 거쳤으므로 첫 로그인처럼 새로 연다.
-        const upgraded = challenge.sessionId
-          ? await this.authSessions.upgradeToMfa(user, challenge.sessionId)
-          : null;
-        const login = upgraded ?? (await this.signInFresh(user, client));
-        return { ...login, recoveryCodes };
-      },
-    );
+      this.record(
+        user,
+        'mfa.enable',
+        `${user.email} 계정이 2단계 인증을 켰습니다.`,
+      );
+      // 시작한 세션이 그사이 끝났어도 비밀번호와 OTP 를 모두 거쳤으므로 첫 로그인처럼 새로 연다.
+      const upgraded = challenge.sessionId
+        ? await this.authSessions.upgradeToMfa(user, challenge.sessionId)
+        : null;
+      const login = upgraded ?? (await this.signInFresh(user, client));
+      return { ...login, recoveryCodes };
+    });
   }
 
   async status(account: { id: string; roles: string[] }): Promise<MfaStatus> {
@@ -272,7 +262,7 @@ export class MfaService {
   async regenerateRecoveryCodes(
     account: Account,
     code: string,
-    client: SessionClient,
+    client: Client,
   ): Promise<{ recoveryCodes: string[] }> {
     const enrollment = await this.enrollments.find(account.id);
     if (!enrollment) {
@@ -282,12 +272,12 @@ export class MfaService {
         '2단계 인증을 쓰고 있지 않습니다.',
       );
     }
-    const attempt = this.guard.admit(account.id, client.ip);
-    if (!(await this.acceptTotp(enrollment, code, new Date()))) {
-      this.guard.failed(attempt, 'wrong-otp', account.email);
-      throw invalidCodeKeepingSession();
-    }
-    this.guard.succeeded(attempt);
+    const accepted = await this.guard.check(client, account.email, async () =>
+      (await this.acceptTotp(enrollment, code, new Date()))
+        ? { user: account }
+        : { failure: 'wrong-otp' },
+    );
+    if (!accepted) throw invalidCodeKeepingSession();
 
     const recoveryCodes = generateRecoveryCodes();
     await this.enrollments.replaceRecoveryCodes(
@@ -329,27 +319,20 @@ export class MfaService {
   }
 
   /**
-   * challenge 하나에 확인은 한 번에 하나만 받고, 시도는 await 전에 센다.
-   * 그래야 동시에 보낸 요청들이 결과를 기다리는 사이 실패 한도를 넘지 못한다.
+   * challenge 하나에 확인은 한 번에 하나만 받는다. 남은 시도 횟수를 두 요청이 함께 쓰지 못하게 하려는 것이다.
+   * 여러 challenge 에 걸친 동시 대입은 로그인 차단이 확인 중인 시도까지 세어 막는다.
    */
   private async check<P extends MfaChallenge['purpose'], T>(
     token: string,
     purpose: P,
     now: Date,
-    client: SessionClient,
-    run: (
-      challenge: Extract<MfaChallenge, { purpose: P }>,
-      attempt: unknown,
-    ) => Promise<T>,
+    run: (challenge: Extract<MfaChallenge, { purpose: P }>) => Promise<T>,
   ): Promise<T> {
     const challenge = this.challenges.begin(token, purpose, now);
     if (challenge === 'busy') throw checkInProgress();
     if (!challenge) throw challengeExpired();
     try {
-      return await run(
-        challenge,
-        this.guard.admit(challenge.userId, client.ip),
-      );
+      return await run(challenge);
     } finally {
       this.challenges.finish(token);
     }
@@ -391,18 +374,8 @@ export class MfaService {
     );
   }
 
-  private reject(
-    token: string,
-    attempt: unknown,
-    method: MfaMethod,
-    email: string,
-  ): never {
+  private reject(token: string, method: MfaMethod): never {
     const remaining = this.challenges.fail(token);
-    this.guard.failed(
-      attempt,
-      method === 'totp' ? 'wrong-otp' : 'wrong-recovery-code',
-      email,
-    );
     if (remaining === 0) {
       throw mfaError(
         HttpStatus.UNAUTHORIZED,

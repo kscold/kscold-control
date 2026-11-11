@@ -120,5 +120,6 @@ export function sessionHarness({
 
 export const browser = {
   ip: '203.0.113.10',
+  ipVerified: true,
   userAgent: 'Mozilla/5.0 (test)',
 };

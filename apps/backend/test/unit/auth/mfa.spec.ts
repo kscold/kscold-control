@@ -1,5 +1,6 @@
 import { HttpException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { LoginUseCase } from '@/auth/application/use-cases/login.use-case';
 import { randomBytes } from 'node:crypto';
 import { MfaConfig } from '@/auth/mfa/application/mfa-config';
 import { RECOVERY_CODE_COUNT } from '@/auth/mfa/domain/recovery-codes';
@@ -17,10 +18,12 @@ import {
   MfaChallengeStore,
 } from '@/auth/mfa/application/mfa-challenge.store';
 import { browser } from './auth-session.fake';
-import { PASSWORD, account, mfaHarness } from './mfa.fake';
+import { PASSWORD, account, closeMfaHarnesses, mfaHarness } from './mfa.fake';
 
 const LOGIN_AT = new Date('2026-03-01T09:00:10.000Z');
 const STEP_MS = 30 * 1000;
+
+afterEach(closeMfaHarnesses);
 
 function codeAt(secret: string, at: Date) {
   return totpCode(secret, totpStep(at));
@@ -179,7 +182,7 @@ describe('MfaService', () => {
   afterEach(() => jest.useRealTimers());
 
   async function enrolledAdmin() {
-    const harness = mfaHarness();
+    const harness = await mfaHarness();
     const admin = harness.addUser(
       account('00000000-0000-4000-8000-0000000000a1', 'admin'),
     );
@@ -195,7 +198,9 @@ describe('MfaService', () => {
     return { ...harness, admin, secret: step.enrollment.secret, login };
   }
 
-  async function verifyChallenge(harness: ReturnType<typeof mfaHarness>) {
+  async function verifyChallenge(
+    harness: Awaited<ReturnType<typeof mfaHarness>>,
+  ) {
     const user = [...harness.users.values()][0];
     const step = await harness.mfa.afterPassword(user as any);
     if (step?.kind !== 'mfa_required') throw new Error(step?.kind);
@@ -203,14 +208,14 @@ describe('MfaService', () => {
   }
 
   it('2단계가 필요 없는 일반 계정은 challenge 없이 넘긴다', async () => {
-    const harness = mfaHarness();
+    const harness = await mfaHarness();
     const user = harness.addUser(account('user-1', 'operator'));
 
     await expect(harness.mfa.afterPassword(user as any)).resolves.toBeNull();
   });
 
   it('필수 역할 계정은 등록을 마쳐야 mfa 세션과 복구 코드 10개를 받는다', async () => {
-    const harness = mfaHarness();
+    const harness = await mfaHarness();
     const admin = harness.addUser(
       account('00000000-0000-4000-8000-0000000000a1', 'admin'),
     );
@@ -251,7 +256,7 @@ describe('MfaService', () => {
   });
 
   it('등록용 challenge 로는 로그인 확인을 할 수 없다', async () => {
-    const harness = mfaHarness();
+    const harness = await mfaHarness();
     const admin = harness.addUser(
       account('00000000-0000-4000-8000-0000000000a1', 'admin'),
     );
@@ -476,7 +481,7 @@ describe('MfaService 동시 요청과 시도 한도', () => {
   afterEach(() => jest.useRealTimers());
 
   async function enrolled() {
-    const harness = mfaHarness();
+    const harness = await mfaHarness();
     const admin = harness.addUser(
       account('00000000-0000-4000-8000-0000000000a1', 'admin'),
     );
@@ -498,8 +503,13 @@ describe('MfaService 동시 요청과 시도 한도', () => {
       if (next?.kind !== 'mfa_required') throw new Error(next?.kind);
       return next.challenge.token;
     };
+    // 시도마다 다른 바깥 주소를 써서 IP 차단 없이 계정 한도만 본다.
+    let ips = 0;
     const guess = (token: string, code: string) =>
-      harness.mfa.verify({ challenge: token, method: 'totp', code }, browser);
+      harness.mfa.verify(
+        { challenge: token, method: 'totp', code },
+        { ip: `198.51.100.${++ips}`, ipVerified: true, userAgent: null },
+      );
     const statusOf = (promise: Promise<unknown>) =>
       promise.then(
         () => 200,
@@ -558,7 +568,7 @@ describe('MfaService 동시 요청과 시도 한도', () => {
     });
   });
 
-  it('맞는 코드로 들어온 시도는 한도에서 빼 준다', async () => {
+  it('맞는 코드는 실패로 세지 않는다', async () => {
     const { challenge, guess, statusOf, failTimes, wrong, right } =
       await enrolled();
     await failTimes(9);
@@ -574,7 +584,7 @@ describe('MfaService 동시 요청과 시도 한도', () => {
     );
   });
 
-  it('OTP 로그인 성공과 잠김을 감사 기록에 남기고 잠김은 한 번만 남긴다', async () => {
+  it('OTP 로그인 성공을 감사 기록에 남기고, 잠긴 계정은 15분 뒤 풀린다', async () => {
     const {
       challenge,
       guess,
@@ -583,6 +593,7 @@ describe('MfaService 동시 요청과 시도 한도', () => {
       right,
       admin,
       auditActions,
+      loginGuard,
     } = await enrolled();
 
     await guess(await challenge(), right());
@@ -596,12 +607,11 @@ describe('MfaService 동시 요청과 시도 한도', () => {
         429,
       );
     }
-    expect(auditActions('login.mfa-lockout')).toEqual([
-      expect.objectContaining({
-        targetId: admin.id,
-        summary: expect.stringContaining(admin.email),
-      }),
-    ]);
+    expect(
+      loginGuard.attempts.rows
+        .filter((row) => row.result === 'refused')
+        .map((row) => row.reason),
+    ).toEqual(['account-locked', 'account-locked', 'account-locked']);
 
     jest.setSystemTime(Date.now() + 15 * 60 * 1000 + 1);
     await expect(statusOf(guess(await challenge(), right()))).resolves.toBe(
@@ -610,12 +620,133 @@ describe('MfaService 동시 요청과 시도 한도', () => {
   });
 });
 
+describe('비밀번호와 OTP 로그인에 로그인 차단을 함께 건다', () => {
+  const ATTACKER = '198.51.100.20';
+  const OWNER = '192.0.2.50';
+
+  beforeEach(() => jest.useFakeTimers({ now: LOGIN_AT }));
+  afterEach(() => jest.useRealTimers());
+
+  async function enrolledLogin() {
+    const harness = await mfaHarness({ allowlist: OWNER });
+    const admin = harness.addUser(
+      account('00000000-0000-4000-8000-0000000000a1', 'admin'),
+    );
+    const users = {
+      findByEmail: async (email: string) =>
+        email === admin.email ? admin : null,
+      findByIdWithRoles: async (id: string) => harness.users.get(id) ?? null,
+    };
+    const useCase = new LoginUseCase(
+      users as any,
+      harness.sessions,
+      harness.loginGuard.guard,
+      harness.mfa,
+    );
+    const client = (ip: string) => ({ ip, ipVerified: true, userAgent: null });
+    const passwordStep = (ip: string) =>
+      useCase.execute({ email: admin.email, password: PASSWORD }, client(ip));
+
+    const first = await passwordStep(OWNER);
+    if (first.kind !== 'mfa_enrollment_required') throw new Error(first.kind);
+    await harness.mfa.completeEnrollment(
+      {
+        challenge: first.challenge.token,
+        code: codeAt(first.enrollment.secret, new Date()),
+      },
+      client(OWNER),
+    );
+    jest.setSystemTime(LOGIN_AT.getTime() + STEP_MS);
+    const right = () => codeAt(first.enrollment.secret, new Date());
+    const wrong = () => (right() === '000000' ? '111111' : '000000');
+
+    const login = async (
+      ip: string,
+      method: 'totp' | 'recovery',
+      code: string,
+    ) => {
+      try {
+        const step = await passwordStep(ip);
+        if (step.kind !== 'mfa_required') throw new Error(step.kind);
+        await harness.mfa.verify(
+          { challenge: step.challenge.token, method, code },
+          client(ip),
+        );
+        return 200;
+      } catch (error) {
+        if (error instanceof HttpException) return error.getStatus();
+        throw error;
+      }
+    };
+    return { ...harness, admin, right, wrong, login, passwordStep, client };
+  }
+
+  it('한 IP 에서 틀린 2단계 코드가 다섯 번 쌓이면 그 IP 를 막고 맞는 비밀번호도 돌려보낸다', async () => {
+    const { login, wrong, right, loginGuard, failures, admin } =
+      await enrolledLogin();
+
+    for (let i = 0; i < 4; i++) {
+      await expect(login(ATTACKER, 'totp', wrong())).resolves.toBe(401);
+    }
+    await expect(login(ATTACKER, 'recovery', 'AAAA-BBBB-CCCC')).resolves.toBe(
+      401,
+    );
+
+    expect(failures()).toEqual([
+      ...Array(4).fill({ email: admin.email, reason: 'wrong-otp' }),
+      { email: admin.email, reason: 'wrong-recovery-code' },
+    ]);
+    expect(loginGuard.ipBans.rows.get(ATTACKER)).toMatchObject({
+      active: true,
+      source: 'auto-login',
+    });
+    await expect(login(ATTACKER, 'totp', right())).resolves.toBe(429);
+    expect(loginGuard.attempts.rows.at(-1)).toMatchObject({
+      ip: ATTACKER,
+      result: 'refused',
+      reason: 'ip-banned',
+    });
+  });
+
+  it('바깥에서 계정이 잠겨도 허용 목록 주소에서는 비밀번호와 OTP 로 들어온다', async () => {
+    const {
+      login,
+      wrong,
+      right,
+      loginGuard,
+      passwordStep,
+      client,
+      mfa,
+      verifier,
+      repository,
+    } = await enrolledLogin();
+    for (let i = 1; i <= 10; i++) {
+      await expect(login(`203.0.113.${i}`, 'totp', wrong())).resolves.toBe(401);
+    }
+    await expect(login('203.0.113.99', 'totp', right())).resolves.toBe(429);
+    expect(loginGuard.ipBans.rows.size).toBe(0);
+
+    const step = await passwordStep(OWNER);
+    if (step.kind !== 'mfa_required') throw new Error(step.kind);
+    const session = await mfa.verify(
+      { challenge: step.challenge.token, method: 'totp', code: right() },
+      client(OWNER),
+    );
+
+    const claims = await verifier.verifyToken(session.accessToken);
+    expect(repository.rows.get(claims.sid)).toMatchObject({
+      ip: OWNER,
+      assurance: 'mfa',
+    });
+  });
+});
+
 describe('로그인한 화면에서 2단계 인증 켜기', () => {
   beforeEach(() => jest.useFakeTimers({ now: LOGIN_AT }));
   afterEach(() => jest.useRealTimers());
 
   async function signedInOperator() {
-    const harness = mfaHarness();
+    const harness = await mfaHarness();
     const user = harness.addUser(account('user-1', 'operator'));
     const current = await harness.sessions.signIn(
       user as any,
@@ -663,7 +794,7 @@ describe('로그인한 화면에서 2단계 인증 켜기', () => {
         challenge: started.challenge.token,
         code: codeAt(started.enrollment.secret, new Date()),
       },
-      { ip: '192.0.2.44', userAgent: null },
+      { ip: '192.0.2.44', ipVerified: true, userAgent: null },
     );
 
     expect(repository.rows.size).toBe(sessionsBefore);

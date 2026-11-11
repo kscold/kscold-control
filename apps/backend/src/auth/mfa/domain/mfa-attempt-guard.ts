@@ -3,14 +3,20 @@ export const MFA_ATTEMPT_GUARD = Symbol('MFA_ATTEMPT_GUARD');
 export type MfaFailureReason =
   'wrong-otp' | 'wrong-recovery-code' | 'wrong-password';
 
-/** 틀린 2단계 코드를 로그인 실패와 같은 기준으로 세는 자리. 로그인 차단이 이 자리를 채운다. */
-export interface MfaAttemptGuard<Attempt = unknown> {
-  /**
-   * 코드를 확인하기 전에 await 없이 부른다. 시도를 바로 한 번으로 세고, 막힌 계정이면 429 를 던진다.
-   * 동시에 보낸 요청이 결과를 기다리는 사이 한도를 넘지 못하게 하려는 것이다.
-   */
-  admit(userId: string, ip: string | null): Attempt;
-  /** 맞는 코드였으면 미리 센 시도를 되돌린다. */
-  succeeded(attempt: Attempt): void;
-  failed(attempt: Attempt, reason: MfaFailureReason, email: string): void;
+/** 요청을 보낸 주소. ipVerified 는 프록시 비밀값으로 그 주소를 확인했는지다. */
+export interface MfaClient {
+  ip: string | null;
+  ipVerified: boolean;
+}
+
+/**
+ * 2단계 코드와 다시 받는 비밀번호를 로그인 실패와 같은 기준으로 센다. 로그인 차단이 이 자리를 채운다.
+ * 막힌 IP·계정이면 확인하기 전에 429 를 던지고, 틀리면 실패로 남긴 뒤 null 을 돌려준다.
+ */
+export interface MfaAttemptGuard {
+  check<U extends { id: string; email: string }>(
+    client: MfaClient,
+    email: string,
+    verify: () => Promise<{ user: U } | { failure: MfaFailureReason }>,
+  ): Promise<U | null>;
 }

@@ -1,10 +1,10 @@
 import * as bcrypt from 'bcrypt';
 import { MfaChallengeStore } from '@/auth/mfa/application/mfa-challenge.store';
 import { MfaService } from '@/auth/mfa/application/mfa.service';
-import type { MfaFailureReason } from '@/auth/mfa/domain/mfa-attempt-guard';
-import { AccountMfaAttemptGuard } from '@/auth/mfa/infrastructure/account-mfa-attempt-guard';
+import type { LoginAttemptReason } from '@/security/domain/login-guard/login-block.policy';
 import type { UserMfa } from '@/auth/mfa/domain/user-mfa.entity';
 import type { IUserMfaRepository } from '@/auth/mfa/domain/user-mfa.repository.interface';
+import { loginGuardHarness } from '../security/login-guard.fake';
 import { sessionHarness } from './auth-session.fake';
 
 export class InMemoryUserMfaRepository implements IUserMfaRepository {
@@ -57,7 +57,17 @@ export function account(id: string, role: string, email = `${id}@example.com`) {
   };
 }
 
-export function mfaHarness() {
+const openHarnesses: Array<() => Promise<void>> = [];
+
+/** 하네스마다 만든 임시 폴더와 SSH_AUDIT_DIR 을 치운다. afterEach 에서 부른다. */
+export async function closeMfaHarnesses() {
+  await Promise.all(openHarnesses.splice(0).map((cleanup) => cleanup()));
+}
+
+/** 2단계 코드 실패는 실제 로그인 차단(LoginGuardService)이 센다. */
+export async function mfaHarness(options: { allowlist?: string } = {}) {
+  const loginGuard = await loginGuardHarness(options);
+  openHarnesses.push(loginGuard.cleanup);
   const users = new Map<string, ReturnType<typeof account>>();
   const sessions = sessionHarness({ mfaRequiredRoles: ['admin'], users });
   const enrollments = new InMemoryUserMfaRepository();
@@ -70,7 +80,7 @@ export function mfaHarness() {
   const mfa = new MfaService(
     enrollments,
     { findByIdWithRoles: async (id: string) => users.get(id) ?? null } as any,
-    new AccountMfaAttemptGuard(audit as any),
+    loginGuard.guard,
     sessions.mfaConfig,
     challenges,
     sessions.sessions,
@@ -83,11 +93,11 @@ export function mfaHarness() {
     audit,
     auditActions,
     challenges,
-    failures: (): Array<{ email: string; reason: MfaFailureReason }> =>
-      auditActions('login.mfa-failure').map((event) => ({
-        email: event.metadata.email,
-        reason: event.metadata.reason,
-      })),
+    loginGuard,
+    failures: (): Array<{ email: string; reason: LoginAttemptReason | null }> =>
+      loginGuard.attempts.rows
+        .filter((row) => row.result === 'failure')
+        .map((row) => ({ email: row.account, reason: row.reason })),
     mfa,
     addUser(user: ReturnType<typeof account>) {
       users.set(user.id, user);

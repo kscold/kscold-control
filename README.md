@@ -464,13 +464,13 @@ that account, and appends an `mfa.reset` entry to the backend audit log
 (`apps/backend/data/audit-log.jsonl`). The next login goes back to enrollment.
 
 A login challenge closes after 5 wrong codes and checks one code at a time
-(a second request while one is checked gets 409). An account gets 10 attempts
-within 15 minutes. Each attempt counts before the code is checked and a correct
-code gives it back, so parallel requests cannot go past the limit. Attempts go
-through the `MfaAttemptGuard` seam
-(`apps/backend/src/auth/mfa/domain/mfa-attempt-guard.ts`), which writes 운영 감사
-entries for wrong codes, lockouts and OTP logins. Login blocking can bind the
-same seam to count them with password failures.
+(a second request while one is checked gets 409). A wrong OTP or recovery code
+is a login failure: login blocking counts it with wrong passwords, so 5 from
+one IP ban that IP and 10 on one account lock it from that origin for 15
+minutes. The password re-check before enrollment and the OTP check before new
+recovery codes count the same way. The `MfaAttemptGuard` seam
+(`apps/backend/src/auth/mfa/domain/mfa-attempt-guard.ts`) is bound to
+`LoginGuardService`; `scripts/unlock-login.mjs` clears these failures too.
 
 Giving an account a role in `CONTROL_MFA_REQUIRED_ROLES` signs out its sessions
 after the role is saved. Terminal and chat sockets check the role in the
