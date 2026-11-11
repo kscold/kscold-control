@@ -16,6 +16,7 @@ import {
   ForbiddenException,
 } from '@nestjs/common';
 import { SessionVerifier } from '../../../auth/application/services/session-verifier.service';
+import { SessionConnectionRegistry } from '../../../auth/application/services/session-connection-registry.service';
 
 import { PERMISSIONS } from '../../../common/constants/permissions';
 import { IMPERSONATION_TOKEN_USE } from '../../../common/constants/impersonation';
@@ -65,6 +66,7 @@ export class TerminalGateway
 
   constructor(
     private readonly sessionVerifier: SessionVerifier,
+    private readonly sessionConnections: SessionConnectionRegistry,
     private readonly ptyManager: PtyManagerService,
     private readonly sessionMapper: SessionMapperService,
     private readonly wsPermission: WsPermissionService,
@@ -97,6 +99,7 @@ export class TerminalGateway
 
       const payload = await this.sessionVerifier.verifyToken(token);
       client.user = payload;
+      this.sessionConnections.bindSocket(payload.sid, client);
 
       if (payload.tokenUse === IMPERSONATION_TOKEN_USE) {
         throw new ForbiddenException(

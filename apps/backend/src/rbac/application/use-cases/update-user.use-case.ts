@@ -11,6 +11,10 @@ import {
 import { UpdateUserDto } from '../dto/update-user.dto';
 import { UserResponseDto } from '../dto/user-response.dto';
 import { PasswordHasher } from '../../../common/utils/password-hasher.util';
+import {
+  AuthSessionService,
+  type SessionActor,
+} from '../../../auth/application/services/auth-session.service';
 
 /**
  * Update User Use Case
@@ -21,9 +25,14 @@ export class UpdateUserUseCase {
   constructor(
     @Inject(USER_REPOSITORY)
     private readonly userRepository: IUserRepository,
+    private readonly authSessions: AuthSessionService,
   ) {}
 
-  async execute(userId: string, dto: UpdateUserDto): Promise<UserResponseDto> {
+  async execute(
+    userId: string,
+    dto: UpdateUserDto,
+    actor: SessionActor,
+  ): Promise<UserResponseDto> {
     // Find user
     const user = await this.userRepository.findById(userId);
     if (!user) {
@@ -45,6 +54,10 @@ export class UpdateUserUseCase {
     }
 
     const updatedUser = await this.userRepository.save(user);
+    // 옛 비밀번호나 그 비밀번호로 받은 토큰을 가진 사람이 계속 쓰지 못하게 다른 세션을 끊는다.
+    if (dto.password) {
+      await this.authSessions.revokeAllForUser(userId, actor);
+    }
 
     return UserResponseDto.fromEntity(updatedUser, true);
   }

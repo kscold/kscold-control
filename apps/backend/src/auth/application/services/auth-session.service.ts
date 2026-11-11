@@ -10,10 +10,17 @@ import {
   AUTH_SESSION_REPOSITORY,
   type IAuthSessionRepository,
 } from '../../domain/repositories/auth-session.repository.interface';
+import { SessionConnectionRegistry } from './session-connection-registry.service';
 
 export interface SessionClient {
   ip: string | null;
   userAgent: string | null;
+}
+
+/** 요청을 보낸 사용자와 그 요청의 서버 세션 */
+export interface SessionActor {
+  id: string;
+  sessionId: string;
 }
 
 export interface AccessTokenClaims {
@@ -30,6 +37,7 @@ export class AuthSessionService {
     @Inject(AUTH_SESSION_REPOSITORY)
     private readonly sessions: IAuthSessionRepository,
     private readonly jwtService: JwtService,
+    private readonly connections: SessionConnectionRegistry,
   ) {}
 
   open(
@@ -62,8 +70,29 @@ export class AuthSessionService {
     return { ...session, expiresAt };
   }
 
-  revoke(sessionId: string): Promise<void> {
-    return this.sessions.revoke(sessionId, new Date());
+  /** 세션과 그 미리보기 세션을 끊고, 그 세션들로 열린 연결을 바로 닫는다. */
+  async revoke(sessionId: string): Promise<number> {
+    const revoked = await this.sessions.revoke(sessionId, new Date());
+    this.connections.closeSessions(revoked);
+    return revoked.length;
+  }
+
+  /**
+   * 사용자의 세션을 모두 끊는다. 본인이 자기 계정에 한 일이면 그 요청을 보낸 세션은 남긴다.
+   * 그 세션은 비밀번호를 바꿀 수 있을 만큼 이미 계정을 쥐고 있어 끊어도 막는 것이 없고,
+   * 끊으면 방금 일을 마친 본인만 로그아웃된다.
+   */
+  async revokeAllForUser(
+    userId: string,
+    actor?: SessionActor,
+  ): Promise<number> {
+    const revoked = await this.sessions.revokeForUser(
+      userId,
+      new Date(),
+      actor?.id === userId ? actor.sessionId : null,
+    );
+    this.connections.closeSessions(revoked);
+    return revoked.length;
   }
 
   /** 토큰이 세션보다 오래 살지 않게 만료를 세션의 유휴 만료에 맞춘다. */

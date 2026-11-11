@@ -10,6 +10,8 @@ import type { Socket } from 'socket.io';
 export interface SocketJwtPayload {
   sub: string;
   email: string;
+  /** 서버 세션 id. 세션 확인을 통과한 토큰에는 늘 있다. */
+  sid: string;
   tokenUse?: string;
   [claim: string]: unknown;
 }

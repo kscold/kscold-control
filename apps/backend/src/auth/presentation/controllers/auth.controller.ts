@@ -69,6 +69,26 @@ export class AuthController {
     await this.authSessions.revoke(req.user.sessionId);
   }
 
+  /** 지금 쓰는 브라우저만 남기고 내 다른 세션을 모두 끊는다. 미리보기 중에는 쓸 수 없다. */
+  @UseGuards(AuthGuard('jwt'))
+  @Post('sessions/revoke-others')
+  @HttpCode(HttpStatus.OK)
+  @Audit({
+    domain: 'security',
+    action: 'session.revoke-others',
+    summary: (ctx) =>
+      `현재 브라우저를 뺀 로그인 세션 ${(ctx.response as { revoked: number }).revoked}개를 끊었습니다.`,
+    targetType: 'user',
+    targetId: (ctx) => ctx.actorId,
+  })
+  async revokeOtherSessions(@Request() req: JwtRequest) {
+    const revoked = await this.authSessions.revokeAllForUser(
+      req.user.id,
+      req.user,
+    );
+    return { revoked };
+  }
+
   @UseGuards(AuthGuard('jwt'))
   @Get('me')
   async getMe(@Request() req: { user: User }) {

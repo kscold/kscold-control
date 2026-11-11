@@ -15,6 +15,7 @@ import {
   ForbiddenException,
 } from '@nestjs/common';
 import { SessionVerifier } from '../../../auth/application/services/session-verifier.service';
+import { SessionConnectionRegistry } from '../../../auth/application/services/session-connection-registry.service';
 
 import type { AuthenticatedSocket } from '../../../common/types/authenticated-socket.type';
 import { PERMISSIONS } from '../../../common/constants/permissions';
@@ -51,6 +52,7 @@ export class OpenAIChatGateway
 
   constructor(
     private readonly sessionVerifier: SessionVerifier,
+    private readonly sessionConnections: SessionConnectionRegistry,
     private readonly openAIApi: OpenAIApiService,
     private readonly codexManager: CodexProcessManagerService,
     private readonly sessionMapper: OpenAISessionMapperService,
@@ -69,6 +71,7 @@ export class OpenAIChatGateway
 
       const payload = await this.sessionVerifier.verifyToken(token);
       client.user = payload;
+      this.sessionConnections.bindSocket(payload.sid, client);
 
       if (payload.tokenUse === IMPERSONATION_TOKEN_USE) {
         throw new ForbiddenException(

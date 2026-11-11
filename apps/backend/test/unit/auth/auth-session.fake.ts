@@ -1,5 +1,6 @@
 import { JwtService } from '@nestjs/jwt';
 import { AuthSessionService } from '@/auth/application/services/auth-session.service';
+import { SessionConnectionRegistry } from '@/auth/application/services/session-connection-registry.service';
 import { SessionVerifier } from '@/auth/application/services/session-verifier.service';
 import type { AuthSession } from '@/auth/domain/entities/auth-session.entity';
 import type { IAuthSessionRepository } from '@/auth/domain/repositories/auth-session.repository.interface';
@@ -39,14 +40,39 @@ export class InMemoryAuthSessionRepository implements IAuthSessionRepository {
   }
 
   async revoke(id: string, at: Date) {
-    for (const session of this.rows.values()) {
-      if (
-        (session.id === id || session.parentSessionId === id) &&
-        !session.revokedAt
-      ) {
+    return this.revokeMatching(
+      at,
+      (session) => session.id === id || session.parentSessionId === id,
+    );
+  }
+
+  async revokeForUser(userId: string, at: Date, keepSessionId: string | null) {
+    const owned = new Set(
+      [...this.rows.values()]
+        .filter((session) => session.userId === userId)
+        .map((session) => session.id),
+    );
+    return this.revokeMatching(
+      at,
+      (session) =>
+        (owned.has(session.id) ||
+          (session.parentSessionId !== null &&
+            owned.has(session.parentSessionId))) &&
+        (keepSessionId === null ||
+          (session.id !== keepSessionId &&
+            session.parentSessionId !== keepSessionId)),
+    );
+  }
+
+  private revokeMatching(at: Date, match: (session: AuthSession) => boolean) {
+    const revoked: string[] = [];
+    for (const session of [...this.rows.values()]) {
+      if (!session.revokedAt && match(session)) {
         this.update(session.id, { revokedAt: at });
+        revoked.push(session.id);
       }
     }
+    return revoked;
   }
 
   private update(id: string, patch: Partial<AuthSession>) {
@@ -62,11 +88,14 @@ export function sessionHarness() {
   const jwtService = new JwtService({
     secret: 'test-only-secret-at-least-32-characters',
   });
+  const verifier = new SessionVerifier(repository, jwtService);
+  const connections = new SessionConnectionRegistry(verifier);
   return {
     repository,
     jwtService,
-    sessions: new AuthSessionService(repository, jwtService),
-    verifier: new SessionVerifier(repository, jwtService),
+    verifier,
+    connections,
+    sessions: new AuthSessionService(repository, jwtService, connections),
   };
 }
 

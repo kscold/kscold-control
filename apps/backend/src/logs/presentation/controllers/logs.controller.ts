@@ -27,6 +27,7 @@ import {
 } from '../../application/use-cases';
 import { FrontendErrorRequestDto } from '../dto/frontend-error.request.dto';
 import { LogType, type DockerLogFilter } from '../../domain/types/log.type';
+import { SessionConnectionRegistry } from '../../../auth/application/services/session-connection-registry.service';
 
 @Controller('logs')
 @UseGuards(AuthGuard('jwt'), PermissionsGuard)
@@ -39,6 +40,7 @@ export class LogsController {
     private readonly getDockerArchiveSourcesUseCase: GetDockerArchiveSourcesUseCase,
     private readonly getDockerArchiveLogsUseCase: GetDockerArchiveLogsUseCase,
     private readonly streamDockerLogsUseCase: StreamDockerLogsUseCase,
+    private readonly sessionConnections: SessionConnectionRegistry,
     private readonly getNginxStatusUseCase: GetNginxStatusUseCase,
     private readonly getSystemInfoUseCase: GetSystemInfoUseCase,
   ) {}
@@ -262,11 +264,16 @@ export class LogsController {
       }
       closed = true;
       clearInterval(heartbeat);
+      unbindSession();
       process.kill('SIGTERM');
       if (!res.writableEnded) {
         res.end();
       }
     };
+    const unbindSession = this.sessionConnections.bind(
+      req.user.sessionId,
+      close,
+    );
 
     process.stdout.on('data', handleChunk);
     process.stderr.on('data', handleChunk);
