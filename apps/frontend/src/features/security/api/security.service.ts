@@ -6,6 +6,7 @@ import type {
   SshAccessOverview,
   SshBlock,
   SshBlockScope,
+  SshFirewallBlocks,
   SshSession,
 } from '../model/security.types';
 
@@ -74,6 +75,18 @@ export class SecurityService extends BaseApiService {
       if (signal?.aborted) throw error;
       this.logError('SecurityService', 'getSshAccess', error);
       this.handleError(error, 'SSH 접속 기록 조회 실패');
+    }
+  }
+
+  async getFirewallBlocks(): Promise<SshFirewallBlocks> {
+    try {
+      const { data } = await api.get<SshFirewallBlocks>(
+        `${this.basePath}/ssh/blocks`,
+      );
+      return data;
+    } catch (error) {
+      this.logError('SecurityService', 'getFirewallBlocks', error);
+      this.handleError(error, '방화벽 차단 목록 조회 실패');
     }
   }
 
