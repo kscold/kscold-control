@@ -20,7 +20,17 @@ import {
 } from '../rbac/domain/repositories/user.repository.interface';
 import type { JwtPayload } from '../common/types/jwt-request.type';
 import { isGlobalAdministrator } from '../common/utils/role-access.util';
+import { SessionVerifier } from '../auth/application/services/session-verifier.service';
+import { SessionConnectionRegistry } from '../auth/application/services/session-connection-registry.service';
 import type { DesktopConnection } from './remote-desktop-targets.service';
+
+interface DesktopTicket {
+  userId: string;
+  /** 연결권을 받은 로그인 세션. 접속할 때와 접속 중에 이 세션이 살아 있어야 한다. */
+  sessionId: string;
+  expires: number;
+  port: number;
+}
 
 export function canControlDesktop(
   user: Pick<JwtPayload, 'roles' | 'impersonation'>,
@@ -33,10 +43,7 @@ export class RemoteDesktopService
   implements OnApplicationBootstrap, OnModuleDestroy
 {
   private readonly logger = new Logger(RemoteDesktopService.name);
-  private readonly tickets = new Map<
-    string,
-    { userId: string; expires: number; port: number }
-  >();
+  private readonly tickets = new Map<string, DesktopTicket>();
   private readonly sockets = new Set<WebSocket>();
   private readonly cleanup = new Map<WebSocket, () => void>();
   private readonly pending = new Set<Duplex>();
@@ -53,6 +60,8 @@ export class RemoteDesktopService
     private readonly adapter: HttpAdapterHost,
     private readonly config: ConfigService,
     @Inject(USER_REPOSITORY) private readonly users: IUserRepository,
+    private readonly sessionVerifier: SessionVerifier,
+    private readonly sessionConnections: SessionConnectionRegistry,
   ) {}
 
   issue(user: JwtPayload, connection?: DesktopConnection) {
@@ -71,6 +80,7 @@ export class RemoteDesktopService
     const ticket = randomBytes(32).toString('hex');
     this.tickets.set(ticket, {
       userId: user.id,
+      sessionId: user.sessionId,
       expires: now + 30_000,
       port: connection?.port ?? settings.port,
     });
@@ -170,6 +180,10 @@ export class RemoteDesktopService
       !protocols.includes('binary')
     )
       throw new Error('Rejected');
+    await this.sessionVerifier.verifyClaims({
+      sub: ticket.userId,
+      sid: ticket.sessionId,
+    });
     const user = await this.users.findByIdWithRoles(ticket.userId);
     if (
       !user ||
@@ -180,11 +194,12 @@ export class RemoteDesktopService
     )
       throw new Error('Rejected');
     this.ws.handleUpgrade(request, socket, head, (client) =>
-      this.connect(client, ticket.userId, ticket.port),
+      this.connect(client, ticket),
     );
   }
 
-  private connect(client: WebSocket, userId: string, port: number) {
+  private connect(client: WebSocket, ticket: DesktopTicket) {
+    const { userId, sessionId, port } = ticket;
     this.sockets.add(client);
     // 브라우저가 지정한 호스트로 접속하지 않는다. 원격 호스트는 별도 SSH 로컬 터널을 사용한다.
     const target = createConnection({ host: '127.0.0.1', port });
@@ -197,6 +212,7 @@ export class RemoteDesktopService
       clearTimeout(lifetime);
       clearInterval(check);
       clearInterval(heartbeat);
+      unbindSession();
       target.unpipe(stream);
       stream.unpipe(target);
       target.destroy();
@@ -206,16 +222,20 @@ export class RemoteDesktopService
       this.cleanup.delete(client);
       this.logger.log({ event: 'remote-desktop.disconnected', userId });
     };
+    const unbindSession = this.sessionConnections.bind(sessionId, close);
     const connectionTimeout = setTimeout(close, 10_000);
     const lifetime = setTimeout(close, 15 * 60_000);
     let checking = false;
     const check = setInterval(() => {
       if (closed || checking) return;
       checking = true;
-      void this.users
-        .findByIdWithRoles(userId)
-        .then((user) => {
-          if (!user || !isGlobalAdministrator(user.roles)) close();
+      void Promise.all([
+        this.users.findByIdWithRoles(userId),
+        this.sessionVerifier.isActive(sessionId),
+      ])
+        .then(([user, sessionActive]) => {
+          if (!sessionActive || !user || !isGlobalAdministrator(user.roles))
+            close();
         })
         .catch(close)
         .finally(() => {
