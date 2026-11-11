@@ -59,16 +59,52 @@ export function parseSshAuditLine(line: string): SshAuditEvent | null {
   const [at, result, user, ip, method, ...rest] = cols;
   if (!DATE_RE.test(at)) return null;
   if (!(SSH_AUDIT_RESULTS as readonly string[]).includes(result)) return null;
-  const cleanIp = dash(ip);
+  const message = rest.join('\t').slice(0, 200);
+  // 예전 기록기는 "Disconnected from authenticating user root 1.2.3.4 port" 같은 줄에서 IP 칸을 잘못 채웠다 — 원문에서 다시 뽑음
+  const cleanIp = isIpLike(dash(ip)) ? dash(ip) : ipFromMessage(message);
   return {
     at,
-    result: result as SshAuditResult,
-    user: dash(user),
+    result: repairResult(result as SshAuditResult, message),
+    user: dash(user) ?? userFromMessage(message),
     ip: cleanIp,
     method: dash(method),
-    message: rest.join('\t').slice(0, 200),
+    message,
     scope: classifySshIp(cleanIp),
   };
+}
+
+const IPV4_RE = /^\d{1,3}(\.\d{1,3}){3}$/;
+
+function isIpLike(value: string | null): value is string {
+  return (
+    !!value &&
+    (IPV4_RE.test(value) || /^[0-9a-fA-F]*:[0-9a-fA-F:.]+$/.test(value))
+  );
+}
+
+function ipFromMessage(message: string): string | null {
+  const m = message.match(
+    /(\d{1,3}(?:\.\d{1,3}){3}|[0-9a-fA-F]*:[0-9a-fA-F:.]+) port \d+/,
+  );
+  return m ? m[1] : null;
+}
+
+function userFromMessage(message: string): string | null {
+  const m = message.match(
+    /(?:invalid user|authenticating user) (\S+) (?:from )?\S+ port \d+/i,
+  );
+  return m ? m[1] : null;
+}
+
+/** 없는 계정으로 비밀번호를 넣거나 끊긴 줄은 예전 기록기가 실패·인증중끊김으로 남겼다 — 없는 계정으로 봄 */
+function repairResult(result: SshAuditResult, message: string): SshAuditResult {
+  if (
+    (result === '실패' || result === '인증중끊김') &&
+    /invalid user /.test(message)
+  ) {
+    return '없는계정';
+  }
+  return result;
 }
 
 function dash(value: string | undefined): string | null {
