@@ -33,6 +33,49 @@ describe('ssh-audit model', () => {
     ).toBeNull();
   });
 
+  it('예전 기록기가 잘못 남긴 IP·결과를 원문에서 바로잡는다', () => {
+    expect(
+      parseSshAuditLine(
+        line(
+          '2026-11-11 09:13:49',
+          '인증중끊김',
+          '-',
+          'a',
+          '-',
+          'Disconnected from authenticating user root 115.178.75.242 port 52268 [preauth]',
+        ),
+      ),
+    ).toMatchObject({ ip: '115.178.75.242', user: 'root', scope: 'external' });
+    expect(
+      parseSshAuditLine(
+        line(
+          '2026-11-11 09:13:45',
+          '실패',
+          'bucket',
+          '178.18.241.205',
+          'password',
+          'Failed password for invalid user bucket from 178.18.241.205 port 39544 ssh2',
+        ),
+      ),
+    ).toMatchObject({
+      result: '없는계정',
+      user: 'bucket',
+      ip: '178.18.241.205',
+    });
+    expect(
+      parseSshAuditLine(
+        line(
+          '2026-11-11 09:00:00',
+          '인증중끊김',
+          '-',
+          '-',
+          '-',
+          'Connection reset',
+        ),
+      ),
+    ).toMatchObject({ ip: null, scope: 'unknown' });
+  });
+
   it('IP 출처를 요약 스크립트와 같은 기준으로 나눈다', () => {
     expect(classifySshIp('127.0.0.1')).toBe('local');
     expect(classifySshIp('::1')).toBe('local');
