@@ -148,6 +148,9 @@ npm install -g @openai/codex
 | --------------------------------- | -------------------------- | ----------------------------------------- |
 | `DATABASE_URL`                    | —                          | PostgreSQL connection string (required)   |
 | `JWT_SECRET`                      | —                          | JWT signing secret (required)             |
+| `CONTROL_MFA_ENCRYPTION_KEY`      | —                          | Base64 32-byte OTP key (required)         |
+| `CONTROL_MFA_REQUIRED_ROLES`      | `admin,super_admin`        | Roles that must enroll an OTP app         |
+| `CONTROL_MFA_ISSUER`              | `kscold-control`           | Issuer name shown in OTP apps             |
 | `PORT`                            | `4000`                     | Backend HTTP/WS port                      |
 | `FRONTEND_URL`                    | `http://localhost:3000`    | CORS allowed origin                       |
 | `CONTROL_BIND_HOST`               | `127.0.0.1`                | Address the backend listens on            |
@@ -433,6 +436,33 @@ remote, once a day.
 
 ---
 
+## Two-factor login
+
+Accounts with a role in `CONTROL_MFA_REQUIRED_ROLES` must enroll an OTP app
+(TOTP, 6 digits, 30 seconds) before they can use anything. The first login after
+the password shows a QR code and 10 one-time recovery codes. Later logins ask for
+the 6-digit code or a recovery code. Other users can enroll from 내 계정.
+Sessions opened with a password only are refused for those roles, so the first
+deploy signs those accounts out once.
+
+Generate the key once with `openssl rand -base64 32`. Changing it makes stored
+OTP secrets and recovery codes unreadable.
+
+If an operator loses both the OTP app and the recovery codes, clear their
+enrollment on the host. The script is not reachable over HTTP:
+
+```bash
+node --env-file=.env scripts/reset-user-mfa.mjs admin@example.com
+```
+
+It removes the OTP enrollment and recovery codes and signs out every session of
+that account. The next login goes back to enrollment.
+
+Wrong OTP and recovery codes go through the `MfaAttemptGuard` seam
+(`apps/backend/src/auth/mfa/domain/mfa-attempt-guard.ts`). The default binding
+only writes 운영 감사 entries, and a login challenge closes after 5 wrong codes.
+Login blocking binds the same seam to count them with password failures.
+
 ## Production Deployment
 
 Topology container nodes use the actual Docker container name as their title;
@@ -442,7 +472,7 @@ blog socket (`/run/blog/supervisor.sock`) also supplies running service ports fo
 API (8080), web (3000), Agent (9090), MongoDB (27017) and Qdrant (6333).
 
 ```bash
-# 1. Configure .env (DATABASE_URL and JWT_SECRET are required)
+# 1. Configure .env (DATABASE_URL, JWT_SECRET and CONTROL_MFA_ENCRYPTION_KEY are required)
 cp .env.example .env
 
 # 2. Verify, migrate, build, deploy, and attest the internal/external release revision
