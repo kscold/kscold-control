@@ -112,4 +112,28 @@ describe('SshAccessService', () => {
       NotFoundException,
     );
   });
+
+  it('동시에 등록한 내 IP를 빠짐없이 보존한다', async () => {
+    const addresses = ['203.0.113.11', '203.0.113.12', '203.0.113.13'];
+    await Promise.all(addresses.map((ip) => service.addKnownIp(ip)));
+    expect((await read('ssh-known-ips.txt')).trim().split('\n').sort()).toEqual(
+      addresses,
+    );
+    expect(
+      (await fs.readdir(dir)).filter((name) => name.endsWith('.tmp')),
+    ).toEqual([]);
+  });
+
+  it('동일 IP 차단을 중복 기록하지 않고 실패 후에도 다음 변경을 처리한다', async () => {
+    await expect(service.block('invalid', null)).rejects.toBeInstanceOf(
+      BadRequestException,
+    );
+    await Promise.all([
+      service.block('203.0.113.20', null),
+      service.block('203.0.113.20', null),
+    ]);
+    expect(
+      (await read('ssh-block-manual.txt')).trim().split('\n'),
+    ).toHaveLength(1);
+  });
 });

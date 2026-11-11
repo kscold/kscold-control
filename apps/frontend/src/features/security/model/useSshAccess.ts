@@ -2,46 +2,59 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { securityService } from '../api/security.service';
 import type { SshAccessOverview } from '../model/security.types';
 
-/** 15초마다 새로 읽음 — 차단기도 15초 간격으로 반영 */
+/** 화면이 보이는 동안만 15초마다 조회함. */
 const REFRESH_MS = 15_000;
 
 export function useSshAccess(days: number) {
   const [data, setData] = useState<SshAccessOverview | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const busy = useRef(false);
+  const pending = useRef<AbortController | null>(null);
 
   const load = useCallback(async () => {
-    if (busy.current) return;
-    busy.current = true;
+    pending.current?.abort();
+    const request = new AbortController();
+    pending.current = request;
     setLoading(true);
     try {
-      setData(await securityService.getSshAccess(days));
+      const overview = await securityService.getSshAccess(days, request.signal);
+      if (request.signal.aborted) return;
+      setData(overview);
       setError(null);
     } catch (e) {
+      if (request.signal.aborted) return;
       setError(e instanceof Error ? e.message : String(e));
     } finally {
-      busy.current = false;
-      setLoading(false);
+      if (pending.current === request) {
+        pending.current = null;
+        setLoading(false);
+      }
     }
   }, [days]);
+  const refresh = useRef<(() => Promise<void>) | null>(null);
 
   useEffect(() => {
+    refresh.current = load;
+    setData(null);
+    setError(null);
     void load();
     const timer = window.setInterval(() => {
-      if (document.visibilityState === 'visible') void load();
+      if (document.visibilityState === 'visible' && !pending.current)
+        void load();
     }, REFRESH_MS);
-    return () => window.clearInterval(timer);
+    return () => {
+      refresh.current = null;
+      window.clearInterval(timer);
+      pending.current?.abort();
+      pending.current = null;
+    };
   }, [load]);
 
   /** 바꾸는 요청을 보낸 뒤 바로 다시 읽음 */
-  const run = useCallback(
-    async (action: () => Promise<unknown>) => {
-      await action();
-      await load();
-    },
-    [load],
-  );
+  const run = useCallback(async (action: () => Promise<unknown>) => {
+    await action();
+    await refresh.current?.();
+  }, []);
 
   return {
     data,
