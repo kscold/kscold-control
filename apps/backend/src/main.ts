@@ -7,6 +7,9 @@ import { WinstonLoggerService } from './common/logger/winston.logger';
 import { configuredTrustedProxies } from './common/utils/client-ip.util';
 
 async function bootstrap() {
+  // 모듈이 nginx 차단 목록 반영 같은 기동 작업을 하기 전에 설정 오류로 멈춘다.
+  configuredTrustedProxies();
+
   // bodyParser: false — multer(multipart)와 충돌 방지, 수동으로 body-parser 추가
   const app = await NestFactory.create(AppModule, {
     logger: new WinstonLoggerService(),
@@ -37,9 +40,6 @@ async function bootstrap() {
 
   // 글로벌 prefix
   app.setGlobalPrefix('api');
-
-  // 설정 오류는 첫 로그인이 아니라 기동할 때 드러낸다.
-  configuredTrustedProxies();
 
   const port = process.env.PORT || 4000;
   // 같은 컴퓨터의 nginx 만 닿게 하여 X-Real-IP 위조 경로를 없앤다.
