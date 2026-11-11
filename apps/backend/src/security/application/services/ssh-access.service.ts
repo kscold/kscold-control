@@ -131,6 +131,18 @@ export class SshAccessService {
     return join(this.dir, name);
   }
 
+  /** 방화벽 차단 목록만 — 웹 IP 차단 화면에서 같이 보여 주려고 기록·프로세스는 읽지 않음 */
+  async firewallBlocks(): Promise<{
+    guard: SshGuardStatus;
+    items: SshBlock[];
+  }> {
+    const [guard, items] = await Promise.all([
+      this.readGuardStatus(),
+      this.readBlocks(),
+    ]);
+    return { guard, items };
+  }
+
   async overview(days: number): Promise<SshAccessOverview> {
     const safeDays = Math.min(Math.max(Math.trunc(days) || 7, 1), 90);
     const since = formatLocal(new Date(Date.now() - safeDays * 86_400_000));

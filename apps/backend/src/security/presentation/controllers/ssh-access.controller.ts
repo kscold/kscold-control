@@ -41,6 +41,12 @@ export class SshAccessController {
     return this.ssh.overview(Number(days ?? 7));
   }
 
+  @Get('blocks')
+  @RequirePermissions(PERMISSIONS.SECURITY_READ)
+  blocks() {
+    return this.ssh.firewallBlocks();
+  }
+
   @Post('sessions/:pid/terminate')
   @RequirePermissions(PERMISSIONS.SECURITY_MANAGE)
   @Audit({

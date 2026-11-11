@@ -2,8 +2,6 @@ import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import {
   Ban,
   CheckCircle2,
-  ChevronLeft,
-  ChevronRight,
   Pencil,
   Loader2,
   Plug,
@@ -15,6 +13,9 @@ import {
   X,
 } from 'lucide-react';
 import { useModalStore } from '@/shared/model/modal.store';
+import { FirewallBlockList } from './FirewallBlockList';
+import { smallButton, usePaged } from '../model/paging';
+import { Pager } from './Pager';
 import { usePermissions, formatShortDateTime } from '@/shared/lib';
 import { PERMISSIONS } from '@/shared/config/permissions';
 import { useSshAccess } from '../model/useSshAccess';
@@ -50,71 +51,6 @@ function blockConfirmation(ip: string, scope: SshBlockScope = 'all'): string {
   return scope === 'ssh'
     ? `${ip}의 SSH 접속을 막을까요?\n운영 중인 사이트 접속은 그대로입니다.`
     : `${ip}를 막을까요?\n맥미니 방화벽에서 SSH 와 운영 중인 사이트 접속을 모두 막습니다.`;
-}
-
-const BLOCK_SCOPE_LABEL: Record<
-  SshBlockScope,
-  { label: string; className: string }
-> = {
-  all: {
-    label: 'SSH·사이트',
-    className: 'border-red-500/30 bg-red-500/10 text-red-300',
-  },
-  ssh: {
-    label: 'SSH 만',
-    className: 'border-amber-500/30 bg-amber-500/10 text-amber-300',
-  },
-};
-
-/** 긴 목록을 쪽으로 나눔 — 목록이 줄어 쪽이 사라지면 마지막 쪽으로 */
-function usePaged<T>(items: T[], size: number) {
-  const [page, setPage] = useState(0);
-  const pages = Math.max(1, Math.ceil(items.length / size));
-  const current = Math.min(page, pages - 1);
-  return {
-    items: items.slice(current * size, current * size + size),
-    page: current,
-    pages,
-    total: items.length,
-    setPage,
-  };
-}
-
-function Pager({
-  page,
-  pages,
-  total,
-  setPage,
-}: {
-  page: number;
-  pages: number;
-  total: number;
-  setPage: (p: number) => void;
-}) {
-  if (pages <= 1) return null;
-  return (
-    <div className="mt-2 flex items-center justify-end gap-2 text-xs text-gray-500">
-      <span>
-        {total}개 중 {page + 1}/{pages}쪽
-      </span>
-      <button
-        aria-label="이전 쪽"
-        className={smallButton}
-        disabled={page === 0}
-        onClick={() => setPage(page - 1)}
-      >
-        <ChevronLeft size={12} />
-      </button>
-      <button
-        aria-label="다음 쪽"
-        className={smallButton}
-        disabled={page >= pages - 1}
-        onClick={() => setPage(page + 1)}
-      >
-        <ChevronRight size={12} />
-      </button>
-    </div>
-  );
 }
 
 function ScopeBadge({ scope }: { scope: SshIpScope }) {
@@ -153,16 +89,12 @@ function Section({
   );
 }
 
-const smallButton =
-  'inline-flex shrink-0 items-center gap-1 rounded-lg border border-gray-800 px-2 py-1 text-xs text-gray-300 hover:border-gray-600 hover:text-white disabled:opacity-40';
-
 export function SshAccessPanel() {
   const [days, setDays] = useState(7);
   const [filter, setFilter] = useState<EventFilter>('external');
   const [blockIp, setBlockIp] = useState('');
   const [blockReason, setBlockReason] = useState('');
   const [blockScope, setBlockScope] = useState<SshBlockScope>('all');
-  const [blockQuery, setBlockQuery] = useState('');
   const [knownIp, setKnownIp] = useState('');
   const [knownLabel, setKnownLabel] = useState('');
   const [editing, setEditing] = useState<{ ip: string; label: string } | null>(
@@ -183,16 +115,6 @@ export function SshAccessPanel() {
     () => new Map((data?.knownIps ?? []).map((k) => [k.ip, k.label])),
     [data],
   );
-  const blockList = useMemo(() => {
-    const q = blockQuery.trim().toLowerCase();
-    const list = data?.blocks ?? [];
-    return q
-      ? list.filter((b) =>
-          `${b.ip} ${b.reason ?? ''}`.toLowerCase().includes(q),
-        )
-      : list;
-  }, [data, blockQuery]);
-
   const act = async (key: string, fn: () => Promise<unknown>) => {
     setWorking(key);
     try {
@@ -226,13 +148,10 @@ export function SshAccessPanel() {
     }
   }, [data, filter]);
 
-  const blockPage = usePaged(blockList, 10);
   const ipPage = usePaged(data?.summary.ips ?? [], 10);
   const eventPage = usePaged(events, 20);
   const { setPage: setEventPage } = eventPage;
-  const { setPage: setBlockPage } = blockPage;
   useEffect(() => setEventPage(0), [filter, days, setEventPage]);
-  useEffect(() => setBlockPage(0), [blockQuery, setBlockPage]);
 
   if (!data) {
     return ssh.error ? (
@@ -591,21 +510,7 @@ export function SshAccessPanel() {
       </Section>
 
       {/* 차단 */}
-      <Section
-        title="차단 중인 IP"
-        count={data.blocks.length}
-        action={
-          data.blocks.length > 10 ? (
-            <input
-              value={blockQuery}
-              onChange={(e) => setBlockQuery(e.target.value)}
-              placeholder="IP·이유 찾기"
-              aria-label="차단 목록 찾기"
-              className="w-40 min-w-0 rounded-lg border border-gray-800 bg-gray-900 px-2 py-1 text-xs text-white placeholder:text-gray-600 focus:border-gray-600 focus:outline-none"
-            />
-          ) : undefined
-        }
-      >
+      <Section title="차단 중인 IP" count={data.blocks.length}>
         {canManage && (
           <form
             className="mb-3 grid grid-cols-1 gap-2 sm:grid-cols-[minmax(0,12rem)_minmax(0,1fr)_auto_auto]"
@@ -665,87 +570,14 @@ export function SshAccessPanel() {
           와 맥미니에서 운영 중인 사이트를 모두 막고, IP 마다 SSH 만 막도록 바꿀
           수 있습니다.
         </p>
-        {blockList.length === 0 ? (
-          <Empty
-            text={
-              blockQuery ? '찾는 IP 가 없습니다' : '막고 있는 IP 가 없습니다'
-            }
-          />
-        ) : (
-          <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
-            {blockPage.items.map((b) => (
-              <div
-                key={`${b.source}:${b.ip}`}
-                className="flex items-start gap-3 rounded-xl border border-gray-800 bg-gray-900/60 p-3"
-              >
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2">
-                    <span className="truncate font-mono text-sm text-white">
-                      {b.ip}
-                    </span>
-                    <span
-                      className={`shrink-0 rounded-full border px-2 py-0.5 text-[10px] ${
-                        b.source === 'auto'
-                          ? 'border-violet-500/30 bg-violet-500/10 text-violet-300'
-                          : 'border-blue-500/30 bg-blue-500/10 text-blue-300'
-                      }`}
-                    >
-                      {b.source === 'auto' ? '자동' : '수동'}
-                    </span>
-                    <span
-                      className={`shrink-0 rounded-full border px-2 py-0.5 text-[10px] ${BLOCK_SCOPE_LABEL[b.scope].className}`}
-                    >
-                      {BLOCK_SCOPE_LABEL[b.scope].label}
-                    </span>
-                  </div>
-                  <p className="mt-1 truncate text-xs text-gray-500">
-                    {b.blockedAt ?? '-'}
-                    {b.reason ? ` · ${b.reason}` : ''}
-                  </p>
-                </div>
-                {canManage && (
-                  <div className="flex shrink-0 gap-1">
-                    <button
-                      className={smallButton}
-                      disabled={working !== null}
-                      onClick={() => {
-                        const next: SshBlockScope =
-                          b.scope === 'all' ? 'ssh' : 'all';
-                        confirmAct(
-                          next === 'ssh'
-                            ? `${b.ip} 를 SSH 만 막도록 바꿀까요?\n운영 중인 사이트에는 다시 들어올 수 있습니다.`
-                            : `${b.ip} 를 사이트까지 막을까요?\nSSH 와 맥미니에서 운영 중인 사이트 접속을 모두 막습니다.`,
-                          `scope:${b.ip}`,
-                          () => ssh.setScope(b.ip, next),
-                        );
-                      }}
-                    >
-                      {b.scope === 'all' ? 'SSH 만' : '사이트까지'}
-                    </button>
-                    <button
-                      className={smallButton}
-                      disabled={working !== null}
-                      onClick={() =>
-                        confirmAct(
-                          `${b.ip} 의 차단을 풀까요?${
-                            b.source === 'auto'
-                              ? '\n같은 시도가 다시 오면 또 자동으로 막힙니다. 내 IP 라면 "내 IP" 로 표시하세요.'
-                              : ''
-                          }`,
-                          `unblock:${b.ip}`,
-                          () => ssh.unblock(b.ip),
-                        )
-                      }
-                    >
-                      해제
-                    </button>
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
-        <Pager {...blockPage} />
+        <FirewallBlockList
+          blocks={data.blocks}
+          canManage={canManage}
+          disabled={working !== null}
+          confirm={confirmAct}
+          onScope={ssh.setScope}
+          onUnblock={ssh.unblock}
+        />
       </Section>
 
       {/* IP 별 */}

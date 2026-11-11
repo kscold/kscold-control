@@ -2,6 +2,11 @@ import { useState } from 'react';
 import { Shield, Plus, Loader2, RefreshCw } from 'lucide-react';
 import { SshAccessPanel } from './SshAccessPanel';
 import { useIpBans } from '../model/useIpBans';
+import { useFirewallBlocks } from '../model/useFirewallBlocks';
+import { useModalStore } from '@/shared/model/modal.store';
+import { usePermissions } from '@/shared/lib';
+import { PERMISSIONS } from '@/shared/config/permissions';
+import { FirewallBlockList } from './FirewallBlockList';
 import { BanList } from './BanList';
 import { AddBanModal } from './AddBanModal';
 
@@ -32,6 +37,33 @@ export function SecurityView() {
   };
   const { bans, loading, error, reload, create, remove, resync } = useIpBans();
   const [addOpen, setAddOpen] = useState(false);
+  const firewall = useFirewallBlocks();
+  const [firewallWorking, setFirewallWorking] = useState(false);
+  const { showConfirm, showAlert } = useModalStore();
+  const { hasPermission } = usePermissions();
+  const canManage = hasPermission(PERMISSIONS.SECURITY_MANAGE);
+  const firewallAll = (firewall.data?.items ?? []).filter(
+    (b) => b.scope === 'all',
+  );
+  const firewallSshOnly =
+    (firewall.data?.items.length ?? 0) - firewallAll.length;
+  const confirmFirewall = (
+    message: string,
+    _key: string,
+    fn: () => Promise<unknown>,
+  ) =>
+    showConfirm(
+      message,
+      () => {
+        setFirewallWorking(true);
+        void fn()
+          .catch((e: unknown) =>
+            showAlert(e instanceof Error ? e.message : String(e), '요청 실패'),
+          )
+          .finally(() => setFirewallWorking(false));
+      },
+      '확인',
+    );
   const [resyncing, setResyncing] = useState(false);
   const [resyncMsg, setResyncMsg] = useState<string | null>(null);
 
@@ -67,7 +99,7 @@ export function SecurityView() {
           <p className="mt-1 text-sm text-gray-500">
             {tab === 'ssh'
               ? '맥미니 SSH 접속 기록 · 열린 세션 · 공격 IP 차단'
-              : `웹(nginx) IP 차단 기록. 활성 ${active.length}건.`}
+              : `사이트 접속 차단 — 방화벽 ${firewallAll.length}건 · nginx ${active.length}건`}
           </p>
         </div>
 
@@ -99,7 +131,7 @@ export function SecurityView() {
         {(
           [
             ['ssh', 'SSH 접속'],
-            ['bans', '웹 IP 차단'],
+            ['bans', '사이트 IP 차단'],
           ] as const
         ).map(([key, label]) => (
           <button
@@ -141,8 +173,48 @@ export function SecurityView() {
           ) : (
             <div className="space-y-6">
               <section>
+                <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                  <h2 className="text-xs font-bold uppercase tracking-wider text-gray-500">
+                    방화벽 차단 · SSH·사이트 ({firewallAll.length})
+                  </h2>
+                  <button
+                    onClick={() => selectTab('ssh')}
+                    className="text-xs text-gray-500 underline-offset-2 hover:text-white hover:underline"
+                  >
+                    SSH 접속 탭에서 자세히
+                  </button>
+                </div>
+                <p className="mb-3 text-xs text-gray-500">
+                  SSH 공격으로 자동 차단했거나 SSH 접속 탭에서 막은 IP 입니다.
+                  맥미니 방화벽에서 막아 nginx 에 닿기 전에 모든 사이트 접속이
+                  끊깁니다. SSH 접속 탭과 같은 목록이라 여기서 바꾸면 그쪽에도
+                  바로 반영됩니다.
+                  {firewallSshOnly > 0 &&
+                    ` SSH 만 막는 IP ${firewallSshOnly}개는 SSH 접속 탭에서 봅니다.`}
+                </p>
+                {firewall.error && (
+                  <p className="mb-2 text-xs text-red-400">{firewall.error}</p>
+                )}
+                {firewall.data && !firewall.data.guard.running && (
+                  <p className="mb-2 text-xs text-amber-300">
+                    차단기가 꺼져 있어 이 목록이 방화벽에 반영되지 않고
+                    있습니다.
+                  </p>
+                )}
+                <FirewallBlockList
+                  blocks={firewallAll}
+                  canManage={canManage}
+                  disabled={firewallWorking}
+                  confirm={confirmFirewall}
+                  onScope={firewall.setScope}
+                  onUnblock={firewall.unblock}
+                  emptyText="방화벽에서 사이트까지 막은 IP 가 없습니다"
+                />
+              </section>
+
+              <section>
                 <h2 className="mb-3 text-xs font-bold uppercase tracking-wider text-gray-500">
-                  활성 차단 ({active.length})
+                  nginx 차단 ({active.length})
                 </h2>
                 <BanList bans={active} onRemove={remove} />
               </section>
