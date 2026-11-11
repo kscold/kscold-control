@@ -135,22 +135,22 @@ describe('SshAccessService', () => {
   it('내 IP 별칭을 남기고, 다른 IP 를 바꿔도 별칭이 지워지지 않는다', async () => {
     await fs.writeFile(
       join(dir, 'ssh-known-ips.txt'),
-      '# 메모\n203.0.113.10\t회사\n203.0.113.20 집(맥미니)\n',
+      '# 메모\n203.0.113.10\t회사\n203.0.113.20 집\n',
     );
     await service.addKnownIp('198.51.100.7');
     await service.setKnownIpLabel('198.51.100.7', '휴대폰\t테더링');
     expect(await read('ssh-known-ips.txt')).toBe(
-      '203.0.113.10\t회사\n203.0.113.20\t집(맥미니)\n198.51.100.7\t휴대폰 테더링\n',
+      '203.0.113.10\t회사\n203.0.113.20\t집\n198.51.100.7\t휴대폰 테더링\n',
     );
     const o = await service.overview(7);
     expect(o.knownIps).toEqual([
       { ip: '203.0.113.10', label: '회사' },
-      { ip: '203.0.113.20', label: '집(맥미니)' },
+      { ip: '203.0.113.20', label: '집' },
       { ip: '198.51.100.7', label: '휴대폰 테더링' },
     ]);
     await service.setKnownIpLabel('198.51.100.7', null);
     expect(await service.removeKnownIp('203.0.113.10')).toEqual([
-      { ip: '203.0.113.20', label: '집(맥미니)' },
+      { ip: '203.0.113.20', label: '집' },
       { ip: '198.51.100.7', label: null },
     ]);
     await expect(
