@@ -10,6 +10,14 @@ import {
 } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import RemoteDesktopPage from './index';
+import {
+  debounce,
+  fitScale,
+  keysymForChar,
+  keysymForKey,
+  remoteSizeFor,
+  toRemotePoint,
+} from './display-fit';
 
 const fixture = vi.hoisted(() => ({
   auth: {
@@ -497,5 +505,139 @@ describe('원격 데스크톱 화면', () => {
       fixture.get.mockReset();
       fixture.get.mockResolvedValue({ data: [] });
     }
+  });
+
+  it('RDP 연결 뒤 화면 키보드 입력과 터치 방식 전환을 원격으로 넘긴다', async () => {
+    fixture.get.mockResolvedValueOnce({
+      data: [
+        {
+          id: 'windows',
+          name: '윈도우 PC',
+          port: 3389,
+          hasCredentials: true,
+          host: '10.0.0.5',
+          wakeMac: null,
+          protocol: 'rdp',
+        },
+      ],
+    });
+    fixture.post.mockResolvedValue({
+      data: { ticket: 'rdp-ticket', protocol: 'rdp' },
+    });
+    const sendKeysym = vi.fn();
+    const rdp = {
+      disconnect: vi.fn(),
+      clipboardPasteFrom: vi.fn(),
+      sendKeysym,
+      viewOnly: false,
+      touchMode: 'touchpad',
+    };
+    fixture.openRdp.mockImplementation((_el, _url, _ticket, events) => {
+      setTimeout(() => events.onConnect());
+      return rdp;
+    });
+    show();
+    fireEvent.click(screen.getByRole('button', { name: '접속 대상' }));
+    fireEvent.click(
+      await screen.findByRole('button', { name: '윈도우 PC 연결' }),
+    );
+    const keyboard = await screen.findByRole('button', { name: '화면 키보드' });
+    const input = screen.getByLabelText('원격 키 입력') as HTMLInputElement;
+    fireEvent.click(keyboard);
+    expect(document.activeElement).toBe(input);
+    fireEvent.keyDown(input, { key: 'Enter' });
+    fireEvent.input(input, {
+      target: { value: 'a가' },
+      data: 'a가',
+      inputType: 'insertText',
+    });
+    expect(input.value).toBe('');
+    expect(sendKeysym.mock.calls.map((call) => call[0])).toEqual([
+      0xff0d, 0x61, 0x0100ac00,
+    ]);
+    fireEvent.click(
+      screen.getByRole('button', { name: '터치 방식: 터치패드' }),
+    );
+    expect(rdp.touchMode).toBe('touchscreen');
+    expect(
+      screen.getByRole('button', { name: '터치 방식: 직접 누르기' }),
+    ).toBeTruthy();
+  });
+
+  it('좁은 화면에서도 도구 버튼은 아이콘만으로 이름을 유지한다', () => {
+    show();
+    for (const name of ['접속 대상', '클립보드', '전체 화면'])
+      expect(screen.getByRole('button', { name })).toBeTruthy();
+    expect(
+      screen.getByRole('region', { name: '원격 화면' }).className,
+    ).toContain('desktop-screen');
+  });
+});
+
+describe('원격 화면 맞춤 계산', () => {
+  it('비율을 지켜 영역 안에 들어가는 배율을 고른다', () => {
+    expect(
+      fitScale({ width: 800, height: 600 }, { width: 1600, height: 900 }),
+    ).toBe(0.5);
+    expect(
+      fitScale({ width: 390, height: 700 }, { width: 1280, height: 800 }),
+    ).toBeCloseTo(390 / 1280);
+    expect(
+      fitScale({ width: 2000, height: 1000 }, { width: 1000, height: 500 }),
+    ).toBe(2);
+    expect(
+      fitScale({ width: 0, height: 0 }, { width: 1000, height: 500 }),
+    ).toBe(1);
+  });
+
+  it('요청 해상도는 화소 밀도를 2배까지 반영하고 상한·짝수로 맞춘다', () => {
+    expect(remoteSizeFor({ width: 1001, height: 701 }, 1)).toEqual({
+      width: 1000,
+      height: 700,
+    });
+    expect(remoteSizeFor({ width: 390, height: 700 }, 3)).toEqual({
+      width: 780,
+      height: 1400,
+    });
+    expect(remoteSizeFor({ width: 1920, height: 1080 }, 2)).toEqual({
+      width: 2560,
+      height: 1440,
+    });
+    expect(remoteSizeFor({ width: 0, height: 500 }, 1)).toBeNull();
+  });
+
+  it('축소된 화면 좌표를 원격 좌표로 되돌리고 범위 안에 묶는다', () => {
+    const remote = { width: 1920, height: 1080 };
+    expect(toRemotePoint(480, 270, 0.5, remote)).toEqual({ x: 960, y: 540 });
+    expect(toRemotePoint(-5, 9999, 0.5, remote)).toEqual({ x: 0, y: 1079 });
+  });
+
+  it('해상도 요청은 마지막 변경 뒤 한 번만 보낸다', () => {
+    vi.useFakeTimers();
+    try {
+      const run = vi.fn();
+      const call = debounce(run, 300);
+      call(1);
+      vi.advanceTimersByTime(200);
+      call(2);
+      vi.advanceTimersByTime(299);
+      expect(run).not.toHaveBeenCalled();
+      vi.advanceTimersByTime(1);
+      expect(run).toHaveBeenCalledExactlyOnceWith(2);
+      call(3);
+      call.cancel();
+      vi.advanceTimersByTime(500);
+      expect(run).toHaveBeenCalledTimes(1);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('키 이름과 글자를 keysym 으로 바꾼다', () => {
+    expect(keysymForKey('Backspace')).toBe(0xff08);
+    expect(keysymForKey('a')).toBeUndefined();
+    expect(keysymForChar('A')).toBe(0x41);
+    expect(keysymForChar('é')).toBe(0xe9);
+    expect(keysymForChar('한')).toBe(0x0100d55c);
   });
 });

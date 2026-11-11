@@ -364,3 +364,66 @@
     padding: 14px;
   }
 }
+/* 원격 화면: 비율을 지켜 가운데 맞추고, 화면 위 손가락 동작이 페이지 스크롤·확대로 새지 않게 함 */
+.desktop-screen {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  touch-action: none;
+  overscroll-behavior: contain;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+/* 휴대폰 키보드를 부르는 숨은 입력칸. 16px 미만이면 iOS 가 화면을 확대함 */
+.desktop-key-input {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  border: 0;
+  opacity: 0;
+  font-size: 16px;
+  pointer-events: none;
+}
+.desktop-float-tools {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 10;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 4px;
+  max-width: calc(100% - 16px);
+  padding: 4px;
+  border: 1px solid #374151;
+  border-radius: 8px;
+  background: #030712e6;
+}
+/* 좁은 화면: 도구 막대를 줄바꿈하고 아이콘만 남겨 가로 스크롤을 막음 */
+@media (max-width: 640px) {
+  .desktop-toolbar {
+    gap: 6px;
+    padding: 8px 10px;
+  }
+  .desktop-heading {
+    flex-basis: 100%;
+  }
+  .desktop-toolbar .desktop-button,
+  .desktop-float-tools .desktop-button {
+    padding: 8px 10px;
+  }
+  .desktop-toolbar .desktop-button:has(svg) .desktop-label,
+  .desktop-float-tools .desktop-button:has(svg) .desktop-label {
+    display: none;
+  }
+  .desktop-status {
+    padding: 4px 10px;
+  }
+}
