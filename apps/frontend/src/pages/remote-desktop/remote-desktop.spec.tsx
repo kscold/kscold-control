@@ -18,6 +18,7 @@ const fixture = vi.hoisted(() => ({
     impersonation: false,
   },
   post: vi.fn(),
+  put: vi.fn(),
   get: vi.fn().mockResolvedValue({ data: [] }),
   paste: vi.fn(),
   credentials: vi.fn(),
@@ -31,7 +32,7 @@ vi.mock('@/shared/model/auth.store', () => ({
   useAuthStore: () => fixture.auth,
 }));
 vi.mock('@/shared/api', () => ({
-  api: { post: fixture.post, get: fixture.get },
+  api: { post: fixture.post, get: fixture.get, put: fixture.put },
 }));
 vi.mock('@novnc/novnc', () => ({
   default: class extends EventTarget {
@@ -156,7 +157,7 @@ describe('원격 데스크톱 화면', () => {
     show();
     fireEvent.click(screen.getByRole('button', { name: '접속 대상' }));
     fireEvent.click(
-      await screen.findByRole('button', { name: '작업 PC · 연결' }),
+      await screen.findByRole('button', { name: '작업 PC 연결' }),
     );
     await waitFor(() => expect(fixture.clients).toHaveLength(1));
     fireEvent.click(screen.getByRole('button', { name: '연결 종료' }));
@@ -194,7 +195,7 @@ describe('원격 데스크톱 화면', () => {
     fireEvent.click(screen.getByRole('button', { name: '접속 대상' }));
     fireEvent.click(
       await screen.findByRole('button', {
-        name: '윈도우 PC · 저장된 계정으로 연결',
+        name: '윈도우 PC 연결',
       }),
     );
     await waitFor(() => expect(fixture.openRdp).toHaveBeenCalledTimes(1));
@@ -228,10 +229,12 @@ describe('원격 데스크톱 화면', () => {
       fixture.post.mockResolvedValue({ data: { sent: true } });
       show();
       fireEvent.click(screen.getByRole('button', { name: '접속 대상' }));
-      fireEvent.click(await screen.findByRole('button', { name: '깨우기' }));
-      expect(
-        await screen.findByRole('button', { name: /켜지기를 기다리는 중/ }),
-      ).toBeDisabled();
+      fireEvent.click(await screen.findByRole('button', { name: /^깨우기/ }));
+      const progress = await screen.findAllByRole('button', {
+        name: /켜지기를 기다리는 중/,
+      });
+      expect(progress).toHaveLength(2);
+      for (const button of progress) expect(button).toBeDisabled();
       expect(fixture.post).toHaveBeenCalledWith(
         '/remote-desktop/targets/windows/wake',
         undefined,
@@ -242,9 +245,11 @@ describe('원격 데스크톱 화면', () => {
         await vi.advanceTimersByTimeAsync(5_000);
       });
       expect(
-        await screen.findByRole('button', { name: '깨우기' }),
+        await screen.findByRole('button', { name: /^깨우기/ }),
       ).toBeEnabled();
-      expect(screen.getByRole('img', { name: '켜짐' })).toBeTruthy();
+      expect(
+        screen.getAllByRole('img', { name: '켜짐' }).length,
+      ).toBeGreaterThan(0);
     } finally {
       fixture.get.mockReset();
       fixture.get.mockResolvedValue({ data: [] });
@@ -305,5 +310,192 @@ describe('원격 데스크톱 화면', () => {
     ).toBe(true);
     page.unmount();
     expect(fixture.disconnect).toHaveBeenCalled();
+  });
+
+  const windows = {
+    id: 'windows',
+    name: '윈도우 PC',
+    port: 3389,
+    hasCredentials: false,
+    host: '10.0.0.5',
+    wakeMac: null,
+    protocol: 'rdp',
+  };
+
+  it('계정 없는 RDP 대상은 연결 대신 계정 입력 창을 열고 저장 뒤 연결한다', async () => {
+    fixture.get.mockImplementation(async (path: string) =>
+      path.endsWith('/status')
+        ? { data: { online: true } }
+        : { data: [windows] },
+    );
+    fixture.put.mockImplementation(async () => {
+      fixture.get.mockImplementation(async (path: string) =>
+        path.endsWith('/status')
+          ? { data: { online: true } }
+          : { data: [{ ...windows, hasCredentials: true }] },
+      );
+      return { data: { id: 'windows' } };
+    });
+    fixture.post.mockResolvedValue({ data: { ticket: 't', protocol: 'rdp' } });
+    fixture.openRdp.mockImplementation(() => ({
+      disconnect: vi.fn(),
+      clipboardPasteFrom: vi.fn(),
+      viewOnly: false,
+    }));
+    try {
+      show();
+      fireEvent.click(
+        await screen.findByRole('button', { name: /계정 입력 후 연결/ }),
+      );
+      expect(fixture.post).not.toHaveBeenCalled();
+      const dialog = screen.getByRole('dialog');
+      expect(dialog.textContent).toContain('접속 계정 입력');
+      const password = screen.getByLabelText('암호');
+      expect(password.getAttribute('type')).toBe('password');
+      fireEvent.click(screen.getByRole('button', { name: '암호 보기' }));
+      expect(password.getAttribute('type')).toBe('text');
+      fireEvent.click(screen.getByRole('button', { name: '저장하고 연결' }));
+      expect(
+        await screen.findByText('저장하려면 암호를 입력하세요.'),
+      ).toBeTruthy();
+      expect(fixture.put).not.toHaveBeenCalled();
+      fireEvent.change(screen.getByLabelText('사용자 이름'), {
+        target: { value: 'test-user' },
+      });
+      fireEvent.change(password, { target: { value: 'test-password' } });
+      fireEvent.click(screen.getByRole('button', { name: '저장하고 연결' }));
+      await waitFor(() => expect(fixture.openRdp).toHaveBeenCalledTimes(1));
+      expect(fixture.put.mock.calls[0][0]).toBe(
+        '/remote-desktop/targets/windows',
+      );
+      expect(fixture.put.mock.calls[0][1]).toMatchObject({
+        username: 'test-user',
+        password: 'test-password',
+        saveCredentials: true,
+        protocol: 'rdp',
+        host: '10.0.0.5',
+      });
+      expect(screen.queryByRole('dialog')).toBeNull();
+      expect(screen.getByText('윈도우 PC 저장됨 · 계정 저장됨')).toBeTruthy();
+    } finally {
+      fixture.get.mockReset();
+      fixture.get.mockResolvedValue({ data: [] });
+    }
+  });
+
+  it('대상 추가 창은 서버와 같은 규칙으로 주소·MAC 을 확인하고 포트를 바꿔 준다', async () => {
+    show();
+    fireEvent.click(screen.getByRole('button', { name: '접속 대상' }));
+    fireEvent.click(screen.getByRole('button', { name: '대상 추가' }));
+    const port = screen.getByLabelText('포트') as HTMLInputElement;
+    expect(port.value).toBe('5900');
+    fireEvent.change(screen.getByLabelText('연결 방식'), {
+      target: { value: 'rdp' },
+    });
+    expect(port.value).toBe('3389');
+    fireEvent.change(screen.getByLabelText('이름'), {
+      target: { value: '작업 PC' },
+    });
+    fireEvent.change(screen.getByLabelText('주소'), {
+      target: { value: '203.0.113.5' },
+    });
+    fireEvent.change(screen.getByLabelText('MAC 주소'), {
+      target: { value: 'zz:00' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: '저장' }));
+    expect(screen.getByText(/172.16~31/)).toBeTruthy();
+    expect(screen.getByText(/같은 형식으로 입력하세요/)).toBeTruthy();
+    expect(fixture.post).not.toHaveBeenCalled();
+    fireEvent.change(port, { target: { value: '3390' } });
+    fireEvent.change(screen.getByLabelText('연결 방식'), {
+      target: { value: 'vnc' },
+    });
+    expect(port.value).toBe('3390');
+  });
+
+  it('저장 실패는 창 안에 서버 메시지로 보여 주고 입력을 유지한다', async () => {
+    fixture.post.mockRejectedValue({
+      response: {
+        status: 400,
+        data: { message: 'RDP 대상은 같은 망 주소를 입력하세요.' },
+      },
+    });
+    show();
+    fireEvent.click(screen.getByRole('button', { name: '접속 대상' }));
+    fireEvent.click(screen.getByRole('button', { name: '대상 추가' }));
+    fireEvent.change(screen.getByLabelText('이름'), {
+      target: { value: '작업 PC' },
+    });
+    fireEvent.change(screen.getByLabelText('암호'), {
+      target: { value: 'test-password' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: '저장' }));
+    const alert = await screen.findByText(
+      'RDP 대상은 같은 망 주소를 입력하세요.',
+    );
+    expect(alert.closest('[role="dialog"]')).toBeTruthy();
+    expect((screen.getByLabelText('이름') as HTMLInputElement).value).toBe(
+      '작업 PC',
+    );
+  });
+
+  it('계정이 저장된 대상은 암호를 비워도 저장하고 저장됨을 알린다', async () => {
+    fixture.get.mockResolvedValue({
+      data: [{ ...windows, hasCredentials: true }],
+    });
+    fixture.put.mockResolvedValue({ data: { id: 'windows' } });
+    try {
+      show();
+      fireEvent.click(screen.getByRole('button', { name: '접속 대상' }));
+      expect(await screen.findByText('계정 저장됨')).toBeTruthy();
+      fireEvent.click(
+        screen.getByRole('button', { name: '윈도우 PC 더 보기' }),
+      );
+      fireEvent.click(screen.getByRole('menuitem', { name: '편집' }));
+      expect(
+        screen.getByLabelText('암호').getAttribute('placeholder'),
+      ).toContain('저장된 암호 유지');
+      fireEvent.click(screen.getByRole('button', { name: '저장' }));
+      await waitFor(() => expect(fixture.put).toHaveBeenCalledTimes(1));
+      expect(fixture.put.mock.calls[0][1]).toMatchObject({
+        password: '',
+        saveCredentials: true,
+      });
+      expect(await screen.findByText(/윈도우 PC 저장됨/)).toBeTruthy();
+    } finally {
+      fixture.get.mockReset();
+      fixture.get.mockResolvedValue({ data: [] });
+    }
+  });
+
+  it('RDP 가 붙기 전에 끊기면 확인할 원인을 보여 준다', async () => {
+    fixture.get.mockResolvedValue({
+      data: [{ ...windows, hasCredentials: true }],
+    });
+    fixture.post.mockResolvedValue({ data: { ticket: 't', protocol: 'rdp' } });
+    let events: { onDisconnect: () => void } | undefined;
+    fixture.openRdp.mockImplementation((_s, _u, _t, handlers) => {
+      events = handlers;
+      return {
+        disconnect: vi.fn(),
+        clipboardPasteFrom: vi.fn(),
+        viewOnly: false,
+      };
+    });
+    try {
+      show();
+      fireEvent.click(
+        await screen.findByRole('button', { name: '화면 연결하기' }),
+      );
+      await waitFor(() => expect(events).toBeTruthy());
+      act(() => events?.onDisconnect());
+      const failure = screen.getByRole('alert');
+      expect(failure.textContent).toContain('저장된 계정과 암호');
+      expect(failure.textContent).toContain('켜져 있고');
+      expect(failure.textContent).toContain('중계 서버');
+    } finally {
+      fixture.get.mockReset();
+      fixture.get.mockResolvedValue({ data: [] });
+    }
   });
 });

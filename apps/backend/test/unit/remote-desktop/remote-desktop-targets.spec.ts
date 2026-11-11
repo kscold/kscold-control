@@ -115,6 +115,49 @@ describe('저장된 원격 접속 대상', () => {
     expect(query.mock.calls[0][1].slice(3, 6)).toEqual(['', '', '']);
   });
 
+  it('수정할 때 암호를 비우면 저장된 암호를 유지하고 사용자 이름만 바꾼다', async () => {
+    const encrypted = encryption.encrypt(
+      JSON.stringify({ username: 'old-user', password: input.password }),
+      'remote-desktop:local',
+    );
+    query.mockResolvedValueOnce([
+      {
+        id: 'local',
+        port: 5901,
+        encrypted_credentials: encrypted.encryptedPayload,
+        credentials_iv: encrypted.iv,
+        credentials_auth_tag: encrypted.authTag,
+      },
+    ]);
+    query.mockResolvedValue([]);
+    await service.save('local', {
+      ...input,
+      username: 'new-user',
+      password: '',
+    });
+    const params = query.mock.calls[1][1];
+    expect(
+      JSON.parse(
+        encryption.decrypt(
+          params[3],
+          params[4],
+          params[5],
+          'remote-desktop:local',
+        ),
+      ),
+    ).toEqual({ username: 'new-user', password: input.password });
+  });
+
+  it('저장된 암호가 없으면 빈 암호로 저장하지 않는다', async () => {
+    query.mockResolvedValue([]);
+    await expect(
+      service.save('local', { ...input, password: '' }),
+    ).rejects.toThrow('암호');
+    await expect(
+      service.save(undefined, { ...input, password: '' }),
+    ).rejects.toThrow('암호');
+  });
+
   it('요청 입력값은 실패한 요청에서도 로그에 남기지 않는다', () => {
     const log = JSON.stringify(
       sanitizeHttpRequestBody(
