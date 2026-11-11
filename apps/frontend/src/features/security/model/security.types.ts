@@ -81,6 +81,11 @@ export interface SshKnownIp {
   label: string | null;
 }
 
+export interface SshFirewallBlocks {
+  guard: SshAccessOverview['guard'];
+  items: SshBlock[];
+}
+
 export interface SshAccessOverview {
   recorder: { logPath: string; exists: boolean; updatedAt: string | null };
   guard: {

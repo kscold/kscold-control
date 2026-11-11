@@ -120,6 +120,9 @@ describe('SshAccessService', () => {
       (await service.overview(7)).blocks.map((b) => [b.ip, b.scope]),
     );
     expect(scopes).toEqual({ '5.5.5.5': 'ssh', '6.6.6.6': 'ssh' });
+    const fw = await service.firewallBlocks();
+    expect(fw.items.map((b) => b.ip).sort()).toEqual(['5.5.5.5', '6.6.6.6']);
+    expect(fw.guard.running).toBe(false);
 
     await service.setBlockScope('6.6.6.6', 'all');
     await service.unblock('5.5.5.5');
