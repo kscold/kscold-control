@@ -202,4 +202,54 @@ describe('SessionVerifier', () => {
       new Date(LOGIN_AT.getTime() + 2 * MINUTE),
     );
   });
+
+  it.each(['not-a-uuid', '1 OR 1=1', '', 42, null])(
+    '형식이 다른 sid %p 는 DB 오류 없이 401 로 거절한다',
+    async (sid) => {
+      const { verifier } = await login();
+
+      await expect(
+        verifier.verifyClaims({ sub: 'user-1', sid }),
+      ).rejects.toBeInstanceOf(UnauthorizedException);
+    },
+  );
+
+  it('관리자 세션이 DB 에서 끊기면 미리보기 세션도 바로 거절한다', async () => {
+    const { verifier, sessions, repository, session } = await login();
+    const preview = await sessions.open('user-2', browser, {
+      parentSessionId: session.id,
+      absoluteTtlMs: 15 * MINUTE,
+    });
+    repository.rows.set(session.id, {
+      ...repository.rows.get(session.id)!,
+      revokedAt: new Date(),
+    });
+
+    expect(repository.rows.get(preview.id)?.revokedAt).toBeNull();
+    await expect(
+      verifier.verifyClaims({ sub: 'user-2', sid: preview.id }),
+    ).rejects.toBeInstanceOf(UnauthorizedException);
+    await expect(verifier.isActive(preview.id)).resolves.toBe(false);
+  });
+
+  it('관리자 세션이 만료되면 남은 미리보기 세션도 거절한다', async () => {
+    const { verifier, sessions, repository, session } = await login();
+    const preview = await sessions.open('user-2', browser, {
+      parentSessionId: session.id,
+      absoluteTtlMs: 15 * MINUTE,
+    });
+    repository.rows.set(session.id, {
+      ...repository.rows.get(session.id)!,
+      expiresAt: new Date(LOGIN_AT.getTime() + 5 * MINUTE),
+    });
+
+    at(4 * MINUTE);
+    await expect(
+      verifier.verifyClaims({ sub: 'user-2', sid: preview.id }),
+    ).resolves.toMatchObject({ id: preview.id });
+    at(5 * MINUTE);
+    await expect(
+      verifier.verifyClaims({ sub: 'user-2', sid: preview.id }),
+    ).rejects.toBeInstanceOf(UnauthorizedException);
+  });
 });

@@ -22,6 +22,10 @@ export class InMemoryAuthSessionRepository implements IAuthSessionRepository {
   }
 
   async findById(id: string) {
+    // PostgreSQL 의 uuid 칸처럼 형식이 다른 값은 조회 자체가 실패한다.
+    if (!/^[0-9a-f-]{36}$/i.test(id)) {
+      throw new Error(`invalid input syntax for type uuid: "${id}"`);
+    }
     const session = this.rows.get(id);
     return session ? { ...session } : null;
   }
