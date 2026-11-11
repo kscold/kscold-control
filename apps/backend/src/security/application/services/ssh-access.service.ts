@@ -41,11 +41,21 @@ export interface SshSession {
   known: boolean;
 }
 
+/** 차단 범위 — all: 맥미니의 모든 접속(SSH·운영 사이트), ssh: SSH(22)만 */
+export type SshBlockScope = 'all' | 'ssh';
+
 export interface SshBlock {
   ip: string;
   source: 'auto' | 'manual';
   blockedAt: string | null;
   reason: string | null;
+  scope: SshBlockScope;
+}
+
+/** 내 IP — 별칭(회사·집 등)을 같이 둠 */
+export interface SshKnownIp {
+  ip: string;
+  label: string | null;
 }
 
 export interface SshGuardStatus {
@@ -54,6 +64,9 @@ export interface SshGuardStatus {
   updatedAt: string | null;
   pfEnabled: boolean | null;
   blockedCount: number | null;
+  /** 모든 접속을 막는 IP 수 / SSH 만 막는 IP 수 (차단기 새 버전부터) */
+  allCount: number | null;
+  sshOnlyCount: number | null;
 }
 
 export interface SshAccessOverview {
@@ -64,7 +77,7 @@ export interface SshAccessOverview {
   sessions: SshSession[];
   /** 인증 전 단계에 머문 접속 수 (sshd-session [net]) */
   pendingAuth: number;
-  knownIps: string[];
+  knownIps: SshKnownIp[];
   blocks: SshBlock[];
 }
 
@@ -74,6 +87,7 @@ export interface SshAccessOverview {
  * 맥미니의 root 데몬 둘이 쓰는 파일을 읽고, 사람이 바꾸는 목록만 씁니다.
  * - com.kscold.ssh-audit: ssh-audit.log 에 접속 기록
  * - com.kscold.ssh-guard: ssh-block-*.txt 를 읽어 pf 표에 올림 (Control 은 pf 를 직접 만지지 않음)
+ *   ssh-block-scope.tsv 에 IP<TAB>ssh 로 적은 IP 는 SSH 만, 나머지는 모든 접속을 막음
  */
 @Injectable()
 export class SshAccessService {
@@ -92,17 +106,25 @@ export class SshAccessService {
     return result;
   }
 
-  addKnownIp(ip: string) {
-    return this.change(() => this.addKnownIpEntry(ip));
+  addKnownIp(ip: string, label?: string | null) {
+    return this.change(() => this.addKnownIpEntry(ip, label));
+  }
+  /** 내 IP 별칭 바꾸기 — 빈 값이면 별칭을 지움 */
+  setKnownIpLabel(ip: string, label: string | null) {
+    return this.change(() => this.setKnownIpLabelEntry(ip, label));
   }
   removeKnownIp(ip: string) {
     return this.change(() => this.removeKnownIpEntry(ip));
   }
-  block(ip: string, reason: string | null) {
-    return this.change(() => this.blockEntry(ip, reason));
+  block(ip: string, reason: string | null, scope: SshBlockScope = 'all') {
+    return this.change(() => this.blockEntry(ip, reason, scope));
   }
   unblock(ip: string) {
     return this.change(() => this.unblockEntry(ip));
+  }
+  /** 막는 범위 바꾸기 — 모든 접속(사이트 포함) 또는 SSH 만. 차단기가 15초 안에 반영 */
+  setBlockScope(ip: string, scope: SshBlockScope) {
+    return this.change(() => this.setBlockScopeEntry(ip, scope));
   }
 
   private file(name: string) {
@@ -118,13 +140,13 @@ export class SshAccessService {
       [
         this.readEvents(since),
         fs.stat(logPath).catch(() => null),
-        this.readKnownIps(),
+        this.readKnownEntries(),
         this.readBlocks(),
         this.readGuardStatus(),
         this.listSshProcesses(),
       ],
     );
-    const known = new Set(knownIps);
+    const known = new Set(knownIps.map((k) => k.ip));
 
     return {
       recorder: {
@@ -166,32 +188,53 @@ export class SshAccessService {
     return { ...target, known: false };
   }
 
-  private async addKnownIpEntry(ip: string): Promise<string[]> {
+  private async addKnownIpEntry(
+    ip: string,
+    label?: string | null,
+  ): Promise<SshKnownIp[]> {
     const value = normalizeIp(ip);
-    const list = await this.readKnownIps();
-    if (!list.includes(value)) {
-      list.push(value);
-      await this.writeLines('ssh-known-ips.txt', list);
+    const list = await this.readKnownEntries();
+    const existing = list.find((k) => k.ip === value);
+    const clean = cleanLabel(label);
+    if (!existing) {
+      list.push({ ip: value, label: clean });
+      await this.writeKnown(list);
+    } else if (clean && clean !== existing.label) {
+      existing.label = clean;
+      await this.writeKnown(list);
     }
     // 내 IP 는 자동 차단에서도 빼 달라고 차단기에 알림
     await this.appendLine('ssh-block-release.txt', value);
     return list;
   }
 
-  private async removeKnownIpEntry(ip: string): Promise<string[]> {
+  private async setKnownIpLabelEntry(
+    ip: string,
+    label: string | null,
+  ): Promise<SshKnownIp[]> {
     const value = normalizeIp(ip);
-    const list = (await this.readKnownIps()).filter((v) => v !== value);
-    await this.writeLines('ssh-known-ips.txt', list);
+    const list = await this.readKnownEntries();
+    const target = list.find((k) => k.ip === value);
+    if (!target) throw new NotFoundException('내 IP 목록에 없는 IP 입니다');
+    target.label = cleanLabel(label);
+    await this.writeKnown(list);
+    return list;
+  }
+
+  private async removeKnownIpEntry(ip: string): Promise<SshKnownIp[]> {
+    const value = normalizeIp(ip);
+    const list = (await this.readKnownEntries()).filter((k) => k.ip !== value);
+    await this.writeKnown(list);
     return list;
   }
 
   private async blockEntry(
     ip: string,
     reason: string | null,
+    scope: SshBlockScope = 'all',
   ): Promise<SshBlock> {
     const value = normalizeIp(ip);
-    const scope = classifySshIp(value);
-    if (scope !== 'external') {
+    if (classifySshIp(value) !== 'external') {
       throw new BadRequestException(
         '맥미니·내부망·Tailscale 주소는 막을 수 없습니다',
       );
@@ -203,10 +246,12 @@ export class SshAccessService {
     }
     const manual = await this.readManual();
     const existing = manual.find((b) => b.ip === value);
-    if (existing) return existing;
+    await this.writeScope(value, scope);
+    if (existing) return { ...existing, scope };
     const entry: SshBlock = {
       ip: value,
       source: 'manual',
+      scope,
       blockedAt: formatLocal(new Date()),
       reason:
         reason
@@ -241,7 +286,19 @@ export class SshAccessService {
     if (released.length === 0) {
       throw new NotFoundException('차단 목록에 없는 IP 입니다');
     }
+    await this.writeScope(value, 'all');
     return { ip: value, released };
+  }
+
+  private async setBlockScopeEntry(
+    ip: string,
+    scope: SshBlockScope,
+  ): Promise<SshBlock> {
+    const value = normalizeIp(ip);
+    const target = (await this.readBlocks()).find((b) => b.ip === value);
+    if (!target) throw new NotFoundException('차단 목록에 없는 IP 입니다');
+    await this.writeScope(value, scope);
+    return { ...target, scope };
   }
 
   // ---- 읽기 ----
@@ -296,9 +353,28 @@ export class SshAccessService {
   }
 
   private async readKnownIps(): Promise<string[]> {
+    return (await this.readKnownEntries()).map((k) => k.ip);
+  }
+
+  /** ssh-known-ips.txt — 한 줄에 IP, 공백·탭 뒤는 별칭 */
+  private async readKnownEntries(): Promise<SshKnownIp[]> {
     return (await this.readLines('ssh-known-ips.txt'))
-      .map((l) => l.trim().split(/\s+/)[0])
-      .filter((v) => v && !v.startsWith('#'));
+      .map((l) => l.trim())
+      .filter((l) => l && !l.startsWith('#'))
+      .map((l) => {
+        const m = /^(\S+)\s*(.*)$/.exec(l);
+        return { ip: m?.[1] ?? l, label: m?.[2]?.trim() || null };
+      });
+  }
+
+  /** SSH 만 막을 IP 목록 (나머지는 모든 접속을 막음) */
+  private async readScopes(): Promise<Map<string, SshBlockScope>> {
+    const map = new Map<string, SshBlockScope>();
+    for (const l of await this.readLines('ssh-block-scope.tsv')) {
+      const [ip, scope] = l.split('\t').map((v) => v?.trim());
+      if (ip && scope === 'ssh') map.set(ip, 'ssh');
+    }
+    return map;
   }
 
   private async readManual(): Promise<SshBlock[]> {
@@ -311,6 +387,7 @@ export class SshAccessService {
           source: 'manual' as const,
           blockedAt: at?.trim() || null,
           reason: reason?.trim() || null,
+          scope: 'all' as SshBlockScope,
         };
       });
   }
@@ -323,20 +400,22 @@ export class SshAccessService {
         source: 'auto' as const,
         blockedAt: at?.trim() || null,
         reason: reason?.trim() || null,
+        scope: 'all' as SshBlockScope,
       };
     });
   }
 
   private async readBlocks(): Promise<SshBlock[]> {
-    const [auto, manual, pending] = await Promise.all([
+    const [auto, manual, pending, scopes] = await Promise.all([
       this.readAuto(),
       this.readManual(),
       this.readLines('ssh-block-release.txt'),
+      this.readScopes(),
     ]);
     const releasing = new Set(pending.map((l) => l.trim()));
-    return [...manual, ...auto.filter((b) => !releasing.has(b.ip))].sort(
-      (a, b) => (b.blockedAt ?? '').localeCompare(a.blockedAt ?? ''),
-    );
+    return [...manual, ...auto.filter((b) => !releasing.has(b.ip))]
+      .map((b) => ({ ...b, scope: scopes.get(b.ip) ?? 'all' }))
+      .sort((a, b) => (b.blockedAt ?? '').localeCompare(a.blockedAt ?? ''));
   }
 
   private async readGuardStatus(): Promise<SshGuardStatus> {
@@ -354,6 +433,8 @@ export class SshAccessService {
         updatedAt?: string;
         pfEnabled?: boolean;
         blockedCount?: number;
+        allCount?: number;
+        sshOnlyCount?: number;
       };
       return {
         installed,
@@ -362,6 +443,9 @@ export class SshAccessService {
         pfEnabled: typeof data.pfEnabled === 'boolean' ? data.pfEnabled : null,
         blockedCount:
           typeof data.blockedCount === 'number' ? data.blockedCount : null,
+        allCount: typeof data.allCount === 'number' ? data.allCount : null,
+        sshOnlyCount:
+          typeof data.sshOnlyCount === 'number' ? data.sshOnlyCount : null,
       };
     } catch {
       return {
@@ -370,6 +454,8 @@ export class SshAccessService {
         updatedAt: null,
         pfEnabled: null,
         blockedCount: null,
+        allCount: null,
+        sshOnlyCount: null,
       };
     }
   }
@@ -498,9 +584,35 @@ export class SshAccessService {
     await fs.rename(tmp, path);
   }
 
+  private async writeKnown(list: SshKnownIp[]) {
+    await this.writeLines(
+      'ssh-known-ips.txt',
+      list.map((k) => (k.label ? `${k.ip}\t${k.label}` : k.ip)),
+    );
+  }
+
+  private async writeScope(ip: string, scope: SshBlockScope) {
+    const scopes = await this.readScopes();
+    if (scope === 'ssh') scopes.set(ip, 'ssh');
+    else if (!scopes.delete(ip)) return;
+    await this.writeLines(
+      'ssh-block-scope.tsv',
+      [...scopes.entries()].map(([k, v]) => `${k}\t${v}`),
+    );
+  }
+
   private async appendLine(name: string, line: string) {
     await fs.appendFile(this.file(name), `${line}\n`, { mode: 0o644 });
   }
+}
+
+function cleanLabel(label: string | null | undefined): string | null {
+  return (
+    String(label ?? '')
+      .replace(/[\t\r\n]+/g, ' ')
+      .trim()
+      .slice(0, 40) || null
+  );
 }
 
 function normalizeIp(ip: string): string {

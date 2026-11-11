@@ -20,6 +20,8 @@ function overview(): SshAccessOverview {
       updatedAt: null,
       pfEnabled: null,
       blockedCount: null,
+      allCount: null,
+      sshOnlyCount: null,
     },
     summary: {
       since: '2026-11-03 00:00:00',
@@ -65,13 +67,14 @@ function overview(): SshAccessOverview {
       },
     ],
     pendingAuth: 2,
-    knownIps: ['1.225.192.81'],
+    knownIps: [{ ip: '1.225.192.81', label: '회사' }],
     blocks: [
       {
         ip: '222.99.122.102',
         source: 'auto',
         blockedAt: '2026-11-10 17:56:05',
         reason: 'root 시도',
+        scope: 'all',
       },
     ],
   };
@@ -152,14 +155,13 @@ it('새로고침 실패를 이전 결과와 함께 알린다', async () => {
 it('수동 IP 입력도 영향 범위 확인 후 차단을 요청한다', async () => {
   signIn([PERMISSIONS.SECURITY_READ, PERMISSIONS.SECURITY_MANAGE]);
   vi.spyOn(securityService, 'getSshAccess').mockResolvedValue(overview());
-  const block = vi
-    .spyOn(securityService, 'blockSshIp')
-    .mockResolvedValue({
-      ip: '203.0.113.12',
-      source: 'manual',
-      blockedAt: null,
-      reason: null,
-    });
+  const block = vi.spyOn(securityService, 'blockSshIp').mockResolvedValue({
+    ip: '203.0.113.12',
+    source: 'manual',
+    blockedAt: null,
+    reason: null,
+    scope: 'all',
+  });
   renderPanel();
   await userEvent.type(
     await screen.findByPlaceholderText('막을 IP'),
@@ -171,9 +173,72 @@ it('수동 IP 입력도 영향 범위 확인 후 차단을 요청한다', async 
   await userEvent.click(within(form).getByRole('button', { name: '차단' }));
   expect(block).not.toHaveBeenCalled();
   const dialog = await screen.findByRole('alertdialog');
-  expect(dialog).toHaveTextContent('운영 사이트');
+  expect(dialog).toHaveTextContent('운영 중인 사이트');
   await userEvent.click(within(dialog).getByRole('button', { name: '확인' }));
   await waitFor(() =>
-    expect(block).toHaveBeenCalledWith('203.0.113.12', undefined),
+    expect(block).toHaveBeenCalledWith('203.0.113.12', undefined, 'all'),
   );
+});
+
+it('내 IP 를 별칭과 함께 위에 보여 주고 별칭을 바꾼다', async () => {
+  signIn([PERMISSIONS.SECURITY_READ, PERMISSIONS.SECURITY_MANAGE]);
+  vi.spyOn(securityService, 'getSshAccess').mockResolvedValue(overview());
+  const label = vi
+    .spyOn(securityService, 'setSshKnownIpLabel')
+    .mockResolvedValue(undefined);
+  renderPanel();
+
+  expect(await screen.findByText('회사')).toBeInTheDocument();
+  // 열린 세션에도 별칭이 붙는다
+  expect(screen.getByText('내 IP · 회사')).toBeInTheDocument();
+  await userEvent.click(
+    screen.getByRole('button', { name: '1.225.192.81 별칭 바꾸기' }),
+  );
+  const input = screen.getByRole('textbox', { name: '1.225.192.81 별칭' });
+  await userEvent.clear(input);
+  await userEvent.type(input, '회사 사무실');
+  await userEvent.click(screen.getByRole('button', { name: '저장' }));
+  await waitFor(() =>
+    expect(label).toHaveBeenCalledWith('1.225.192.81', '회사 사무실'),
+  );
+});
+
+it('차단 범위를 SSH 만으로 바꿀 때 확인을 받는다', async () => {
+  signIn([PERMISSIONS.SECURITY_READ, PERMISSIONS.SECURITY_MANAGE]);
+  vi.spyOn(securityService, 'getSshAccess').mockResolvedValue(overview());
+  const scope = vi
+    .spyOn(securityService, 'setSshBlockScope')
+    .mockResolvedValue(undefined);
+  renderPanel();
+
+  expect(await screen.findByText('SSH·사이트')).toBeInTheDocument();
+  await userEvent.click(screen.getByRole('button', { name: 'SSH 만' }));
+  const dialog = await screen.findByRole('alertdialog');
+  await userEvent.click(within(dialog).getByRole('button', { name: '확인' }));
+  await waitFor(() =>
+    expect(scope).toHaveBeenCalledWith('222.99.122.102', 'ssh'),
+  );
+});
+
+it('긴 차단 목록은 10개씩 쪽으로 나눈다', async () => {
+  signIn([PERMISSIONS.SECURITY_READ, PERMISSIONS.SECURITY_MANAGE]);
+  const data = overview();
+  data.blocks = Array.from({ length: 23 }, (_, i) => ({
+    ip: `5.5.5.${i + 1}`,
+    source: 'auto' as const,
+    blockedAt: '2026-11-11 09:00:00',
+    reason: 'root 시도',
+    scope: 'all' as const,
+  }));
+  vi.spyOn(securityService, 'getSshAccess').mockResolvedValue(data);
+  renderPanel();
+
+  expect(await screen.findByText('5.5.5.1')).toBeInTheDocument();
+  expect(screen.queryByText('5.5.5.11')).toBeNull();
+  expect(screen.getByText('23개 중 1/3쪽')).toBeInTheDocument();
+  await userEvent.click(screen.getAllByRole('button', { name: '다음 쪽' })[0]);
+  expect(screen.getByText('5.5.5.11')).toBeInTheDocument();
+  await userEvent.type(screen.getByLabelText('차단 목록 찾기'), '5.5.5.23');
+  expect(screen.getByText('5.5.5.23')).toBeInTheDocument();
+  expect(screen.queryByText('5.5.5.11')).toBeNull();
 });
