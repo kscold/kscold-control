@@ -33,7 +33,7 @@ describe('SshAccessService', () => {
       [
         [old, '실패', 'root', '8.8.8.8', 'password', ''].join('\t'),
         [now, '실패', 'root', '222.99.122.102', 'password', ''].join('\t'),
-        [now, '성공', 'kscold', '1.225.192.81', 'password', ''].join('\t'),
+        [now, '성공', 'kscold', '203.0.113.10', 'password', ''].join('\t'),
       ].join('\n') + '\n',
     );
     await fs.writeFile(
@@ -45,7 +45,7 @@ describe('SshAccessService', () => {
 
     expect(o.recorder.exists).toBe(true);
     expect(o.events.map((e) => e.ip)).toEqual([
-      '1.225.192.81',
+      '203.0.113.10',
       '222.99.122.102',
     ]);
     expect(o.blocks).toEqual([
@@ -64,7 +64,7 @@ describe('SshAccessService', () => {
     await expect(service.block('192.168.0.5', null)).rejects.toBeInstanceOf(
       BadRequestException,
     );
-    await expect(service.block('100.90.228.44', null)).rejects.toBeInstanceOf(
+    await expect(service.block('100.100.1.2', null)).rejects.toBeInstanceOf(
       BadRequestException,
     );
 
@@ -95,14 +95,14 @@ describe('SshAccessService', () => {
   });
 
   it('내 IP 로 표시하면 막을 수 없고 자동 차단 해제도 요청한다', async () => {
-    await service.addKnownIp('1.225.192.81');
-    await service.addKnownIp('1.225.192.81');
-    expect(await read('ssh-known-ips.txt')).toBe('1.225.192.81\n');
-    expect(await read('ssh-block-release.txt')).toContain('1.225.192.81');
-    await expect(service.block('1.225.192.81', null)).rejects.toBeInstanceOf(
+    await service.addKnownIp('203.0.113.10');
+    await service.addKnownIp('203.0.113.10');
+    expect(await read('ssh-known-ips.txt')).toBe('203.0.113.10\n');
+    expect(await read('ssh-block-release.txt')).toContain('203.0.113.10');
+    await expect(service.block('203.0.113.10', null)).rejects.toBeInstanceOf(
       BadRequestException,
     );
-    expect(await service.removeKnownIp('1.225.192.81')).toEqual([]);
+    expect(await service.removeKnownIp('203.0.113.10')).toEqual([]);
     await expect(service.addKnownIp('not-an-ip')).rejects.toBeInstanceOf(
       BadRequestException,
     );
@@ -135,23 +135,23 @@ describe('SshAccessService', () => {
   it('내 IP 별칭을 남기고, 다른 IP 를 바꿔도 별칭이 지워지지 않는다', async () => {
     await fs.writeFile(
       join(dir, 'ssh-known-ips.txt'),
-      '# 메모\n1.225.192.81\t회사\n218.39.220.230 집(맥미니)\n',
+      '# 메모\n203.0.113.10\t회사\n203.0.113.20 집\n',
     );
-    await service.addKnownIp('14.39.199.71');
-    await service.setKnownIpLabel('14.39.199.71', '휴대폰\t테더링');
+    await service.addKnownIp('198.51.100.7');
+    await service.setKnownIpLabel('198.51.100.7', '휴대폰\t테더링');
     expect(await read('ssh-known-ips.txt')).toBe(
-      '1.225.192.81\t회사\n218.39.220.230\t집(맥미니)\n14.39.199.71\t휴대폰 테더링\n',
+      '203.0.113.10\t회사\n203.0.113.20\t집\n198.51.100.7\t휴대폰 테더링\n',
     );
     const o = await service.overview(7);
     expect(o.knownIps).toEqual([
-      { ip: '1.225.192.81', label: '회사' },
-      { ip: '218.39.220.230', label: '집(맥미니)' },
-      { ip: '14.39.199.71', label: '휴대폰 테더링' },
+      { ip: '203.0.113.10', label: '회사' },
+      { ip: '203.0.113.20', label: '집' },
+      { ip: '198.51.100.7', label: '휴대폰 테더링' },
     ]);
-    await service.setKnownIpLabel('14.39.199.71', null);
-    expect(await service.removeKnownIp('1.225.192.81')).toEqual([
-      { ip: '218.39.220.230', label: '집(맥미니)' },
-      { ip: '14.39.199.71', label: null },
+    await service.setKnownIpLabel('198.51.100.7', null);
+    expect(await service.removeKnownIp('203.0.113.10')).toEqual([
+      { ip: '203.0.113.20', label: '집' },
+      { ip: '198.51.100.7', label: null },
     ]);
     await expect(
       service.setKnownIpLabel('9.9.9.9', 'x'),
