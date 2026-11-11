@@ -49,19 +49,17 @@ export class ApproveKeyManagerUseCase {
       throw new NotFoundException('키 관리자 역할이 준비되지 않았습니다.');
     }
 
-    if (
-      this.mfa.newlyRequiresMfa(
-        user.roles.map((role) => role.name),
-        [keyManagerRole.name],
-      )
-    ) {
-      await this.authSessions.revokeAllForUser(user.id);
-    }
+    const newlyRequiresMfa = this.mfa.newlyRequiresMfa(
+      user.roles.map((role) => role.name),
+      [keyManagerRole.name],
+    );
     // 승인 대기 역할을 포함한 기존 역할을 모두 제거해 최소 권한으로 시작한다.
     user.roles = [keyManagerRole];
     user.terminalCommandCount = 0;
     user.terminalCommandLimit = 0;
     const saved = await this.userRepository.save(user);
+    // 역할을 저장한 뒤에 끊어야 그 사이 비밀번호만으로 연 세션이 남지 않는다.
+    if (newlyRequiresMfa) await this.authSessions.revokeAllForUser(user.id);
     saved.roles = [keyManagerRole];
     // 대상 접근 권한은 승인과 분리하여 관리자가 명시적으로 배정한다.
 

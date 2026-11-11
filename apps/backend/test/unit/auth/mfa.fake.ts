@@ -1,6 +1,8 @@
+import * as bcrypt from 'bcrypt';
 import { MfaChallengeStore } from '@/auth/mfa/application/mfa-challenge.store';
 import { MfaService } from '@/auth/mfa/application/mfa.service';
 import type { MfaFailureReason } from '@/auth/mfa/domain/mfa-attempt-guard';
+import { AccountMfaAttemptGuard } from '@/auth/mfa/infrastructure/account-mfa-attempt-guard';
 import type { UserMfa } from '@/auth/mfa/domain/user-mfa.entity';
 import type { IUserMfaRepository } from '@/auth/mfa/domain/user-mfa.repository.interface';
 import { sessionHarness } from './auth-session.fake';
@@ -43,33 +45,34 @@ export class InMemoryUserMfaRepository implements IUserMfaRepository {
   }
 }
 
+export const PASSWORD = 'correct horse battery';
+const PASSWORD_HASH = bcrypt.hashSync(PASSWORD, 4);
+
 export function account(id: string, role: string, email = `${id}@example.com`) {
   return {
     id,
     email,
-    password: 'unused',
+    password: PASSWORD_HASH,
     roles: [{ name: role, permissions: [{ name: 'dashboard:read' }] }],
   };
 }
 
 export function mfaHarness() {
-  const sessions = sessionHarness({ mfaRequiredRoles: ['admin'] });
-  const enrollments = new InMemoryUserMfaRepository();
   const users = new Map<string, ReturnType<typeof account>>();
-  const failures: Array<{ email: string; reason: MfaFailureReason }> = [];
-  const guard = {
-    admit: async (_ip: string | null, email: string) => ({ email }),
-    failed: async (attempt: unknown, reason: MfaFailureReason) => {
-      failures.push({ email: (attempt as { email: string }).email, reason });
-    },
-  };
+  const sessions = sessionHarness({ mfaRequiredRoles: ['admin'], users });
+  const enrollments = new InMemoryUserMfaRepository();
   const audit = { record: jest.fn().mockResolvedValue(undefined) };
+  const auditActions = (action: string) =>
+    audit.record.mock.calls
+      .map(([event]) => event)
+      .filter((event) => event.action === action);
+  const challenges = new MfaChallengeStore();
   const mfa = new MfaService(
     enrollments,
     { findByIdWithRoles: async (id: string) => users.get(id) ?? null } as any,
-    guard,
+    new AccountMfaAttemptGuard(audit as any),
     sessions.mfaConfig,
-    new MfaChallengeStore(),
+    challenges,
     sessions.sessions,
     audit as any,
   );
@@ -77,8 +80,14 @@ export function mfaHarness() {
     ...sessions,
     enrollments,
     users,
-    failures,
     audit,
+    auditActions,
+    challenges,
+    failures: (): Array<{ email: string; reason: MfaFailureReason }> =>
+      auditActions('login.mfa-failure').map((event) => ({
+        email: event.metadata.email,
+        reason: event.metadata.reason,
+      })),
     mfa,
     addUser(user: ReturnType<typeof account>) {
       users.set(user.id, user);

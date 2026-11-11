@@ -1,3 +1,4 @@
+import { Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import {
   createCipheriv,
@@ -10,6 +11,8 @@ import {
 const DEFAULT_REQUIRED_ROLES = 'admin,super_admin';
 const DEFAULT_ISSUER = 'kscold-control';
 const SEALED_PREFIX = 'v1';
+const GCM_IV_BYTES = 12;
+const GCM_TAG_BYTES = 16;
 
 function deriveKey(masterKey: Buffer, purpose: string): Buffer {
   return Buffer.from(
@@ -55,14 +58,20 @@ export class MfaConfig {
     const roles =
       config.get<string>('CONTROL_MFA_REQUIRED_ROLES') ??
       DEFAULT_REQUIRED_ROLES;
+    const requiredRoles = new Set(
+      roles
+        .split(',')
+        .map((role) => role.trim())
+        .filter(Boolean),
+    );
+    if (requiredRoles.size === 0) {
+      new Logger(MfaConfig.name).warn(
+        'CONTROL_MFA_REQUIRED_ROLES is empty: no role has to use two-factor login, so a stolen password alone opens any account that has not enrolled',
+      );
+    }
     return new MfaConfig(
       parseMasterKey(config.get<string>('CONTROL_MFA_ENCRYPTION_KEY')),
-      new Set(
-        roles
-          .split(',')
-          .map((role) => role.trim())
-          .filter(Boolean),
-      ),
+      requiredRoles,
       parseIssuer(config.get<string>('CONTROL_MFA_ISSUER')),
     );
   }
@@ -76,7 +85,7 @@ export class MfaConfig {
   }
 
   sealSecret(userId: string, secret: string): string {
-    const iv = randomBytes(12);
+    const iv = randomBytes(GCM_IV_BYTES);
     const cipher = createCipheriv('aes-256-gcm', this.secretKey, iv);
     cipher.setAAD(Buffer.from(`user-mfa:${userId}`));
     const ciphertext = Buffer.concat([
@@ -92,16 +101,21 @@ export class MfaConfig {
 
   openSecret(userId: string, sealed: string): string {
     const [prefix, iv, tag, ciphertext] = sealed.split('.');
-    if (prefix !== SEALED_PREFIX || !iv || !tag || !ciphertext) {
+    const ivBytes = Buffer.from(iv ?? '', 'base64');
+    const tagBytes = Buffer.from(tag ?? '', 'base64');
+    if (
+      prefix !== SEALED_PREFIX ||
+      ivBytes.length !== GCM_IV_BYTES ||
+      tagBytes.length !== GCM_TAG_BYTES ||
+      !ciphertext
+    ) {
       throw new Error('Unsupported MFA secret format');
     }
-    const decipher = createDecipheriv(
-      'aes-256-gcm',
-      this.secretKey,
-      Buffer.from(iv, 'base64'),
-    );
+    const decipher = createDecipheriv('aes-256-gcm', this.secretKey, ivBytes, {
+      authTagLength: GCM_TAG_BYTES,
+    });
     decipher.setAAD(Buffer.from(`user-mfa:${userId}`));
-    decipher.setAuthTag(Buffer.from(tag, 'base64'));
+    decipher.setAuthTag(tagBytes);
     return Buffer.concat([
       decipher.update(Buffer.from(ciphertext, 'base64')),
       decipher.final(),

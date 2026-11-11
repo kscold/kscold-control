@@ -8,6 +8,13 @@ export class MfaCodeDto {
   code: string;
 }
 
+export class StartMfaEnrollmentDto {
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(256)
+  password: string;
+}
+
 export class CompleteMfaEnrollmentDto extends MfaCodeDto {
   @IsString()
   @IsNotEmpty()

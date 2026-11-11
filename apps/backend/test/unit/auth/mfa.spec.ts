@@ -3,7 +3,6 @@ import { ConfigService } from '@nestjs/config';
 import { randomBytes } from 'node:crypto';
 import { MfaConfig } from '@/auth/mfa/application/mfa-config';
 import { RECOVERY_CODE_COUNT } from '@/auth/mfa/domain/recovery-codes';
-import { AccountMfaAttemptGuard } from '@/auth/mfa/infrastructure/account-mfa-attempt-guard';
 import {
   decodeBase32,
   encodeBase32,
@@ -11,8 +10,14 @@ import {
   totpCode,
   totpStep,
 } from '@/auth/mfa/domain/totp';
+import { Logger } from '@nestjs/common';
+import {
+  MFA_CHALLENGES_PER_USER,
+  MFA_CHALLENGES_TOTAL,
+  MfaChallengeStore,
+} from '@/auth/mfa/application/mfa-challenge.store';
 import { browser } from './auth-session.fake';
-import { account, mfaHarness } from './mfa.fake';
+import { PASSWORD, account, mfaHarness } from './mfa.fake';
 
 const LOGIN_AT = new Date('2026-03-01T09:00:10.000Z');
 const STEP_MS = 30 * 1000;
@@ -94,6 +99,52 @@ describe('MfaConfig', () => {
       'kscold-control',
     );
     expect(() => otherKey.openSecret('user-1', sealed)).toThrow();
+  });
+
+  it('잘라 낸 인증 태그나 길이가 다른 IV 로는 열지 않는다', () => {
+    const sealed = config.sealSecret('user-1', 'JBSWY3DPEHPK3PXP');
+    const [prefix, iv, tag, ciphertext] = sealed.split('.');
+    const reseal = (nextIv: Buffer, nextTag: Buffer) =>
+      [
+        prefix,
+        nextIv.toString('base64'),
+        nextTag.toString('base64'),
+        ciphertext,
+      ].join('.');
+    const ivBytes = Buffer.from(iv, 'base64');
+    const tagBytes = Buffer.from(tag, 'base64');
+
+    expect(() =>
+      config.openSecret('user-1', reseal(ivBytes, tagBytes.subarray(0, 4))),
+    ).toThrow();
+    expect(() =>
+      config.openSecret(
+        'user-1',
+        reseal(Buffer.concat([ivBytes, Buffer.alloc(4)]), tagBytes),
+      ),
+    ).toThrow();
+    expect(config.openSecret('user-1', reseal(ivBytes, tagBytes))).toBe(
+      'JBSWY3DPEHPK3PXP',
+    );
+  });
+
+  it('필수 역할을 비워 두면 기동할 때 경고한다', () => {
+    const warn = jest.spyOn(Logger.prototype, 'warn').mockImplementation();
+    const boot = (roles: string) =>
+      MfaConfig.fromConfig(
+        new ConfigService({
+          CONTROL_MFA_ENCRYPTION_KEY: key.toString('base64'),
+          CONTROL_MFA_REQUIRED_ROLES: roles,
+        }),
+      );
+
+    boot('admin');
+    expect(warn).not.toHaveBeenCalled();
+    boot(' , ');
+    expect(warn).toHaveBeenCalledWith(
+      expect.stringContaining('CONTROL_MFA_REQUIRED_ROLES is empty'),
+    );
+    warn.mockRestore();
   });
 
   it('키가 없거나 32바이트가 아니면 기동을 멈춘다', () => {
@@ -253,7 +304,7 @@ describe('MfaService', () => {
       ),
       'MFA_CODE_INVALID',
     );
-    expect(harness.failures).toEqual([
+    expect(harness.failures()).toEqual([
       { email: harness.admin.email, reason: 'wrong-otp' },
     ]);
   });
@@ -355,7 +406,7 @@ describe('MfaService', () => {
       harness.mfa.verify(wrong, browser),
       'MFA_CHALLENGE_EXPIRED',
     );
-    expect(harness.failures).toHaveLength(5);
+    expect(harness.failures()).toHaveLength(5);
     jest.setSystemTime(LOGIN_AT.getTime() + STEP_MS);
     await expectMfaError(
       harness.mfa.verify(
@@ -409,44 +460,285 @@ describe('MfaService', () => {
     const harness = await enrolledAdmin();
 
     const error = await expectMfaError(
-      harness.mfa.startEnrollment(harness.admin),
+      harness.mfa.startEnrollment(
+        { ...harness.admin, sessionId: 'unused' },
+        PASSWORD,
+        browser,
+      ),
       'MFA_ALREADY_ENABLED',
     );
     expect(error.getStatus()).toBe(409);
   });
 });
 
-describe('AccountMfaAttemptGuard', () => {
+describe('MfaService 동시 요청과 시도 한도', () => {
   beforeEach(() => jest.useFakeTimers({ now: LOGIN_AT }));
   afterEach(() => jest.useRealTimers());
 
-  it('한 계정이 15분 안에 10번 틀리면 코드를 보기 전에 429 로 막고 15분 뒤 풀어 준다', async () => {
-    const audit = { record: jest.fn().mockResolvedValue(undefined) };
-    const guard = new AccountMfaAttemptGuard(audit as any);
-
-    for (let i = 0; i < 10; i++) {
-      const attempt = await guard.admit('203.0.113.10', 'Admin@Example.com');
-      await guard.failed(attempt, 'wrong-otp');
+  async function enrolled() {
+    const harness = mfaHarness();
+    const admin = harness.addUser(
+      account('00000000-0000-4000-8000-0000000000a1', 'admin'),
+    );
+    const step = await harness.mfa.afterPassword(admin as any);
+    if (step?.kind !== 'mfa_enrollment_required') throw new Error(step?.kind);
+    await harness.mfa.completeEnrollment(
+      {
+        challenge: step.challenge.token,
+        code: codeAt(step.enrollment.secret, new Date()),
+      },
+      browser,
+    );
+    jest.setSystemTime(LOGIN_AT.getTime() + STEP_MS);
+    const secret = step.enrollment.secret;
+    const right = () => codeAt(secret, new Date());
+    const wrong = () => (right() === '000000' ? '111111' : '000000');
+    const challenge = async () => {
+      const next = await harness.mfa.afterPassword(admin as any);
+      if (next?.kind !== 'mfa_required') throw new Error(next?.kind);
+      return next.challenge.token;
+    };
+    const guess = (token: string, code: string) =>
+      harness.mfa.verify({ challenge: token, method: 'totp', code }, browser);
+    const statusOf = (promise: Promise<unknown>) =>
+      promise.then(
+        () => 200,
+        (error: HttpException) => error.getStatus(),
+      );
+    async function failTimes(count: number) {
+      for (let done = 0; done < count;) {
+        const token = await challenge();
+        for (let i = 0; i < 4 && done < count; i++, done++) {
+          await expect(statusOf(guess(token, wrong()))).resolves.toBe(401);
+        }
+      }
     }
+    return {
+      ...harness,
+      admin,
+      right,
+      wrong,
+      challenge,
+      guess,
+      statusOf,
+      failTimes,
+    };
+  }
 
-    const blocked = await guard
-      .admit('198.51.100.7', 'admin@example.com')
-      .catch((error: HttpException) => error);
-    expect((blocked as HttpException).getStatus()).toBe(429);
-    await expect(
-      guard.admit('203.0.113.10', 'operator@example.com'),
-    ).resolves.toBeDefined();
-    expect(audit.record).toHaveBeenCalledTimes(10);
-    expect(audit.record).toHaveBeenLastCalledWith(
-      expect.objectContaining({
-        action: 'login.mfa-failure',
-        targetId: 'admin@example.com',
-      }),
+  it('여러 challenge 로 동시에 틀린 코드를 보내도 15분에 10번을 넘지 못한다', async () => {
+    const { challenge, guess, statusOf, failTimes, wrong, right, failures } =
+      await enrolled();
+    await failTimes(8);
+
+    const tokens = await Promise.all([challenge(), challenge(), challenge()]);
+    const statuses = await Promise.all(
+      tokens.map((token) => statusOf(guess(token, wrong()))),
     );
 
-    jest.setSystemTime(LOGIN_AT.getTime() + 15 * 60 * 1000 + 1);
+    expect(statuses.sort()).toEqual([401, 401, 429]);
+    expect(failures()).toHaveLength(10);
+    await expect(statusOf(guess(await challenge(), right()))).resolves.toBe(
+      429,
+    );
+  });
+
+  it('같은 challenge 로 확인 중이면 다른 요청은 409 로 돌려보낸다', async () => {
+    const { challenge, guess, statusOf, right } = await enrolled();
+    const token = await challenge();
+
+    const [first, second] = await Promise.all([
+      statusOf(guess(token, right())),
+      guess(token, right()).catch((error: HttpException) => error),
+    ]);
+
+    expect(first).toBe(200);
+    expect((second as HttpException).getStatus()).toBe(409);
+    expect((second as HttpException).getResponse()).toMatchObject({
+      code: 'MFA_CHECK_IN_PROGRESS',
+    });
+  });
+
+  it('맞는 코드로 들어온 시도는 한도에서 빼 준다', async () => {
+    const { challenge, guess, statusOf, failTimes, wrong, right } =
+      await enrolled();
+    await failTimes(9);
+
+    await expect(statusOf(guess(await challenge(), right()))).resolves.toBe(
+      200,
+    );
+    await expect(statusOf(guess(await challenge(), wrong()))).resolves.toBe(
+      401,
+    );
+    await expect(statusOf(guess(await challenge(), wrong()))).resolves.toBe(
+      429,
+    );
+  });
+
+  it('OTP 로그인 성공과 잠김을 감사 기록에 남기고 잠김은 한 번만 남긴다', async () => {
+    const {
+      challenge,
+      guess,
+      statusOf,
+      failTimes,
+      right,
+      admin,
+      auditActions,
+    } = await enrolled();
+
+    await guess(await challenge(), right());
+    expect(auditActions('login.mfa-success')).toEqual([
+      expect.objectContaining({ actorId: admin.id, targetId: admin.id }),
+    ]);
+
+    await failTimes(10);
+    for (let i = 0; i < 3; i++) {
+      await expect(statusOf(guess(await challenge(), right()))).resolves.toBe(
+        429,
+      );
+    }
+    expect(auditActions('login.mfa-lockout')).toEqual([
+      expect.objectContaining({
+        targetId: admin.id,
+        summary: expect.stringContaining(admin.email),
+      }),
+    ]);
+
+    jest.setSystemTime(Date.now() + 15 * 60 * 1000 + 1);
+    await expect(statusOf(guess(await challenge(), right()))).resolves.toBe(
+      200,
+    );
+  });
+});
+
+describe('로그인한 화면에서 2단계 인증 켜기', () => {
+  beforeEach(() => jest.useFakeTimers({ now: LOGIN_AT }));
+  afterEach(() => jest.useRealTimers());
+
+  async function signedInOperator() {
+    const harness = mfaHarness();
+    const user = harness.addUser(account('user-1', 'operator'));
+    const current = await harness.sessions.signIn(
+      user as any,
+      browser,
+      'password',
+    );
+    const sessionId = harness.jwtService.decode<{ sid: string }>(
+      current.accessToken,
+    ).sid;
+    const other = await harness.sessions.open(user.id, {
+      ip: '198.51.100.7',
+      userAgent: null,
+    });
+    return { ...harness, user, sessionId, other };
+  }
+
+  it('토큰만으로는 등록을 시작할 수 없고 비밀번호가 맞아야 한다', async () => {
+    const { mfa, user, sessionId, failures } = await signedInOperator();
+
+    const refused = await expectMfaError(
+      mfa.startEnrollment({ ...user, sessionId }, 'stolen-token-only', browser),
+      'MFA_PASSWORD_INVALID',
+    );
+    expect(refused.getStatus()).toBe(403);
+    expect(failures()).toEqual([
+      { email: user.email, reason: 'wrong-password' },
+    ]);
     await expect(
-      guard.admit('203.0.113.10', 'admin@example.com'),
-    ).resolves.toBeDefined();
+      mfa.startEnrollment({ ...user, sessionId }, PASSWORD, browser),
+    ).resolves.toMatchObject({ enrollment: { secret: expect.any(String) } });
+  });
+
+  it('등록을 마치면 새 세션 없이 지금 세션을 mfa 로 올리고 다른 세션만 끊는다', async () => {
+    const { mfa, user, sessionId, other, repository, verifier } =
+      await signedInOperator();
+    const sessionsBefore = repository.rows.size;
+
+    const started = await mfa.startEnrollment(
+      { ...user, sessionId },
+      PASSWORD,
+      browser,
+    );
+    const login = await mfa.completeEnrollment(
+      {
+        challenge: started.challenge.token,
+        code: codeAt(started.enrollment.secret, new Date()),
+      },
+      { ip: '192.0.2.44', userAgent: null },
+    );
+
+    expect(repository.rows.size).toBe(sessionsBefore);
+    const claims = await verifier.verifyToken(login.accessToken);
+    expect(claims.sid).toBe(sessionId);
+    expect(repository.rows.get(sessionId)).toMatchObject({
+      assurance: 'mfa',
+      revokedAt: null,
+    });
+    expect(repository.rows.get(other.id)?.revokedAt).not.toBeNull();
+    expect(login.recoveryCodes).toHaveLength(RECOVERY_CODE_COUNT);
+  });
+
+  it('시작한 세션이 그사이 끝났으면 다른 세션을 모두 끊고 mfa 세션을 새로 연다', async () => {
+    const { mfa, user, sessionId, other, sessions, repository, verifier } =
+      await signedInOperator();
+    const started = await mfa.startEnrollment(
+      { ...user, sessionId },
+      PASSWORD,
+      browser,
+    );
+    await sessions.revoke(sessionId);
+
+    const login = await mfa.completeEnrollment(
+      {
+        challenge: started.challenge.token,
+        code: codeAt(started.enrollment.secret, new Date()),
+      },
+      browser,
+    );
+
+    const claims = await verifier.verifyToken(login.accessToken);
+    expect(claims.sid).not.toBe(sessionId);
+    expect(repository.rows.get(claims.sid)?.assurance).toBe('mfa');
+    expect(repository.rows.get(other.id)?.revokedAt).not.toBeNull();
+  });
+});
+
+describe('MfaChallengeStore', () => {
+  const verify = (userId: string) => ({ purpose: 'verify' as const, userId });
+
+  it(`한 사용자의 challenge 는 ${MFA_CHALLENGES_PER_USER}개까지만 살리고 가장 오래된 것부터 닫는다`, () => {
+    const store = new MfaChallengeStore();
+    const tokens = Array.from(
+      { length: MFA_CHALLENGES_PER_USER + 1 },
+      () => store.issue(verify('user-1')).token,
+    );
+    const other = store.issue(verify('user-2')).token;
+
+    expect(store.begin(tokens[0], 'verify')).toBeNull();
+    for (const token of tokens.slice(1)) {
+      expect(store.begin(token, 'verify')).toEqual(verify('user-1'));
+    }
+    expect(store.begin(other, 'verify')).toEqual(verify('user-2'));
+  });
+
+  it(`전체 challenge 가 ${MFA_CHALLENGES_TOTAL}개를 넘으면 가장 오래된 것부터 닫는다`, () => {
+    const store = new MfaChallengeStore();
+    const first = store.issue(verify('user-0')).token;
+    const second = store.issue(verify('user-1')).token;
+    for (let i = 2; i <= MFA_CHALLENGES_TOTAL; i++) {
+      store.issue(verify(`user-${i}`));
+    }
+
+    expect(store.begin(first, 'verify')).toBeNull();
+    expect(store.begin(second, 'verify')).toEqual(verify('user-1'));
+  });
+
+  it('확인이 끝나면 같은 challenge 를 다시 확인할 수 있다', () => {
+    const store = new MfaChallengeStore();
+    const { token } = store.issue(verify('user-1'));
+
+    expect(store.begin(token, 'verify')).toEqual(verify('user-1'));
+    expect(store.begin(token, 'verify')).toBe('busy');
+    store.finish(token);
+    expect(store.begin(token, 'verify')).toEqual(verify('user-1'));
   });
 });

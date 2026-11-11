@@ -441,9 +441,13 @@ remote, once a day.
 Accounts with a role in `CONTROL_MFA_REQUIRED_ROLES` must enroll an OTP app
 (TOTP, 6 digits, 30 seconds) before they can use anything. The first login after
 the password shows a QR code and 10 one-time recovery codes. Later logins ask for
-the 6-digit code or a recovery code. Other users can enroll from 내 계정.
-Sessions opened with a password only are refused for those roles, so the first
-deploy signs those accounts out once.
+the 6-digit code or a recovery code. Other users can enroll from 내 계정 after
+typing their password again, so a stolen access token alone cannot enroll
+another app. Finishing there raises the current session to two-factor and signs
+out the account's other sessions. Sessions opened with a password only are
+refused for those roles, so the first deploy signs those accounts out once.
+Leaving `CONTROL_MFA_REQUIRED_ROLES` empty requires no role and logs a warning
+at boot.
 
 Generate the key once with `openssl rand -base64 32`. Changing it makes stored
 OTP secrets and recovery codes unreadable.
@@ -455,17 +459,22 @@ enrollment on the host. The script is not reachable over HTTP:
 node --env-file=.env scripts/reset-user-mfa.mjs admin@example.com
 ```
 
-It removes the OTP enrollment and recovery codes and signs out every session of
-that account. The next login goes back to enrollment.
+It removes the OTP enrollment and recovery codes, signs out every session of
+that account, and appends an `mfa.reset` entry to the backend audit log
+(`apps/backend/data/audit-log.jsonl`). The next login goes back to enrollment.
 
-A login challenge closes after 5 wrong codes, and an account that gets 10 codes
-wrong within 15 minutes is refused for the rest of that window. Wrong codes go
+A login challenge closes after 5 wrong codes and checks one code at a time
+(a second request while one is checked gets 409). An account gets 10 attempts
+within 15 minutes. Each attempt counts before the code is checked and a correct
+code gives it back, so parallel requests cannot go past the limit. Attempts go
 through the `MfaAttemptGuard` seam
-(`apps/backend/src/auth/mfa/domain/mfa-attempt-guard.ts`), which also writes
-운영 감사 entries. Login blocking can bind the same seam to count them with
-password failures.
+(`apps/backend/src/auth/mfa/domain/mfa-attempt-guard.ts`), which writes 운영 감사
+entries for wrong codes, lockouts and OTP logins. Login blocking can bind the
+same seam to count them with password failures.
 
-Giving an account a role in `CONTROL_MFA_REQUIRED_ROLES` signs out its sessions.
+Giving an account a role in `CONTROL_MFA_REQUIRED_ROLES` signs out its sessions
+after the role is saved. Terminal and chat sockets check the role in the
+database, not the one in the token.
 
 ## Production Deployment
 

@@ -6,7 +6,7 @@ describe('AssignRolesUseCase', () => {
   const readOnly = { id: 'role-read-only', name: 'read_only', permissions: [] };
   const admin = { id: 'role-admin', name: 'admin', permissions: [] };
 
-  async function setup() {
+  async function setup(onSave: () => Promise<unknown> = async () => {}) {
     const harness = sessionHarness({ mfaRequiredRoles: ['admin'] });
     const user = {
       id: 'user-1',
@@ -19,7 +19,10 @@ describe('AssignRolesUseCase', () => {
     const useCase = new AssignRolesUseCase(
       {
         findByIdWithRoles: jest.fn().mockResolvedValue(user),
-        save: jest.fn(async (value) => value),
+        save: jest.fn(async (value) => {
+          await onSave();
+          return value;
+        }),
       } as any,
       {
         findByIds: jest.fn(async (ids: string[]) =>
@@ -39,6 +42,17 @@ describe('AssignRolesUseCase', () => {
     await useCase.execute({ userId: user.id, roleIds: [admin.id] });
 
     expect(repository.rows.get(session.id)?.revokedAt).not.toBeNull();
+  });
+
+  it('역할을 저장하는 사이 비밀번호로 연 세션도 끊는다', async () => {
+    let racing: { id: string } | undefined;
+    const { useCase, user, repository, sessions } = await setup(async () => {
+      racing = await sessions.open('user-1', browser);
+    });
+
+    await useCase.execute({ userId: user.id, roleIds: [admin.id] });
+
+    expect(repository.rows.get(racing!.id)?.revokedAt).not.toBeNull();
   });
 
   it('2단계 인증과 무관한 역할 변경은 세션을 그대로 둔다', async () => {

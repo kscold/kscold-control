@@ -40,6 +40,10 @@ export class InMemoryAuthSessionRepository implements IAuthSessionRepository {
     this.update(id, { lastSeenAt: at });
   }
 
+  async upgradeToMfa(id: string) {
+    this.update(id, { assurance: 'mfa' });
+  }
+
   async revoke(id: string, at: Date) {
     return this.revokeMatching(
       at,
@@ -84,7 +88,12 @@ export class InMemoryAuthSessionRepository implements IAuthSessionRepository {
   }
 }
 
-export function sessionHarness({ mfaRequiredRoles = [] as string[] } = {}) {
+type StoredUser = { roles: Array<{ name: string }> };
+
+export function sessionHarness({
+  mfaRequiredRoles = [] as string[],
+  users = new Map<string, StoredUser>(),
+} = {}) {
   const repository = new InMemoryAuthSessionRepository();
   const jwtService = new JwtService({
     secret: 'test-only-secret-at-least-32-characters',
@@ -94,12 +103,15 @@ export function sessionHarness({ mfaRequiredRoles = [] as string[] } = {}) {
     new Set(mfaRequiredRoles),
     'kscold-control',
   );
-  const verifier = new SessionVerifier(repository, jwtService, mfaConfig);
+  const verifier = new SessionVerifier(repository, jwtService, mfaConfig, {
+    findByIdWithRoles: async (id: string) => (users.get(id) as any) ?? null,
+  });
   const connections = new SessionConnectionRegistry(verifier);
   return {
     repository,
     jwtService,
     mfaConfig,
+    users,
     verifier,
     connections,
     sessions: new AuthSessionService(repository, jwtService, connections),

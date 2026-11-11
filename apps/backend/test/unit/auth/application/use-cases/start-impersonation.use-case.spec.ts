@@ -22,6 +22,7 @@ describe('StartImpersonationUseCase', () => {
 
   async function setup(found: unknown = target) {
     const harness = sessionHarness({ mfaRequiredRoles: [ROLES.KEY_MANAGER] });
+    harness.users.set(target.id, target);
     const adminSession = await harness.sessions.open('admin-user', browser, {
       assurance: 'mfa',
     });

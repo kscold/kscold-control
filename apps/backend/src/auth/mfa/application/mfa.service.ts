@@ -6,6 +6,7 @@ import {
   Logger,
 } from '@nestjs/common';
 import { AuditLogService } from '../../../audit/application/services/audit-log.service';
+import { PasswordHasher } from '../../../common/utils/password-hasher.util';
 import type { User } from '../../../rbac/domain/entities/user.entity';
 import {
   type IUserRepository,
@@ -35,7 +36,7 @@ import {
   type IUserMfaRepository,
   USER_MFA_REPOSITORY,
 } from '../domain/user-mfa.repository.interface';
-import { MfaChallengeStore } from './mfa-challenge.store';
+import { type MfaChallenge, MfaChallengeStore } from './mfa-challenge.store';
 import { MfaConfig } from './mfa-config';
 
 export type MfaMethod = 'totp' | 'recovery';
@@ -44,7 +45,9 @@ export type MfaErrorCode =
   | 'MFA_CODE_INVALID'
   | 'MFA_CHALLENGE_EXPIRED'
   | 'MFA_ALREADY_ENABLED'
-  | 'MFA_NOT_ENABLED';
+  | 'MFA_NOT_ENABLED'
+  | 'MFA_CHECK_IN_PROGRESS'
+  | 'MFA_PASSWORD_INVALID';
 
 export interface MfaStatus {
   enabled: boolean;
@@ -80,6 +83,20 @@ const invalidCodeKeepingSession = () =>
     HttpStatus.FORBIDDEN,
     'MFA_CODE_INVALID',
     '인증 코드가 맞지 않습니다.',
+  );
+
+const checkInProgress = () =>
+  mfaError(
+    HttpStatus.CONFLICT,
+    'MFA_CHECK_IN_PROGRESS',
+    '앞서 보낸 코드를 확인하고 있습니다. 잠시 뒤 다시 시도해 주세요.',
+  );
+
+const passwordInvalid = () =>
+  mfaError(
+    HttpStatus.FORBIDDEN,
+    'MFA_PASSWORD_INVALID',
+    '비밀번호가 맞지 않습니다.',
   );
 
 const alreadyEnabled = () =>
@@ -121,12 +138,27 @@ export class MfaService {
     if (!this.config.requiresMfa(user.roles.map((role) => role.name))) {
       return null;
     }
-    return { kind: 'mfa_enrollment_required', ...this.beginEnrollment(user) };
+    return {
+      kind: 'mfa_enrollment_required',
+      ...this.beginEnrollment(user, null),
+    };
   }
 
-  async startEnrollment(account: Account) {
+  /** 토큰만 훔친 쪽이 자기 인증 앱을 등록해 주인을 막지 못하게 비밀번호를 다시 받는다. */
+  async startEnrollment(
+    account: Account & { sessionId: string },
+    password: string,
+    client: SessionClient,
+  ) {
     if (await this.enrollments.find(account.id)) throw alreadyEnabled();
-    return this.beginEnrollment(account);
+    const attempt = this.guard.admit(account.id, client.ip);
+    const user = await this.users.findByIdWithRoles(account.id);
+    if (!user || !(await PasswordHasher.compare(password, user.password))) {
+      this.guard.failed(attempt, 'wrong-password', account.email);
+      throw passwordInvalid();
+    }
+    this.guard.succeeded(attempt);
+    return this.beginEnrollment(user, account.sessionId);
   }
 
   async verify(
@@ -134,32 +166,49 @@ export class MfaService {
     client: SessionClient,
   ): Promise<AuthenticatedLogin> {
     const now = new Date();
-    const challenge = this.challenges.find(input.challenge, 'verify', now);
-    const user =
-      challenge && (await this.users.findByIdWithRoles(challenge.userId));
-    if (!user) throw challengeExpired();
+    return this.check(
+      input.challenge,
+      'verify',
+      now,
+      client,
+      async (challenge, attempt) => {
+        const user = await this.users.findByIdWithRoles(challenge.userId);
+        const enrollment = user && (await this.enrollments.find(user.id));
+        if (!user || !enrollment) {
+          this.challenges.consume(input.challenge);
+          throw challengeExpired();
+        }
+        const accepted =
+          input.method === 'totp'
+            ? await this.acceptTotp(enrollment, input.code, now)
+            : await this.acceptRecoveryCode(user.id, input.code);
+        if (!accepted) {
+          return this.reject(
+            input.challenge,
+            attempt,
+            input.method,
+            user.email,
+          );
+        }
+        this.guard.succeeded(attempt);
+        if (!this.challenges.consume(input.challenge)) throw challengeExpired();
 
-    const attempt = await this.guard.admit(client.ip, user.email);
-    const enrollment = await this.enrollments.find(user.id);
-    if (!enrollment) {
-      this.challenges.consume(input.challenge);
-      throw challengeExpired();
-    }
-    const accepted =
-      input.method === 'totp'
-        ? await this.acceptTotp(enrollment, input.code, now)
-        : await this.acceptRecoveryCode(user.id, input.code);
-    if (!accepted) return this.reject(input.challenge, attempt, input.method);
-    if (!this.challenges.consume(input.challenge)) throw challengeExpired();
-
-    if (input.method === 'recovery') {
-      this.record(
-        user,
-        'mfa.recovery-code.use',
-        `${user.email} 계정이 복구 코드로 로그인했습니다. 남은 복구 코드 ${enrollment.recoveryCodeHashes.length - 1}개`,
-      );
-    }
-    return this.authSessions.signIn(user, client, 'mfa');
+        if (input.method === 'recovery') {
+          this.record(
+            user,
+            'mfa.recovery-code.use',
+            `${user.email} 계정이 복구 코드로 로그인했습니다. 남은 복구 코드 ${enrollment.recoveryCodeHashes.length - 1}개`,
+          );
+        } else {
+          this.record(
+            user,
+            'login.mfa-success',
+            `${user.email} 계정이 OTP 로 로그인했습니다 (IP ${client.ip ?? '알 수 없음'})`,
+          );
+        }
+        return this.authSessions.signIn(user, client, 'mfa');
+      },
+    );
   }
 
   async completeEnrollment(
@@ -167,36 +216,47 @@ export class MfaService {
     client: SessionClient,
   ): Promise<AuthenticatedLogin & { recoveryCodes: string[] }> {
     const now = new Date();
-    const challenge = this.challenges.find(input.challenge, 'enroll', now);
-    const user =
-      challenge && (await this.users.findByIdWithRoles(challenge.userId));
-    if (!challenge || !user) throw challengeExpired();
+    return this.check(
+      input.challenge,
+      'enroll',
+      now,
+      client,
+      async (challenge, attempt) => {
+        const user = await this.users.findByIdWithRoles(challenge.userId);
+        if (!user) {
+          this.challenges.consume(input.challenge);
+          throw challengeExpired();
+        }
+        const step = matchTotp(challenge.secret, input.code, now, null);
+        if (step === null) {
+          return this.reject(input.challenge, attempt, 'totp', user.email);
+        }
+        this.guard.succeeded(attempt);
+        if (!this.challenges.consume(input.challenge)) throw challengeExpired();
 
-    const attempt = await this.guard.admit(client.ip, user.email);
-    const step = matchTotp(challenge.secret, input.code, now, null);
-    if (step === null) return this.reject(input.challenge, attempt, 'totp');
-    if (!this.challenges.consume(input.challenge)) throw challengeExpired();
+        const recoveryCodes = generateRecoveryCodes();
+        const created = await this.enrollments.createIfAbsent({
+          userId: user.id,
+          sealedTotpSecret: this.config.sealSecret(user.id, challenge.secret),
+          lastUsedStep: step,
+          recoveryCodeHashes: this.hashRecoveryCodes(recoveryCodes),
+          enabledAt: now,
+        });
+        if (!created) throw alreadyEnabled();
 
-    const recoveryCodes = generateRecoveryCodes();
-    const created = await this.enrollments.createIfAbsent({
-      userId: user.id,
-      sealedTotpSecret: this.config.sealSecret(user.id, challenge.secret),
-      lastUsedStep: step,
-      recoveryCodeHashes: this.hashRecoveryCodes(recoveryCodes),
-      enabledAt: now,
-    });
-    if (!created) throw alreadyEnabled();
-
-    await this.authSessions.revokeAllForUser(user.id);
-    this.record(
-      user,
-      'mfa.enable',
-      `${user.email} 계정이 2단계 인증을 켰습니다.`,
+        this.record(
+          user,
+          'mfa.enable',
+          `${user.email} 계정이 2단계 인증을 켰습니다.`,
+        );
+        // 시작한 세션이 그사이 끝났어도 비밀번호와 OTP 를 모두 거쳤으므로 첫 로그인처럼 새로 연다.
+        const upgraded = challenge.sessionId
+          ? await this.authSessions.upgradeToMfa(user, challenge.sessionId)
+          : null;
+        const login = upgraded ?? (await this.signInFresh(user, client));
+        return { ...login, recoveryCodes };
+      },
     );
-    return {
-      ...(await this.authSessions.signIn(user, client, 'mfa')),
-      recoveryCodes,
-    };
   }
 
   async status(account: { id: string; roles: string[] }): Promise<MfaStatus> {
@@ -222,11 +282,12 @@ export class MfaService {
         '2단계 인증을 쓰고 있지 않습니다.',
       );
     }
-    const attempt = await this.guard.admit(client.ip, account.email);
+    const attempt = this.guard.admit(account.id, client.ip);
     if (!(await this.acceptTotp(enrollment, code, new Date()))) {
-      await this.guard.failed(attempt, 'wrong-otp');
+      this.guard.failed(attempt, 'wrong-otp', account.email);
       throw invalidCodeKeepingSession();
     }
+    this.guard.succeeded(attempt);
 
     const recoveryCodes = generateRecoveryCodes();
     await this.enrollments.replaceRecoveryCodes(
@@ -241,7 +302,10 @@ export class MfaService {
     return { recoveryCodes };
   }
 
-  private beginEnrollment(account: Account): {
+  private beginEnrollment(
+    account: Account,
+    sessionId: string | null,
+  ): {
     challenge: MfaChallengeToken;
     enrollment: MfaEnrollmentSetup;
   } {
@@ -251,6 +315,7 @@ export class MfaService {
         purpose: 'enroll',
         userId: account.id,
         secret,
+        sessionId,
       }),
       enrollment: {
         secret,
@@ -261,6 +326,38 @@ export class MfaService {
         }),
       },
     };
+  }
+
+  /**
+   * challenge 하나에 확인은 한 번에 하나만 받고, 시도는 await 전에 센다.
+   * 그래야 동시에 보낸 요청들이 결과를 기다리는 사이 실패 한도를 넘지 못한다.
+   */
+  private async check<P extends MfaChallenge['purpose'], T>(
+    token: string,
+    purpose: P,
+    now: Date,
+    client: SessionClient,
+    run: (
+      challenge: Extract<MfaChallenge, { purpose: P }>,
+      attempt: unknown,
+    ) => Promise<T>,
+  ): Promise<T> {
+    const challenge = this.challenges.begin(token, purpose, now);
+    if (challenge === 'busy') throw checkInProgress();
+    if (!challenge) throw challengeExpired();
+    try {
+      return await run(
+        challenge,
+        this.guard.admit(challenge.userId, client.ip),
+      );
+    } finally {
+      this.challenges.finish(token);
+    }
+  }
+
+  private async signInFresh(user: User, client: SessionClient) {
+    await this.authSessions.revokeAllForUser(user.id);
+    return this.authSessions.signIn(user, client, 'mfa');
   }
 
   private async acceptTotp(
@@ -294,15 +391,17 @@ export class MfaService {
     );
   }
 
-  private async reject(
+  private reject(
     token: string,
     attempt: unknown,
     method: MfaMethod,
-  ): Promise<never> {
+    email: string,
+  ): never {
     const remaining = this.challenges.fail(token);
-    await this.guard.failed(
+    this.guard.failed(
       attempt,
       method === 'totp' ? 'wrong-otp' : 'wrong-recovery-code',
+      email,
     );
     if (remaining === 0) {
       throw mfaError(

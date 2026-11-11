@@ -10,7 +10,8 @@ describe('SessionVerifier', () => {
   afterEach(() => jest.useRealTimers());
 
   async function login() {
-    const harness = sessionHarness();
+    const harness = sessionHarness({ mfaRequiredRoles: ['admin'] });
+    harness.users.set('user-1', { roles: [{ name: 'operator' }] });
     const session = await harness.sessions.open('user-1', browser);
     const token = harness.sessions.signAccessToken(
       {
@@ -43,6 +44,26 @@ describe('SessionVerifier', () => {
       userAgent: browser.userAgent,
       assurance: 'password',
     });
+  });
+
+  it('소켓 토큰은 토큰의 역할이 아니라 DB 역할로 2단계 요구를 판단한다', async () => {
+    const { verifier, users, token } = await login();
+
+    await expect(verifier.verifyToken(token)).resolves.toBeDefined();
+    users.set('user-1', { roles: [{ name: 'admin' }] });
+
+    await expect(verifier.verifyToken(token)).rejects.toThrow(
+      '2단계 인증을 거쳐야 합니다',
+    );
+  });
+
+  it('DB 에 없는 사용자의 소켓 토큰을 거절한다', async () => {
+    const { verifier, users, token } = await login();
+    users.delete('user-1');
+
+    await expect(verifier.verifyToken(token)).rejects.toBeInstanceOf(
+      UnauthorizedException,
+    );
   });
 
   it('세션 id 가 없는 예전 토큰을 거절한다', async () => {

@@ -4,7 +4,40 @@
 //
 // 등록한 OTP 와 남은 복구 코드를 지우고 그 계정의 로그인 세션을 모두 끊는다.
 // 다음 로그인에서 필수 역할 계정은 등록 화면으로 간다. 여러 번 실행해도 결과는 같다.
+// 운영 감사 화면이 읽는 apps/backend/data/audit-log.jsonl 에 한 줄을 남긴다.
+import { randomUUID } from 'node:crypto';
+import { appendFile, mkdir } from 'node:fs/promises';
+import { userInfo } from 'node:os';
+import { dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { Client } from 'pg';
+
+const AUDIT_LOG = fileURLToPath(
+  new URL('../apps/backend/data/audit-log.jsonl', import.meta.url),
+);
+
+async function recordAudit(user, { cleared, revoked }) {
+  const operator = userInfo().username;
+  const event = {
+    id: randomUUID(),
+    domain: 'security',
+    action: 'mfa.reset',
+    summary: `호스트에서 ${user.email} 계정의 2단계 인증을 ${cleared ? '해제' : '확인(등록 없음)'}하고 세션 ${revoked}개를 끊었습니다 (실행 ${operator})`,
+    actorId: null,
+    actorEmail: null,
+    targetType: 'user',
+    targetId: user.id,
+    metadata: {
+      via: 'scripts/reset-user-mfa.mjs',
+      hostUser: operator,
+      cleared,
+      revokedSessions: revoked,
+    },
+    createdAt: new Date().toISOString(),
+  };
+  await mkdir(dirname(AUDIT_LOG), { recursive: true });
+  await appendFile(AUDIT_LOG, `${JSON.stringify(event)}\n`, 'utf8');
+}
 
 const [email, ...rest] = process.argv.slice(2);
 if (!email || rest.length > 0) {
@@ -45,6 +78,10 @@ try {
       [user.id],
     );
     await client.query('COMMIT');
+    await recordAudit(user, {
+      cleared: cleared.rowCount > 0,
+      revoked: revoked.rowCount,
+    });
     console.log(
       `${user.email}: 2단계 인증 ${cleared.rowCount ? '해제' : '등록 없음'}, 끊은 세션 ${revoked.rowCount}개`,
     );

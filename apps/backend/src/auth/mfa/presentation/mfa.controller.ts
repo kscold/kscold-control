@@ -15,6 +15,7 @@ import { sessionClient } from '../../presentation/session-client';
 import {
   CompleteMfaEnrollmentDto,
   MfaCodeDto,
+  StartMfaEnrollmentDto,
   VerifyMfaDto,
 } from '../application/dto/mfa.dto';
 import { MfaService } from '../application/mfa.service';
@@ -54,8 +55,11 @@ export class MfaController {
   @UseGuards(AuthGuard('jwt'))
   @Post('enrollment')
   @HttpCode(HttpStatus.OK)
-  startEnrollment(@Req() req: JwtRequest) {
-    return this.mfa.startEnrollment(req.user);
+  startEnrollment(
+    @Body() dto: StartMfaEnrollmentDto,
+    @Req() req: Request & JwtRequest,
+  ) {
+    return this.mfa.startEnrollment(req.user, dto.password, sessionClient(req));
   }
 
   @UseGuards(AuthGuard('jwt'))
