@@ -24,6 +24,21 @@ node scripts/fetch-ip-geo-db.mjs --out /absolute/path/dbip-city-lite.mmdb
 - 파일은 약 130MB 이고 기동 때 통째로 메모리에 올린다. 그만큼 백엔드 메모리가 는다.
 - DB-IP Lite 는 매달 새 판이 나온다. 같은 명령으로 바꾸고 다시 시작하면 새 판을 쓴다. 받기가 실패하면 기존 파일이 그대로 남는다.
 
+## 허용 국가 밖 SSH 차단
+
+같은 IP 위치 파일로 SSH 접속 IP 의 나라를 보고, 허용 국가 밖이면 실패 횟수를 기다리지 않고 바로 맥미니 방화벽 차단 목록(`ssh-block-manual.txt`)에 올린다. 계정과 성공 여부는 따지지 않는다.
+
+- 접속만 한 IP(성공·인증 중 끊김)는 SSH 만 막고 사이트는 열어 둔다. 비밀번호 실패·없는 계정·root 시도·시도 초과가 보이면 SSH·사이트 모두 막는다. SSH 만 막아 둔 IP 가 나중에 공격하면 모두 막도록 넓힌다.
+- 이유 칸은 `허용 국가 밖 SSH 접속 (US, user=…)` 또는 `허용 국가 밖 SSH 공격 (…)` 이다. 화면은 이 이유로 이 규칙이 올린 차단을 나라별로 센다.
+- 허용 국가 밖에서 로그인이 성공하면 `ssh.country-intrusion` 감사 기록을 남긴다. 열린 세션은 끊지 않는다. 위치 파일이 틀려 운영자 자신이 걸렸을 때 그 세션이 남은 복구 수단이기 때문이다. 침입이면 SSH 탭에서 끊는다.
+- 내 IP 목록, `SECURITY_ALLOWLIST`, 내부망·Tailscale, 위치를 모르는 IP 는 나라로 막지 않는다. 위치를 모르는 IP 는 기존 실패 횟수 규칙(차단기)에 맡긴다.
+- 다른 규칙이나 운영자가 이미 막은 IP 는 범위를 바꾸지 않는다.
+- 30초마다 기록 파일에 새로 붙은 줄만 읽는다. Control 이 뜬 뒤 처음 돌 때와 설정을 바꾼 뒤에는 최근 7일을 다시 본다. 그래서 풀어 준 IP 도 그 나라가 여전히 허용 밖이면 다시 막힐 수 있다. 계속 허용하려면 내 IP 로 표시한다.
+- 설정은 SSH 접속 탭에서 바꾸고 `SSH_AUDIT_DIR` 의 `ssh-country-guard.json` 에 저장한다. 파일이 없으면 한국(`KR`)만 허용하고 켠다. 위치 파일이 준비되지 않으면 쉰다.
+- 나라를 다시 허용해도 이미 올린 차단은 풀지 않는다. 화면의 "이 나라 차단 모두 해제"로 이 규칙이 그 나라에 올린 차단만 푼다.
+
+API: 설정과 나라별 차단 수는 `GET /api/security/ssh` 의 `countryGuard`, 바꾸기는 `PATCH /api/security/ssh/country-guard`(`enabled`, `allowedCountries`), 나라별 해제는 `POST /api/security/ssh/country-guard/countries/:country/unblock` 이다. 바꾸기는 `security:manage` 권한과 감사 기록이 따른다.
+
 ## 지도 자료
 
 세계 지도는 [Natural Earth](https://www.naturalearthdata.com) 1:110m 국가 경계(공개 도메인, v5.1.2)를 단순화한 것이다. 원본은 저장소에 넣지 않는다. 다시 만들 때는 아래 명령을 쓴다. 고정한 태그에서 받고 SHA-256 으로 같은 파일인지 확인한다.

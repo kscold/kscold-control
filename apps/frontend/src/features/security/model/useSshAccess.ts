@@ -1,6 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { securityService } from '../api/security.service';
-import type { SshAccessOverview, SshBlockScope } from '../model/security.types';
+import type {
+  SshAccessOverview,
+  SshBlockScope,
+  SshCountryGuard,
+} from '../model/security.types';
 
 /** 화면이 보이는 동안만 15초마다 조회함. */
 const REFRESH_MS = 15_000;
@@ -68,6 +72,11 @@ export function useSshAccess(days: number) {
     setScope: (ip: string, scope: SshBlockScope) =>
       run(() => securityService.setSshBlockScope(ip, scope)),
     unblock: (ip: string) => run(() => securityService.unblockSshIp(ip)),
+    updateCountryGuard: (
+      patch: Partial<Pick<SshCountryGuard, 'enabled' | 'allowedCountries'>>,
+    ) => run(() => securityService.updateSshCountryGuard(patch)),
+    unblockCountry: (country: string) =>
+      run(() => securityService.unblockSshCountry(country)),
     addKnown: (ip: string, label?: string) =>
       run(() => securityService.addSshKnownIp(ip, label)),
     labelKnown: (ip: string, label: string) =>

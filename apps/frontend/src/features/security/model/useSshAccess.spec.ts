@@ -29,6 +29,12 @@ function overview(pendingAuth: number): SshAccessOverview {
     pendingAuth,
     knownIps: [],
     blocks: [],
+    countryGuard: {
+      enabled: true,
+      state: 'on',
+      allowedCountries: ['KR'],
+      blockedByCountry: [],
+    },
   };
 }
 

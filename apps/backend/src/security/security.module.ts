@@ -24,6 +24,7 @@ import {
 import { SecurityController } from './presentation/controllers/security.controller';
 import { SshAccessController } from './presentation/controllers/ssh-access.controller';
 import { SshAccessService } from './application/services/ssh-access.service';
+import { SshCountryGuardService } from './application/services/ssh-country-guard.service';
 
 @Module({
   imports: [
@@ -35,6 +36,7 @@ import { SshAccessService } from './application/services/ssh-access.service';
     IpBanService,
     IpAllowlistService,
     SshAccessService,
+    SshCountryGuardService,
     AttackMapService,
     LoginGuardService,
     ListIpBansUseCase,
