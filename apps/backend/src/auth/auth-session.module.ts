@@ -8,6 +8,7 @@ import { SessionVerifier } from './application/services/session-verifier.service
 import { AuthSession } from './domain/entities/auth-session.entity';
 import { AUTH_SESSION_REPOSITORY } from './domain/repositories/auth-session.repository.interface';
 import { TypeOrmAuthSessionRepository } from './infrastructure/repositories/typeorm-auth-session.repository';
+import { MfaConfig } from './mfa/application/mfa-config';
 
 // RbacModule 도 세션을 끊어야 하는데 AuthModule 이 RbacModule 을 가져오므로, 순환을 피해 세션 부분만 따로 둔다.
 @Module({
@@ -35,7 +36,18 @@ import { TypeOrmAuthSessionRepository } from './infrastructure/repositories/type
       provide: AUTH_SESSION_REPOSITORY,
       useClass: TypeOrmAuthSessionRepository,
     },
+    // 세션 확인이 2단계 인증 요구를 보므로 키 검사도 여기서 기동과 함께 한다.
+    {
+      provide: MfaConfig,
+      inject: [ConfigService],
+      useFactory: (config: ConfigService) => MfaConfig.fromConfig(config),
+    },
   ],
-  exports: [AuthSessionService, SessionVerifier, SessionConnectionRegistry],
+  exports: [
+    AuthSessionService,
+    SessionVerifier,
+    SessionConnectionRegistry,
+    MfaConfig,
+  ],
 })
 export class AuthSessionModule {}

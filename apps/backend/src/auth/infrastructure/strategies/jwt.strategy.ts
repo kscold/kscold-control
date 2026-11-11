@@ -32,11 +32,15 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   }
 
   async validate(payload: JwtTokenClaims) {
-    const session = await this.sessionVerifier.verifyClaims(payload);
     const user = await this.authService.validateUser(payload.sub);
     if (!user) {
       throw new UnauthorizedException('유효하지 않은 토큰입니다.');
     }
+    // 토큰을 받은 뒤 바뀐 역할도 2단계 인증 요구에 바로 반영한다.
+    const session = await this.sessionVerifier.verifyClaims({
+      ...payload,
+      roles: user.roles?.map((role) => role.name) ?? [],
+    });
 
     // PermissionsGuard를 위한 평탄화된 permissions 배열 추가
     const permissions = user.roles

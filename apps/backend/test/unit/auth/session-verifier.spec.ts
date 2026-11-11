@@ -280,4 +280,54 @@ describe('SessionVerifier', () => {
     );
     expect(decode(late).exp).toBe(decode(late).maxExp);
   });
+
+  describe('2단계 인증이 필요한 역할', () => {
+    async function adminSession(assurance: 'password' | 'mfa') {
+      const harness = sessionHarness({ mfaRequiredRoles: ['admin'] });
+      const session = await harness.sessions.open('user-1', browser, {
+        assurance,
+      });
+      const claims = { sub: 'user-1', sid: session.id };
+      return { ...harness, session, claims };
+    }
+
+    it('비밀번호만으로 연 세션을 거절한다', async () => {
+      const { verifier, claims } = await adminSession('password');
+
+      await expect(
+        verifier.verifyClaims({ ...claims, roles: ['admin'] }),
+      ).rejects.toBeInstanceOf(UnauthorizedException);
+    });
+
+    it('2단계를 거친 세션은 받아들인다', async () => {
+      const { verifier, claims, session } = await adminSession('mfa');
+
+      await expect(
+        verifier.verifyClaims({ ...claims, roles: ['admin'] }),
+      ).resolves.toMatchObject({ id: session.id });
+    });
+
+    it('필수 역할이 아닌 계정은 비밀번호 세션도 받아들인다', async () => {
+      const { verifier, claims, session } = await adminSession('password');
+
+      await expect(
+        verifier.verifyClaims({ ...claims, roles: ['operator'] }),
+      ).resolves.toMatchObject({ id: session.id });
+    });
+
+    it('관리자 세션 아래의 미리보기 세션은 부모 세션의 확인을 따른다', async () => {
+      const { verifier, sessions, session } = await adminSession('mfa');
+      const preview = await sessions.open('user-2', browser, {
+        parentSessionId: session.id,
+      });
+
+      await expect(
+        verifier.verifyClaims({
+          sub: 'user-2',
+          sid: preview.id,
+          roles: ['admin'],
+        }),
+      ).resolves.toMatchObject({ id: preview.id });
+    });
+  });
 });

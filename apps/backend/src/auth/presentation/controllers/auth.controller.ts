@@ -25,18 +25,9 @@ import type { User } from '../../../rbac/domain/entities/user.entity';
 import type { JwtRequest } from '../../../common/types/jwt-request.type';
 import { Audit } from '../../../common/decorators/audit.decorator';
 import { AllowDuringImpersonation } from '../../../common/decorators/allow-during-impersonation.decorator';
-import { clientAddress, clientIp } from '../../../common/utils/client-ip.util';
-import {
-  AuthSessionService,
-  type SessionClient,
-} from '../../application/services/auth-session.service';
-
-function sessionClient(req: ExpressRequest): SessionClient {
-  return {
-    ip: clientIp(req),
-    userAgent: req.headers['user-agent']?.slice(0, 512) || null,
-  };
-}
+import { clientAddress } from '../../../common/utils/client-ip.util';
+import { AuthSessionService } from '../../application/services/auth-session.service';
+import { sessionClient } from '../session-client';
 
 @Controller('auth')
 export class AuthController {

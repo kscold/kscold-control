@@ -138,6 +138,17 @@ try {
   if (!process.env.DATABASE_URL || !process.env.JWT_SECRET) {
     throw new Error('.env의 DATABASE_URL과 JWT_SECRET이 필요합니다.');
   }
+  const mfaKey = process.env.CONTROL_MFA_ENCRYPTION_KEY?.trim() ?? '';
+  const decodedMfaKey = Buffer.from(mfaKey, 'base64');
+  if (
+    decodedMfaKey.length !== 32 ||
+    decodedMfaKey.toString('base64') !== mfaKey
+  ) {
+    // 새 백엔드는 이 키 없이 기동하지 않으므로 재시작 전에 멈춘다.
+    throw new Error(
+      '.env의 CONTROL_MFA_ENCRYPTION_KEY가 필요합니다. openssl rand -base64 32 로 한 번 만들어 넣으세요.',
+    );
+  }
   if (!process.env.FRONTEND_URL) {
     throw new Error('배포 확인에 사용할 FRONTEND_URL이 필요합니다.');
   }

@@ -10,6 +10,7 @@ import {
   type IAuthSessionRepository,
 } from '../../domain/repositories/auth-session.repository.interface';
 import type { SocketJwtPayload } from '../../../common/types/authenticated-socket.type';
+import { MfaConfig } from '../../mfa/application/mfa-config';
 
 /** uuid 칸에 형식이 다른 값을 넘기면 DB 가 500 을 내므로 조회 전에 거른다. */
 const SESSION_ID_PATTERN =
@@ -22,18 +23,35 @@ export class SessionVerifier {
     @Inject(AUTH_SESSION_REPOSITORY)
     private readonly sessions: IAuthSessionRepository,
     private readonly jwtService: JwtService,
+    private readonly mfa: MfaConfig,
   ) {}
 
-  /** 서명을 이미 확인한 claim 의 세션을 확인한다. */
+  /**
+   * 서명을 이미 확인한 claim 의 세션을 확인한다.
+   * `roles` 는 2단계 인증이 필요한 계정인지 가르는 데 쓴다. HTTP 요청은 DB 의 현재 역할을 넣는다.
+   */
   async verifyClaims(claims: {
     sub: string;
     sid?: unknown;
+    roles?: unknown;
   }): Promise<AuthSession> {
     const now = new Date();
     const session = await this.findActive(claims.sid, now);
     if (!session || session.userId !== claims.sub) {
       throw new UnauthorizedException(
         '로그인 세션이 끝났습니다. 다시 로그인해주세요.',
+      );
+    }
+    // 미리보기 세션은 이미 확인한 관리자 세션 아래에서만 열린다.
+    if (
+      session.assurance !== 'mfa' &&
+      !session.parentSessionId &&
+      this.mfa.requiresMfa(
+        Array.isArray(claims.roles) ? (claims.roles as string[]) : [],
+      )
+    ) {
+      throw new UnauthorizedException(
+        '이 계정은 2단계 인증을 거쳐야 합니다. 다시 로그인해주세요.',
       );
     }
     if (

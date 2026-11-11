@@ -1,4 +1,6 @@
 import { JwtService } from '@nestjs/jwt';
+import { randomBytes } from 'node:crypto';
+import { MfaConfig } from '@/auth/mfa/application/mfa-config';
 import { AuthSessionService } from '@/auth/application/services/auth-session.service';
 import { SessionConnectionRegistry } from '@/auth/application/services/session-connection-registry.service';
 import { SessionVerifier } from '@/auth/application/services/session-verifier.service';
@@ -82,16 +84,23 @@ export class InMemoryAuthSessionRepository implements IAuthSessionRepository {
   }
 }
 
-export function sessionHarness() {
+/** 2단계 인증을 요구할 역할은 그 규칙을 보는 테스트만 넘긴다. */
+export function sessionHarness({ mfaRequiredRoles = [] as string[] } = {}) {
   const repository = new InMemoryAuthSessionRepository();
   const jwtService = new JwtService({
     secret: 'test-only-secret-at-least-32-characters',
   });
-  const verifier = new SessionVerifier(repository, jwtService);
+  const mfaConfig = new MfaConfig(
+    randomBytes(32),
+    new Set(mfaRequiredRoles),
+    'kscold-control',
+  );
+  const verifier = new SessionVerifier(repository, jwtService, mfaConfig);
   const connections = new SessionConnectionRegistry(verifier);
   return {
     repository,
     jwtService,
+    mfaConfig,
     verifier,
     connections,
     sessions: new AuthSessionService(repository, jwtService, connections),

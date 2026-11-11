@@ -90,6 +90,9 @@ module.exports = {
           'CONTROL_TRUSTED_PROXIES',
           'CONTROL_PROXY_SECRET',
           'CONTROL_REGISTRATION_ENABLED',
+          'CONTROL_MFA_ENCRYPTION_KEY',
+          'CONTROL_MFA_REQUIRED_ROLES',
+          'CONTROL_MFA_ISSUER',
         ]),
       },
       // 자동 재시작

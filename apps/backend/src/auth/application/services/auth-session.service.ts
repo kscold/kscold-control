@@ -5,12 +5,18 @@ import {
   isSessionActive,
   openingLifetime,
 } from '../../domain/auth-session.policy';
-import type { AuthSession } from '../../domain/entities/auth-session.entity';
+import type {
+  AuthSession,
+  SessionAssurance,
+} from '../../domain/entities/auth-session.entity';
 import {
   AUTH_SESSION_REPOSITORY,
   type IAuthSessionRepository,
 } from '../../domain/repositories/auth-session.repository.interface';
 import { SessionConnectionRegistry } from './session-connection-registry.service';
+import { PermissionExtractor } from '../../../common/utils/permission-extractor.util';
+import type { User } from '../../../rbac/domain/entities/user.entity';
+import type { AuthenticatedLogin } from '../dto/login-result';
 
 export interface SessionClient {
   ip: string | null;
@@ -46,7 +52,11 @@ export class AuthSessionService {
   open(
     userId: string,
     client: SessionClient,
-    options: { parentSessionId?: string; absoluteTtlMs?: number } = {},
+    options: {
+      parentSessionId?: string;
+      absoluteTtlMs?: number;
+      assurance?: SessionAssurance;
+    } = {},
   ): Promise<AuthSession> {
     const now = new Date();
     return this.sessions.open({
@@ -54,10 +64,35 @@ export class AuthSessionService {
       parentSessionId: options.parentSessionId ?? null,
       ip: client.ip,
       userAgent: client.userAgent,
-      assurance: 'password',
+      assurance: options.assurance ?? 'password',
       createdAt: now,
       ...openingLifetime(now, options.absoluteTtlMs),
     });
+  }
+
+  /** 로그인을 마친 사용자에게 새 세션과 접근 토큰을 준다. */
+  async signIn(
+    user: Pick<User, 'id' | 'email' | 'roles'>,
+    client: SessionClient,
+    assurance: SessionAssurance,
+  ): Promise<AuthenticatedLogin> {
+    const signedIn = {
+      id: user.id,
+      email: user.email,
+      roles: user.roles.map((role) => role.name),
+      permissions: PermissionExtractor.extractFromRoles(user.roles),
+    };
+    const session = await this.open(user.id, client, { assurance });
+    const accessToken = this.signAccessToken(
+      {
+        sub: signedIn.id,
+        email: signedIn.email,
+        roles: signedIn.roles,
+        permissions: signedIn.permissions,
+      },
+      session,
+    );
+    return { kind: 'authenticated', accessToken, user: signedIn };
   }
 
   async extend(sessionId: string): Promise<AuthSession> {
