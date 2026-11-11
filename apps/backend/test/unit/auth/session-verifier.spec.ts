@@ -252,4 +252,32 @@ describe('SessionVerifier', () => {
       verifier.verifyClaims({ sub: 'user-2', sid: preview.id }),
     ).rejects.toBeInstanceOf(UnauthorizedException);
   });
+
+  it('토큰의 maxExp 는 절대 만료이고 갱신이 거기에 닿으면 exp 와 같아진다', async () => {
+    const { jwtService, sessions, token, session } = await login();
+    const decode = (value: string) =>
+      jwtService.decode<{ exp: number; maxExp: number }>(value);
+
+    expect(decode(token).maxExp).toBe(
+      Math.floor(session.absoluteExpiresAt.getTime() / 1000),
+    );
+    expect(decode(token).exp).toBeLessThan(decode(token).maxExp);
+
+    for (const day of [6, 12, 18, 24]) {
+      at(day * DAY);
+      await sessions.extend(session.id);
+    }
+    at(29 * DAY);
+    const capped = await sessions.extend(session.id);
+    const late = sessions.signAccessToken(
+      {
+        sub: 'user-1',
+        email: 'admin@example.com',
+        roles: ['admin'],
+        permissions: [],
+      },
+      capped,
+    );
+    expect(decode(late).exp).toBe(decode(late).maxExp);
+  });
 });

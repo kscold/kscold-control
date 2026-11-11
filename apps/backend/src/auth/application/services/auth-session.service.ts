@@ -31,6 +31,10 @@ export interface AccessTokenClaims {
   [claim: string]: unknown;
 }
 
+function epochSeconds(date: Date): number {
+  return Math.floor(date.getTime() / 1000);
+}
+
 @Injectable()
 export class AuthSessionService {
   constructor(
@@ -95,14 +99,21 @@ export class AuthSessionService {
     return revoked.length;
   }
 
-  /** 토큰이 세션보다 오래 살지 않게 만료를 세션의 유휴 만료에 맞춘다. */
+  /**
+   * 토큰이 세션보다 오래 살지 않게 만료를 세션의 유휴 만료에 맞춘다.
+   * `maxExp` 는 갱신해도 넘을 수 없는 절대 만료라, 화면은 `exp` 가 여기에 닿으면 갱신을 멈춘다.
+   */
   signAccessToken(claims: AccessTokenClaims, session: AuthSession): string {
-    const remainingSeconds = Math.floor(
-      (session.expiresAt.getTime() - Date.now()) / 1000,
-    );
+    const issuedAt = epochSeconds(new Date());
+    const expiresAt = epochSeconds(session.expiresAt);
     return this.jwtService.sign(
-      { ...claims, sid: session.id },
-      { expiresIn: Math.max(1, remainingSeconds) },
+      {
+        ...claims,
+        sid: session.id,
+        iat: issuedAt,
+        maxExp: epochSeconds(session.absoluteExpiresAt),
+      },
+      { expiresIn: Math.max(1, expiresAt - issuedAt) },
     );
   }
 }
