@@ -8,8 +8,10 @@ import {
   HttpCode,
   HttpStatus,
   Param,
+  Req,
 } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
+import type { Request as ExpressRequest } from 'express';
 import {
   RegisterUseCase,
   LoginUseCase,
@@ -21,6 +23,19 @@ import { LoginDto, RegisterDto } from '../../application/dto';
 import type { User } from '../../../rbac/domain/entities/user.entity';
 import type { JwtRequest } from '../../../common/types/jwt-request.type';
 import { Audit } from '../../../common/decorators/audit.decorator';
+import { AllowDuringImpersonation } from '../../../common/decorators/allow-during-impersonation.decorator';
+import { clientIp } from '../../../common/utils/client-ip.util';
+import {
+  AuthSessionService,
+  type SessionClient,
+} from '../../application/services/auth-session.service';
+
+function sessionClient(req: ExpressRequest): SessionClient {
+  return {
+    ip: clientIp(req),
+    userAgent: req.headers['user-agent']?.slice(0, 512) || null,
+  };
+}
 
 @Controller('auth')
 export class AuthController {
@@ -30,6 +45,7 @@ export class AuthController {
     private readonly getMeUseCase: GetMeUseCase,
     private readonly refreshTokenUseCase: RefreshTokenUseCase,
     private readonly startImpersonationUseCase: StartImpersonationUseCase,
+    private readonly authSessions: AuthSessionService,
   ) {}
 
   @Post('register')
@@ -40,8 +56,17 @@ export class AuthController {
 
   @Post('login')
   @HttpCode(HttpStatus.OK)
-  async login(@Body() dto: LoginDto) {
-    return this.loginUseCase.execute(dto);
+  async login(@Body() dto: LoginDto, @Req() req: ExpressRequest) {
+    return this.loginUseCase.execute(dto, sessionClient(req));
+  }
+
+  /** 이 토큰의 서버 세션을 끊는다. 미리보기 토큰이면 미리보기만, 관리자 토큰이면 미리보기까지 끊긴다. */
+  @UseGuards(AuthGuard('jwt'))
+  @AllowDuringImpersonation()
+  @Post('logout')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async logout(@Request() req: JwtRequest) {
+    await this.authSessions.revoke(req.user.sessionId);
   }
 
   @UseGuards(AuthGuard('jwt'))
@@ -59,7 +84,7 @@ export class AuthController {
   @UseGuards(AuthGuard('jwt'))
   @Post('refresh')
   @HttpCode(HttpStatus.OK)
-  async refresh(@Request() req: { user: User }) {
+  async refresh(@Request() req: { user: User & { sessionId: string } }) {
     return this.refreshTokenUseCase.execute(req.user);
   }
 
@@ -88,8 +113,12 @@ export class AuthController {
   })
   async startImpersonation(
     @Param('targetUserId') targetUserId: string,
-    @Request() req: JwtRequest,
+    @Req() req: ExpressRequest & JwtRequest,
   ) {
-    return this.startImpersonationUseCase.execute(req.user, targetUserId);
+    return this.startImpersonationUseCase.execute(
+      req.user,
+      targetUserId,
+      sessionClient(req),
+    );
   }
 }

@@ -14,7 +14,7 @@ import {
   UnauthorizedException,
   ForbiddenException,
 } from '@nestjs/common';
-import { JwtService } from '@nestjs/jwt';
+import { SessionVerifier } from '../../../auth/application/services/session-verifier.service';
 
 import type { AuthenticatedSocket } from '../../../common/types/authenticated-socket.type';
 import { PERMISSIONS } from '../../../common/constants/permissions';
@@ -50,7 +50,7 @@ export class OpenAIChatGateway
   private readonly clientProviders = new Map<string, OpenAIProvider>();
 
   constructor(
-    private readonly jwtService: JwtService,
+    private readonly sessionVerifier: SessionVerifier,
     private readonly openAIApi: OpenAIApiService,
     private readonly codexManager: CodexProcessManagerService,
     private readonly sessionMapper: OpenAISessionMapperService,
@@ -67,7 +67,7 @@ export class OpenAIChatGateway
       const token = client.handshake.auth.token;
       if (!token) throw new UnauthorizedException('No token');
 
-      const payload = this.jwtService.verify(token);
+      const payload = await this.sessionVerifier.verifyToken(token);
       client.user = payload;
 
       if (payload.tokenUse === IMPERSONATION_TOKEN_USE) {

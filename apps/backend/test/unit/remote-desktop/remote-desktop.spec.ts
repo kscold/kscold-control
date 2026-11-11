@@ -23,6 +23,7 @@ describe('원격 데스크톱 보안 중계', () => {
     email: 'admin@example.com',
     roles: ['admin'],
     permissions: [],
+    sessionId: 'admin-session',
   };
   const users = { findByIdWithRoles: jest.fn() };
 

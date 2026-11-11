@@ -1,7 +1,6 @@
 import { Module } from '@nestjs/common';
-import { JwtModule } from '@nestjs/jwt';
-import { ConfigModule, ConfigService } from '@nestjs/config';
 
+import { AuthModule } from '../auth/auth.module';
 import { TerminalModule } from '../terminal/terminal.module';
 import { RbacModule } from '../rbac/rbac.module';
 
@@ -20,24 +19,7 @@ import { ClaudeDiagnosticsController } from './presentation/controllers/claude-d
 import { ClaudeChatGateway } from './presentation/gateways/claude-chat.gateway';
 
 @Module({
-  imports: [
-    TerminalModule,
-    JwtModule.registerAsync({
-      imports: [ConfigModule],
-      inject: [ConfigService],
-      useFactory: (config: ConfigService) => {
-        const secret = config.get<string>('JWT_SECRET');
-        if (!secret) {
-          throw new Error('JWT_SECRET environment variable is required');
-        }
-        return {
-          secret,
-          signOptions: { expiresIn: '7d' },
-        };
-      },
-    }),
-    RbacModule,
-  ],
+  imports: [TerminalModule, AuthModule, RbacModule],
   controllers: [ClaudeDiagnosticsController],
   providers: [
     // 인프라성 서비스: 프로세스/캐시/클라이언트 매핑 실시간 로직 보유

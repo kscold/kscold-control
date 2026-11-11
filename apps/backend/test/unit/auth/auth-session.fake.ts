@@ -1,0 +1,72 @@
+import { JwtService } from '@nestjs/jwt';
+import { AuthSessionService } from '@/auth/application/services/auth-session.service';
+import { SessionVerifier } from '@/auth/application/services/session-verifier.service';
+import type { AuthSession } from '@/auth/domain/entities/auth-session.entity';
+import type { IAuthSessionRepository } from '@/auth/domain/repositories/auth-session.repository.interface';
+
+/** TypeORM 저장소와 같은 규칙으로 메모리에 세션을 기록한다. writes 는 실제 UPDATE 횟수다. */
+export class InMemoryAuthSessionRepository implements IAuthSessionRepository {
+  readonly rows = new Map<string, AuthSession>();
+  writes = 0;
+
+  async open(input: Parameters<IAuthSessionRepository['open']>[0]) {
+    const session: AuthSession = {
+      ...input,
+      id: `00000000-0000-4000-8000-${String(this.rows.size + 1).padStart(12, '0')}`,
+      lastSeenAt: input.createdAt,
+      stepUpUntil: null,
+      revokedAt: null,
+    };
+    this.rows.set(session.id, session);
+    return { ...session };
+  }
+
+  async findById(id: string) {
+    const session = this.rows.get(id);
+    return session ? { ...session } : null;
+  }
+
+  async extend(id: string, expiresAt: Date) {
+    this.update(id, { expiresAt });
+  }
+
+  async touch(id: string, at: Date) {
+    this.update(id, { lastSeenAt: at });
+  }
+
+  async revoke(id: string, at: Date) {
+    for (const session of this.rows.values()) {
+      if (
+        (session.id === id || session.parentSessionId === id) &&
+        !session.revokedAt
+      ) {
+        this.update(session.id, { revokedAt: at });
+      }
+    }
+  }
+
+  private update(id: string, patch: Partial<AuthSession>) {
+    const session = this.rows.get(id);
+    if (!session) return;
+    this.rows.set(id, { ...session, ...patch });
+    this.writes += 1;
+  }
+}
+
+export function sessionHarness() {
+  const repository = new InMemoryAuthSessionRepository();
+  const jwtService = new JwtService({
+    secret: 'test-only-secret-at-least-32-characters',
+  });
+  return {
+    repository,
+    jwtService,
+    sessions: new AuthSessionService(repository, jwtService),
+    verifier: new SessionVerifier(repository, jwtService),
+  };
+}
+
+export const browser = {
+  ip: '203.0.113.10',
+  userAgent: 'Mozilla/5.0 (test)',
+};

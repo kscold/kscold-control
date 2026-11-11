@@ -15,7 +15,7 @@ import {
   UnauthorizedException,
   ForbiddenException,
 } from '@nestjs/common';
-import { JwtService } from '@nestjs/jwt';
+import { SessionVerifier } from '../../../auth/application/services/session-verifier.service';
 
 import { PERMISSIONS } from '../../../common/constants/permissions';
 import { IMPERSONATION_TOKEN_USE } from '../../../common/constants/impersonation';
@@ -48,7 +48,7 @@ export class ClaudeChatGateway
   private readonly logger = new Logger(ClaudeChatGateway.name);
 
   constructor(
-    private readonly jwtService: JwtService,
+    private readonly sessionVerifier: SessionVerifier,
     private readonly processManager: ClaudeProcessManagerService,
     private readonly sessionMapper: ClaudeSessionMapperService,
     private readonly wsPermission: WsPermissionService,
@@ -73,7 +73,7 @@ export class ClaudeChatGateway
       const token = client.handshake.auth.token;
       if (!token) throw new UnauthorizedException('No token provided');
 
-      const payload = this.jwtService.verify(token);
+      const payload = await this.sessionVerifier.verifyToken(token);
       client.user = payload;
 
       if (payload.tokenUse === IMPERSONATION_TOKEN_USE) {

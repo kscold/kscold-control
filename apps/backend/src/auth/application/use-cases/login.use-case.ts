@@ -1,11 +1,14 @@
 import { Inject, Injectable, UnauthorizedException } from '@nestjs/common';
-import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import {
   IUserRepository,
   USER_REPOSITORY,
 } from '../../../rbac/domain/repositories/user.repository.interface';
 import { LoginDto } from '../dto';
+import {
+  AuthSessionService,
+  type SessionClient,
+} from '../services/auth-session.service';
 
 /** 로그인 */
 @Injectable()
@@ -13,10 +16,10 @@ export class LoginUseCase {
   constructor(
     @Inject(USER_REPOSITORY)
     private readonly userRepository: IUserRepository,
-    private readonly jwtService: JwtService,
+    private readonly authSessions: AuthSessionService,
   ) {}
 
-  async execute(dto: LoginDto) {
+  async execute(dto: LoginDto, client: SessionClient) {
     const { email, password } = dto;
 
     const user = await this.userRepository.findByEmailWithRoles(email);
@@ -42,7 +45,8 @@ export class LoginUseCase {
       permissions: user.roles.flatMap((r) => r.permissions.map((p) => p.name)),
     };
 
-    const accessToken = this.jwtService.sign(payload);
+    const session = await this.authSessions.open(user.id, client);
+    const accessToken = this.authSessions.signAccessToken(payload, session);
 
     return {
       accessToken,

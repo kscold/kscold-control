@@ -1,13 +1,11 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { ForbiddenException } from '@nestjs/common';
-import { JwtService } from '@nestjs/jwt';
+import { ForbiddenException, UnauthorizedException } from '@nestjs/common';
 import { RefreshTokenUseCase } from '@/auth/application/use-cases/refresh-token.use-case';
 import type { User } from '@/rbac/domain/entities/user.entity';
+import { browser, sessionHarness } from '../../auth-session.fake';
+
+const DAY = 24 * 60 * 60 * 1000;
 
 describe('RefreshTokenUseCase', () => {
-  let useCase: RefreshTokenUseCase;
-  let jwtService: jest.Mocked<JwtService>;
-
   // 로그인 직후의 사용자 형태 — 역할과 권한이 함께 로딩된 상태
   const user = {
     id: 'user-1',
@@ -24,38 +22,28 @@ describe('RefreshTokenUseCase', () => {
     ],
   } as unknown as User;
 
-  beforeEach(async () => {
-    const mockJwtService: Partial<JwtService> = {
-      sign: jest.fn().mockReturnValue('new-access-token'),
-    };
+  async function setup() {
+    const harness = sessionHarness();
+    const session = await harness.sessions.open(user.id, browser);
+    const useCase = new RefreshTokenUseCase(harness.sessions);
+    return { ...harness, session, useCase };
+  }
 
-    const module: TestingModule = await Test.createTestingModule({
-      providers: [
-        RefreshTokenUseCase,
-        { provide: JwtService, useValue: mockJwtService },
-      ],
-    }).compile();
+  afterEach(() => jest.useRealTimers());
 
-    useCase = module.get(RefreshTokenUseCase);
-    jwtService = module.get(JwtService);
-  });
+  it('같은 세션에 묶인 새 토큰을 같은 권한으로 발급한다', async () => {
+    const { useCase, session, jwtService } = await setup();
 
-  it('유효한 사용자에게 같은 권한을 담은 새 토큰을 발급한다', () => {
-    const result = useCase.execute(user);
+    const result = await useCase.execute({ ...user, sessionId: session.id });
 
-    expect(result.accessToken).toBe('new-access-token');
-    expect(jwtService.sign).toHaveBeenCalledWith({
+    expect(jwtService.verify(result.accessToken)).toMatchObject({
       sub: 'user-1',
       email: 'admin@example.com',
       roles: ['admin'],
       // 중복 권한은 한 번만 담긴다
       permissions: ['docker:read', 'docker:update'],
+      sid: session.id,
     });
-  });
-
-  it('발급한 토큰과 같은 내용을 응답 사용자 정보로 돌려준다', () => {
-    const result = useCase.execute(user);
-
     expect(result.user).toEqual({
       id: 'user-1',
       email: 'admin@example.com',
@@ -64,27 +52,53 @@ describe('RefreshTokenUseCase', () => {
     });
   });
 
-  it('역할이 없는 사용자도 빈 권한으로 갱신된다', () => {
-    const result = useCase.execute({ id: 'u2', email: 'a@b.c' } as User);
+  it('연속 갱신해도 세션은 하나이고 절대 만료는 늘지 않는다', async () => {
+    jest.useFakeTimers({ now: new Date('2026-01-01T00:00:00.000Z') });
+    const { useCase, session, repository, jwtService } = await setup();
 
-    expect(result.user.roles).toEqual([]);
-    expect(result.user.permissions).toEqual([]);
+    jest.advanceTimersByTime(DAY);
+    const first = await useCase.execute({ ...user, sessionId: session.id });
+    jest.advanceTimersByTime(DAY);
+    const second = await useCase.execute({ ...user, sessionId: session.id });
+
+    const firstClaims = jwtService.verify(first.accessToken);
+    const secondClaims = jwtService.verify(second.accessToken);
+    expect(firstClaims.sid).toBe(session.id);
+    expect(secondClaims.sid).toBe(session.id);
+    expect(secondClaims.exp).toBeGreaterThan(firstClaims.exp);
+    expect(repository.rows.size).toBe(1);
+    expect(repository.rows.get(session.id)?.absoluteExpiresAt).toEqual(
+      session.absoluteExpiresAt,
+    );
   });
 
-  it('사용자 미리보기(임퍼스네이션) 세션은 갱신을 거부한다', () => {
+  it('끊긴 세션은 갱신하지 않는다', async () => {
+    const { useCase, session, sessions } = await setup();
+    await sessions.revoke(session.id);
+
+    await expect(
+      useCase.execute({ ...user, sessionId: session.id }),
+    ).rejects.toBeInstanceOf(UnauthorizedException);
+  });
+
+  it('사용자 미리보기(임퍼스네이션) 세션은 갱신을 거부한다', async () => {
+    const { useCase, session, repository } = await setup();
     // 짧은 수명 자체가 보안 장치이므로 연장 수단을 주면 안 된다
     const impersonated = {
       ...user,
+      sessionId: session.id,
       impersonation: {
-        sessionId: 's1',
+        sessionId: session.id,
         actorId: 'admin-1',
         actorEmail: 'admin@example.com',
         expiresAt: new Date().toISOString(),
         readOnly: true as const,
       },
-    } as unknown as User;
+    };
 
-    expect(() => useCase.execute(impersonated)).toThrow(ForbiddenException);
-    expect(jwtService.sign).not.toHaveBeenCalled();
+    await expect(useCase.execute(impersonated)).rejects.toBeInstanceOf(
+      ForbiddenException,
+    );
+    expect(repository.writes).toBe(0);
   });
 });
