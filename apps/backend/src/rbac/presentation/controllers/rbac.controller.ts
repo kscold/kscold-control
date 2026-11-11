@@ -178,7 +178,7 @@ export class RbacController {
     summary: (ctx) =>
       `사용자 ${ctx.params.id}의 로그인 세션 ${(ctx.response as { revoked: number }).revoked}개를 끊었습니다.`,
     targetType: 'user',
-    targetId: 'id',
+    targetId: (ctx) => ctx.params.id,
   })
   async revokeUserSessions(
     @Param('id') id: string,

@@ -1,4 +1,12 @@
-import { NotFoundException } from '@nestjs/common';
+import {
+  NotFoundException,
+  type CallHandler,
+  type ExecutionContext,
+} from '@nestjs/common';
+import type { Reflector } from '@nestjs/core';
+import { lastValueFrom, of } from 'rxjs';
+import type { AuditLogService } from '@/audit/application/services/audit-log.service';
+import { AuditInterceptor } from '@/common/interceptors/audit.interceptor';
 import { AUDIT_KEY, type AuditMeta } from '@/common/decorators';
 import { PERMISSIONS } from '@/common/constants/permissions';
 import type { User } from '@/rbac/domain/entities/user.entity';
@@ -120,7 +128,38 @@ describe('사용자 세션 끊기', () => {
     expect(Reflect.getMetadata(AUDIT_KEY, handler) as AuditMeta).toMatchObject({
       domain: 'rbac',
       action: 'user.sessions.revoke',
-      targetId: 'id',
     });
+  });
+
+  it('세션 끊기 감사 기록의 대상은 끊긴 사용자의 id 다', async () => {
+    const record = jest.fn().mockResolvedValue(undefined);
+    const meta = Reflect.getMetadata(
+      AUDIT_KEY,
+      RbacController.prototype.revokeUserSessions,
+    ) as AuditMeta;
+    const interceptor = new AuditInterceptor(
+      { get: () => meta } as unknown as Reflector,
+      { record } as unknown as AuditLogService,
+    );
+    const request = {
+      user: { id: 'admin-1', email: 'admin@example.com' },
+      params: { id: 'user-1' },
+      body: {},
+      query: {},
+    };
+    const context = {
+      getHandler: () => RbacController.prototype.revokeUserSessions,
+      switchToHttp: () => ({ getRequest: () => request }),
+    } as unknown as ExecutionContext;
+
+    await lastValueFrom(
+      interceptor.intercept(context, {
+        handle: () => of({ revoked: 2 }),
+      } as CallHandler),
+    );
+
+    expect(record).toHaveBeenCalledWith(
+      expect.objectContaining({ targetType: 'user', targetId: 'user-1' }),
+    );
   });
 });
