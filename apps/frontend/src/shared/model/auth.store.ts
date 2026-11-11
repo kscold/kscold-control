@@ -154,7 +154,7 @@ export const useAuthStore = create<AuthState>()(
         if (!lifetime) return false;
         if (lifetime.expiresAt - Date.now() > REFRESH_THRESHOLD_MS)
           return false;
-        // 로그인 30일 한도에 닿은 토큰은 갱신해도 만료가 그대로라, 부르면 같은 토큰만 되풀이해 받는다.
+        // 절대 만료에 닿은 토큰은 갱신해도 만료가 그대로라, 부르면 같은 만료의 토큰만 되풀이해 받는다.
         if (
           lifetime.maxExpiresAt !== null &&
           lifetime.expiresAt >= lifetime.maxExpiresAt
