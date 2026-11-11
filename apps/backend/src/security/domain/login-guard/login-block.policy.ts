@@ -5,8 +5,8 @@ import { isIP } from 'node:net';
  * 바깥에서 실패를 쌓아도 내부망·허용 목록에서의 로그인은 잠기지 않게 하려는 것이다.
  * - vouched: 운영자가 적어 둔 주소(SECURITY_ALLOWLIST, SSH 내 IP). IP 로 막지 않고, 계정 잠금은 더 넉넉하다.
  * - internal: 루프백·사설망·Tailscale·프록시 자신. IP 로 막지 않는다.
- * - external: 그 밖의 주소. 모든 규칙이 걸린다.
- * - unverified: 프록시 비밀값으로 확인하지 못한 주소. 꾸민 주소일 수 있어 IP 로 막지도 예외로 두지도 않는다.
+ * - external: 그 밖의 확인된 주소. 모든 규칙이 걸린다.
+ * - unverified: 프록시 비밀값으로 확인하지 못한 바깥 주소. 꾸민 주소일 수 있어 IP 로 막지도 예외로 두지도 않는다.
  */
 export type LoginOrigin = 'vouched' | 'internal' | 'external' | 'unverified';
 

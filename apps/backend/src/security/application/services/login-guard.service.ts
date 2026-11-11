@@ -148,14 +148,21 @@ export class LoginGuardService {
   }
 
   /**
-   * 확인한 주소만 믿는다. 프록시 자신의 주소는 헤더가 빠졌을 때 모든 접속이 모이는 자리라
+   * 확인한 주소만 IP 규칙과 허용 목록 예외를 받는다. 프록시 자신의 주소는 헤더가 빠졌을 때 모든 접속이 모이는 자리라
    * 허용 목록에 있어도 믿지 않는다.
    */
   private async originOf({
     ip,
     ipVerified,
   }: LoginClient): Promise<LoginOrigin> {
-    if (!ip || !ipVerified) return 'unverified';
+    if (!ip) return 'unverified';
+    const internal =
+      this.isProxyAddress(ip) ||
+      classifySshIp(ip) !== 'external' ||
+      this.allowlist.isPrivate(ip);
+    // 확인하지 못했어도 내부 주소면 계정 잠금을 내부망 몫으로 센다. 내부 출처는 IP 로 막지 않으니
+    // 꾸민 내부 주소로는 내부망 몫의 잠금만 건드릴 수 있고, 비밀값이 없을 때도 바깥 실패가 내부망 로그인을 잠그지 못한다.
+    if (!ipVerified) return internal ? 'internal' : 'unverified';
     if (this.isProxyAddress(ip)) return 'internal';
     if (
       this.allowlist.isListed(ip) ||
@@ -163,10 +170,7 @@ export class LoginGuardService {
     ) {
       return 'vouched';
     }
-    if (classifySshIp(ip) !== 'external' || this.allowlist.isPrivate(ip)) {
-      return 'internal';
-    }
-    return 'external';
+    return internal ? 'internal' : 'external';
   }
 
   private isProxyAddress(ip: string): boolean {

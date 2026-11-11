@@ -182,7 +182,7 @@ Failed logins are counted per IP and per account (`login_attempts`). An IP with 
 
 - Account locks are kept per origin. Failures from the internet never lock logins from the LAN, Tailscale, or an allowlisted address, so an attacker cannot lock the operator out from there.
 - `SECURITY_ALLOWLIST` entries of /16 (IPv4) or /48 (IPv6) and narrower, plus SSH known IPs, are never IP-banned; their failures only lock that account after 30 tries. Wider entries only protect from bans. A malformed entry stops startup.
-- Automatic IP bans and the allowlist exemption only apply when `CONTROL_PROXY_SECRET` is set, because without it a local process can forge `X-Real-IP`. Without the secret only account locks apply, and the backend logs a warning at startup.
+- Automatic IP bans and the allowlist exemption only apply when `CONTROL_PROXY_SECRET` is set, because without it a local process can forge `X-Real-IP`. Without the secret only account locks apply, LAN and Tailscale logins keep their own lock, and the backend logs a warning at startup.
 
 Emergency unlock, run on the host (the HTTP API is not used, since the admin may be locked out):
 

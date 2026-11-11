@@ -455,6 +455,18 @@ describe('LoginUseCase with LoginGuardService', () => {
       expect(await login(forged, PASSWORD, undefined, true)).toBe(200);
     });
 
+    it('비밀값 없이 들어온 바깥 실패도 내부망 로그인을 잠그지 않는다', async () => {
+      for (let i = 1; i <= 10; i++) {
+        expect(await login(`198.51.100.${i}`, 'wrong', undefined, false)).toBe(
+          401,
+        );
+      }
+
+      expect(await login('203.0.113.98', PASSWORD, undefined, false)).toBe(429);
+      expect(await login('10.0.0.5', PASSWORD, undefined, false)).toBe(200);
+      expect(await login('100.64.0.9', PASSWORD, undefined, false)).toBe(200);
+    });
+
     it('허용 목록 주소를 사칭해도 예외를 받지 못한다', async () => {
       await build({ allowlist: '198.51.100.20' });
 
