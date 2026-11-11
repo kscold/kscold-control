@@ -59,6 +59,7 @@
     "test:frontend-bundle": "node --test ./scripts/test/frontend-bundle.test.mjs ./scripts/test/network-bundle.test.mjs ./scripts/test/remote-desktop-layout.test.mjs",
     "test:release-version": "node --test ./scripts/test/release-version.test.mjs",
     "test:dependency-security": "node --test ./scripts/test/dependency-security.test.mjs",
+    "test:login-unlock": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test ./scripts/test/login-unlock.test.mjs",
     "check:version": "node ./scripts/check-version.mjs",
     "test:e2e:control": "bash ./scripts/run-control-e2e.sh",
     "check:architecture": "node ./scripts/check-architecture.mjs",

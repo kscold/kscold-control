@@ -11,6 +11,7 @@ export function LoginForm() {
     confirmPassword,
     error,
     isLoading,
+    registrationEnabled,
     setEmail,
     setPassword,
     setConfirmPassword,
@@ -40,30 +41,32 @@ export function LoginForm() {
               : '가입 후 관리자의 승인이 완료되면 허용된 화면만 열립니다.'}
           </p>
 
-          <div className="mb-5 grid grid-cols-2 rounded-xl bg-slate-900 p-1">
-            <button
-              type="button"
-              onClick={() => changeMode('login')}
-              className={`rounded-lg py-2 text-sm ${
-                mode === 'login'
-                  ? 'bg-slate-700 text-white'
-                  : 'text-slate-500 hover:text-slate-300'
-              }`}
-            >
-              로그인
-            </button>
-            <button
-              type="button"
-              onClick={() => changeMode('register')}
-              className={`rounded-lg py-2 text-sm ${
-                mode === 'register'
-                  ? 'bg-amber-400 font-semibold text-slate-950'
-                  : 'text-slate-500 hover:text-slate-300'
-              }`}
-            >
-              회원가입 요청
-            </button>
-          </div>
+          {registrationEnabled && (
+            <div className="mb-5 grid grid-cols-2 rounded-xl bg-slate-900 p-1">
+              <button
+                type="button"
+                onClick={() => changeMode('login')}
+                className={`rounded-lg py-2 text-sm ${
+                  mode === 'login'
+                    ? 'bg-slate-700 text-white'
+                    : 'text-slate-500 hover:text-slate-300'
+                }`}
+              >
+                로그인
+              </button>
+              <button
+                type="button"
+                onClick={() => changeMode('register')}
+                className={`rounded-lg py-2 text-sm ${
+                  mode === 'register'
+                    ? 'bg-amber-400 font-semibold text-slate-950'
+                    : 'text-slate-500 hover:text-slate-300'
+                }`}
+              >
+                회원가입 요청
+              </button>
+            </div>
+          )}
 
           {error && (
             <div className="bg-red-900/30 border border-red-800 text-red-400 text-xs sm:text-sm px-3 sm:px-4 py-2.5 sm:py-3 rounded-lg mb-4">

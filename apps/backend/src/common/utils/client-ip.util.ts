@@ -98,27 +98,48 @@ function proxySecretMatches(
   );
 }
 
-const resolvedIps = new WeakMap<object, string | null>();
+/** 요청을 보낸 사용자의 IP 와, 그 IP 를 프록시 비밀값으로 확인했는지 */
+export interface ClientAddress {
+  ip: string | null;
+  /**
+   * 비밀값이 맞는 프록시가 X-Real-IP 로 알려 준 주소일 때만 true 다.
+   * 비밀값이 없으면 같은 컴퓨터의 프로세스나 컨테이너도 이 주소를 꾸밀 수 있어, 남의 IP 를 막거나 예외 주소를 사칭하는 데 쓰인다.
+   */
+  verified: boolean;
+}
+
+const resolvedAddresses = new WeakMap<object, ClientAddress>();
 
 /**
- * 요청을 보낸 사용자의 IP.
+ * 요청을 보낸 사용자의 주소.
  * 헤더는 누구나 써 넣을 수 있으므로 소켓 상대가 믿는 프록시이고 프록시 비밀값까지 맞을 때만 X-Real-IP 를 쓴다.
  */
-export function clientIp(
+export function clientAddress(
   source: ClientAddressSource,
   trust: ProxyTrust = configuredProxyTrust(),
-): string | null {
-  if (resolvedIps.has(source)) return resolvedIps.get(source) ?? null;
+): ClientAddress {
+  const resolved = resolvedAddresses.get(source);
+  if (resolved) return resolved;
   const peer = normalizeIp(source.socket?.remoteAddress);
-  if (!peer) return null;
+  if (!peer) return { ip: null, verified: false };
   if (
     !trust.proxies.check(peer, isIP(peer) === 4 ? 'ipv4' : 'ipv6') ||
     (trust.secret !== null && !proxySecretMatches(source.headers, trust.secret))
   ) {
-    return peer;
+    return { ip: peer, verified: false };
   }
   const realIp = source.headers['x-real-ip'];
-  return (typeof realIp === 'string' ? normalizeIp(realIp) : null) ?? peer;
+  const forwarded = typeof realIp === 'string' ? normalizeIp(realIp) : null;
+  return forwarded
+    ? { ip: forwarded, verified: trust.secret !== null }
+    : { ip: peer, verified: false };
+}
+
+export function clientIp(
+  source: ClientAddressSource,
+  trust: ProxyTrust = configuredProxyTrust(),
+): string | null {
+  return clientAddress(source, trust).ip;
 }
 
 /** 뒤의 로깅·감사·오류 보고가 요청 헤더를 통째로 남겨도 비밀값이 새지 않게, IP 를 정해 둔 뒤 헤더를 지운다. */
@@ -127,7 +148,7 @@ export function resolveClientIpAndDropProxySecret(
   _res: unknown,
   next: () => void,
 ): void {
-  resolvedIps.set(req, clientIp(req));
+  resolvedAddresses.set(req, clientAddress(req));
   delete req.headers[PROXY_SECRET_HEADER];
   next();
 }

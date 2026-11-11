@@ -89,6 +89,7 @@ module.exports = {
           'CONTROL_BIND_HOST',
           'CONTROL_TRUSTED_PROXIES',
           'CONTROL_PROXY_SECRET',
+          'CONTROL_REGISTRATION_ENABLED',
         ]),
       },
       // 자동 재시작

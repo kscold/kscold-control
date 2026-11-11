@@ -2,6 +2,7 @@ import { promises as fs } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
+import { IpAllowlistService } from '@/security/application/services/ip-allowlist.service';
 import {
   SshAccessService,
   formatLocal,
@@ -14,7 +15,7 @@ describe('SshAccessService', () => {
   beforeEach(async () => {
     dir = await fs.mkdtemp(join(tmpdir(), 'ssh-access-'));
     process.env.SSH_AUDIT_DIR = dir;
-    service = new SshAccessService();
+    service = new SshAccessService(new IpAllowlistService());
   });
 
   afterEach(async () => {
@@ -173,6 +174,54 @@ describe('SshAccessService', () => {
     expect(
       (await fs.readdir(dir)).filter((name) => name.endsWith('.tmp')),
     ).toEqual([]);
+  });
+
+  it('너무 넓은 대역이나 내부망·허용 목록·내 IP 를 덮는 대역은 방화벽 목록에 쓰지 않는다', async () => {
+    process.env.SECURITY_ALLOWLIST = '198.51.100.0/28';
+    service = new SshAccessService(new IpAllowlistService());
+    delete process.env.SECURITY_ALLOWLIST;
+    await service.addKnownIp('2001:db8:9:9::10');
+
+    for (const target of [
+      '0.0.0.0/0',
+      '::/0',
+      '203.0.113.0/23',
+      '2001:db8::/47',
+      '10.0.0.0/24',
+      '172.16.5.0/24',
+      '100.64.0.0/24',
+      '127.0.0.1',
+      'fd00::/48',
+      '198.51.100.0/24',
+      '2001:db8:9::/48',
+      '2001:db8:9:9::/64',
+    ]) {
+      await expect(service.block(target, null)).rejects.toBeInstanceOf(
+        BadRequestException,
+      );
+    }
+    expect(await read('ssh-block-manual.txt')).toBe('');
+
+    await service.block('203.0.113.0/24', null);
+    await service.block('2001:db8:5:6::/64', null);
+    expect(
+      (await read('ssh-block-manual.txt'))
+        .trim()
+        .split('\n')
+        .map((line) => line.split('\t')[0]),
+    ).toEqual(['203.0.113.0/24', '2001:db8:5:6::/64']);
+  });
+
+  it('예전에 넓게 적은 방화벽 항목도 풀 수 있다', async () => {
+    await fs.writeFile(
+      join(dir, 'ssh-block-manual.txt'),
+      '203.0.0.0/8\t2026-11-10 17:00:00\t\n',
+    );
+
+    expect(await service.unblock('203.0.0.0/8')).toEqual({
+      ip: '203.0.0.0/8',
+      released: ['manual'],
+    });
   });
 
   it('동일 IP 차단을 중복 기록하지 않고 실패 후에도 다음 변경을 처리한다', async () => {

@@ -153,6 +153,8 @@ npm install -g @openai/codex
 | `CONTROL_BIND_HOST`               | `127.0.0.1`                | Address the backend listens on            |
 | `CONTROL_TRUSTED_PROXIES`         | `127.0.0.1,::1`            | Proxies allowed to send `X-Real-IP`       |
 | `CONTROL_PROXY_SECRET`            | —                          | Shared secret the proxy must also send    |
+| `CONTROL_REGISTRATION_ENABLED`    | `false`                    | Open public sign-up (else 404)            |
+| `SECURITY_ALLOWLIST`              | —                          | IPs/CIDRs never banned (see below)        |
 | `CONTROL_FRONTEND_DIST_PATH`      | built-in `frontend/dist`   | Atomically published production UI path   |
 | `NODE_ENV`                        | `development`              | `production` disables TypeORM auto-sync   |
 | `CLAUDE_WORKING_DIR`              | `$HOME`                    | Working directory for AI coding sessions  |
@@ -173,6 +175,27 @@ npm install -g @openai/codex
 | `AUTOMATION_LAUNCHD_PREFIXES`     | —                          | launchd labels shown on 자동 작업         |
 | `AUTOMATION_DESCRIPTIONS`         | —                          | JSON names/descriptions per label         |
 | `AUTOMATION_RELEASE_DIRS`         | —                          | JSON container release dirs to watch      |
+
+### Login protection
+
+Failed logins are counted per IP and per account (`login_attempts`). An IP with 5 failures in 15 minutes gets a 1-hour nginx ban, 20 in a day goes to the host firewall list, and an account with 10 failures in 15 minutes is locked for 15 minutes. IPv6 addresses are counted per /64.
+
+- Account locks are kept per origin. Failures from the internet never lock logins from the LAN, Tailscale, or an allowlisted address, so an attacker cannot lock the operator out from there.
+- Attempts any process or container on the host could send (loopback, the proxy's own address, and internal addresses not confirmed by the proxy secret) have their own lock, so they cannot lock verified LAN and Tailscale logins.
+- A request refused only because earlier attempts from the same IP are still being checked is not counted against that IP, so double-submitting a correct password after a few typos does not ban it.
+- `SECURITY_ALLOWLIST` entries of /16 (IPv4) or /48 (IPv6) and narrower, plus SSH known IPs, are never IP-banned; their failures only lock that account after 30 tries. Wider entries only protect from bans. A malformed entry stops startup.
+- Automatic IP bans and the allowlist exemption only apply when `CONTROL_PROXY_SECRET` is set, because without it a local process can forge `X-Real-IP`. Without the secret only account locks apply, internet logins and LAN logins keep separate locks, LAN and Tailscale logins share theirs with local processes, and the backend logs a warning at startup.
+- Manual and automatic firewall entries must be at least /24 (IPv4) or /48 (IPv6) and must not cover an internal, allowlisted, or SSH known address.
+
+Emergency unlock, run on the host (the HTTP API is not used, since the admin may be locked out):
+
+```bash
+node --env-file=.env scripts/unlock-login.mjs admin@example.com   # clear the account lock
+node --env-file=.env scripts/unlock-login.mjs 203.0.113.7          # clear an IP's strikes and auto-login ban
+node --env-file=.env scripts/unlock-login.mjs 2001:db8:1:2::5      # an IPv6 address clears its whole /64
+```
+
+Run it from the repository root. Each unlock is written to the backend audit log (`apps/backend/data/audit-log.jsonl`). The nginx ban is removed by the expiry sweep within 5 minutes. The script only reports matching host firewall entries; remove them from the 접속 보안 screen.
 
 ## Multi-target Key Management API
 

@@ -24,6 +24,11 @@ function sourceBadge(source: IpBan['source']) {
         label: '자동(SSH)',
         class: 'bg-violet-500/10 text-violet-300 border-violet-500/30',
       };
+    case 'auto-login':
+      return {
+        label: '자동(로그인)',
+        class: 'bg-rose-500/10 text-rose-300 border-rose-500/30',
+      };
   }
 }
 

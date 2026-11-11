@@ -35,6 +35,7 @@ import { Container } from './docker/domain/entities/container.entity';
 import { TopologyNodeLayout } from './docker/domain/entities/topology-node-layout.entity';
 import { Project } from './repository/domain/entities/project.entity';
 import { IpBan } from './security/domain/entities/ip-ban.entity';
+import { LoginAttempt } from './security/domain/entities/login-attempt.entity';
 import { SecretBackup } from './key-management/domain/entities/secret-backup.entity';
 import { SshKeyVaultEntry } from './key-management/domain/entities/ssh-key-vault.entity';
 import { KeyManagementTargetEntity } from './key-management/domain/entities/key-management-target.entity';
@@ -84,6 +85,7 @@ import { resolveFrontendDistPath } from './common/utils/frontend-dist-path.util'
         TopologyNodeLayout,
         Project,
         IpBan,
+        LoginAttempt,
         SecretBackup,
         SshKeyVaultEntry,
         KeyManagementTargetEntity,

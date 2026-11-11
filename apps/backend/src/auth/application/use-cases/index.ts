@@ -1,4 +1,4 @@
-export { RegisterUseCase } from './register.use-case';
+export { RegisterUseCase, isRegistrationEnabled } from './register.use-case';
 export { LoginUseCase } from './login.use-case';
 export { GetMeUseCase } from './get-me.use-case';
 export { RefreshTokenUseCase } from './refresh-token.use-case';

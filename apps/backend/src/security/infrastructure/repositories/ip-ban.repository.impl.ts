@@ -70,4 +70,12 @@ export class IpBanRepositoryImpl implements IIpBanRepository {
     await this.repo.save(expired);
     return expired;
   }
+
+  async deleteExpiredBefore(cutoff: Date): Promise<number> {
+    const result = await this.repo.delete({
+      active: false,
+      expiresAt: LessThan(cutoff),
+    });
+    return result.affected ?? 0;
+  }
 }

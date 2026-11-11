@@ -13,6 +13,7 @@ import {
 import { AuthGuard } from '@nestjs/passport';
 import type { Request as ExpressRequest } from 'express';
 import {
+  isRegistrationEnabled,
   RegisterUseCase,
   LoginUseCase,
   GetMeUseCase,
@@ -24,7 +25,7 @@ import type { User } from '../../../rbac/domain/entities/user.entity';
 import type { JwtRequest } from '../../../common/types/jwt-request.type';
 import { Audit } from '../../../common/decorators/audit.decorator';
 import { AllowDuringImpersonation } from '../../../common/decorators/allow-during-impersonation.decorator';
-import { clientIp } from '../../../common/utils/client-ip.util';
+import { clientAddress, clientIp } from '../../../common/utils/client-ip.util';
 import {
   AuthSessionService,
   type SessionClient,
@@ -48,6 +49,12 @@ export class AuthController {
     private readonly authSessions: AuthSessionService,
   ) {}
 
+  /** 로그인 화면이 가입 버튼을 보일지 정한다. */
+  @Get('registration')
+  registration() {
+    return { enabled: isRegistrationEnabled() };
+  }
+
   @Post('register')
   @HttpCode(HttpStatus.CREATED)
   async register(@Body() dto: RegisterDto) {
@@ -57,7 +64,10 @@ export class AuthController {
   @Post('login')
   @HttpCode(HttpStatus.OK)
   async login(@Body() dto: LoginDto, @Req() req: ExpressRequest) {
-    return this.loginUseCase.execute(dto, sessionClient(req));
+    return this.loginUseCase.execute(dto, {
+      ...sessionClient(req),
+      ipVerified: clientAddress(req).verified,
+    });
   }
 
   /** 이 토큰의 서버 세션을 끊는다. 미리보기 토큰이면 미리보기만, 관리자 토큰이면 미리보기까지 끊긴다. */

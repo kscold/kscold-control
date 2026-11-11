@@ -1,4 +1,4 @@
-export type IpBanSource = 'manual' | 'auto-nginx' | 'auto-ssh';
+export type IpBanSource = 'manual' | 'auto-nginx' | 'auto-ssh' | 'auto-login';
 
 export interface IpBan {
   id: string;

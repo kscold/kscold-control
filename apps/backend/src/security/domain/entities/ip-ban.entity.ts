@@ -7,7 +7,7 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 
-export type IpBanSource = 'manual' | 'auto-nginx' | 'auto-ssh';
+export type IpBanSource = 'manual' | 'auto-nginx' | 'auto-ssh' | 'auto-login';
 
 @Entity('ip_bans')
 @Index('ip_bans_active_idx', ['active'], { where: '"active" = true' })
