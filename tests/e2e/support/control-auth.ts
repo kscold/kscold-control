@@ -111,6 +111,35 @@ async function findAdminUser(connectionString: string): Promise<PersistedUser | 
   }
 }
 
+/**
+ * 앱이 로그인 때 여는 것과 같은 서버 세션 행을 15분짜리로 연다.
+ * 토큰은 이 세션의 sid 를 담아야 서버가 받아들인다.
+ */
+async function openTestSession(
+  connectionString: string,
+  userId: string,
+): Promise<{ id: string; expiresAt: number }> {
+  const client = new Client({ connectionString });
+
+  try {
+    await client.connect();
+    const result = await client.query<{ id: string; expires_at: string }>(
+      `
+        INSERT INTO auth_sessions (user_id, expires_at, absolute_expires_at, user_agent)
+        VALUES ($1, now() + interval '15 minutes', now() + interval '15 minutes', 'control-e2e')
+        RETURNING id, floor(extract(epoch FROM expires_at))::bigint AS expires_at
+      `,
+      [userId],
+    );
+    return {
+      id: result.rows[0].id,
+      expiresAt: Number(result.rows[0].expires_at),
+    };
+  } finally {
+    await client.end();
+  }
+}
+
 async function validateToken(apiBaseUrl: string, token: string): Promise<boolean> {
   const response = await fetch(`${apiBaseUrl}/api/auth/me`, {
     headers: {
@@ -136,15 +165,16 @@ export async function createPersistedAdminAuthState(apiBaseUrl: string): Promise
         continue;
       }
 
+      const session = await openTestSession(connectionString, user.id);
       const token = jwt.sign(
         {
           sub: user.id,
           email: user.email,
+          sid: session.id,
+          exp: session.expiresAt,
+          maxExp: session.expiresAt,
         },
         jwtSecret,
-        {
-          expiresIn: '15m',
-        },
       );
 
       const isValid = await validateToken(apiBaseUrl, token);
@@ -167,4 +197,16 @@ export async function createPersistedAdminAuthState(apiBaseUrl: string): Promise
   }
 
   throw new Error('테스트에 사용할 관리자 인증 정보를 만들지 못했습니다.');
+}
+
+/** 테스트가 연 서버 세션을 끊는다. 실패해도 세션은 15분 뒤 저절로 만료된다. */
+export async function revokePersistedAdminAuthState(
+  apiBaseUrl: string,
+  persistedState: string,
+): Promise<void> {
+  const { state } = JSON.parse(persistedState) as PersistedAuthState;
+  await fetch(`${apiBaseUrl}/api/auth/logout`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${state.token}` },
+  }).catch(() => undefined);
 }

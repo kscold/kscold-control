@@ -104,6 +104,32 @@ async function findAdminUser(connectionString) {
   }
 }
 
+/**
+ * 앱이 로그인 때 여는 것과 같은 서버 세션 행을 15분짜리로 연다.
+ * 토큰은 이 세션의 sid 를 담아야 서버가 받아들인다.
+ */
+async function openSmokeSession(connectionString, userId) {
+  const client = new Client({ connectionString });
+
+  try {
+    await client.connect();
+    const result = await client.query(
+      `
+        INSERT INTO auth_sessions (user_id, expires_at, absolute_expires_at, user_agent)
+        VALUES ($1, now() + interval '15 minutes', now() + interval '15 minutes', 'repository-live-smoke')
+        RETURNING id, floor(extract(epoch FROM expires_at))::bigint AS expires_at
+      `,
+      [userId],
+    );
+    return {
+      id: result.rows[0].id,
+      expiresAt: Number(result.rows[0].expires_at),
+    };
+  } finally {
+    await client.end();
+  }
+}
+
 async function validateToken(token) {
   const response = await fetch(`${baseUrl}/api/auth/me`, {
     headers: {
@@ -129,13 +155,16 @@ async function createPersistedAdminAuthState() {
         continue;
       }
 
+      const session = await openSmokeSession(connectionString, user.id);
       const token = jwt.sign(
         {
           sub: user.id,
           email: user.email,
+          sid: session.id,
+          exp: session.expiresAt,
+          maxExp: session.expiresAt,
         },
         jwtSecret,
-        { expiresIn: '15m' },
       );
 
       const isValid = await validateToken(token);
@@ -861,6 +890,10 @@ async function run() {
     }
 
     await fsp.rm(fixture.tempRoot, { recursive: true, force: true });
+    await fetch(`${baseUrl}/api/auth/logout`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+    }).catch(() => undefined);
   }
 }
 
