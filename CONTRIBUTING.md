@@ -2,8 +2,8 @@
 
 First off, thank you for taking the time to contribute! 🙌
 
-> **Language:** English is preferred for issues, pull requests, and commit messages so the project stays accessible to everyone. **Korean is welcome too** — write in whichever language lets you express the problem most clearly.
-> 이슈·PR·커밋 메시지는 **영어 작성을 권장**하지만, **한국어도 괜찮습니다**. 더 명확하게 표현할 수 있는 언어를 사용하세요.
+> 주석·변경 이력·이슈·PR은 한국어를 기본으로 작성합니다. 공개 API 이름과 기술 식별자는 기존 영어 표기를 유지합니다.
+> 커밋 제목은 Conventional Commits 형식에 한국어 음슴체를 사용합니다. 예: `fix(security): 이전 조회 응답이 최신 결과를 덮지 않도록 수정함`.
 
 ---
 
@@ -48,6 +48,17 @@ Before pushing:
 pnpm build   # must pass
 pnpm lint    # should pass
 ```
+
+프론트엔드 타입 검사는 존재하지 않는 `tsconfig.app.json` 대신 아래 명령으로 수행합니다.
+
+```bash
+pnpm --filter @kscold-control/frontend exec tsc --noEmit -p tsconfig.json
+pnpm check:architecture
+pnpm check:runtime-contracts
+pnpm check:version
+```
+
+동작이 바뀌면 성공·실패·취소 경로를 테스트합니다. 비동기 조회는 이전 응답이 새 상태를 덮지 않게 하고, 화면 이탈 시 요청과 타이머를 정리합니다. 공유 파일을 읽고 수정할 때는 동시 쓰기 충돌을 검증합니다. 운영 로그와 실제 접속 정보는 테스트 예시에 복사하지 않습니다.
 
 ## Branch & commit conventions
 

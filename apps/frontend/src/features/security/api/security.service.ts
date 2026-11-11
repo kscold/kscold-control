@@ -55,16 +55,22 @@ export class SecurityService extends BaseApiService {
     }
   }
 
-  async getSshAccess(days: number): Promise<SshAccessOverview> {
+  async getSshAccess(
+    days: number,
+    signal?: AbortSignal,
+  ): Promise<SshAccessOverview> {
     try {
       const { data } = await api.get<SshAccessOverview>(
         `${this.basePath}/ssh`,
         {
           params: { days },
+          signal,
+          timeout: 15_000,
         },
       );
       return data;
     } catch (error) {
+      if (signal?.aborted) throw error;
       this.logError('SecurityService', 'getSshAccess', error);
       this.handleError(error, 'SSH 접속 기록 조회 실패');
     }
