@@ -9,11 +9,7 @@ import { AuthSession } from './domain/entities/auth-session.entity';
 import { AUTH_SESSION_REPOSITORY } from './domain/repositories/auth-session.repository.interface';
 import { TypeOrmAuthSessionRepository } from './infrastructure/repositories/typeorm-auth-session.repository';
 
-/**
- * 서버 세션의 발급·확인·끊기와 세션에 묶인 연결.
- * 사용자 관리(RbacModule)도 비밀번호를 바꿀 때 세션을 끊어야 하는데 AuthModule 은 RbacModule 을 가져오므로,
- * 세션 부분만 따로 두어 두 모듈이 순환 없이 함께 쓴다.
- */
+// RbacModule 도 세션을 끊어야 하는데 AuthModule 이 RbacModule 을 가져오므로, 순환을 피해 세션 부분만 따로 둔다.
 @Module({
   imports: [
     TypeOrmModule.forFeature([AuthSession]),

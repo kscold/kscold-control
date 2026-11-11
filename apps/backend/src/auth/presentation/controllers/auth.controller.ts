@@ -69,7 +69,6 @@ export class AuthController {
     await this.authSessions.revoke(req.user.sessionId);
   }
 
-  /** 지금 쓰는 브라우저만 남기고 내 다른 세션을 모두 끊는다. 미리보기 중에는 쓸 수 없다. */
   @UseGuards(AuthGuard('jwt'))
   @Post('sessions/revoke-others')
   @HttpCode(HttpStatus.OK)

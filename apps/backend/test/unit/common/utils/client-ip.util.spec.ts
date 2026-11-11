@@ -201,8 +201,8 @@ describe('clientIp', () => {
         const forged = request('127.0.0.1', '203.0.113.9');
         const next = jest.fn();
 
-        fresh.resolveClientIpOnce(proxied, undefined, next);
-        fresh.resolveClientIpOnce(forged, undefined, next);
+        fresh.resolveClientIpAndDropProxySecret(proxied, undefined, next);
+        fresh.resolveClientIpAndDropProxySecret(forged, undefined, next);
 
         expect(next).toHaveBeenCalledTimes(2);
         expect(proxied.headers).not.toHaveProperty('x-control-proxy-secret');

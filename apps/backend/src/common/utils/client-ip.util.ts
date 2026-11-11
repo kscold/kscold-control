@@ -8,7 +8,6 @@ export interface ClientAddressSource {
   socket?: { remoteAddress?: string } | null;
 }
 
-/** X-Real-IP 를 믿을 조건. 소켓 상대가 `proxies` 안이고, `secret` 이 있으면 그 값까지 맞아야 한다. */
 export interface ProxyTrust {
   proxies: BlockList;
   secret: string | null;
@@ -99,7 +98,6 @@ function proxySecretMatches(
   );
 }
 
-/** 프록시 비밀값 헤더를 지우기 전에 계산해 둔 요청별 IP */
 const resolvedIps = new WeakMap<object, string | null>();
 
 /**
@@ -123,11 +121,8 @@ export function clientIp(
   return (typeof realIp === 'string' ? normalizeIp(realIp) : null) ?? peer;
 }
 
-/**
- * 모든 HTTP 요청 맨 앞에서 IP 를 정해 두고 프록시 비밀값 헤더를 지운다.
- * 뒤의 로깅·감사·오류 보고가 요청 헤더를 통째로 남겨도 비밀값이 새지 않는다.
- */
-export function resolveClientIpOnce(
+/** 뒤의 로깅·감사·오류 보고가 요청 헤더를 통째로 남겨도 비밀값이 새지 않게, IP 를 정해 둔 뒤 헤더를 지운다. */
+export function resolveClientIpAndDropProxySecret(
   req: ClientAddressSource,
   _res: unknown,
   next: () => void,

@@ -6,7 +6,7 @@ import { SpaFallbackFilter } from './common/filters/spa-fallback.filter';
 import { WinstonLoggerService } from './common/logger/winston.logger';
 import {
   configuredProxyTrust,
-  resolveClientIpOnce,
+  resolveClientIpAndDropProxySecret,
 } from './common/utils/client-ip.util';
 
 async function bootstrap() {
@@ -23,7 +23,7 @@ async function bootstrap() {
       'CONTROL_PROXY_SECRET 이 비어 있어 믿는 프록시 주소에서 온 X-Real-IP 를 그대로 믿습니다. 같은 컴퓨터의 다른 프로세스도 이 헤더를 위조할 수 있습니다.',
     );
   }
-  app.use(resolveClientIpOnce);
+  app.use(resolveClientIpAndDropProxySecret);
 
   // 소스 저장소 청크 업로드 대비 — 배치당 ~50MB 허용
   app.use(json({ limit: '100mb' }));

@@ -40,7 +40,6 @@ import { JwtStrategy } from './infrastructure/strategies/jwt.strategy';
     // 전략(Passport)
     JwtStrategy,
   ],
-  // WebSocket 게이트웨이와 긴 연결도 HTTP 와 같은 세션 확인·끊기를 거치도록 내보낸다.
   exports: [AuthSessionModule],
 })
 export class AuthModule {}

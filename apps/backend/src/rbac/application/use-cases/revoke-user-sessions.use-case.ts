@@ -8,7 +8,6 @@ import {
   USER_REPOSITORY,
 } from '../../domain/repositories/user.repository.interface';
 
-/** 관리자가 사용자의 로그인 세션을 모두 끊는다. 자기 계정이면 지금 쓰는 세션은 남는다. */
 @Injectable()
 export class RevokeUserSessionsUseCase {
   constructor(

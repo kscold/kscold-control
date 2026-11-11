@@ -26,7 +26,6 @@ import type { DesktopConnection } from './remote-desktop-targets.service';
 
 interface DesktopTicket {
   userId: string;
-  /** 연결권을 받은 로그인 세션. 접속할 때와 접속 중에 이 세션이 살아 있어야 한다. */
   sessionId: string;
   expires: number;
   port: number;

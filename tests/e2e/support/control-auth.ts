@@ -111,10 +111,7 @@ async function findAdminUser(connectionString: string): Promise<PersistedUser | 
   }
 }
 
-/**
- * 앱이 로그인 때 여는 것과 같은 서버 세션 행을 15분짜리로 연다.
- * 토큰은 이 세션의 sid 를 담아야 서버가 받아들인다.
- */
+// 서버가 토큰의 sid 로 세션 행을 확인하므로, 테스트 동안만 쓸 15분짜리 세션 행을 연다.
 async function openTestSession(
   connectionString: string,
   userId: string,
@@ -199,7 +196,6 @@ export async function createPersistedAdminAuthState(apiBaseUrl: string): Promise
   throw new Error('테스트에 사용할 관리자 인증 정보를 만들지 못했습니다.');
 }
 
-/** 테스트가 연 서버 세션을 끊는다. 실패해도 세션은 15분 뒤 저절로 만료된다. */
 export async function revokePersistedAdminAuthState(
   apiBaseUrl: string,
   persistedState: string,

@@ -54,7 +54,6 @@ export class UpdateUserUseCase {
     }
 
     const updatedUser = await this.userRepository.save(user);
-    // 옛 비밀번호나 그 비밀번호로 받은 토큰을 가진 사람이 계속 쓰지 못하게 다른 세션을 끊는다.
     if (dto.password) {
       await this.authSessions.revokeAllForUser(userId, actor);
     }

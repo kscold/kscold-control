@@ -104,10 +104,7 @@ async function findAdminUser(connectionString) {
   }
 }
 
-/**
- * 앱이 로그인 때 여는 것과 같은 서버 세션 행을 15분짜리로 연다.
- * 토큰은 이 세션의 sid 를 담아야 서버가 받아들인다.
- */
+// 서버가 토큰의 sid 로 세션 행을 확인하므로, 스모크 동안만 쓸 15분짜리 세션 행을 연다.
 async function openSmokeSession(connectionString, userId) {
   const client = new Client({ connectionString });
 

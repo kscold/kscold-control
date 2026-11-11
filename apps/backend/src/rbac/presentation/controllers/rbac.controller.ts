@@ -169,7 +169,6 @@ export class RbacController {
     return this.updateUserUseCase.execute(id, dto, req.user);
   }
 
-  /** 비밀번호를 바꿀 수 있는 권한과 같다. 비밀번호를 바꿔도 세션이 모두 끊기므로 새 힘을 주지 않는다. */
   @Post('users/:id/sessions/revoke')
   @HttpCode(HttpStatus.OK)
   @RequirePermissions(PERMISSIONS.RBAC_MANAGE)

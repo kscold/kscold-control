@@ -9,7 +9,6 @@ import { browser, sessionHarness } from './auth-session.fake';
 const MINUTE = 60 * 1000;
 const DAY = 24 * 60 * MINUTE;
 
-/** 게이트웨이처럼 핸드셰이크의 세션 id 로 소켓을 묶는 실제 socket.io 서버 */
 async function socketServer(harness: ReturnType<typeof sessionHarness>) {
   const http: HttpServer = createServer();
   const server = new Server(http);

@@ -6,10 +6,8 @@ import {
 } from '@nestjs/common';
 import { SessionVerifier } from './session-verifier.service';
 
-/** 세션이 끝나면 부를, 긴 연결(소켓, 로그 스트림, 원격 화면)을 닫는 함수 */
 export type CloseConnection = () => void;
 
-/** socket.io 소켓에서 묶고 푸는 데 쓰는 부분만 받는다. */
 export interface DisconnectableSocket {
   readonly disconnected: boolean;
   disconnect(close: boolean): unknown;
@@ -18,11 +16,7 @@ export interface DisconnectableSocket {
 
 export const SESSION_RECHECK_INTERVAL_MS = 60 * 1000;
 
-/**
- * 서버 세션에 묶인 긴 연결을 세션 id 별로 모은다.
- * 긴 연결은 열 때 한 번만 토큰을 확인하므로, 세션이 끝나면 여기서 그 세션의 연결을 닫는다.
- * 이 프로세스가 끊은 세션은 곧바로, 만료나 DB 에서 직접 끊은 세션은 다음 재확인 때 닫힌다.
- */
+/** 소켓·로그 스트림·원격 화면은 열 때 한 번만 토큰을 확인하므로, 세션이 끝나면 여기서 닫는다. */
 @Injectable()
 export class SessionConnectionRegistry
   implements OnModuleInit, OnModuleDestroy
@@ -46,7 +40,6 @@ export class SessionConnectionRegistry
     clearInterval(this.timer);
   }
 
-  /** 연결을 세션에 묶는다. 연결이 먼저 닫히면 돌려준 함수로 푼다. */
   bind(sessionId: string, close: CloseConnection): () => void {
     let bound = this.connections.get(sessionId);
     if (!bound) {
@@ -63,8 +56,8 @@ export class SessionConnectionRegistry
     };
   }
 
-  /** 소켓을 묶고, 소켓이 끊기면 저절로 푼다. 확인하는 사이 이미 끊긴 소켓은 묶지 않는다. */
   bindSocket(sessionId: string, socket: DisconnectableSocket): void {
+    // 토큰을 확인하는 사이 끊긴 소켓은 disconnect 를 다시 내지 않아 묶으면 풀리지 않는다.
     if (socket.disconnected) return;
     socket.once(
       'disconnect',
@@ -89,7 +82,7 @@ export class SessionConnectionRegistry
     }
   }
 
-  /** 묶인 세션을 다시 확인해 끝난 세션의 연결을 닫는다. DB 오류인 세션은 다음 차례에 다시 본다. */
+  /** 만료되거나 다른 곳(DB, 다른 프로세스)에서 끊긴 세션의 연결을 닫는다. */
   async recheck(): Promise<void> {
     if (this.rechecking) return;
     this.rechecking = true;
@@ -100,6 +93,7 @@ export class SessionConnectionRegistry
             this.closeSessions([sessionId]);
           }
         } catch (error) {
+          // DB 가 잠깐 안 될 때 모든 터미널을 끊지 않도록 남겨 두고 다음 차례에 다시 본다.
           this.logger.warn(
             `세션 ${sessionId} 를 다시 확인하지 못했습니다: ${(error as Error).message}`,
           );

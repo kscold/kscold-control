@@ -15,10 +15,7 @@ import type { SocketJwtPayload } from '../../../common/types/authenticated-socke
 const SESSION_ID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-/**
- * 접근 토큰이 가리키는 서버 세션이 살아 있는지 확인한다.
- * HTTP(JwtStrategy), 세 WebSocket 게이트웨이, 원격 데스크톱, 열린 연결의 재확인이 모두 이 한 곳을 거친다.
- */
+/** 접근 토큰이 가리키는 서버 세션이 살아 있는지 확인한다. */
 @Injectable()
 export class SessionVerifier {
   constructor(
@@ -60,15 +57,11 @@ export class SessionVerifier {
     return claims;
   }
 
-  /** 이미 열린 연결을 계속 둘지 정할 때 쓴다. 마지막 사용 시각은 바꾸지 않는다. */
+  /** 열린 연결의 재확인은 사용자 활동이 아니므로 마지막 사용 시각을 바꾸지 않는다. */
   async isActive(sessionId: string): Promise<boolean> {
     return (await this.findActive(sessionId, new Date())) !== null;
   }
 
-  /**
-   * 미리보기 세션은 자기를 연 관리자 세션이 살아 있어야 쓸 수 있다.
-   * 미리보기 대상은 관리자가 아니라 미리보기가 다시 미리보기를 열 수 없으므로 부모는 한 단계뿐이다.
-   */
   private async findActive(
     sessionId: unknown,
     now: Date,
@@ -78,9 +71,11 @@ export class SessionVerifier {
     }
     const session = await this.sessions.findById(sessionId);
     if (!session || !isSessionActive(session, now)) return null;
-    if (session.parentSessionId) {
-      const parent = await this.sessions.findById(session.parentSessionId);
-      if (!parent || !isSessionActive(parent, now)) return null;
+    if (
+      session.parentSessionId &&
+      !(await this.findActive(session.parentSessionId, now))
+    ) {
+      return null;
     }
     return session;
   }

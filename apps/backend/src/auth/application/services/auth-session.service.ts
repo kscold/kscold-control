@@ -17,7 +17,6 @@ export interface SessionClient {
   userAgent: string | null;
 }
 
-/** 요청을 보낸 사용자와 그 요청의 서버 세션 */
 export interface SessionActor {
   id: string;
   sessionId: string;
@@ -74,7 +73,6 @@ export class AuthSessionService {
     return { ...session, expiresAt };
   }
 
-  /** 세션과 그 미리보기 세션을 끊고, 그 세션들로 열린 연결을 바로 닫는다. */
   async revoke(sessionId: string): Promise<number> {
     const revoked = await this.sessions.revoke(sessionId, new Date());
     this.connections.closeSessions(revoked);
@@ -82,9 +80,8 @@ export class AuthSessionService {
   }
 
   /**
-   * 사용자의 세션을 모두 끊는다. 본인이 자기 계정에 한 일이면 그 요청을 보낸 세션은 남긴다.
-   * 그 세션은 비밀번호를 바꿀 수 있을 만큼 이미 계정을 쥐고 있어 끊어도 막는 것이 없고,
-   * 끊으면 방금 일을 마친 본인만 로그아웃된다.
+   * 본인이 자기 계정에 한 일이면 요청을 보낸 세션은 남긴다. 그 세션은 이미 비밀번호를 바꿀 만큼
+   * 계정을 쥐고 있어 끊어도 막는 것이 없고, 방금 일을 마친 본인만 로그아웃된다.
    */
   async revokeAllForUser(
     userId: string,
@@ -101,7 +98,7 @@ export class AuthSessionService {
 
   /**
    * 토큰이 세션보다 오래 살지 않게 만료를 세션의 유휴 만료에 맞춘다.
-   * `maxExp` 는 갱신해도 넘을 수 없는 절대 만료라, 화면은 `exp` 가 여기에 닿으면 갱신을 멈춘다.
+   * `maxExp` 는 갱신해도 넘지 못하는 세션 절대 만료다.
    */
   signAccessToken(claims: AccessTokenClaims, session: AuthSession): string {
     const issuedAt = epochSeconds(new Date());
