@@ -132,7 +132,7 @@ export async function loginGuardHarness(options: { allowlist?: string } = {}) {
   const allowlist = new IpAllowlistService();
   if (previousAllowlist === undefined) delete process.env.SECURITY_ALLOWLIST;
   else process.env.SECURITY_ALLOWLIST = previousAllowlist;
-  const sshAccess = new SshAccessService();
+  const sshAccess = new SshAccessService(allowlist);
   const resync = new ResyncBlocklistUseCase(ipBans, nginx);
   const guard = new LoginGuardService(
     attempts,

@@ -20,7 +20,14 @@ import {
   type SshAuditSummary,
   type SshIpScope,
 } from '../../domain/ssh-audit/ssh-audit.model';
-import { parseIpRange } from '../../domain/ip-range';
+import {
+  parseIpRange,
+  rangeContains,
+  rangesOverlap,
+  type IpFamily,
+  type IpRange,
+} from '../../domain/ip-range';
+import { IpAllowlistService } from './ip-allowlist.service';
 
 const execFileAsync = promisify(execFile);
 
@@ -30,6 +37,16 @@ const MAX_EVENTS = 400;
 /** 차단기 상태 파일이 이보다 오래되면 꺼진 것으로 봄 (차단기는 15초마다 씀) */
 const GUARD_STALE_MS = 2 * 60 * 1000;
 const PROCESS_TIMEOUT_MS = 5_000;
+/** 손으로나 로그인 차단으로 방화벽에 올릴 수 있는 가장 넓은 대역. 로그인 차단은 IPv4 주소 하나, IPv6 /64 를 올린다. */
+const MIN_BLOCK_PREFIX: Record<IpFamily, number> = { ipv4: 24, ipv6: 48 };
+/** classifySshIp 가 내부로 보는 대역. 대역 차단이 이 주소를 덮는지 보려고 대역으로 둔다. */
+const INTERNAL_RANGES = [
+  '127.0.0.0/8',
+  '::1/128',
+  '10.0.0.0/8',
+  '192.168.0.0/16',
+  '100.64.0.0/10',
+].map((cidr) => parseIpRange(cidr) as IpRange);
 
 export interface SshSession {
   pid: number;
@@ -96,6 +113,8 @@ export class SshAccessService {
   private readonly dir =
     process.env.SSH_AUDIT_DIR || join(homedir(), 'server-watchdog');
   private mutation: Promise<void> = Promise.resolve();
+
+  constructor(private readonly allowlist: IpAllowlistService) {}
 
   // 단일 Control 프로세스의 읽기-수정-쓰기가 서로 덮어쓰지 않도록 순서를 보장함.
   private change<T>(action: () => Promise<T>): Promise<T> {
@@ -252,16 +271,7 @@ export class SshAccessService {
     scope: SshBlockScope = 'all',
   ): Promise<SshBlock> {
     const value = normalizeBlockTarget(ip);
-    if (classifySshIp(value) !== 'external') {
-      throw new BadRequestException(
-        '맥미니·내부망·Tailscale 주소는 막을 수 없습니다',
-      );
-    }
-    if ((await this.readKnownIps()).includes(value)) {
-      throw new BadRequestException(
-        '내 IP 목록에 있는 주소입니다. 먼저 목록에서 빼 주세요',
-      );
-    }
+    await this.refuseUnsafeBlock(value);
     const manual = await this.readManual();
     const existing = manual.find((b) => b.ip === value);
     await this.writeScope(value, scope);
@@ -282,6 +292,35 @@ export class SshAccessService {
       [entry.ip, entry.blockedAt, entry.reason ?? ''].join('\t'),
     );
     return entry;
+  }
+
+  /**
+   * 운영자가 스스로를 막는 대상은 쓰지 않는다. 너무 넓은 대역과, 내부·허용 목록 대역이나 내 IP 를 덮는 대역이다.
+   * 해제는 이 검사를 거치지 않으므로 예전에 넓게 적은 항목도 풀 수 있다.
+   */
+  private async refuseUnsafeBlock(value: string): Promise<void> {
+    const range = parseIpRange(value) as IpRange;
+    if (range.prefix < MIN_BLOCK_PREFIX[range.family]) {
+      throw new BadRequestException(
+        `IPv4 /${MIN_BLOCK_PREFIX.ipv4}, IPv6 /${MIN_BLOCK_PREFIX.ipv6} 보다 넓은 대역은 막을 수 없습니다`,
+      );
+    }
+    if (
+      INTERNAL_RANGES.some((internal) => rangesOverlap(internal, range)) ||
+      this.allowlist.isProtected(value, null).protected
+    ) {
+      throw new BadRequestException(
+        '맥미니·내부망·Tailscale·허용 목록 주소는 막을 수 없습니다',
+      );
+    }
+    const known = (await this.readKnownIps()).find((knownIp) =>
+      rangeContains(range, knownIp),
+    );
+    if (known) {
+      throw new BadRequestException(
+        `내 IP 목록에 있는 주소(${known})입니다. 먼저 목록에서 빼 주세요`,
+      );
+    }
   }
 
   /** 차단 해제 — 손으로 막은 것은 목록에서 지우고, 자동 차단은 차단기에 해제를 요청 */

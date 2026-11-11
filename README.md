@@ -185,6 +185,7 @@ Failed logins are counted per IP and per account (`login_attempts`). An IP with 
 - A request refused only because earlier attempts from the same IP are still being checked is not counted against that IP, so double-submitting a correct password after a few typos does not ban it.
 - `SECURITY_ALLOWLIST` entries of /16 (IPv4) or /48 (IPv6) and narrower, plus SSH known IPs, are never IP-banned; their failures only lock that account after 30 tries. Wider entries only protect from bans. A malformed entry stops startup.
 - Automatic IP bans and the allowlist exemption only apply when `CONTROL_PROXY_SECRET` is set, because without it a local process can forge `X-Real-IP`. Without the secret only account locks apply, internet logins and LAN logins keep separate locks, LAN and Tailscale logins share theirs with local processes, and the backend logs a warning at startup.
+- Manual and automatic firewall entries must be at least /24 (IPv4) or /48 (IPv6) and must not cover an internal, allowlisted, or SSH known address.
 
 Emergency unlock, run on the host (the HTTP API is not used, since the admin may be locked out):
 
