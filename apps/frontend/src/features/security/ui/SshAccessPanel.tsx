@@ -170,7 +170,7 @@ export function SshAccessPanel() {
             disabled={working !== null}
             onClick={() =>
               confirmAct(
-                `${row.ip} 의 SSH 접속을 막을까요?\n맥미니 방화벽에서 22번 접속만 막고, 웹 접속은 그대로입니다.`,
+                `${row.ip} 를 막을까요?\n맥미니 방화벽에서 이 IP 의 모든 접속(SSH·운영 중인 사이트)을 막습니다.`,
                 `block:${row.ip}`,
                 () => ssh.block(row.ip, 'Control 에서 차단'),
               )
@@ -377,8 +377,8 @@ export function SshAccessPanel() {
         <p className="mb-3 text-xs text-gray-500">
           자동 차단: 외부에서 root·없는 계정으로 시도하면 바로, 그 밖의 계정은
           1시간에 3번 실패하면 막습니다. 자동으로 풀지 않습니다. 성공한 적 있는
-          IP·내 IP·내부망· Tailscale 은 막지 않습니다. 22번(SSH)만 막고 웹
-          접속은 그대로입니다.
+          IP·내 IP·내부망· Tailscale 은 막지 않습니다. 막은 IP 는 SSH 뿐 아니라
+          맥미니에서 운영 중인 사이트에도 들어오지 못합니다.
         </p>
         {data.blocks.length === 0 ? (
           <Empty text="막고 있는 IP 가 없습니다" />
