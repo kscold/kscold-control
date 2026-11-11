@@ -71,6 +71,17 @@ function readTokenExpiry(token: string): number | null {
   }
 }
 
+/** 서버 세션을 끊는다. 응답을 기다리지 않아 네트워크가 끊겨도 화면 로그아웃은 막히지 않는다. */
+function revokeServerSession(token: string) {
+  void axios
+    .post(
+      `${API_URL}/api/auth/logout`,
+      {},
+      { headers: { Authorization: `Bearer ${token}` }, timeout: 10_000 },
+    )
+    .catch(() => undefined);
+}
+
 function clearSessionStorageByPrefix(prefix: string) {
   const keysToRemove: string[] = [];
 
@@ -110,6 +121,10 @@ export const useAuthStore = create<AuthState>()(
       },
 
       logout: () => {
+        // 미리보기 중이면 관리자 세션을 끊어야 미리보기 세션까지 함께 끊긴다.
+        const { token, impersonation } = get();
+        const sessionToken = impersonation?.actorToken ?? token;
+        if (sessionToken) revokeServerSession(sessionToken);
         // 터미널 세션도 함께 정리
         clearSessionStorageByPrefix(TERMINAL_SESSION_STORAGE_KEY);
         clearSessionStorageByPrefix(CLAUDE_SESSION_STORAGE_KEY);
@@ -230,8 +245,9 @@ export const useAuthStore = create<AuthState>()(
       },
 
       endImpersonation: () => {
-        const impersonation = get().impersonation;
+        const { token, impersonation } = get();
         if (!impersonation) return false;
+        if (token) revokeServerSession(token);
 
         set({
           token: impersonation.actorToken,

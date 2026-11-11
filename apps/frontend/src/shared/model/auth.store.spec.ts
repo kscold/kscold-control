@@ -78,7 +78,8 @@ describe('auth.store impersonation', () => {
     });
   });
 
-  it('관리자 화면으로 즉시 복귀한다', () => {
+  it('관리자 화면으로 즉시 복귀하고 미리보기 세션을 끊는다', () => {
+    const post = vi.spyOn(axios, 'post').mockResolvedValue({ data: '' });
     useAuthStore.getState().beginImpersonation({
       accessToken: 'preview-token',
       sessionId: 'preview-session',
@@ -95,6 +96,64 @@ describe('auth.store impersonation', () => {
       user: actor,
       impersonation: null,
     });
+    expect(post).toHaveBeenCalledTimes(1);
+    expect(post).toHaveBeenCalledWith(
+      expect.stringContaining('/api/auth/logout'),
+      {},
+      expect.objectContaining({
+        headers: { Authorization: 'Bearer preview-token' },
+      }),
+    );
+  });
+
+  it('로그아웃하면 서버 세션을 끊고 화면 상태를 지운다', () => {
+    const post = vi.spyOn(axios, 'post').mockResolvedValue({ data: '' });
+
+    useAuthStore.getState().logout();
+
+    expect(post).toHaveBeenCalledWith(
+      expect.stringContaining('/api/auth/logout'),
+      {},
+      expect.objectContaining({
+        headers: { Authorization: 'Bearer admin-token' },
+      }),
+    );
+    expect(useAuthStore.getState()).toMatchObject({ token: null, user: null });
+  });
+
+  it('미리보기 중 로그아웃하면 관리자 세션을 끊어 미리보기까지 끝낸다', () => {
+    const post = vi.spyOn(axios, 'post').mockResolvedValue({ data: '' });
+    useAuthStore.getState().beginImpersonation({
+      accessToken: 'preview-token',
+      sessionId: 'preview-session',
+      expiresAt: '2099-01-01T00:00:00.000Z',
+      readOnly: true,
+      user: target,
+    });
+
+    useAuthStore.getState().logout();
+
+    expect(post).toHaveBeenCalledTimes(1);
+    expect(post).toHaveBeenCalledWith(
+      expect.stringContaining('/api/auth/logout'),
+      {},
+      expect.objectContaining({
+        headers: { Authorization: 'Bearer admin-token' },
+      }),
+    );
+    expect(useAuthStore.getState()).toMatchObject({
+      token: null,
+      impersonation: null,
+    });
+  });
+
+  it('서버에 닿지 않아도 화면에서는 로그아웃한다', async () => {
+    vi.spyOn(axios, 'post').mockRejectedValue(new AxiosError('Network Error'));
+
+    useAuthStore.getState().logout();
+    await Promise.resolve();
+
+    expect(useAuthStore.getState().token).toBeNull();
   });
 
   it('만료된 미리보기는 관리자 토큰으로 자동 복귀해 검증한다', async () => {
