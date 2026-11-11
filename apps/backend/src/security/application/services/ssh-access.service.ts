@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  Inject,
   Injectable,
   Logger,
   NotFoundException,
@@ -19,7 +20,14 @@ import {
   type SshAuditEvent,
   type SshAuditSummary,
   type SshIpScope,
+  type SshIpSummary,
 } from '../../domain/ssh-audit/ssh-audit.model';
+import {
+  IP_GEO_READER,
+  externalGeo,
+  type IIpGeoReader,
+  type IpGeo,
+} from '../../domain/repositories/ip-geo.reader';
 import {
   parseIpRange,
   rangeContains,
@@ -68,6 +76,7 @@ export interface SshBlock {
   blockedAt: string | null;
   reason: string | null;
   scope: SshBlockScope;
+  geo: IpGeo | null;
 }
 
 /** 내 IP — 별칭(회사·집 등)을 같이 둠 */
@@ -90,7 +99,9 @@ export interface SshGuardStatus {
 export interface SshAccessOverview {
   recorder: { logPath: string; exists: boolean; updatedAt: string | null };
   guard: SshGuardStatus;
-  summary: SshAuditSummary;
+  summary: Omit<SshAuditSummary, 'ips'> & {
+    ips: Array<SshIpSummary & { geo: IpGeo | null }>;
+  };
   events: SshAuditEvent[];
   sessions: SshSession[];
   /** 인증 전 단계에 머문 접속 수 (sshd-session [net]) */
@@ -114,7 +125,10 @@ export class SshAccessService {
     process.env.SSH_AUDIT_DIR || join(homedir(), 'server-watchdog');
   private mutation: Promise<void> = Promise.resolve();
 
-  constructor(private readonly allowlist: IpAllowlistService) {}
+  constructor(
+    private readonly allowlist: IpAllowlistService,
+    @Inject(IP_GEO_READER) private readonly geo: IIpGeoReader,
+  ) {}
 
   // 단일 Control 프로세스의 읽기-수정-쓰기가 서로 덮어쓰지 않도록 순서를 보장함.
   private change<T>(action: () => Promise<T>): Promise<T> {
@@ -168,9 +182,29 @@ export class SshAccessService {
     return { guard, items };
   }
 
+  /** 공격 지도용 — 기간 안의 IP 별 요약과 차단 목록. 세션 프로세스는 보지 않는다. */
+  async ipActivity(days: number): Promise<{
+    since: string;
+    ips: SshIpSummary[];
+    knownIps: string[];
+    blocks: SshBlock[];
+  }> {
+    const since = sinceOf(days);
+    const [events, knownIps, blocks] = await Promise.all([
+      this.readEvents(since),
+      this.readKnownIps(),
+      this.readBlocks(),
+    ]);
+    return {
+      since,
+      ips: summarizeSshAudit(events, new Set(knownIps), since).ips,
+      knownIps,
+      blocks,
+    };
+  }
+
   async overview(days: number): Promise<SshAccessOverview> {
-    const safeDays = Math.min(Math.max(Math.trunc(days) || 7, 1), 90);
-    const since = formatLocal(new Date(Date.now() - safeDays * 86_400_000));
+    const since = sinceOf(days);
     const logPath = this.file('ssh-audit.log');
 
     const [events, logStat, knownIps, blocks, guard, procs] = await Promise.all(
@@ -184,6 +218,7 @@ export class SshAccessService {
       ],
     );
     const known = new Set(knownIps.map((k) => k.ip));
+    const summary = summarizeSshAudit(events, known, since);
 
     return {
       recorder: {
@@ -192,7 +227,13 @@ export class SshAccessService {
         updatedAt: logStat ? logStat.mtime.toISOString() : null,
       },
       guard,
-      summary: summarizeSshAudit(events, known, since),
+      summary: {
+        ...summary,
+        ips: summary.ips.map((r) => ({
+          ...r,
+          geo: externalGeo(this.geo, r.ip),
+        })),
+      },
       events: events.slice(-MAX_EVENTS).reverse(),
       sessions: procs.sessions.map((s) => ({
         ...s,
@@ -275,11 +316,14 @@ export class SshAccessService {
     const manual = await this.readManual();
     const existing = manual.find((b) => b.ip === value);
     await this.writeScope(value, scope);
-    if (existing) return { ...existing, scope };
+    if (existing) {
+      return { ...existing, scope, geo: externalGeo(this.geo, value) };
+    }
     const entry: SshBlock = {
       ip: value,
       source: 'manual',
       scope,
+      geo: externalGeo(this.geo, value),
       blockedAt: formatLocal(new Date()),
       reason:
         reason
@@ -434,7 +478,7 @@ export class SshAccessService {
     return map;
   }
 
-  private async readManual(): Promise<SshBlock[]> {
+  private async readManual(): Promise<Omit<SshBlock, 'geo'>[]> {
     return (await this.readLines('ssh-block-manual.txt'))
       .filter((l) => !l.trim().startsWith('#'))
       .map((l) => {
@@ -449,7 +493,7 @@ export class SshAccessService {
       });
   }
 
-  private async readAuto(): Promise<SshBlock[]> {
+  private async readAuto(): Promise<Omit<SshBlock, 'geo'>[]> {
     return (await this.readLines('ssh-block-auto.tsv')).map((l) => {
       const [ip, at, , reason] = l.split('\t');
       return {
@@ -471,7 +515,11 @@ export class SshAccessService {
     ]);
     const releasing = new Set(pending.map((l) => l.trim()));
     return [...manual, ...auto.filter((b) => !releasing.has(b.ip))]
-      .map((b) => ({ ...b, scope: scopes.get(b.ip) ?? 'all' }))
+      .map((b) => ({
+        ...b,
+        scope: scopes.get(b.ip) ?? 'all',
+        geo: externalGeo(this.geo, b.ip),
+      }))
       .sort((a, b) => (b.blockedAt ?? '').localeCompare(a.blockedAt ?? ''));
   }
 
@@ -688,6 +736,16 @@ function normalizeIp(ip: string): string {
     .replace(/^::ffff:/i, '');
   if (!isIP(value)) throw new BadRequestException('IP 주소 형식이 아닙니다');
   return value;
+}
+
+/** 조회 기간 시작 시각. 1~90일로 자른다. */
+export function sinceDate(days: number): Date {
+  const safeDays = Math.min(Math.max(Math.trunc(days) || 7, 1), 90);
+  return new Date(Date.now() - safeDays * 86_400_000);
+}
+
+function sinceOf(days: number): string {
+  return formatLocal(sinceDate(days));
 }
 
 /** 기록 파일과 같은 맥미니 로컬 시각 형식 (YYYY-MM-DD HH:MM:SS) */

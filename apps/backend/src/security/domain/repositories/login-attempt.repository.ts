@@ -18,5 +18,9 @@ export interface ILoginAttemptRepository {
     origin: LoginOrigin;
     accountSince: Date;
   }): Promise<LoginAttemptRecord[]>;
+  /** since 이후 IP 별 실패·거절 횟수와 마지막 시각. IP 가 없는 행은 뺀다. */
+  failuresByIp(
+    since: Date,
+  ): Promise<Array<{ ip: string; failures: number; lastAt: Date }>>;
   deleteBefore(cutoff: Date): Promise<number>;
 }

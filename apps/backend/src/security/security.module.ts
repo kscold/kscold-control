@@ -9,6 +9,9 @@ import { NGINX_BLOCKLIST_WRITER } from './domain/repositories/nginx-blocklist.wr
 import { IpBanRepositoryImpl } from './infrastructure/repositories/ip-ban.repository.impl';
 import { LoginAttemptRepositoryImpl } from './infrastructure/repositories/login-attempt.repository.impl';
 import { NginxBlocklistWriterImpl } from './infrastructure/writers/nginx-blocklist.writer.impl';
+import { IP_GEO_READER } from './domain/repositories/ip-geo.reader';
+import { ipGeoReaderFromEnv } from './infrastructure/readers/ip-geo.reader.impl';
+import { AttackMapService } from './application/services/attack-map.service';
 import { IpBanService } from './application/services/ip-ban.service';
 import { IpAllowlistService } from './application/services/ip-allowlist.service';
 import { LoginGuardService } from './application/services/login-guard.service';
@@ -32,6 +35,7 @@ import { SshAccessService } from './application/services/ssh-access.service';
     IpBanService,
     IpAllowlistService,
     SshAccessService,
+    AttackMapService,
     LoginGuardService,
     ListIpBansUseCase,
     CreateIpBanUseCase,
@@ -40,6 +44,7 @@ import { SshAccessService } from './application/services/ssh-access.service';
     { provide: IP_BAN_REPOSITORY, useClass: IpBanRepositoryImpl },
     { provide: LOGIN_ATTEMPT_REPOSITORY, useClass: LoginAttemptRepositoryImpl },
     { provide: NGINX_BLOCKLIST_WRITER, useClass: NginxBlocklistWriterImpl },
+    { provide: IP_GEO_READER, useFactory: ipGeoReaderFromEnv },
   ],
   exports: [IpBanService, LoginGuardService],
 })

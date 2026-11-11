@@ -19,6 +19,7 @@ import type {
 } from '@/security/domain/repositories/ip-ban.repository';
 import type { ILoginAttemptRepository } from '@/security/domain/repositories/login-attempt.repository';
 import type { INginxBlocklistWriter } from '@/security/domain/repositories/nginx-blocklist.writer';
+import { fakeIpGeo } from './ip-geo.fake';
 
 /** SQL 저장소와 같은 조건으로 기록을 고른다. */
 export class InMemoryLoginAttemptRepository implements ILoginAttemptRepository {
@@ -48,6 +49,25 @@ export class InMemoryLoginAttemptRepository implements ILoginAttemptRepository {
             row.result === 'failure'),
       )
       .map((row) => ({ ...row }));
+  }
+
+  async failuresByIp(since: Date) {
+    const byIp = new Map<
+      string,
+      { ip: string; failures: number; lastAt: Date }
+    >();
+    for (const row of this.rows) {
+      if (!row.ip || row.at < since || row.result === 'success') continue;
+      const entry = byIp.get(row.ip) ?? {
+        ip: row.ip,
+        failures: 0,
+        lastAt: row.at,
+      };
+      entry.failures += 1;
+      if (row.at > entry.lastAt) entry.lastAt = row.at;
+      byIp.set(row.ip, entry);
+    }
+    return [...byIp.values()];
   }
 
   async deleteBefore(cutoff: Date) {
@@ -132,7 +152,7 @@ export async function loginGuardHarness(options: { allowlist?: string } = {}) {
   const allowlist = new IpAllowlistService();
   if (previousAllowlist === undefined) delete process.env.SECURITY_ALLOWLIST;
   else process.env.SECURITY_ALLOWLIST = previousAllowlist;
-  const sshAccess = new SshAccessService(allowlist);
+  const sshAccess = new SshAccessService(allowlist, fakeIpGeo());
   const resync = new ResyncBlocklistUseCase(ipBans, nginx);
   const guard = new LoginGuardService(
     attempts,

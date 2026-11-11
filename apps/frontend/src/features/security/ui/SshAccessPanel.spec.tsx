@@ -39,6 +39,13 @@ function overview(): SshAccessOverview {
           users: ['kscold'],
           firstAt: '2026-11-10 17:56:22',
           lastAt: '2026-11-10 17:56:22',
+          geo: {
+            country: 'NL',
+            countryName: '네덜란드',
+            city: '암스테르담',
+            lat: 52.37,
+            lon: 4.89,
+          },
         },
       ],
       triedUsers: [{ user: 'root', count: 1 }],
@@ -75,6 +82,7 @@ function overview(): SshAccessOverview {
         blockedAt: '2026-11-10 17:56:05',
         reason: 'root 시도',
         scope: 'all',
+        geo: null,
       },
     ],
   };
@@ -112,6 +120,7 @@ it('처음 보는 외부 성공 IP 를 경고하고 차단기 설치 안내를 �
   expect(screen.getAllByText('처음 보는 IP').length).toBeGreaterThan(0);
   expect(screen.getByText(/setup-ssh-guard\.sh/)).toBeInTheDocument();
   expect(screen.getByText('222.99.122.102')).toBeInTheDocument();
+  expect(screen.getByText('네덜란드 암스테르담')).toBeInTheDocument();
 });
 
 it('세션 끊기는 확인을 받은 뒤 요청한다', async () => {
@@ -161,6 +170,7 @@ it('수동 IP 입력도 영향 범위 확인 후 차단을 요청한다', async 
     blockedAt: null,
     reason: null,
     scope: 'all',
+    geo: null,
   });
   renderPanel();
   await userEvent.type(
@@ -229,6 +239,7 @@ it('긴 차단 목록은 10개씩 쪽으로 나눈다', async () => {
     blockedAt: '2026-11-11 09:00:00',
     reason: 'root 시도',
     scope: 'all' as const,
+    geo: null,
   }));
   vi.spyOn(securityService, 'getSshAccess').mockResolvedValue(data);
   renderPanel();

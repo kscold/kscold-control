@@ -29,6 +29,15 @@ export const TTL_OPTIONS: Array<{ value: number; label: string }> = [
 
 // ---- SSH 접속 ----
 
+/** IP 한 개의 위치 (DB-IP City Lite). 위치 파일이 없거나 내부 주소면 null */
+export interface IpGeo {
+  country: string;
+  countryName: string;
+  city: string | null;
+  lat: number;
+  lon: number;
+}
+
 export type SshAuditResult =
   '성공' | '실패' | '없는계정' | '시도초과' | '인증중끊김';
 export type SshIpScope = 'local' | 'lan' | 'tailscale' | 'external' | 'unknown';
@@ -52,6 +61,7 @@ export interface SshIpSummary {
   users: string[];
   firstAt: string;
   lastAt: string;
+  geo: IpGeo | null;
 }
 
 export interface SshSession {
@@ -74,6 +84,7 @@ export interface SshBlock {
   blockedAt: string | null;
   reason: string | null;
   scope: SshBlockScope;
+  geo: IpGeo | null;
 }
 
 export interface SshKnownIp {
@@ -112,3 +123,35 @@ export interface SshAccessOverview {
   knownIps: SshKnownIp[];
   blocks: SshBlock[];
 }
+
+// ---- 공격 지도 ----
+
+export interface AttackPoint {
+  ip: string;
+  geo: IpGeo | null;
+  ssh: { failures: number; successes: number };
+  web: { failures: number };
+  attempts: number;
+  blocked: boolean;
+  lastAt: string;
+}
+
+export interface AttackCountry {
+  /** 위치를 못 찾은 IP 묶음은 null */
+  country: string | null;
+  countryName: string | null;
+  attempts: number;
+  ips: number;
+  blockedIps: number;
+}
+
+/** off: 위치 파일 경로 없음, loading: 기동 중 읽는 중, unavailable: 파일을 못 읽음 */
+export type AttackMapView =
+  | { enabled: false; reason: 'off' | 'loading' | 'unavailable' }
+  | {
+      enabled: true;
+      builtAt: string;
+      since: string;
+      points: AttackPoint[];
+      countries: AttackCountry[];
+    };

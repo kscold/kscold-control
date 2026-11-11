@@ -43,6 +43,7 @@ it('사이트 IP 차단 탭에 SSH 차단기가 사이트까지 막은 IP 를 �
         blockedAt: '2026-11-11 09:21:15',
         reason: 'root 시도(root)',
         scope: 'all',
+        geo: null,
       },
       {
         ip: '5.5.5.5',
@@ -50,6 +51,7 @@ it('사이트 IP 차단 탭에 SSH 차단기가 사이트까지 막은 IP 를 �
         blockedAt: '2026-11-11 09:30:00',
         reason: null,
         scope: 'ssh',
+        geo: null,
       },
     ],
   });
@@ -72,4 +74,35 @@ it('사이트 IP 차단 탭에 SSH 차단기가 사이트까지 막은 IP 를 �
   await waitFor(() =>
     expect(scope).toHaveBeenCalledWith('222.99.122.102', 'ssh'),
   );
+});
+
+it('공격 지도 탭을 고르면 지도를 불러오고 다음에도 그 탭으로 연다', async () => {
+  useAuthStore.setState({
+    token: 'token',
+    user: {
+      id: 'u',
+      email: 'a@example.com',
+      roles: ['admin'],
+      permissions: [PERMISSIONS.SECURITY_READ],
+    },
+    impersonation: null,
+    isValidating: false,
+  });
+  window.localStorage.setItem('security-tab', 'bans');
+  vi.spyOn(securityService, 'listBans').mockResolvedValue([]);
+  vi.spyOn(securityService, 'getFirewallBlocks').mockRejectedValue(
+    new Error('쓰지 않음'),
+  );
+  const map = vi.spyOn(securityService, 'getAttackMap').mockResolvedValue({
+    enabled: false,
+    reason: 'loading',
+  });
+  render(<SecurityView />);
+
+  await userEvent.click(screen.getByRole('tab', { name: '공격 지도' }));
+  expect(
+    await screen.findByText(/IP 위치 파일을 읽는 중입니다/),
+  ).toBeInTheDocument();
+  expect(map).toHaveBeenCalledWith(7, expect.any(AbortSignal));
+  expect(window.localStorage.getItem('security-tab')).toBe('map');
 });

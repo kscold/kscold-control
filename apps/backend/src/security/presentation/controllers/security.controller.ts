@@ -5,6 +5,7 @@ import {
   Get,
   Param,
   Post,
+  Query,
   Req,
   UseGuards,
 } from '@nestjs/common';
@@ -24,6 +25,7 @@ import { CreateIpBanDto } from '../../application/dto/create-ip-ban.dto';
 import type { JwtRequest } from '../../../common/types/jwt-request.type';
 import { clientIp } from '../../../common/utils/client-ip.util';
 import type { IpBan } from '../../domain/entities/ip-ban.entity';
+import { AttackMapService } from '../../application/services/attack-map.service';
 
 /** req._auditExtra 로 인터셉터에 넘기는 감사용 추가 데이터 */
 type SecurityAuditExtra = {
@@ -52,7 +54,15 @@ export class SecurityController {
     private readonly createIpBan: CreateIpBanUseCase,
     private readonly deleteIpBan: DeleteIpBanUseCase,
     private readonly resyncBlocklist: ResyncBlocklistUseCase,
+    private readonly attackMapService: AttackMapService,
   ) {}
+
+  /** 공격 IP 를 나라·도시별로. IP 위치 파일이 없으면 enabled: false */
+  @Get('attack-map')
+  @RequirePermissions(PERMISSIONS.SECURITY_READ)
+  attackMap(@Query('days') days?: string) {
+    return this.attackMapService.attackMap(Number(days ?? 7));
+  }
 
   @Get('bans')
   @RequirePermissions(PERMISSIONS.SECURITY_READ)
