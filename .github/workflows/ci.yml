@@ -67,6 +67,9 @@ jobs:
       - name: Repository maintenance tests
         run: pnpm test:repository-maintenance
 
+      - name: Login unlock script tests
+        run: pnpm test:login-unlock
+
       - name: Build
         run: pnpm build
 

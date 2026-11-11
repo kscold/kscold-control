@@ -192,9 +192,10 @@ Emergency unlock, run on the host (the HTTP API is not used, since the admin may
 ```bash
 node --env-file=.env scripts/unlock-login.mjs admin@example.com   # clear the account lock
 node --env-file=.env scripts/unlock-login.mjs 203.0.113.7          # clear an IP's strikes and auto-login ban
+node --env-file=.env scripts/unlock-login.mjs 2001:db8:1:2::5      # an IPv6 address clears its whole /64
 ```
 
-The nginx ban is removed by the expiry sweep within 5 minutes; firewall entries are removed from the 접속 보안 screen.
+Run it from the repository root. Each unlock is written to the backend audit log (`apps/backend/data/audit-log.jsonl`). The nginx ban is removed by the expiry sweep within 5 minutes. The script only reports matching host firewall entries; remove them from the 접속 보안 screen.
 
 ## Multi-target Key Management API
 
