@@ -79,6 +79,20 @@ describe('세션에 묶인 연결', () => {
     expect(otherBrowser.connected).toBe(true);
   });
 
+  it('세션을 확인한 뒤 연결을 묶기 전에 끊기면 묶자마자 닫는다', async () => {
+    const session = await harness.sessions.open('user-1', browser);
+    await harness.verifier.verifyClaims({ sub: 'user-1', sid: session.id });
+    await harness.sessions.revoke(session.id);
+
+    const tab = await server.connect(session.id);
+
+    await new Promise<void>((resolve) => {
+      if (!tab.connected) resolve();
+      tab.once('disconnect', () => resolve());
+    });
+    expect(tab.connected).toBe(false);
+  });
+
   it('관리자 세션을 끊으면 그 세션이 연 미리보기 세션의 연결도 끊긴다', async () => {
     const admin = await harness.sessions.open('admin-1', browser);
     const preview = await harness.sessions.open('user-2', browser, {

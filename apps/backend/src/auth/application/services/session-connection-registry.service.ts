@@ -48,6 +48,8 @@ export class SessionConnectionRegistry
     }
     const set = bound;
     set.add(close);
+    // 호출부는 세션을 확인한 뒤 묶으므로, 그 사이에 끊긴 세션은 closeSessions 가 이미 지나갔다.
+    void this.closeIfEnded(sessionId);
     return () => {
       set.delete(close);
       if (!set.size && this.connections.get(sessionId) === set) {
@@ -88,19 +90,23 @@ export class SessionConnectionRegistry
     this.rechecking = true;
     try {
       for (const sessionId of [...this.connections.keys()]) {
-        try {
-          if (!(await this.verifier.isActive(sessionId))) {
-            this.closeSessions([sessionId]);
-          }
-        } catch (error) {
-          // DB 가 잠깐 안 될 때 모든 터미널을 끊지 않도록 남겨 두고 다음 차례에 다시 본다.
-          this.logger.warn(
-            `세션 ${sessionId} 를 다시 확인하지 못했습니다: ${(error as Error).message}`,
-          );
-        }
+        await this.closeIfEnded(sessionId);
       }
     } finally {
       this.rechecking = false;
+    }
+  }
+
+  private async closeIfEnded(sessionId: string): Promise<void> {
+    try {
+      if (!(await this.verifier.isActive(sessionId))) {
+        this.closeSessions([sessionId]);
+      }
+    } catch (error) {
+      // DB 가 잠깐 안 될 때 모든 터미널을 끊지 않도록 남겨 두고 다음 차례에 다시 본다.
+      this.logger.warn(
+        `세션 ${sessionId} 를 다시 확인하지 못했습니다: ${(error as Error).message}`,
+      );
     }
   }
 }
