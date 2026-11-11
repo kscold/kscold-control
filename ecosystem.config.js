@@ -85,6 +85,8 @@ module.exports = {
           'AUTOMATION_DESCRIPTIONS',
           'AUTOMATION_RELEASE_DIRS',
           'SSH_AUDIT_DIR',
+          'CONTROL_BIND_HOST',
+          'CONTROL_TRUSTED_PROXIES',
         ]),
       },
       // 자동 재시작

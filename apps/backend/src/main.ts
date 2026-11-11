@@ -4,6 +4,7 @@ import { json, urlencoded } from 'express';
 import { AppModule } from './app.module';
 import { SpaFallbackFilter } from './common/filters/spa-fallback.filter';
 import { WinstonLoggerService } from './common/logger/winston.logger';
+import { configuredTrustedProxies } from './common/utils/client-ip.util';
 
 async function bootstrap() {
   // bodyParser: false — multer(multipart)와 충돌 방지, 수동으로 body-parser 추가
@@ -37,9 +38,14 @@ async function bootstrap() {
   // 글로벌 prefix
   app.setGlobalPrefix('api');
 
+  // 설정 오류는 첫 로그인이 아니라 기동할 때 드러낸다.
+  configuredTrustedProxies();
+
   const port = process.env.PORT || 4000;
-  await app.listen(port);
-  console.log(`Backend running on http://localhost:${port}`);
+  // 같은 컴퓨터의 nginx 만 닿게 하여 X-Real-IP 위조 경로를 없앤다.
+  const host = process.env.CONTROL_BIND_HOST || '127.0.0.1';
+  await app.listen(port, host);
+  console.log(`Backend running on ${host} port ${port}`);
 }
 
 bootstrap();

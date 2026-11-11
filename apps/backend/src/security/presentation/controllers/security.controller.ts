@@ -22,6 +22,7 @@ import {
 } from '../../application/use-cases';
 import { CreateIpBanDto } from '../../application/dto/create-ip-ban.dto';
 import type { JwtRequest } from '../../../common/types/jwt-request.type';
+import { clientIp } from '../../../common/utils/client-ip.util';
 import type { IpBan } from '../../domain/entities/ip-ban.entity';
 
 /** req._auditExtra 로 인터셉터에 넘기는 감사용 추가 데이터 */
@@ -85,7 +86,7 @@ export class SecurityController {
     },
   })
   async createBan(@Body() dto: CreateIpBanDto, @Req() req: SecurityRequest) {
-    const requesterIp = extractIp(req);
+    const requesterIp = clientIp(req);
     const actorId = req.user?.id ?? null;
 
     const ban = await this.createIpBan.execute({
@@ -144,20 +145,4 @@ function toResponse(ban: IpBan) {
     createdAt: ban.createdAt.toISOString(),
     updatedAt: ban.updatedAt.toISOString(),
   };
-}
-
-function extractIp(req: Request): string | null {
-  // nginx가 실제 접속 주소로 덮어쓰는 값이라 클라이언트가 위조할 수 없음
-  const realIp = req.headers['x-real-ip'];
-  if (typeof realIp === 'string' && realIp.length > 0) {
-    return realIp.trim();
-  }
-  const fwd = req.headers['x-forwarded-for'];
-  if (typeof fwd === 'string' && fwd.length > 0) {
-    return fwd.split(',')[0]?.trim() || null;
-  }
-  if (Array.isArray(fwd) && fwd.length > 0) {
-    return fwd[0]?.split(',')[0]?.trim() || null;
-  }
-  return req.ip ?? req.socket?.remoteAddress ?? null;
 }
