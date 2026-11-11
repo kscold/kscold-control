@@ -29,6 +29,31 @@ export interface StartImpersonationData {
   user: AuthUser;
 }
 
+export interface MfaChallengeToken {
+  token: string;
+  expiresAt: string;
+}
+
+export interface MfaEnrollmentSetup {
+  secret: string;
+  otpauthUri: string;
+}
+
+export interface AuthenticatedLogin {
+  kind: 'authenticated';
+  accessToken: string;
+  user: AuthUser;
+}
+
+export type LoginResult =
+  | AuthenticatedLogin
+  | { kind: 'mfa_required'; challenge: MfaChallengeToken }
+  | {
+      kind: 'mfa_enrollment_required';
+      challenge: MfaChallengeToken;
+      enrollment: MfaEnrollmentSetup;
+    };
+
 export interface ImpersonationSession {
   actorToken: string;
   actorUser: AuthUser;
@@ -42,8 +67,9 @@ interface AuthState {
   user: AuthUser | null;
   impersonation: ImpersonationSession | null;
   isValidating: boolean;
-  login: (email: string, password: string) => Promise<void>;
-  register: (email: string, password: string) => Promise<void>;
+  login: (email: string, password: string) => Promise<LoginResult>;
+  register: (email: string, password: string) => Promise<LoginResult>;
+  applyLogin: (login: AuthenticatedLogin) => void;
   logout: () => void;
   validateToken: () => Promise<boolean>;
   /** 만료가 임박했으면 토큰을 미리 갱신한다. 갱신했으면 true. */
@@ -113,20 +139,25 @@ export const useAuthStore = create<AuthState>()(
       isValidating: false,
 
       login: async (email: string, password: string) => {
-        const { data } = await axios.post(`${API_URL}/api/auth/login`, {
-          email,
-          password,
-        });
-        set({
-          token: data.accessToken,
-          user: data.user,
-          impersonation: null,
-        });
+        const { data } = await axios.post<LoginResult>(
+          `${API_URL}/api/auth/login`,
+          { email, password },
+        );
+        if (data.kind === 'authenticated') get().applyLogin(data);
+        return data;
       },
 
       register: async (email: string, password: string) => {
         await axios.post(`${API_URL}/api/auth/register`, { email, password });
-        await get().login(email, password);
+        return get().login(email, password);
+      },
+
+      applyLogin: (login) => {
+        set({
+          token: login.accessToken,
+          user: login.user,
+          impersonation: null,
+        });
       },
 
       logout: () => {

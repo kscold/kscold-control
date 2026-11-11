@@ -1,4 +1,41 @@
-import { useAuth } from '../model/useAuth';
+import { useState } from 'react';
+import { useAuth, type LoginStep } from '../model/useAuth';
+import { AuthCard, AuthStepHeading } from './AuthCard';
+import { LOGIN_PRIMARY_BUTTON_CLASS } from './login.styles';
+import { MfaChallenge } from './MfaChallenge';
+import { MfaEnrollmentStep } from './MfaEnrollmentStep';
+import { RecoveryCodesPanel } from './RecoveryCodesPanel';
+
+function RecoveryCodesStep({
+  codes,
+  onContinue,
+}: {
+  codes: string[];
+  onContinue: () => void;
+}) {
+  const [saved, setSaved] = useState(false);
+  return (
+    <>
+      <AuthStepHeading
+        title="복구 코드 저장"
+        description="2단계 인증을 켰습니다. 인증 앱을 잃어버리면 이 코드로 로그인합니다."
+      />
+      <RecoveryCodesPanel
+        codes={codes}
+        saved={saved}
+        onSavedChange={setSaved}
+      />
+      <button
+        type="button"
+        disabled={!saved}
+        onClick={onContinue}
+        className={`mt-5 ${LOGIN_PRIMARY_BUTTON_CLASS}`}
+      >
+        계속
+      </button>
+    </>
+  );
+}
 
 /**
  * 입력 검증과 에러 처리를 포함한 로그인 폼 UI
@@ -17,7 +54,47 @@ export function LoginForm() {
     setConfirmPassword,
     changeMode,
     handleSubmit,
+    step,
+    handleVerified,
+    handleEnrolled,
+    handleChallengeExpired,
+    returnToCredentials,
+    enterConsole,
   } = useAuth();
+
+  const renderMfaStep = (
+    current: Exclude<LoginStep, { kind: 'credentials' }>,
+  ) => {
+    switch (current.kind) {
+      case 'mfa':
+        return (
+          <MfaChallenge
+            challenge={current.challenge}
+            onVerified={handleVerified}
+            onExpired={handleChallengeExpired}
+            onBack={returnToCredentials}
+          />
+        );
+      case 'enroll':
+        return (
+          <MfaEnrollmentStep
+            challenge={current.challenge}
+            enrollment={current.enrollment}
+            onEnrolled={handleEnrolled}
+            onExpired={handleChallengeExpired}
+            onBack={returnToCredentials}
+          />
+        );
+      case 'recovery-codes':
+        return (
+          <RecoveryCodesStep codes={current.codes} onContinue={enterConsole} />
+        );
+    }
+  };
+
+  if (step.kind !== 'credentials') {
+    return <AuthCard>{renderMfaStep(step)}</AuthCard>;
+  }
 
   return (
     <div className="relative flex min-h-dvh items-center justify-center overflow-hidden bg-[#071018] p-4">

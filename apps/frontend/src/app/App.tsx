@@ -71,6 +71,9 @@ const KeyManagementPage = lazy(() =>
     default: module.KeyManagementPage,
   })),
 );
+const AccountPage = lazy(() =>
+  import('@/pages/account').then((module) => ({ default: module.AccountPage })),
+);
 const PendingApprovalPage = lazy(() =>
   import('@/pages/pending-approval').then((module) => ({
     default: module.PendingApprovalPage,
@@ -232,6 +235,16 @@ export default function App() {
               <Suspense fallback={<RoutePageSkeleton />}>
                 <PendingApprovalPage />
               </Suspense>
+            }
+          />
+          <Route
+            path="account"
+            element={
+              <ErrorBoundary>
+                <Suspense fallback={<RoutePageSkeleton />}>
+                  <AccountPage />
+                </Suspense>
+              </ErrorBoundary>
             }
           />
           <Route
