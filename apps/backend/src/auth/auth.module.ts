@@ -7,6 +7,7 @@ import { AuthController } from './presentation/controllers/auth.controller';
 // Services (JwtStrategy 전용 토큰 검증)
 import { AuthService } from './application/services/auth.service';
 import { AuthSessionModule } from './auth-session.module';
+import { MfaModule } from './mfa/mfa.module';
 
 // 유스케이스
 import {
@@ -25,7 +26,13 @@ import { SecurityModule } from '../security/security.module';
 import { JwtStrategy } from './infrastructure/strategies/jwt.strategy';
 
 @Module({
-  imports: [RbacModule, PassportModule, AuthSessionModule, SecurityModule],
+  imports: [
+    RbacModule,
+    PassportModule,
+    AuthSessionModule,
+    SecurityModule,
+    MfaModule,
+  ],
   controllers: [AuthController],
   providers: [
     // 서비스

@@ -179,13 +179,14 @@ export class RemoteDesktopService
       !protocols.includes('binary')
     )
       throw new Error('Rejected');
+    const user = await this.users.findByIdWithRoles(ticket.userId);
+    if (!user) throw new Error('Rejected');
     await this.sessionVerifier.verifyClaims({
       sub: ticket.userId,
       sid: ticket.sessionId,
+      roles: user.roles.map((role) => role.name),
     });
-    const user = await this.users.findByIdWithRoles(ticket.userId);
     if (
-      !user ||
       !isGlobalAdministrator(user.roles) ||
       this.stopping ||
       socket.destroyed ||

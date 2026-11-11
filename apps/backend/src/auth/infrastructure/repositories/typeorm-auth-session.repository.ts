@@ -37,6 +37,10 @@ export class TypeOrmAuthSessionRepository implements IAuthSessionRepository {
     await this.repository.update({ id }, { lastSeenAt: at });
   }
 
+  async upgradeToMfa(id: string): Promise<void> {
+    await this.repository.update({ id }, { assurance: 'mfa' });
+  }
+
   revoke(id: string, at: Date): Promise<string[]> {
     return this.revokeWhere(
       at,

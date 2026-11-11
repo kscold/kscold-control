@@ -325,3 +325,86 @@ describe('auth.store 토큰 선제 갱신', () => {
     expect(post).not.toHaveBeenCalled();
   });
 });
+
+describe('auth.store 로그인 결과', () => {
+  const user: AuthUser = {
+    id: 'admin-user',
+    email: 'admin@example.com',
+    roles: ['admin'],
+    permissions: ['rbac:manage'],
+  };
+
+  beforeEach(() => {
+    localStorage.clear();
+    useAuthStore.setState({
+      token: null,
+      user: null,
+      impersonation: null,
+      isValidating: false,
+    });
+  });
+
+  afterEach(() => vi.restoreAllMocks());
+
+  it('비밀번호만으로 끝나는 로그인은 세션을 저장한다', async () => {
+    vi.spyOn(axios, 'post').mockResolvedValue({
+      data: { kind: 'authenticated', accessToken: 'session-token', user },
+    });
+
+    const result = await useAuthStore
+      .getState()
+      .login('admin@example.com', 'correct-password');
+
+    expect(result.kind).toBe('authenticated');
+    expect(useAuthStore.getState()).toMatchObject({
+      token: 'session-token',
+      user,
+    });
+  });
+
+  it('2단계 인증이 남은 로그인은 아무것도 저장하지 않고 확인 토큰을 돌려준다', async () => {
+    const challenge = {
+      token: 'challenge-token',
+      expiresAt: '2099-01-01T00:00:00.000Z',
+    };
+    vi.spyOn(axios, 'post').mockResolvedValue({
+      data: { kind: 'mfa_required', challenge },
+    });
+
+    const result = await useAuthStore
+      .getState()
+      .login('admin@example.com', 'correct-password');
+
+    expect(result).toEqual({ kind: 'mfa_required', challenge });
+    expect(useAuthStore.getState()).toMatchObject({ token: null, user: null });
+    expect(localStorage.getItem('auth-storage') ?? '').not.toContain(
+      'challenge-token',
+    );
+  });
+
+  it('2단계 인증을 마친 로그인은 미리보기 상태를 지우고 새 세션으로 바꾼다', () => {
+    useAuthStore.setState({
+      token: 'preview-token',
+      user,
+      impersonation: {
+        actorToken: 'admin-token',
+        actorUser: user,
+        sessionId: 'preview-session',
+        expiresAt: '2099-01-01T00:00:00.000Z',
+        readOnly: true,
+      },
+    });
+
+    useAuthStore.getState().applyLogin({
+      kind: 'authenticated',
+      accessToken: 'mfa-session-token',
+      user,
+    });
+
+    expect(useAuthStore.getState()).toMatchObject({
+      token: 'mfa-session-token',
+      user,
+      impersonation: null,
+    });
+  });
+});

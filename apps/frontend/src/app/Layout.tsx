@@ -20,6 +20,7 @@ import {
   Terminal,
   Monitor,
   Undo2,
+  UserRound,
   X,
 } from 'lucide-react';
 import { PERMISSIONS } from '@/shared/config/permissions';
@@ -234,7 +235,22 @@ export function Layout() {
           )}
         </nav>
 
-        <div className="border-t border-gray-800 p-3">
+        <div className="space-y-1 border-t border-gray-800 p-3">
+          {!impersonation && (
+            <NavLink
+              to="/account"
+              onClick={() => setIsMobileMenuOpen(false)}
+              className={({ isActive }) =>
+                `flex items-center gap-3 rounded-lg px-3 py-2 text-sm ${
+                  isActive
+                    ? 'bg-blue-600 text-white'
+                    : 'text-gray-400 hover:bg-gray-800 hover:text-white'
+                }`
+              }
+            >
+              <UserRound size={18} />내 계정
+            </NavLink>
+          )}
           <button
             type="button"
             onClick={() => {

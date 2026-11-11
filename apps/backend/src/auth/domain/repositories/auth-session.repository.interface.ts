@@ -21,6 +21,7 @@ export interface IAuthSessionRepository {
   findById(id: string): Promise<AuthSession | null>;
   extend(id: string, expiresAt: Date): Promise<void>;
   touch(id: string, at: Date): Promise<void>;
+  upgradeToMfa(id: string): Promise<void>;
   /**
    * 세션과 그 세션이 연 미리보기 세션을 함께 끊고, 이번에 끊은 세션 id 를 돌려준다.
    * 이미 끊긴 행의 시각은 바꾸지 않는다.

@@ -10,6 +10,11 @@ import {
   type IAuthSessionRepository,
 } from '../../domain/repositories/auth-session.repository.interface';
 import type { SocketJwtPayload } from '../../../common/types/authenticated-socket.type';
+import {
+  type IUserRepository,
+  USER_REPOSITORY,
+} from '../../../rbac/domain/repositories/user.repository.interface';
+import { MfaConfig } from '../../mfa/application/mfa-config';
 
 /** uuid 칸에 형식이 다른 값을 넘기면 DB 가 500 을 내므로 조회 전에 거른다. */
 const SESSION_ID_PATTERN =
@@ -22,18 +27,27 @@ export class SessionVerifier {
     @Inject(AUTH_SESSION_REPOSITORY)
     private readonly sessions: IAuthSessionRepository,
     private readonly jwtService: JwtService,
+    private readonly mfa: MfaConfig,
+    @Inject(USER_REPOSITORY)
+    private readonly users: Pick<IUserRepository, 'findByIdWithRoles'>,
   ) {}
 
   /** 서명을 이미 확인한 claim 의 세션을 확인한다. */
   async verifyClaims(claims: {
     sub: string;
     sid?: unknown;
+    roles: readonly string[];
   }): Promise<AuthSession> {
     const now = new Date();
     const session = await this.findActive(claims.sid, now);
     if (!session || session.userId !== claims.sub) {
       throw new UnauthorizedException(
         '로그인 세션이 끝났습니다. 다시 로그인해주세요.',
+      );
+    }
+    if (session.assurance !== 'mfa' && this.mfa.requiresMfa(claims.roles)) {
+      throw new UnauthorizedException(
+        '이 계정은 2단계 인증을 거쳐야 합니다. 다시 로그인해주세요.',
       );
     }
     if (
@@ -45,7 +59,10 @@ export class SessionVerifier {
     return session;
   }
 
-  /** Passport 를 거치지 않는 소켓 연결의 토큰을 서명과 세션까지 확인한다. */
+  /**
+   * Passport 를 거치지 않는 소켓 연결의 토큰을 서명과 세션까지 확인한다.
+   * 게이트웨이는 DB 역할로 권한을 주므로 2단계 요구도 토큰이 아닌 DB 역할로 판단한다.
+   */
   async verifyToken(token: string): Promise<SocketJwtPayload> {
     let claims: SocketJwtPayload;
     try {
@@ -53,7 +70,15 @@ export class SessionVerifier {
     } catch {
       throw new UnauthorizedException('유효하지 않은 토큰입니다.');
     }
-    await this.verifyClaims(claims);
+    const user =
+      typeof claims.sub === 'string'
+        ? await this.users.findByIdWithRoles(claims.sub)
+        : null;
+    if (!user) throw new UnauthorizedException('유효하지 않은 토큰입니다.');
+    await this.verifyClaims({
+      ...claims,
+      roles: user.roles.map((role) => role.name),
+    });
     return claims;
   }
 

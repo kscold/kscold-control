@@ -10,7 +10,8 @@ describe('SessionVerifier', () => {
   afterEach(() => jest.useRealTimers());
 
   async function login() {
-    const harness = sessionHarness();
+    const harness = sessionHarness({ mfaRequiredRoles: ['admin'] });
+    harness.users.set('user-1', { roles: [{ name: 'operator' }] });
     const session = await harness.sessions.open('user-1', browser);
     const token = harness.sessions.signAccessToken(
       {
@@ -34,13 +35,35 @@ describe('SessionVerifier', () => {
     const claims = await verifier.verifyToken(token);
 
     expect(claims).toMatchObject({ sub: 'user-1', sid: session.id });
-    await expect(verifier.verifyClaims(claims)).resolves.toMatchObject({
+    await expect(
+      verifier.verifyClaims({ ...claims, roles: [] }),
+    ).resolves.toMatchObject({
       id: session.id,
       userId: 'user-1',
       ip: browser.ip,
       userAgent: browser.userAgent,
       assurance: 'password',
     });
+  });
+
+  it('소켓 토큰은 토큰의 역할이 아니라 DB 역할로 2단계 요구를 판단한다', async () => {
+    const { verifier, users, token } = await login();
+
+    await expect(verifier.verifyToken(token)).resolves.toBeDefined();
+    users.set('user-1', { roles: [{ name: 'admin' }] });
+
+    await expect(verifier.verifyToken(token)).rejects.toThrow(
+      '2단계 인증을 거쳐야 합니다',
+    );
+  });
+
+  it('DB 에 없는 사용자의 소켓 토큰을 거절한다', async () => {
+    const { verifier, users, token } = await login();
+    users.delete('user-1');
+
+    await expect(verifier.verifyToken(token)).rejects.toBeInstanceOf(
+      UnauthorizedException,
+    );
   });
 
   it('세션 id 가 없는 예전 토큰을 거절한다', async () => {
@@ -59,7 +82,7 @@ describe('SessionVerifier', () => {
     const { verifier, session } = await login();
 
     await expect(
-      verifier.verifyClaims({ sub: 'user-2', sid: session.id }),
+      verifier.verifyClaims({ sub: 'user-2', sid: session.id, roles: [] }),
     ).rejects.toBeInstanceOf(UnauthorizedException);
   });
 
@@ -92,10 +115,10 @@ describe('SessionVerifier', () => {
     await sessions.revoke(session.id);
 
     await expect(
-      verifier.verifyClaims({ sub: 'user-2', sid: preview.id }),
+      verifier.verifyClaims({ sub: 'user-2', sid: preview.id, roles: [] }),
     ).rejects.toBeInstanceOf(UnauthorizedException);
     await expect(
-      verifier.verifyClaims({ sub: 'user-1', sid: other.id }),
+      verifier.verifyClaims({ sub: 'user-1', sid: other.id, roles: [] }),
     ).resolves.toMatchObject({ id: other.id });
   });
 
@@ -109,7 +132,7 @@ describe('SessionVerifier', () => {
     await sessions.revoke(preview.id);
 
     await expect(
-      verifier.verifyClaims({ sub: 'user-1', sid: session.id }),
+      verifier.verifyClaims({ sub: 'user-1', sid: session.id, roles: [] }),
     ).resolves.toMatchObject({ id: session.id });
   });
 
@@ -118,12 +141,12 @@ describe('SessionVerifier', () => {
 
     at(7 * DAY - MINUTE);
     await expect(
-      verifier.verifyClaims({ sub: 'user-1', sid: session.id }),
+      verifier.verifyClaims({ sub: 'user-1', sid: session.id, roles: [] }),
     ).resolves.toMatchObject({ id: session.id });
 
     at(7 * DAY);
     await expect(
-      verifier.verifyClaims({ sub: 'user-1', sid: session.id }),
+      verifier.verifyClaims({ sub: 'user-1', sid: session.id, roles: [] }),
     ).rejects.toBeInstanceOf(UnauthorizedException);
   });
 
@@ -138,7 +161,7 @@ describe('SessionVerifier', () => {
     expect(extended.absoluteExpiresAt).toEqual(session.absoluteExpiresAt);
     at(8 * DAY);
     await expect(
-      verifier.verifyClaims({ sub: 'user-1', sid: session.id }),
+      verifier.verifyClaims({ sub: 'user-1', sid: session.id, roles: [] }),
     ).resolves.toMatchObject({ id: session.id });
   });
 
@@ -155,7 +178,7 @@ describe('SessionVerifier', () => {
 
     at(30 * DAY);
     await expect(
-      verifier.verifyClaims({ sub: 'user-1', sid: session.id }),
+      verifier.verifyClaims({ sub: 'user-1', sid: session.id, roles: [] }),
     ).rejects.toBeInstanceOf(UnauthorizedException);
     await expect(sessions.extend(session.id)).rejects.toBeInstanceOf(
       UnauthorizedException,
@@ -183,7 +206,7 @@ describe('SessionVerifier', () => {
 
   it('마지막 사용 시각은 1분에 한 번만 기록한다', async () => {
     const { verifier, repository, session } = await login();
-    const claims = { sub: 'user-1', sid: session.id };
+    const claims = { sub: 'user-1', sid: session.id, roles: [] };
 
     at(MINUTE);
     await verifier.verifyClaims(claims);
@@ -209,7 +232,7 @@ describe('SessionVerifier', () => {
       const { verifier } = await login();
 
       await expect(
-        verifier.verifyClaims({ sub: 'user-1', sid }),
+        verifier.verifyClaims({ sub: 'user-1', sid, roles: [] }),
       ).rejects.toBeInstanceOf(UnauthorizedException);
     },
   );
@@ -227,7 +250,7 @@ describe('SessionVerifier', () => {
 
     expect(repository.rows.get(preview.id)?.revokedAt).toBeNull();
     await expect(
-      verifier.verifyClaims({ sub: 'user-2', sid: preview.id }),
+      verifier.verifyClaims({ sub: 'user-2', sid: preview.id, roles: [] }),
     ).rejects.toBeInstanceOf(UnauthorizedException);
     await expect(verifier.isActive(preview.id)).resolves.toBe(false);
   });
@@ -245,11 +268,11 @@ describe('SessionVerifier', () => {
 
     at(4 * MINUTE);
     await expect(
-      verifier.verifyClaims({ sub: 'user-2', sid: preview.id }),
+      verifier.verifyClaims({ sub: 'user-2', sid: preview.id, roles: [] }),
     ).resolves.toMatchObject({ id: preview.id });
     at(5 * MINUTE);
     await expect(
-      verifier.verifyClaims({ sub: 'user-2', sid: preview.id }),
+      verifier.verifyClaims({ sub: 'user-2', sid: preview.id, roles: [] }),
     ).rejects.toBeInstanceOf(UnauthorizedException);
   });
 
@@ -279,5 +302,57 @@ describe('SessionVerifier', () => {
       capped,
     );
     expect(decode(late).exp).toBe(decode(late).maxExp);
+  });
+
+  describe('2단계 인증이 필요한 역할', () => {
+    async function adminSession(assurance: 'password' | 'mfa') {
+      const harness = sessionHarness({ mfaRequiredRoles: ['admin'] });
+      const session = await harness.sessions.open('user-1', browser, {
+        assurance,
+      });
+      const claims = { sub: 'user-1', sid: session.id };
+      return { ...harness, session, claims };
+    }
+
+    it('비밀번호만으로 연 세션을 거절한다', async () => {
+      const { verifier, claims } = await adminSession('password');
+
+      await expect(
+        verifier.verifyClaims({ ...claims, roles: ['admin'] }),
+      ).rejects.toBeInstanceOf(UnauthorizedException);
+    });
+
+    it('2단계를 거친 세션은 받아들인다', async () => {
+      const { verifier, claims, session } = await adminSession('mfa');
+
+      await expect(
+        verifier.verifyClaims({ ...claims, roles: ['admin'] }),
+      ).resolves.toMatchObject({ id: session.id });
+    });
+
+    it('필수 역할이 아닌 계정은 비밀번호 세션도 받아들인다', async () => {
+      const { verifier, claims, session } = await adminSession('password');
+
+      await expect(
+        verifier.verifyClaims({ ...claims, roles: ['operator'] }),
+      ).resolves.toMatchObject({ id: session.id });
+    });
+
+    it('토큰에 실린 역할로 소켓 연결도 같은 규칙을 따른다', async () => {
+      const { verifier, sessions, session } = await adminSession('password');
+      const token = sessions.signAccessToken(
+        {
+          sub: 'user-1',
+          email: 'admin@example.com',
+          roles: ['admin'],
+          permissions: [],
+        },
+        session,
+      );
+
+      await expect(verifier.verifyToken(token)).rejects.toBeInstanceOf(
+        UnauthorizedException,
+      );
+    });
   });
 });

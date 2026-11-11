@@ -1,26 +1,25 @@
 import { UnauthorizedException } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
+import type { LoginResult } from '@/auth/application/dto/login-result';
 import { LoginUseCase } from '@/auth/application/use-cases/login.use-case';
 import { PasswordHasher } from '@/common/utils/password-hasher.util';
-import { browser, sessionHarness } from '../../auth-session.fake';
-import { loginGuardHarness } from '../../../security/login-guard.fake';
+import { browser } from '../../auth-session.fake';
+import { closeMfaHarnesses, mfaHarness } from '../../mfa.fake';
 
 describe('LoginUseCase', () => {
-  const guards: Array<{ cleanup: () => Promise<void> }> = [];
-  afterEach(async () => {
-    await Promise.all(guards.splice(0).map((g) => g.cleanup()));
-  });
+  afterEach(closeMfaHarnesses);
 
-  async function setup(password = bcrypt.hash('correct horse', 4)) {
-    const harness = sessionHarness();
-    const guard = await loginGuardHarness();
-    guards.push(guard);
-    const user = {
+  async function setup({
+    role = 'operator',
+    password = bcrypt.hash('correct horse', 4),
+  }: { role?: string; password?: Promise<string> } = {}) {
+    const harness = await mfaHarness();
+    const user = harness.addUser({
       id: 'user-1',
       email: 'admin@example.com',
       password: await password,
-      roles: [{ name: 'admin', permissions: [{ name: 'docker:read' }] }],
-    };
+      roles: [{ name: role, permissions: [{ name: 'docker:read' }] }],
+    });
     const users = {
       findByEmail: async (email: string) =>
         email === user.email ? user : null,
@@ -29,21 +28,32 @@ describe('LoginUseCase', () => {
     const useCase = new LoginUseCase(
       users as any,
       harness.sessions,
-      guard.guard,
+      harness.loginGuard.guard,
+      harness.mfa,
     );
     return { ...harness, useCase };
+  }
+
+  async function authenticated(result: Promise<LoginResult>) {
+    const login = await result;
+    if (login.kind !== 'authenticated') throw new Error(login.kind);
+    return login;
   }
 
   it('로그인할 때마다 접속 정보를 담은 세션을 새로 열고 토큰을 묶는다', async () => {
     const { useCase, repository, verifier } = await setup();
     const dto = { email: 'admin@example.com', password: 'correct horse' };
 
-    const first = await useCase.execute(dto, { ...browser, ipVerified: true });
-    const second = await useCase.execute(dto, {
-      ip: '198.51.100.7',
-      ipVerified: true,
-      userAgent: null,
-    });
+    const first = await authenticated(
+      useCase.execute(dto, { ...browser, ipVerified: true }),
+    );
+    const second = await authenticated(
+      useCase.execute(dto, {
+        ip: '198.51.100.7',
+        ipVerified: true,
+        userAgent: null,
+      }),
+    );
 
     const firstClaims = await verifier.verifyToken(first.accessToken);
     const secondClaims = await verifier.verifyToken(second.accessToken);
@@ -74,8 +84,26 @@ describe('LoginUseCase', () => {
     expect(repository.rows.size).toBe(0);
   });
 
+  it('2단계 인증이 필요한 계정은 비밀번호만으로 세션을 받지 못한다', async () => {
+    const { useCase, repository } = await setup({ role: 'admin' });
+
+    const result = await useCase.execute(
+      { email: 'admin@example.com', password: 'correct horse' },
+      { ...browser, ipVerified: true },
+    );
+
+    expect(result).toMatchObject({
+      kind: 'mfa_enrollment_required',
+      challenge: { token: expect.any(String), expiresAt: expect.any(String) },
+    });
+    expect(result).not.toHaveProperty('accessToken');
+    expect(repository.rows.size).toBe(0);
+  });
+
   it('없는 계정도 있는 계정만큼 비밀번호 비교에 시간을 쓴다', async () => {
-    const { useCase } = await setup(PasswordHasher.hash('correct horse'));
+    const { useCase } = await setup({
+      password: PasswordHasher.hash('correct horse'),
+    });
     const elapsed = async (email: string, ip: string) => {
       const started = process.hrtime.bigint();
       await useCase

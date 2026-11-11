@@ -1,4 +1,6 @@
 import { JwtService } from '@nestjs/jwt';
+import { randomBytes } from 'node:crypto';
+import { MfaConfig } from '@/auth/mfa/application/mfa-config';
 import { AuthSessionService } from '@/auth/application/services/auth-session.service';
 import { SessionConnectionRegistry } from '@/auth/application/services/session-connection-registry.service';
 import { SessionVerifier } from '@/auth/application/services/session-verifier.service';
@@ -36,6 +38,10 @@ export class InMemoryAuthSessionRepository implements IAuthSessionRepository {
 
   async touch(id: string, at: Date) {
     this.update(id, { lastSeenAt: at });
+  }
+
+  async upgradeToMfa(id: string) {
+    this.update(id, { assurance: 'mfa' });
   }
 
   async revoke(id: string, at: Date) {
@@ -82,16 +88,30 @@ export class InMemoryAuthSessionRepository implements IAuthSessionRepository {
   }
 }
 
-export function sessionHarness() {
+type StoredUser = { roles: Array<{ name: string }> };
+
+export function sessionHarness({
+  mfaRequiredRoles = [] as string[],
+  users = new Map<string, StoredUser>(),
+} = {}) {
   const repository = new InMemoryAuthSessionRepository();
   const jwtService = new JwtService({
     secret: 'test-only-secret-at-least-32-characters',
   });
-  const verifier = new SessionVerifier(repository, jwtService);
+  const mfaConfig = new MfaConfig(
+    randomBytes(32),
+    new Set(mfaRequiredRoles),
+    'kscold-control',
+  );
+  const verifier = new SessionVerifier(repository, jwtService, mfaConfig, {
+    findByIdWithRoles: async (id: string) => (users.get(id) as any) ?? null,
+  });
   const connections = new SessionConnectionRegistry(verifier);
   return {
     repository,
     jwtService,
+    mfaConfig,
+    users,
     verifier,
     connections,
     sessions: new AuthSessionService(repository, jwtService, connections),
@@ -100,5 +120,6 @@ export function sessionHarness() {
 
 export const browser = {
   ip: '203.0.113.10',
+  ipVerified: true,
   userAgent: 'Mozilla/5.0 (test)',
 };

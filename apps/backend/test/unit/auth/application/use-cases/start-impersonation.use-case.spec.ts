@@ -21,14 +21,18 @@ describe('StartImpersonationUseCase', () => {
   };
 
   async function setup(found: unknown = target) {
-    const harness = sessionHarness();
-    const adminSession = await harness.sessions.open('admin-user', browser);
+    const harness = sessionHarness({ mfaRequiredRoles: [ROLES.KEY_MANAGER] });
+    harness.users.set(target.id, target);
+    const adminSession = await harness.sessions.open('admin-user', browser, {
+      assurance: 'mfa',
+    });
     const actor = {
       id: 'admin-user',
       email: 'admin@example.com',
       roles: [ROLES.ADMIN],
       permissions: [],
       sessionId: adminSession.id,
+      sessionAssurance: adminSession.assurance,
     };
     const userRepository = {
       findByIdWithRoles: jest.fn().mockResolvedValue(found),
@@ -108,5 +112,14 @@ describe('StartImpersonationUseCase', () => {
       useCase.execute(actor, target.id, browser),
     ).rejects.toBeInstanceOf(ForbiddenException);
     expect(repository.rows.size).toBe(1);
+  });
+
+  it('미리보기 세션은 연 관리자 세션의 2단계 인증을 이어받는다', async () => {
+    const { useCase, actor, verifier } = await setup();
+
+    const result = await useCase.execute(actor, target.id, browser);
+
+    const claims = await verifier.verifyToken(result.accessToken);
+    expect(claims.roles).toEqual([ROLES.KEY_MANAGER]);
   });
 });

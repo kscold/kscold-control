@@ -16,16 +16,16 @@ export type LoginOrigin =
 /** refused 는 비밀번호를 보기 전에 돌려보낸 시도다. */
 export type LoginAttemptResult = 'success' | 'failure' | 'refused';
 
+/** 틀린 2단계 코드도 비밀번호를 아는 쪽이 낸 로그인 실패라 같은 한도로 센다. */
+export type LoginFailureReason =
+  'wrong-password' | 'unknown-account' | 'wrong-otp' | 'wrong-recovery-code';
+
 /**
  * in-flight 는 기록만으로는 막히지 않지만, 확인 중인 시도가 모두 틀렸다고 가정하면 한도에 닿아 돌려보낸 시도다.
  * 앞선 시도가 맞을 수도 있으니 IP 실패로 세지 않는다.
  */
 export type LoginAttemptReason =
-  | 'wrong-password'
-  | 'unknown-account'
-  | 'ip-banned'
-  | 'account-locked'
-  | 'in-flight';
+  LoginFailureReason | 'ip-banned' | 'account-locked' | 'in-flight';
 
 export interface LoginSubject {
   /** 접속한 주소 그대로 */

@@ -234,6 +234,9 @@ importers:
       lucide-react:
         specifier: ^0.344.0
         version: 0.344.0(react@18.3.1)
+      qr:
+        specifier: 0.7.2
+        version: 0.7.2
       react:
         specifier: ^18.2.0
         version: 18.3.1
@@ -4299,6 +4302,10 @@ packages:
 
   pure-rand@7.0.1:
     resolution: {integrity: sha512-oTUZM/NAZS8p7ANR3SHh30kXB+zK2r2BPcEn/awJIbOvq82WoMN4p62AWWp3Hhw50G0xMsw1mhIBLqHw64EcNQ==}
+
+  qr@0.7.2:
+    resolution: {integrity: sha512-yovYRuacJBJkG9fWSwcB2bKZhr58c04DpOXguDU+rAAoJZdi6/J3DtlomkKqdd1MutIptIK+kigWmT7LKz8y7A==}
+    engines: {node: '>= 20.19.0'}
 
   qs@6.16.1:
     resolution: {integrity: sha512-5Px6J7rfHBAGUhNQ3es4YzcOdBBw0SDcVtThJml4RdnKw4tKs2epA0kPZ+K8X+WiHktT93RHVcQ/3ym5aTCgtg==}
@@ -9774,6 +9781,8 @@ snapshots:
   punycode@2.3.1: {}
 
   pure-rand@7.0.1: {}
+
+  qr@0.7.2: {}
 
   qs@6.16.1:
     dependencies:

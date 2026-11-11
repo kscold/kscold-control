@@ -11,6 +11,8 @@ import {
   type LoginClient,
 } from '../../../security/application/services/login-guard.service';
 import { LoginDto } from '../dto';
+import type { LoginResult } from '../dto/login-result';
+import { MfaService } from '../../mfa/application/mfa.service';
 import {
   AuthSessionService,
   type SessionClient,
@@ -27,9 +29,13 @@ export class LoginUseCase {
     private readonly userRepository: IUserRepository,
     private readonly authSessions: AuthSessionService,
     private readonly loginGuard: LoginGuardService,
+    private readonly mfa: MfaService,
   ) {}
 
-  async execute(dto: LoginDto, client: SessionClient & LoginClient) {
+  async execute(
+    dto: LoginDto,
+    client: SessionClient & LoginClient,
+  ): Promise<LoginResult> {
     const { email, password } = dto;
     const user = await this.loginGuard.check<User>(client, email, async () => {
       const account = await this.userRepository.findByEmail(email);
@@ -50,27 +56,9 @@ export class LoginUseCase {
       );
     }
 
-    // JWT 토큰 생성
-    const payload = {
-      sub: user.id,
-      email: user.email,
-      roles: user.roles.map((r) => r.name),
-      permissions: user.roles.flatMap((r) => r.permissions.map((p) => p.name)),
-    };
-
-    const session = await this.authSessions.open(user.id, client);
-    const accessToken = this.authSessions.signAccessToken(payload, session);
-
-    return {
-      accessToken,
-      user: {
-        id: user.id,
-        email: user.email,
-        roles: user.roles.map((r) => r.name),
-        permissions: user.roles.flatMap((r) =>
-          r.permissions.map((p) => p.name),
-        ),
-      },
-    };
+    return (
+      (await this.mfa.afterPassword(user)) ??
+      this.authSessions.signIn(user, client, 'password')
+    );
   }
 }

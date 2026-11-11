@@ -56,6 +56,7 @@ export class StartImpersonationUseCase {
     const session = await this.authSessions.open(target.id, client, {
       parentSessionId: actor.sessionId,
       absoluteTtlMs: IMPERSONATION_TTL_SECONDS * 1000,
+      assurance: actor.sessionAssurance,
     });
     const roles = target.roles.map((role) => role.name);
     const permissions = PermissionExtractor.extractFromRoles(target.roles);

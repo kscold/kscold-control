@@ -18,6 +18,7 @@ import {
   normalizeLoginAccount,
   type LoginAttemptReason,
   type LoginAttemptRecord,
+  type LoginFailureReason,
   type LoginAttemptResult,
   type LoginOrigin,
   type LoginSubject,
@@ -44,8 +45,8 @@ export interface LoginClient {
   ipVerified: boolean;
 }
 
-export type PasswordCheck<U> =
-  { user: U } | { failure: 'wrong-password' | 'unknown-account' };
+/** 비밀번호나 2단계 코드를 확인한 결과 */
+export type CredentialCheck<U> = { user: U } | { failure: LoginFailureReason };
 
 const RESULT_LABEL: Record<LoginAttemptResult, string> = {
   success: '성공',
@@ -56,6 +57,8 @@ const RESULT_LABEL: Record<LoginAttemptResult, string> = {
 const REASON_LABEL: Record<LoginAttemptReason, string> = {
   'wrong-password': '비밀번호 불일치',
   'unknown-account': '없는 계정',
+  'wrong-otp': 'OTP 불일치',
+  'wrong-recovery-code': '복구 코드 불일치',
   'ip-banned': '차단된 IP',
   'account-locked': '계정 잠시 잠김',
   'in-flight': '확인 중인 시도와 겹침',
@@ -86,13 +89,13 @@ export class LoginGuardService {
   ) {}
 
   /**
-   * 비밀번호 확인을 감싼다. 막힌 시도면 기록하고 429 를 던지고, 틀리면 기록하고 null 을 돌려준다.
+   * 비밀번호나 2단계 코드 확인을 감싼다. 막힌 시도면 기록하고 429 를 던지고, 틀리면 기록하고 null 을 돌려준다.
    * 동시에 들어온 시도는 앞서 확인 중인 시도를 실패로 세므로, 한도보다 많이 비밀번호 확인까지 가지 못한다.
    */
   async check<U extends { id: string; email: string }>(
     client: LoginClient,
     email: string,
-    verify: () => Promise<PasswordCheck<U>>,
+    verify: () => Promise<CredentialCheck<U>>,
   ): Promise<U | null> {
     const subject = await this.subjectOf(client, email);
     const pending: LoginAttemptRecord = {
@@ -103,7 +106,7 @@ export class LoginGuardService {
     };
     const ahead = [...this.inFlight];
     this.inFlight.add(pending);
-    let outcome: PasswordCheck<U>;
+    let outcome: CredentialCheck<U>;
     try {
       await this.refuseIfBlocked(subject, ahead);
       outcome = await verify();
