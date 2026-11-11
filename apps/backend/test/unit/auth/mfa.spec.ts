@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { randomBytes } from 'node:crypto';
 import { MfaConfig } from '@/auth/mfa/application/mfa-config';
 import { RECOVERY_CODE_COUNT } from '@/auth/mfa/domain/recovery-codes';
+import { AccountMfaAttemptGuard } from '@/auth/mfa/infrastructure/account-mfa-attempt-guard';
 import {
   decodeBase32,
   encodeBase32,
@@ -131,7 +132,7 @@ describe('MfaService', () => {
     const admin = harness.addUser(
       account('00000000-0000-4000-8000-0000000000a1', 'admin'),
     );
-    const step = await harness.mfa.secondStep(admin as any);
+    const step = await harness.mfa.afterPassword(admin as any);
     if (step?.kind !== 'mfa_enrollment_required') throw new Error(step?.kind);
     const login = await harness.mfa.completeEnrollment(
       {
@@ -145,7 +146,7 @@ describe('MfaService', () => {
 
   async function verifyChallenge(harness: ReturnType<typeof mfaHarness>) {
     const user = [...harness.users.values()][0];
-    const step = await harness.mfa.secondStep(user as any);
+    const step = await harness.mfa.afterPassword(user as any);
     if (step?.kind !== 'mfa_required') throw new Error(step?.kind);
     return step.challenge.token;
   }
@@ -154,7 +155,7 @@ describe('MfaService', () => {
     const harness = mfaHarness();
     const user = harness.addUser(account('user-1', 'operator'));
 
-    await expect(harness.mfa.secondStep(user as any)).resolves.toBeNull();
+    await expect(harness.mfa.afterPassword(user as any)).resolves.toBeNull();
   });
 
   it('필수 역할 계정은 등록을 마쳐야 mfa 세션과 복구 코드 10개를 받는다', async () => {
@@ -164,7 +165,7 @@ describe('MfaService', () => {
     );
     const earlier = await harness.sessions.open(admin.id, browser);
 
-    const step = await harness.mfa.secondStep(admin as any);
+    const step = await harness.mfa.afterPassword(admin as any);
     expect(step).toMatchObject({
       kind: 'mfa_enrollment_required',
       enrollment: {
@@ -192,7 +193,7 @@ describe('MfaService', () => {
     });
     expect(harness.repository.rows.get(earlier.id)?.revokedAt).not.toBeNull();
     const stored = harness.enrollments.rows.get(admin.id)!;
-    expect(stored.totpSecret).not.toContain(step.enrollment.secret);
+    expect(stored.sealedTotpSecret).not.toContain(step.enrollment.secret);
     expect(stored.recoveryCodeHashes.join()).not.toContain(
       login.recoveryCodes[0].replace(/-/g, ''),
     );
@@ -203,7 +204,7 @@ describe('MfaService', () => {
     const admin = harness.addUser(
       account('00000000-0000-4000-8000-0000000000a1', 'admin'),
     );
-    const step = await harness.mfa.secondStep(admin as any);
+    const step = await harness.mfa.afterPassword(admin as any);
     if (step?.kind !== 'mfa_enrollment_required') return;
 
     await expectMfaError(
@@ -412,5 +413,40 @@ describe('MfaService', () => {
       'MFA_ALREADY_ENABLED',
     );
     expect(error.getStatus()).toBe(409);
+  });
+});
+
+describe('AccountMfaAttemptGuard', () => {
+  beforeEach(() => jest.useFakeTimers({ now: LOGIN_AT }));
+  afterEach(() => jest.useRealTimers());
+
+  it('한 계정이 15분 안에 10번 틀리면 코드를 보기 전에 429 로 막고 15분 뒤 풀어 준다', async () => {
+    const audit = { record: jest.fn().mockResolvedValue(undefined) };
+    const guard = new AccountMfaAttemptGuard(audit as any);
+
+    for (let i = 0; i < 10; i++) {
+      const attempt = await guard.admit('203.0.113.10', 'Admin@Example.com');
+      await guard.failed(attempt, 'wrong-otp');
+    }
+
+    const blocked = await guard
+      .admit('198.51.100.7', 'admin@example.com')
+      .catch((error: HttpException) => error);
+    expect((blocked as HttpException).getStatus()).toBe(429);
+    await expect(
+      guard.admit('203.0.113.10', 'operator@example.com'),
+    ).resolves.toBeDefined();
+    expect(audit.record).toHaveBeenCalledTimes(10);
+    expect(audit.record).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        action: 'login.mfa-failure',
+        targetId: 'admin@example.com',
+      }),
+    );
+
+    jest.setSystemTime(LOGIN_AT.getTime() + 15 * 60 * 1000 + 1);
+    await expect(
+      guard.admit('203.0.113.10', 'admin@example.com'),
+    ).resolves.toBeDefined();
   });
 });

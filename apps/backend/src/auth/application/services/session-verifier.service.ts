@@ -26,14 +26,11 @@ export class SessionVerifier {
     private readonly mfa: MfaConfig,
   ) {}
 
-  /**
-   * 서명을 이미 확인한 claim 의 세션을 확인한다.
-   * `roles` 는 2단계 인증이 필요한 계정인지 가르는 데 쓴다. HTTP 요청은 DB 의 현재 역할을 넣는다.
-   */
+  /** 서명을 이미 확인한 claim 의 세션을 확인한다. */
   async verifyClaims(claims: {
     sub: string;
     sid?: unknown;
-    roles?: unknown;
+    roles: readonly string[];
   }): Promise<AuthSession> {
     const now = new Date();
     const session = await this.findActive(claims.sid, now);
@@ -42,14 +39,7 @@ export class SessionVerifier {
         '로그인 세션이 끝났습니다. 다시 로그인해주세요.',
       );
     }
-    // 미리보기 세션은 이미 확인한 관리자 세션 아래에서만 열린다.
-    if (
-      session.assurance !== 'mfa' &&
-      !session.parentSessionId &&
-      this.mfa.requiresMfa(
-        Array.isArray(claims.roles) ? (claims.roles as string[]) : [],
-      )
-    ) {
+    if (session.assurance !== 'mfa' && this.mfa.requiresMfa(claims.roles)) {
       throw new UnauthorizedException(
         '이 계정은 2단계 인증을 거쳐야 합니다. 다시 로그인해주세요.',
       );
@@ -71,7 +61,12 @@ export class SessionVerifier {
     } catch {
       throw new UnauthorizedException('유효하지 않은 토큰입니다.');
     }
-    await this.verifyClaims(claims);
+    await this.verifyClaims({
+      ...claims,
+      roles: Array.isArray(claims.roles)
+        ? claims.roles.filter((role) => typeof role === 'string')
+        : [],
+    });
     return claims;
   }
 

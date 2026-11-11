@@ -38,10 +38,6 @@ function parseIssuer(value: string | undefined): string {
   return issuer;
 }
 
-/**
- * 2단계 인증 설정과 그 키. 키가 없거나 형식이 틀리면 기동을 멈춘다.
- * 키를 바꾸면 저장된 OTP 비밀값과 복구 코드를 읽을 수 없으니 모든 계정을 비상 해제해야 한다.
- */
 export class MfaConfig {
   private readonly secretKey: Buffer;
   private readonly recoveryCodeKey: Buffer;
@@ -75,7 +71,10 @@ export class MfaConfig {
     return roles.some((role) => this.requiredRoles.has(role));
   }
 
-  /** 다른 계정 행에 옮겨 붙인 암호문은 풀리지 않도록 사용자 id 에 묶는다. */
+  newlyRequiresMfa(before: readonly string[], after: readonly string[]) {
+    return !this.requiresMfa(before) && this.requiresMfa(after);
+  }
+
   sealSecret(userId: string, secret: string): string {
     const iv = randomBytes(12);
     const cipher = createCipheriv('aes-256-gcm', this.secretKey, iv);
@@ -109,7 +108,6 @@ export class MfaConfig {
     ]).toString('utf8');
   }
 
-  /** 키를 섞은 해시라 DB 만 빼 간 쪽은 복구 코드를 하나씩 대입해 볼 수 없다. */
   hashRecoveryCode(normalizedCode: string): string {
     return createHmac('sha256', this.recoveryCodeKey)
       .update(normalizedCode)

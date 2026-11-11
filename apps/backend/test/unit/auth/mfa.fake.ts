@@ -5,7 +5,6 @@ import type { UserMfa } from '@/auth/mfa/domain/user-mfa.entity';
 import type { IUserMfaRepository } from '@/auth/mfa/domain/user-mfa.repository.interface';
 import { sessionHarness } from './auth-session.fake';
 
-/** TypeORM 저장소의 조건부 쓰기와 같은 규칙으로 메모리에 등록을 둔다. */
 export class InMemoryUserMfaRepository implements IUserMfaRepository {
   readonly rows = new Map<string, UserMfa>();
 
@@ -16,7 +15,7 @@ export class InMemoryUserMfaRepository implements IUserMfaRepository {
       : null;
   }
 
-  async create(enrollment: UserMfa) {
+  async createIfAbsent(enrollment: UserMfa) {
     if (this.rows.has(enrollment.userId)) return false;
     this.rows.set(enrollment.userId, { ...enrollment });
     return true;

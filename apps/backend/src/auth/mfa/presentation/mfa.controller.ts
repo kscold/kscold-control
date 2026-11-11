@@ -23,10 +23,6 @@ function roleNames(roles: JwtRequest['user']['roles']): string[] {
   return roles.map((role) => (typeof role === 'string' ? role : role.name));
 }
 
-/**
- * `verify` 와 `enrollment/complete` 는 접근 토큰 없이 로그인이 준 challenge 로만 부른다.
- * 나머지는 로그인한 본인의 설정이다.
- */
 @Controller('auth/mfa')
 export class MfaController {
   constructor(private readonly mfa: MfaService) {}

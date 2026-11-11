@@ -1,5 +1,4 @@
 // 2단계 인증 비상 해제. OTP 기기와 복구 코드를 모두 잃은 계정을 호스트에서만 되살린다.
-// HTTP 로는 열지 않는다. DB 에 닿을 수 있는 사람만 실행할 수 있어야 하기 때문이다.
 //
 //   node --env-file=.env scripts/reset-user-mfa.mjs <email>
 //

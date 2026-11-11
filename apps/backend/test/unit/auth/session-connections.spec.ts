@@ -81,7 +81,11 @@ describe('세션에 묶인 연결', () => {
 
   it('세션을 확인한 뒤 연결을 묶기 전에 끊기면 묶자마자 닫는다', async () => {
     const session = await harness.sessions.open('user-1', browser);
-    await harness.verifier.verifyClaims({ sub: 'user-1', sid: session.id });
+    await harness.verifier.verifyClaims({
+      sub: 'user-1',
+      sid: session.id,
+      roles: [],
+    });
     await harness.sessions.revoke(session.id);
 
     const tab = await server.connect(session.id);

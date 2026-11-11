@@ -122,7 +122,7 @@ if (
   ecosystemApplication?.exec_mode !== 'fork'
 ) {
   violations.push(
-    'PM2는 프로젝트별 파일 잠금이 단일 프로세스인 동안 instances=1, exec_mode=fork를 유지해야 함',
+    'PM2는 프로젝트별 파일 잠금과 2단계 인증 challenge(MfaChallengeStore)가 프로세스 메모리에 있는 동안 instances=1, exec_mode=fork를 유지해야 함',
   );
 }
 

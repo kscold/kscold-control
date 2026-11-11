@@ -3,7 +3,6 @@ import { createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
 /** RFC 6238 TOTP. 인증 앱 기본값(SHA-1, 6자리, 30초)만 쓴다. */
 export const TOTP_PERIOD_SECONDS = 30;
 export const TOTP_DIGITS = 6;
-/** 휴대폰과 서버 시계가 한 주기 어긋나도 받아들인다. */
 const TOTP_DRIFT_STEPS = 1;
 const TOTP_SECRET_BYTES = 20;
 const BASE32_ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
@@ -41,7 +40,6 @@ export function decodeBase32(text: string): Buffer {
   return Buffer.from(bytes);
 }
 
-/** 인증 앱에 넣을 base32 비밀값 */
 export function generateTotpSecret(): string {
   return encodeBase32(randomBytes(TOTP_SECRET_BYTES));
 }
@@ -61,10 +59,6 @@ export function totpCode(secret: string, step: number): string {
   return String(binary % 10 ** TOTP_DIGITS).padStart(TOTP_DIGITS, '0');
 }
 
-/**
- * 받아들일 수 있는 코드면 그 코드의 step 을 돌려준다.
- * `lastUsedStep` 이하의 step 은 이미 쓴 코드거나 그보다 오래된 코드라 받지 않는다.
- */
 export function matchTotp(
   secret: string,
   code: string,

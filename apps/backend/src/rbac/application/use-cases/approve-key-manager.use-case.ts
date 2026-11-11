@@ -14,6 +14,8 @@ import {
   USER_REPOSITORY,
 } from '../../domain/repositories/user.repository.interface';
 import { UserResponseDto } from '../dto/user-response.dto';
+import { AuthSessionService } from '../../../auth/application/services/auth-session.service';
+import { MfaConfig } from '../../../auth/mfa/application/mfa-config';
 
 /** 승인 대기 사용자를 대시보드 조회가 가능한 운영 키 관리자 역할로 전환한다. */
 @Injectable()
@@ -23,6 +25,8 @@ export class ApproveKeyManagerUseCase {
     private readonly userRepository: IUserRepository,
     @Inject(ROLE_REPOSITORY)
     private readonly roleRepository: IRoleRepository,
+    private readonly authSessions: AuthSessionService,
+    private readonly mfa: MfaConfig,
   ) {}
 
   async execute(userId: string): Promise<UserResponseDto> {
@@ -45,6 +49,14 @@ export class ApproveKeyManagerUseCase {
       throw new NotFoundException('키 관리자 역할이 준비되지 않았습니다.');
     }
 
+    if (
+      this.mfa.newlyRequiresMfa(
+        user.roles.map((role) => role.name),
+        [keyManagerRole.name],
+      )
+    ) {
+      await this.authSessions.revokeAllForUser(user.id);
+    }
     // 승인 대기 역할을 포함한 기존 역할을 모두 제거해 최소 권한으로 시작한다.
     user.roles = [keyManagerRole];
     user.terminalCommandCount = 0;

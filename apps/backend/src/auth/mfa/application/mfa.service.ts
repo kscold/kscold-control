@@ -74,6 +74,14 @@ const challengeExpired = () =>
     '인증 시간이 지났습니다. 처음부터 다시 로그인해주세요.',
   );
 
+// 로그인한 요청에 401 을 주면 화면이 세션 확인부터 다시 하고 같은 요청을 한 번 더 보낸다.
+const invalidCodeKeepingSession = () =>
+  mfaError(
+    HttpStatus.FORBIDDEN,
+    'MFA_CODE_INVALID',
+    '인증 코드가 맞지 않습니다.',
+  );
+
 const alreadyEnabled = () =>
   mfaError(
     HttpStatus.CONFLICT,
@@ -81,7 +89,6 @@ const alreadyEnabled = () =>
     '이미 2단계 인증을 쓰고 있습니다.',
   );
 
-/** 비밀번호 다음 단계. OTP 나 복구 코드를 맞혀야 assurance `mfa` 세션이 열린다. */
 @Injectable()
 export class MfaService {
   private readonly logger = new Logger(MfaService.name);
@@ -99,8 +106,7 @@ export class MfaService {
     private readonly audit: AuditLogService,
   ) {}
 
-  /** 비밀번호를 맞힌 뒤 부른다. 2단계가 필요 없는 계정이면 null */
-  async secondStep(
+  async afterPassword(
     user: User,
   ): Promise<Exclude<LoginResult, AuthenticatedLogin> | null> {
     if (await this.enrollments.find(user.id)) {
@@ -118,7 +124,6 @@ export class MfaService {
     return { kind: 'mfa_enrollment_required', ...this.beginEnrollment(user) };
   }
 
-  /** 로그인한 사용자가 스스로 등록을 시작한다. */
   async startEnrollment(account: Account) {
     if (await this.enrollments.find(account.id)) throw alreadyEnabled();
     return this.beginEnrollment(account);
@@ -137,8 +142,7 @@ export class MfaService {
     const attempt = await this.guard.admit(client.ip, user.email);
     const enrollment = await this.enrollments.find(user.id);
     if (!enrollment) {
-      // 비상 해제로 등록이 지워졌다. 다시 로그인하면 등록 화면으로 간다.
-      this.challenges.close(input.challenge);
+      this.challenges.consume(input.challenge);
       throw challengeExpired();
     }
     const accepted =
@@ -146,7 +150,7 @@ export class MfaService {
         ? await this.acceptTotp(enrollment, input.code, now)
         : await this.acceptRecoveryCode(user.id, input.code);
     if (!accepted) return this.reject(input.challenge, attempt, input.method);
-    if (!this.challenges.close(input.challenge)) throw challengeExpired();
+    if (!this.challenges.consume(input.challenge)) throw challengeExpired();
 
     if (input.method === 'recovery') {
       this.record(
@@ -171,19 +175,18 @@ export class MfaService {
     const attempt = await this.guard.admit(client.ip, user.email);
     const step = matchTotp(challenge.secret, input.code, now, null);
     if (step === null) return this.reject(input.challenge, attempt, 'totp');
-    if (!this.challenges.close(input.challenge)) throw challengeExpired();
+    if (!this.challenges.consume(input.challenge)) throw challengeExpired();
 
     const recoveryCodes = generateRecoveryCodes();
-    const created = await this.enrollments.create({
+    const created = await this.enrollments.createIfAbsent({
       userId: user.id,
-      totpSecret: this.config.sealSecret(user.id, challenge.secret),
+      sealedTotpSecret: this.config.sealSecret(user.id, challenge.secret),
       lastUsedStep: step,
       recoveryCodeHashes: this.hashRecoveryCodes(recoveryCodes),
       enabledAt: now,
     });
     if (!created) throw alreadyEnabled();
 
-    // 비밀번호만으로 열린 다른 세션은 이 계정의 새 기준에 못 미친다.
     await this.authSessions.revokeAllForUser(user.id);
     this.record(
       user,
@@ -206,7 +209,6 @@ export class MfaService {
     };
   }
 
-  /** 지금 OTP 를 맞혀야 새 복구 코드를 받는다. 예전 복구 코드는 모두 버린다. */
   async regenerateRecoveryCodes(
     account: Account,
     code: string,
@@ -223,12 +225,7 @@ export class MfaService {
     const attempt = await this.guard.admit(client.ip, account.email);
     if (!(await this.acceptTotp(enrollment, code, new Date()))) {
       await this.guard.failed(attempt, 'wrong-otp');
-      // 401 이면 화면이 로그아웃 확인부터 시작하므로 로그인한 요청의 틀린 코드는 403 으로 돌려준다.
-      throw mfaError(
-        HttpStatus.FORBIDDEN,
-        'MFA_CODE_INVALID',
-        '인증 코드가 맞지 않습니다.',
-      );
+      throw invalidCodeKeepingSession();
     }
 
     const recoveryCodes = generateRecoveryCodes();
@@ -272,7 +269,7 @@ export class MfaService {
     now: Date,
   ): Promise<boolean> {
     const step = matchTotp(
-      this.config.openSecret(enrollment.userId, enrollment.totpSecret),
+      this.config.openSecret(enrollment.userId, enrollment.sealedTotpSecret),
       code,
       now,
       enrollment.lastUsedStep,

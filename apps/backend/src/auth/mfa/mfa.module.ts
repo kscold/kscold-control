@@ -7,7 +7,7 @@ import { MfaService } from './application/mfa.service';
 import { MFA_ATTEMPT_GUARD } from './domain/mfa-attempt-guard';
 import { UserMfa } from './domain/user-mfa.entity';
 import { USER_MFA_REPOSITORY } from './domain/user-mfa.repository.interface';
-import { AuditMfaAttemptGuard } from './infrastructure/audit-mfa-attempt-guard';
+import { AccountMfaAttemptGuard } from './infrastructure/account-mfa-attempt-guard';
 import { TypeOrmUserMfaRepository } from './infrastructure/typeorm-user-mfa.repository';
 import { MfaController } from './presentation/mfa.controller';
 
@@ -18,7 +18,7 @@ import { MfaController } from './presentation/mfa.controller';
     MfaService,
     MfaChallengeStore,
     { provide: USER_MFA_REPOSITORY, useClass: TypeOrmUserMfaRepository },
-    { provide: MFA_ATTEMPT_GUARD, useClass: AuditMfaAttemptGuard },
+    { provide: MFA_ATTEMPT_GUARD, useClass: AccountMfaAttemptGuard },
   ],
   exports: [MfaService],
 })

@@ -57,7 +57,7 @@ export class LoginUseCase {
     }
 
     return (
-      (await this.mfa.secondStep(user)) ??
+      (await this.mfa.afterPassword(user)) ??
       this.authSessions.signIn(user, client, 'password')
     );
   }

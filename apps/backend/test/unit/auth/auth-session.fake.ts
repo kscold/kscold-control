@@ -84,7 +84,6 @@ export class InMemoryAuthSessionRepository implements IAuthSessionRepository {
   }
 }
 
-/** 2단계 인증을 요구할 역할은 그 규칙을 보는 테스트만 넘긴다. */
 export function sessionHarness({ mfaRequiredRoles = [] as string[] } = {}) {
   const repository = new InMemoryAuthSessionRepository();
   const jwtService = new JwtService({

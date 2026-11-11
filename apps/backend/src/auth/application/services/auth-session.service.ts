@@ -70,7 +70,6 @@ export class AuthSessionService {
     });
   }
 
-  /** 로그인을 마친 사용자에게 새 세션과 접근 토큰을 준다. */
   async signIn(
     user: Pick<User, 'id' | 'email' | 'roles'>,
     client: SessionClient,

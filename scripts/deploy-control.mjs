@@ -144,7 +144,6 @@ try {
     decodedMfaKey.length !== 32 ||
     decodedMfaKey.toString('base64') !== mfaKey
   ) {
-    // 새 백엔드는 이 키 없이 기동하지 않으므로 재시작 전에 멈춘다.
     throw new Error(
       '.env의 CONTROL_MFA_ENCRYPTION_KEY가 필요합니다. openssl rand -base64 32 로 한 번 만들어 넣으세요.',
     );

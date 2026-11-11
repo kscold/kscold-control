@@ -36,7 +36,6 @@ import { MfaConfig } from './mfa/application/mfa-config';
       provide: AUTH_SESSION_REPOSITORY,
       useClass: TypeOrmAuthSessionRepository,
     },
-    // 세션 확인이 2단계 인증 요구를 보므로 키 검사도 여기서 기동과 함께 한다.
     {
       provide: MfaConfig,
       inject: [ConfigService],

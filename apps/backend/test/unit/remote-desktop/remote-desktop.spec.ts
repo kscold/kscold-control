@@ -27,6 +27,7 @@ describe('원격 데스크톱 보안 중계', () => {
     roles: ['admin'],
     permissions: [],
     sessionId: '',
+    sessionAssurance: 'mfa' as const,
   };
   const users = { findByIdWithRoles: jest.fn() };
   let auth: ReturnType<typeof sessionHarness>;

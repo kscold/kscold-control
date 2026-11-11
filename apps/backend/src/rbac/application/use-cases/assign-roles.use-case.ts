@@ -10,6 +10,8 @@ import {
 import { AssignRolesDto } from '../dto/assign-roles.dto';
 import { UserResponseDto } from '../dto/user-response.dto';
 import { ROLES } from '../../../common/constants/roles';
+import { AuthSessionService } from '../../../auth/application/services/auth-session.service';
+import { MfaConfig } from '../../../auth/mfa/application/mfa-config';
 
 /**
  * Assign Roles Use Case
@@ -22,6 +24,8 @@ export class AssignRolesUseCase {
     private readonly userRepository: IUserRepository,
     @Inject(ROLE_REPOSITORY)
     private readonly roleRepository: IRoleRepository,
+    private readonly authSessions: AuthSessionService,
+    private readonly mfa: MfaConfig,
   ) {}
 
   async execute(dto: AssignRolesDto): Promise<UserResponseDto> {
@@ -33,6 +37,15 @@ export class AssignRolesUseCase {
 
     // Find roles
     const roles = await this.roleRepository.findByIds(dto.roleIds);
+    // 비밀번호만으로 연 세션의 소켓은 토큰에 실린 예전 역할로 확인되므로 여기서 끊는다.
+    if (
+      this.mfa.newlyRequiresMfa(
+        user.roles.map((role) => role.name),
+        roles.map((role) => role.name),
+      )
+    ) {
+      await this.authSessions.revokeAllForUser(user.id);
+    }
     user.roles = roles;
 
     // 키 관리자는 역할 편집 경로에서도 터미널을 기본 차단한다.

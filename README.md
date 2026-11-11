@@ -458,10 +458,14 @@ node --env-file=.env scripts/reset-user-mfa.mjs admin@example.com
 It removes the OTP enrollment and recovery codes and signs out every session of
 that account. The next login goes back to enrollment.
 
-Wrong OTP and recovery codes go through the `MfaAttemptGuard` seam
-(`apps/backend/src/auth/mfa/domain/mfa-attempt-guard.ts`). The default binding
-only writes 운영 감사 entries, and a login challenge closes after 5 wrong codes.
-Login blocking binds the same seam to count them with password failures.
+A login challenge closes after 5 wrong codes, and an account that gets 10 codes
+wrong within 15 minutes is refused for the rest of that window. Wrong codes go
+through the `MfaAttemptGuard` seam
+(`apps/backend/src/auth/mfa/domain/mfa-attempt-guard.ts`), which also writes
+운영 감사 entries. Login blocking can bind the same seam to count them with
+password failures.
+
+Giving an account a role in `CONTROL_MFA_REQUIRED_ROLES` signs out its sessions.
 
 ## Production Deployment
 

@@ -15,7 +15,7 @@ export class TypeOrmUserMfaRepository implements IUserMfaRepository {
     return this.repository.findOneBy({ userId });
   }
 
-  async create(enrollment: UserMfa): Promise<boolean> {
+  async createIfAbsent(enrollment: UserMfa): Promise<boolean> {
     const result = await this.repository
       .createQueryBuilder()
       .insert()
