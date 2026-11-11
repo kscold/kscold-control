@@ -104,6 +104,43 @@ async function findAdminUser(connectionString) {
   }
 }
 
+// 서버가 토큰의 sid 로 세션 행을 확인하므로, 스모크 동안만 쓸 15분짜리 세션 행을 연다.
+async function openSmokeSession(connectionString, userId) {
+  const client = new Client({ connectionString });
+
+  try {
+    await client.connect();
+    const result = await client.query(
+      `
+        INSERT INTO auth_sessions (user_id, expires_at, absolute_expires_at, user_agent)
+        VALUES ($1, now() + interval '15 minutes', now() + interval '15 minutes', 'repository-live-smoke')
+        RETURNING id, floor(extract(epoch FROM expires_at))::bigint AS expires_at
+      `,
+      [userId],
+    );
+    return {
+      id: result.rows[0].id,
+      expiresAt: Number(result.rows[0].expires_at),
+    };
+  } finally {
+    await client.end();
+  }
+}
+
+async function revokeSmokeSession(connectionString, sessionId) {
+  const client = new Client({ connectionString });
+
+  try {
+    await client.connect();
+    await client.query(
+      'UPDATE auth_sessions SET revoked_at = now() WHERE id = $1',
+      [sessionId],
+    );
+  } finally {
+    await client.end();
+  }
+}
+
 async function validateToken(token) {
   const response = await fetch(`${baseUrl}/api/auth/me`, {
     headers: {
@@ -123,37 +160,44 @@ async function createPersistedAdminAuthState() {
   }
 
   for (const connectionString of buildConnectionCandidates(env)) {
+    let sessionId = null;
     try {
       const user = await findAdminUser(connectionString);
       if (!user) {
         continue;
       }
 
+      const session = await openSmokeSession(connectionString, user.id);
+      sessionId = session.id;
       const token = jwt.sign(
         {
           sub: user.id,
           email: user.email,
+          sid: session.id,
+          exp: session.expiresAt,
+          maxExp: session.expiresAt,
         },
         jwtSecret,
-        { expiresIn: '15m' },
       );
 
-      const isValid = await validateToken(token);
-      if (!isValid) {
-        continue;
+      if (await validateToken(token)) {
+        const persistedState = JSON.stringify({
+          state: {
+            token,
+            user,
+          },
+          version: 0,
+        });
+
+        return { persistedState, token, user };
       }
-
-      const persistedState = JSON.stringify({
-        state: {
-          token,
-          user,
-        },
-        version: 0,
-      });
-
-      return { persistedState, token, user };
     } catch {
-      continue;
+      // 다음 후보 DB 로 넘어간다.
+    }
+    if (sessionId) {
+      await revokeSmokeSession(connectionString, sessionId).catch(
+        () => undefined,
+      );
     }
   }
 
@@ -634,7 +678,7 @@ function findTreePath(node, targetPath, currentPath = '') {
 async function run() {
   const { persistedState, token, user } = await createPersistedAdminAuthState();
   const projectName = createProjectName();
-  const fixture = await createFixtureDirectory(projectName);
+  let fixture = null;
   let project = null;
   let browser = null;
   let page = null;
@@ -643,6 +687,7 @@ async function run() {
   console.log(`[repository-live-smoke] Authenticated as: ${user.email}`);
 
   try {
+    fixture = await createFixtureDirectory(projectName);
     project = await apiRequest('/repository/projects', token, {
       method: 'POST',
       body: JSON.stringify({
@@ -860,7 +905,13 @@ async function run() {
       }
     }
 
-    await fsp.rm(fixture.tempRoot, { recursive: true, force: true });
+    if (fixture) {
+      await fsp.rm(fixture.tempRoot, { recursive: true, force: true });
+    }
+    await fetch(`${baseUrl}/api/auth/logout`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+    }).catch(() => undefined);
   }
 }
 

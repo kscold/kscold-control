@@ -15,7 +15,8 @@ import {
   UnauthorizedException,
   ForbiddenException,
 } from '@nestjs/common';
-import { JwtService } from '@nestjs/jwt';
+import { SessionVerifier } from '../../../auth/application/services/session-verifier.service';
+import { SessionConnectionRegistry } from '../../../auth/application/services/session-connection-registry.service';
 
 import { PERMISSIONS } from '../../../common/constants/permissions';
 import { IMPERSONATION_TOKEN_USE } from '../../../common/constants/impersonation';
@@ -64,7 +65,8 @@ export class TerminalGateway
   private readonly logger = new Logger(TerminalGateway.name);
 
   constructor(
-    private readonly jwtService: JwtService,
+    private readonly sessionVerifier: SessionVerifier,
+    private readonly sessionConnections: SessionConnectionRegistry,
     private readonly ptyManager: PtyManagerService,
     private readonly sessionMapper: SessionMapperService,
     private readonly wsPermission: WsPermissionService,
@@ -95,8 +97,9 @@ export class TerminalGateway
       const token = client.handshake.auth.token;
       if (!token) throw new UnauthorizedException('No token provided');
 
-      const payload = this.jwtService.verify(token);
+      const payload = await this.sessionVerifier.verifyToken(token);
       client.user = payload;
+      this.sessionConnections.bindSocket(payload.sid, client);
 
       if (payload.tokenUse === IMPERSONATION_TOKEN_USE) {
         throw new ForbiddenException(

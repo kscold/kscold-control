@@ -26,6 +26,7 @@ describe('RBAC 백업 대상 열람 범위 엔드포인트', () => {
     unused,
     unused,
     backupTargetAccess as never,
+    unused,
   );
 
   beforeEach(() => {

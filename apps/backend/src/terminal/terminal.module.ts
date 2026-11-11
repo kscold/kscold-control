@@ -1,7 +1,5 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { JwtModule } from '@nestjs/jwt';
-import { ConfigModule, ConfigService } from '@nestjs/config';
 
 // Domain 계층
 import { Session } from './domain/entities/session.entity';
@@ -55,24 +53,12 @@ import { TerminalGateway } from './presentation/gateways/terminal.gateway';
 
 // RBAC (유저 리포지토리 + 웹소켓 권한 확인 서비스)
 import { RbacModule } from '../rbac/rbac.module';
+import { AuthModule } from '../auth/auth.module';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([Session, Message]),
-    JwtModule.registerAsync({
-      imports: [ConfigModule],
-      inject: [ConfigService],
-      useFactory: (config: ConfigService) => {
-        const secret = config.get<string>('JWT_SECRET');
-        if (!secret) {
-          throw new Error('JWT_SECRET environment variable is required');
-        }
-        return {
-          secret,
-          signOptions: { expiresIn: '7d' },
-        };
-      },
-    }),
+    AuthModule,
     RbacModule,
   ],
   controllers: [WorkspaceFileController],

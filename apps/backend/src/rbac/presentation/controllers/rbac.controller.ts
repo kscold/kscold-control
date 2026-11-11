@@ -8,6 +8,8 @@ import {
   Param,
   Request,
   UseGuards,
+  HttpCode,
+  HttpStatus,
 } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { PermissionsGuard } from '../../../common/guards';
@@ -29,6 +31,7 @@ import {
   ListPermissionsUseCase,
   ManageTerminalLimitUseCase,
   ApproveKeyManagerUseCase,
+  RevokeUserSessionsUseCase,
 } from '../../application/use-cases';
 import {
   CreateUserDto,
@@ -94,6 +97,7 @@ export class RbacController {
     private readonly approveKeyManagerUseCase: ApproveKeyManagerUseCase,
     private readonly targetAccess: KeyManagementTargetAccessService,
     private readonly backupTargetAccess: BackupTargetAccessService,
+    private readonly revokeUserSessionsUseCase: RevokeUserSessionsUseCase,
   ) {}
 
   // ==================== Role Endpoints ====================
@@ -162,7 +166,25 @@ export class RbacController {
     @Request() req: RbacRequest,
   ) {
     req._auditExtra = { before: await this.getUserSnapshot(id) };
-    return this.updateUserUseCase.execute(id, dto);
+    return this.updateUserUseCase.execute(id, dto, req.user);
+  }
+
+  @Post('users/:id/sessions/revoke')
+  @HttpCode(HttpStatus.OK)
+  @RequirePermissions(PERMISSIONS.RBAC_MANAGE)
+  @Audit({
+    domain: 'rbac',
+    action: 'user.sessions.revoke',
+    summary: (ctx) =>
+      `사용자 ${ctx.params.id}의 로그인 세션 ${(ctx.response as { revoked: number }).revoked}개를 끊었습니다.`,
+    targetType: 'user',
+    targetId: (ctx) => ctx.params.id,
+  })
+  async revokeUserSessions(
+    @Param('id') id: string,
+    @Request() req: JwtRequest,
+  ) {
+    return this.revokeUserSessionsUseCase.execute(id, req.user);
   }
 
   @Delete('users/:id')

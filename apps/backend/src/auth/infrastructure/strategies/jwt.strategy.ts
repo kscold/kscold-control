@@ -3,6 +3,7 @@ import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import { ConfigService } from '@nestjs/config';
 import { AuthService } from '../../application/services/auth.service';
+import { SessionVerifier } from '../../application/services/session-verifier.service';
 import { IMPERSONATION_TOKEN_USE } from '../../../common/constants/impersonation';
 import type { JwtTokenClaims } from '../../../common/types/jwt-request.type';
 
@@ -11,6 +12,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   constructor(
     private readonly configService: ConfigService,
     private readonly authService: AuthService,
+    private readonly sessionVerifier: SessionVerifier,
   ) {
     const secret = configService.get<string>('JWT_SECRET');
     if (!secret) {
@@ -30,6 +32,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   }
 
   async validate(payload: JwtTokenClaims) {
+    const session = await this.sessionVerifier.verifyClaims(payload);
     const user = await this.authService.validateUser(payload.sub);
     if (!user) {
       throw new UnauthorizedException('유효하지 않은 토큰입니다.');
@@ -45,7 +48,6 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       isImpersonation &&
       (!payload.impersonatedBy?.id ||
         !payload.impersonatedBy.email ||
-        !payload.jti ||
         !payload.exp)
     ) {
       throw new UnauthorizedException(
@@ -56,10 +58,11 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     return {
       ...user,
       permissions,
+      sessionId: session.id,
       ...(isImpersonation
         ? {
             impersonation: {
-              sessionId: payload.jti!,
+              sessionId: session.id,
               actorId: payload.impersonatedBy!.id,
               actorEmail: payload.impersonatedBy!.email,
               expiresAt: new Date(payload.exp! * 1000).toISOString(),

@@ -27,10 +27,11 @@ export interface ImpersonationActorClaim {
 export interface JwtTokenClaims {
   sub: string;
   email: string;
+  /** 서버 세션 id. 이 값이 없는 토큰(세션 도입 전 발급분)은 거절된다. */
+  sid?: string;
   tokenUse?: string;
   impersonatedBy?: ImpersonationActorClaim;
   exp?: number;
-  jti?: string;
 }
 
 export interface JwtPayload {
@@ -38,6 +39,7 @@ export interface JwtPayload {
   email: string;
   roles: Array<string | { name: string }>;
   permissions: string[];
+  sessionId: string;
   impersonation?: ImpersonationContext;
   /**
    * WebSocket 경로에서만 존재하는 토큰 subject.

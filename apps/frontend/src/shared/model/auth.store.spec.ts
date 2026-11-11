@@ -78,7 +78,8 @@ describe('auth.store impersonation', () => {
     });
   });
 
-  it('관리자 화면으로 즉시 복귀한다', () => {
+  it('관리자 화면으로 즉시 복귀하고 미리보기 세션을 끊는다', () => {
+    const post = vi.spyOn(axios, 'post').mockResolvedValue({ data: '' });
     useAuthStore.getState().beginImpersonation({
       accessToken: 'preview-token',
       sessionId: 'preview-session',
@@ -95,6 +96,64 @@ describe('auth.store impersonation', () => {
       user: actor,
       impersonation: null,
     });
+    expect(post).toHaveBeenCalledTimes(1);
+    expect(post).toHaveBeenCalledWith(
+      expect.stringContaining('/api/auth/logout'),
+      {},
+      expect.objectContaining({
+        headers: { Authorization: 'Bearer preview-token' },
+      }),
+    );
+  });
+
+  it('로그아웃하면 서버 세션을 끊고 화면 상태를 지운다', () => {
+    const post = vi.spyOn(axios, 'post').mockResolvedValue({ data: '' });
+
+    useAuthStore.getState().logout();
+
+    expect(post).toHaveBeenCalledWith(
+      expect.stringContaining('/api/auth/logout'),
+      {},
+      expect.objectContaining({
+        headers: { Authorization: 'Bearer admin-token' },
+      }),
+    );
+    expect(useAuthStore.getState()).toMatchObject({ token: null, user: null });
+  });
+
+  it('미리보기 중 로그아웃하면 관리자 세션을 끊어 미리보기까지 끝낸다', () => {
+    const post = vi.spyOn(axios, 'post').mockResolvedValue({ data: '' });
+    useAuthStore.getState().beginImpersonation({
+      accessToken: 'preview-token',
+      sessionId: 'preview-session',
+      expiresAt: '2099-01-01T00:00:00.000Z',
+      readOnly: true,
+      user: target,
+    });
+
+    useAuthStore.getState().logout();
+
+    expect(post).toHaveBeenCalledTimes(1);
+    expect(post).toHaveBeenCalledWith(
+      expect.stringContaining('/api/auth/logout'),
+      {},
+      expect.objectContaining({
+        headers: { Authorization: 'Bearer admin-token' },
+      }),
+    );
+    expect(useAuthStore.getState()).toMatchObject({
+      token: null,
+      impersonation: null,
+    });
+  });
+
+  it('서버에 닿지 않아도 화면에서는 로그아웃한다', async () => {
+    vi.spyOn(axios, 'post').mockRejectedValue(new AxiosError('Network Error'));
+
+    useAuthStore.getState().logout();
+    await Promise.resolve();
+
+    expect(useAuthStore.getState().token).toBeNull();
   });
 
   it('만료된 미리보기는 관리자 토큰으로 자동 복귀해 검증한다', async () => {
@@ -138,10 +197,15 @@ describe('auth.store 토큰 선제 갱신', () => {
     permissions: ['rbac:manage'],
   };
 
-  /** exp 만 담은 최소 형태의 JWT — 서명 검증은 서버 몫이라 여기선 불필요하다 */
-  const tokenExpiringIn = (ms: number) => {
+  /** exp(와 세션 절대 만료 maxExp)만 담은 최소 형태의 JWT — 서명 검증은 서버 몫이라 여기선 불필요하다 */
+  const tokenExpiringIn = (ms: number, maxMs?: number) => {
+    const seconds = (offset: number) =>
+      Math.floor((Date.now() + offset) / 1000);
     const payload = btoa(
-      JSON.stringify({ exp: Math.floor((Date.now() + ms) / 1000) }),
+      JSON.stringify({
+        exp: seconds(ms),
+        ...(maxMs === undefined ? {} : { maxExp: seconds(maxMs) }),
+      }),
     );
     return `header.${payload}.signature`;
   };
@@ -171,6 +235,30 @@ describe('auth.store 토큰 선제 갱신', () => {
     );
     expect(post).toHaveBeenCalledTimes(1);
     expect(useAuthStore.getState().token).toBe('refreshed-token');
+  });
+
+  it('로그인 한도까지 남은 시간이 있으면 갱신한다', async () => {
+    useAuthStore.setState({ token: tokenExpiringIn(2 * HOUR, 5 * 24 * HOUR) });
+    const post = vi.spyOn(axios, 'post').mockResolvedValue({
+      data: { accessToken: 'refreshed-token', user },
+    });
+
+    await expect(useAuthStore.getState().ensureFreshToken()).resolves.toBe(
+      true,
+    );
+    expect(post).toHaveBeenCalledTimes(1);
+  });
+
+  it('만료가 로그인 한도에 닿은 토큰은 갱신해도 늘지 않으므로 서버를 부르지 않는다', async () => {
+    const capped = tokenExpiringIn(2 * HOUR, 2 * HOUR);
+    useAuthStore.setState({ token: capped });
+    const post = vi.spyOn(axios, 'post');
+
+    await expect(useAuthStore.getState().ensureFreshToken()).resolves.toBe(
+      false,
+    );
+    expect(post).not.toHaveBeenCalled();
+    expect(useAuthStore.getState().token).toBe(capped);
   });
 
   it('수명이 넉넉하면 서버를 부르지 않는다', async () => {

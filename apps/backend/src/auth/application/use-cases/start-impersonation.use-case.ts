@@ -5,8 +5,6 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { JwtService } from '@nestjs/jwt';
-import { randomUUID } from 'node:crypto';
 import {
   IMPERSONATION_TOKEN_USE,
   IMPERSONATION_TTL_SECONDS,
@@ -18,17 +16,28 @@ import {
   type IUserRepository,
   USER_REPOSITORY,
 } from '../../../rbac/domain/repositories/user.repository.interface';
+import {
+  AuthSessionService,
+  type SessionClient,
+} from '../services/auth-session.service';
 
-/** 최고 관리자가 다른 사용자의 권한 화면을 읽기 전용으로 점검한다. */
+/**
+ * 최고 관리자가 다른 사용자의 권한 화면을 읽기 전용으로 점검한다.
+ * 미리보기는 관리자 세션 아래의 자식 세션이라, 관리자가 로그아웃하면 함께 끊긴다.
+ */
 @Injectable()
 export class StartImpersonationUseCase {
   constructor(
     @Inject(USER_REPOSITORY)
     private readonly userRepository: IUserRepository,
-    private readonly jwtService: JwtService,
+    private readonly authSessions: AuthSessionService,
   ) {}
 
-  async execute(actor: JwtPayload, targetUserId: string) {
+  async execute(
+    actor: JwtPayload,
+    targetUserId: string,
+    client: SessionClient,
+  ) {
     if (!isGlobalAdministrator(actor.roles)) {
       throw new ForbiddenException(
         '최고 관리자만 사용자 화면을 미리 볼 수 있습니다.',
@@ -44,13 +53,13 @@ export class StartImpersonationUseCase {
       throw new ForbiddenException('관리자 계정은 미리 볼 수 없습니다.');
     }
 
-    const sessionId = randomUUID();
-    const expiresAt = new Date(
-      Date.now() + IMPERSONATION_TTL_SECONDS * 1000,
-    ).toISOString();
+    const session = await this.authSessions.open(target.id, client, {
+      parentSessionId: actor.sessionId,
+      absoluteTtlMs: IMPERSONATION_TTL_SECONDS * 1000,
+    });
     const roles = target.roles.map((role) => role.name);
     const permissions = PermissionExtractor.extractFromRoles(target.roles);
-    const accessToken = this.jwtService.sign(
+    const accessToken = this.authSessions.signAccessToken(
       {
         sub: target.id,
         email: target.email,
@@ -58,15 +67,14 @@ export class StartImpersonationUseCase {
         permissions,
         tokenUse: IMPERSONATION_TOKEN_USE,
         impersonatedBy: { id: actor.id, email: actor.email },
-        jti: sessionId,
       },
-      { expiresIn: IMPERSONATION_TTL_SECONDS },
+      session,
     );
 
     return {
       accessToken,
-      sessionId,
-      expiresAt,
+      sessionId: session.id,
+      expiresAt: session.expiresAt.toISOString(),
       readOnly: true as const,
       user: {
         id: target.id,

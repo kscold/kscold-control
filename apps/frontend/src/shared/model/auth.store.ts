@@ -56,19 +56,39 @@ interface AuthState {
 const REFRESH_THRESHOLD_MS = 24 * 60 * 60 * 1000;
 
 /**
- * JWT 의 만료 시각(ms)을 읽는다. 해석에 실패하면 null 을 돌려준다.
- * 서명 검증은 서버 몫이고, 여기서는 갱신 시점을 정하는 용도로만 쓴다.
+ * JWT 의 만료 시각과, 갱신해도 넘을 수 없는 세션 절대 만료(maxExp)를 ms 로 읽는다.
+ * 해석에 실패하면 null 을 돌려준다. 서명 검증은 서버 몫이고 여기서는 갱신 시점을 정하는 데만 쓴다.
  */
-function readTokenExpiry(token: string): number | null {
+function readTokenLifetime(
+  token: string,
+): { expiresAt: number; maxExpiresAt: number | null } | null {
   try {
     const payload = token.split('.')[1];
     if (!payload) return null;
     const json = atob(payload.replace(/-/g, '+').replace(/_/g, '/'));
-    const exp = (JSON.parse(json) as { exp?: number }).exp;
-    return typeof exp === 'number' ? exp * 1000 : null;
+    const { exp, maxExp } = JSON.parse(json) as {
+      exp?: number;
+      maxExp?: number;
+    };
+    if (typeof exp !== 'number') return null;
+    return {
+      expiresAt: exp * 1000,
+      maxExpiresAt: typeof maxExp === 'number' ? maxExp * 1000 : null,
+    };
   } catch {
     return null;
   }
+}
+
+/** 서버 세션을 끊는다. 응답을 기다리지 않아 네트워크가 끊겨도 화면 로그아웃은 막히지 않는다. */
+function revokeServerSession(token: string) {
+  void axios
+    .post(
+      `${API_URL}/api/auth/logout`,
+      {},
+      { headers: { Authorization: `Bearer ${token}` }, timeout: 10_000 },
+    )
+    .catch(() => undefined);
 }
 
 function clearSessionStorageByPrefix(prefix: string) {
@@ -110,6 +130,10 @@ export const useAuthStore = create<AuthState>()(
       },
 
       logout: () => {
+        // 미리보기 중이면 관리자 세션을 끊어야 미리보기 세션까지 함께 끊긴다.
+        const { token, impersonation } = get();
+        const sessionToken = impersonation?.actorToken ?? token;
+        if (sessionToken) revokeServerSession(sessionToken);
         // 터미널 세션도 함께 정리
         clearSessionStorageByPrefix(TERMINAL_SESSION_STORAGE_KEY);
         clearSessionStorageByPrefix(CLAUDE_SESSION_STORAGE_KEY);
@@ -126,9 +150,17 @@ export const useAuthStore = create<AuthState>()(
         // 사용자 미리보기 세션은 짧은 수명이 의도된 것이라 갱신 대상이 아니다.
         if (!token || impersonation) return false;
 
-        const expiresAt = readTokenExpiry(token);
-        if (expiresAt === null) return false;
-        if (expiresAt - Date.now() > REFRESH_THRESHOLD_MS) return false;
+        const lifetime = readTokenLifetime(token);
+        if (!lifetime) return false;
+        if (lifetime.expiresAt - Date.now() > REFRESH_THRESHOLD_MS)
+          return false;
+        // 절대 만료에 닿은 토큰은 갱신해도 만료가 그대로라, 부르면 같은 만료의 토큰만 되풀이해 받는다.
+        if (
+          lifetime.maxExpiresAt !== null &&
+          lifetime.expiresAt >= lifetime.maxExpiresAt
+        ) {
+          return false;
+        }
 
         try {
           const { data } = await axios.post(
@@ -230,8 +262,9 @@ export const useAuthStore = create<AuthState>()(
       },
 
       endImpersonation: () => {
-        const impersonation = get().impersonation;
+        const { token, impersonation } = get();
         if (!impersonation) return false;
+        if (token) revokeServerSession(token);
 
         set({
           token: impersonation.actorToken,

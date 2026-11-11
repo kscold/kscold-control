@@ -43,6 +43,7 @@ import { BackupRun } from './backup/domain/entities/backup-run.entity';
 import { WorktreeCleanupTarget } from './maintenance/domain/entities/worktree-cleanup-target.entity';
 import { WorktreeCleanupRun } from './maintenance/domain/entities/worktree-cleanup-run.entity';
 import { StorageTrimRun } from './maintenance/domain/entities/storage-trim-run.entity';
+import { AuthSession } from './auth/domain/entities/auth-session.entity';
 
 import { HttpLoggerMiddleware } from './common/middleware/http-logger.middleware';
 import {
@@ -91,6 +92,7 @@ import { resolveFrontendDistPath } from './common/utils/frontend-dist-path.util'
         WorktreeCleanupTarget,
         WorktreeCleanupRun,
         StorageTrimRun,
+        AuthSession,
       ],
       synchronize: shouldSynchronizeDatabase(),
       logging: process.env.NODE_ENV !== 'production',

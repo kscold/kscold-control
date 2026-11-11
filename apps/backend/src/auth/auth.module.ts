@@ -1,13 +1,12 @@
 import { Module } from '@nestjs/common';
-import { JwtModule } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
-import { ConfigService } from '@nestjs/config';
 
 // 컨트롤러
 import { AuthController } from './presentation/controllers/auth.controller';
 
 // Services (JwtStrategy 전용 토큰 검증)
 import { AuthService } from './application/services/auth.service';
+import { AuthSessionModule } from './auth-session.module';
 
 // 유스케이스
 import {
@@ -25,23 +24,7 @@ import { RbacModule } from '../rbac/rbac.module';
 import { JwtStrategy } from './infrastructure/strategies/jwt.strategy';
 
 @Module({
-  imports: [
-    RbacModule,
-    PassportModule,
-    JwtModule.registerAsync({
-      inject: [ConfigService],
-      useFactory: (config: ConfigService) => {
-        const secret = config.get<string>('JWT_SECRET');
-        if (!secret) {
-          throw new Error('JWT_SECRET environment variable is required');
-        }
-        return {
-          secret,
-          signOptions: { expiresIn: '7d' },
-        };
-      },
-    }),
-  ],
+  imports: [RbacModule, PassportModule, AuthSessionModule],
   controllers: [AuthController],
   providers: [
     // 서비스
@@ -57,7 +40,6 @@ import { JwtStrategy } from './infrastructure/strategies/jwt.strategy';
     // 전략(Passport)
     JwtStrategy,
   ],
-  // AuthService를 주입하는 외부 모듈이 없어 export 제거
-  // (다른 모듈의 AuthModule import는 JwtStrategy 등록 목적)
+  exports: [AuthSessionModule],
 })
 export class AuthModule {}

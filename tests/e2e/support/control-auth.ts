@@ -111,6 +111,43 @@ async function findAdminUser(connectionString: string): Promise<PersistedUser | 
   }
 }
 
+// 서버가 토큰의 sid 로 세션 행을 확인하므로, 테스트 동안만 쓸 15분짜리 세션 행을 연다.
+async function openTestSession(
+  connectionString: string,
+  userId: string,
+): Promise<{ id: string; expiresAt: number }> {
+  const client = new Client({ connectionString });
+
+  try {
+    await client.connect();
+    const result = await client.query<{ id: string; expires_at: string }>(
+      `
+        INSERT INTO auth_sessions (user_id, expires_at, absolute_expires_at, user_agent)
+        VALUES ($1, now() + interval '15 minutes', now() + interval '15 minutes', 'control-e2e')
+        RETURNING id, floor(extract(epoch FROM expires_at))::bigint AS expires_at
+      `,
+      [userId],
+    );
+    return {
+      id: result.rows[0].id,
+      expiresAt: Number(result.rows[0].expires_at),
+    };
+  } finally {
+    await client.end();
+  }
+}
+
+async function revokeTestSession(connectionString: string, sessionId: string): Promise<void> {
+  const client = new Client({ connectionString });
+
+  try {
+    await client.connect();
+    await client.query('UPDATE auth_sessions SET revoked_at = now() WHERE id = $1', [sessionId]);
+  } finally {
+    await client.end();
+  }
+}
+
 async function validateToken(apiBaseUrl: string, token: string): Promise<boolean> {
   const response = await fetch(`${apiBaseUrl}/api/auth/me`, {
     headers: {
@@ -130,41 +167,55 @@ export async function createPersistedAdminAuthState(apiBaseUrl: string): Promise
   }
 
   for (const connectionString of buildConnectionCandidates(env)) {
+    let sessionId: string | null = null;
     try {
       const user = await findAdminUser(connectionString);
       if (!user) {
         continue;
       }
 
+      const session = await openTestSession(connectionString, user.id);
+      sessionId = session.id;
       const token = jwt.sign(
         {
           sub: user.id,
           email: user.email,
+          sid: session.id,
+          exp: session.expiresAt,
+          maxExp: session.expiresAt,
         },
         jwtSecret,
-        {
-          expiresIn: '15m',
-        },
       );
 
-      const isValid = await validateToken(apiBaseUrl, token);
-      if (!isValid) {
-        continue;
+      if (await validateToken(apiBaseUrl, token)) {
+        const persistedState: PersistedAuthState = {
+          state: {
+            token,
+            user,
+          },
+          version: 0,
+        };
+
+        return JSON.stringify(persistedState);
       }
-
-      const persistedState: PersistedAuthState = {
-        state: {
-          token,
-          user,
-        },
-        version: 0,
-      };
-
-      return JSON.stringify(persistedState);
     } catch {
-      continue;
+      // 다음 후보 DB 로 넘어간다.
+    }
+    if (sessionId) {
+      await revokeTestSession(connectionString, sessionId).catch(() => undefined);
     }
   }
 
   throw new Error('테스트에 사용할 관리자 인증 정보를 만들지 못했습니다.');
+}
+
+export async function revokePersistedAdminAuthState(
+  apiBaseUrl: string,
+  persistedState: string,
+): Promise<void> {
+  const { state } = JSON.parse(persistedState) as PersistedAuthState;
+  await fetch(`${apiBaseUrl}/api/auth/logout`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${state.token}` },
+  }).catch(() => undefined);
 }

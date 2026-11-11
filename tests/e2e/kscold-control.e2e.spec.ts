@@ -1,11 +1,20 @@
 import { test, expect } from '@playwright/test';
-import { createPersistedAdminAuthState } from './support/control-auth';
+import {
+  createPersistedAdminAuthState,
+  revokePersistedAdminAuthState,
+} from './support/control-auth';
 
 let authStorageValue = '';
 const apiBaseUrl = 'http://127.0.0.1:4410';
 
 test.beforeAll(async () => {
   authStorageValue = await createPersistedAdminAuthState(apiBaseUrl);
+});
+
+test.afterAll(async () => {
+  if (authStorageValue) {
+    await revokePersistedAdminAuthState(apiBaseUrl, authStorageValue);
+  }
 });
 
 test.beforeEach(async ({ page }) => {

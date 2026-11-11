@@ -24,6 +24,7 @@ import {
   ListPermissionsUseCase,
   ManageTerminalLimitUseCase,
   ApproveKeyManagerUseCase,
+  RevokeUserSessionsUseCase,
 } from './application/use-cases';
 import { RbacSeedService } from './application/services/rbac-seed.service';
 import { WsPermissionService } from './application/services/ws-permission.service';
@@ -38,6 +39,7 @@ import {
 import { TypeOrmPermissionRepository } from './infrastructure/repositories/typeorm-permission.repository';
 import { TypeOrmKeyManagementTargetAccessRepository } from './infrastructure/repositories/typeorm-key-management-target-access.repository';
 import { TypeOrmBackupTargetAccessRepository } from './infrastructure/repositories/typeorm-backup-target-access.repository';
+import { AuthSessionModule } from '../auth/auth-session.module';
 
 // Presentation 계층
 import { RbacController } from './presentation/controllers/rbac.controller';
@@ -54,6 +56,7 @@ import { RbacController } from './presentation/controllers/rbac.controller';
  */
 @Module({
   imports: [
+    AuthSessionModule,
     TypeOrmModule.forFeature([
       User,
       Role,
@@ -74,6 +77,7 @@ import { RbacController } from './presentation/controllers/rbac.controller';
     ListPermissionsUseCase,
     ManageTerminalLimitUseCase,
     ApproveKeyManagerUseCase,
+    RevokeUserSessionsUseCase,
 
     // 애플리케이션 서비스
     RbacSeedService,

@@ -11,6 +11,9 @@ import {
   canControlDesktop,
 } from '../../../src/remote-desktop/remote-desktop.service';
 import { USER_REPOSITORY } from '../../../src/rbac/domain/repositories/user.repository.interface';
+import { SessionVerifier } from '../../../src/auth/application/services/session-verifier.service';
+import { SessionConnectionRegistry } from '../../../src/auth/application/services/session-connection-registry.service';
+import { browser, sessionHarness } from '../auth/auth-session.fake';
 
 describe('원격 데스크톱 보안 중계', () => {
   let http: Server;
@@ -23,10 +26,16 @@ describe('원격 데스크톱 보안 중계', () => {
     email: 'admin@example.com',
     roles: ['admin'],
     permissions: [],
+    sessionId: '',
   };
   const users = { findByIdWithRoles: jest.fn() };
+  let auth: ReturnType<typeof sessionHarness>;
 
   beforeEach(async () => {
+    auth = sessionHarness();
+    administrator.sessionId = (
+      await auth.sessions.open(administrator.id, browser)
+    ).id;
     http = createHttpServer();
     tcp = createTcpServer((socket) => socket.pipe(socket));
     tcp.listen(0, '127.0.0.1');
@@ -47,6 +56,8 @@ describe('원격 데스크톱 보안 중계', () => {
         },
         { provide: ConfigService, useValue: config },
         { provide: USER_REPOSITORY, useValue: users },
+        { provide: SessionVerifier, useValue: auth.verifier },
+        { provide: SessionConnectionRegistry, useValue: auth.connections },
       ],
     }).compile();
     service = module.get(RemoteDesktopService);
@@ -241,5 +252,38 @@ describe('원격 데스크톱 보안 중계', () => {
     const client = connect(ticket);
     const [error] = await once(client, 'error');
     expect(error.message).toContain('403');
+  });
+
+  it('로그아웃 전에 받은 연결권은 로그아웃 뒤 거부한다', async () => {
+    const { ticket } = service.issue(administrator);
+    await auth.sessions.revoke(administrator.sessionId);
+
+    const client = connect(ticket);
+    const [error] = await once(client, 'error');
+    expect(error.message).toContain('403');
+  });
+
+  it('세션을 끊으면 열린 원격 화면과 TCP 연결을 바로 닫는다', async () => {
+    const { client, target } = await session();
+    const closed = once(target, 'close');
+    const clientClosed = once(client, 'close');
+
+    await auth.sessions.revoke(administrator.sessionId);
+
+    await Promise.all([closed, clientClosed]);
+  });
+
+  it('DB 에서 끊기거나 만료된 세션은 다음 주기 확인에서 닫는다', async () => {
+    const intervals = jest.spyOn(global, 'setInterval');
+    const { client, target } = await session();
+    const liveness = intervals.mock.calls[0][0];
+    const row = auth.repository.rows.get(administrator.sessionId)!;
+    auth.repository.rows.set(row.id, { ...row, revokedAt: new Date() });
+    const closed = once(target, 'close');
+    const clientClosed = once(client, 'close');
+
+    if (typeof liveness === 'function') liveness();
+
+    await Promise.all([closed, clientClosed]);
   });
 });
