@@ -7,6 +7,7 @@ import {
   SshAccessService,
   formatLocal,
 } from '@/security/application/services/ssh-access.service';
+import { fakeIpGeo, geo } from './ip-geo.fake';
 
 describe('SshAccessService', () => {
   let dir: string;
@@ -15,7 +16,7 @@ describe('SshAccessService', () => {
   beforeEach(async () => {
     dir = await fs.mkdtemp(join(tmpdir(), 'ssh-access-'));
     process.env.SSH_AUDIT_DIR = dir;
-    service = new SshAccessService(new IpAllowlistService());
+    service = new SshAccessService(new IpAllowlistService(), fakeIpGeo());
   });
 
   afterEach(async () => {
@@ -56,9 +57,39 @@ describe('SshAccessService', () => {
         blockedAt: now,
         reason: 'root 시도',
         scope: 'all',
+        geo: null,
       },
     ]);
     expect(o.guard.running).toBe(false);
+  });
+
+  it('외부 IP 요약과 차단 목록에만 나라·도시를 붙인다', async () => {
+    const tokyo = geo('JP', '일본', '도쿄');
+    service = new SshAccessService(
+      new IpAllowlistService(),
+      fakeIpGeo({ '203.0.113.7': tokyo, '198.51.100.0': geo('US', '미국') }),
+    );
+    const now = formatLocal(new Date());
+    await fs.writeFile(
+      join(dir, 'ssh-audit.log'),
+      [
+        [now, '실패', 'root', '203.0.113.7', 'password', ''].join('\t'),
+        [now, '실패', 'root', '10.0.0.4', 'password', ''].join('\t'),
+      ].join('\n') + '\n',
+    );
+    await fs.writeFile(
+      join(dir, 'ssh-block-manual.txt'),
+      `198.51.100.0/24\t${now}\t대역\n`,
+    );
+
+    const o = await service.overview(7);
+
+    expect(o.summary.ips.map((r) => [r.ip, r.geo?.city ?? null])).toEqual([
+      ['203.0.113.7', '도쿄'],
+      ['10.0.0.4', null],
+    ]);
+    expect(o.blocks.map((b) => b.geo?.country)).toEqual(['US']);
+    expect((await service.firewallBlocks()).items[0].geo?.country).toBe('US');
   });
 
   it('외부 IP 만 손으로 막고, 해제는 수동은 지우고 자동은 차단기에 요청한다', async () => {
@@ -178,7 +209,7 @@ describe('SshAccessService', () => {
 
   it('너무 넓은 대역이나 내부망·허용 목록·내 IP 를 덮는 대역은 방화벽 목록에 쓰지 않는다', async () => {
     process.env.SECURITY_ALLOWLIST = '198.51.100.0/28';
-    service = new SshAccessService(new IpAllowlistService());
+    service = new SshAccessService(new IpAllowlistService(), fakeIpGeo());
     delete process.env.SECURITY_ALLOWLIST;
     await service.addKnownIp('2001:db8:9:9::10');
 

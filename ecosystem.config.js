@@ -86,6 +86,7 @@ module.exports = {
           'AUTOMATION_DESCRIPTIONS',
           'AUTOMATION_RELEASE_DIRS',
           'SSH_AUDIT_DIR',
+          'CONTROL_IP_GEO_DB_PATH',
           'CONTROL_MFA_ENCRYPTION_KEY',
           'CONTROL_MFA_REQUIRED_ROLES',
           'CONTROL_MFA_ISSUER',

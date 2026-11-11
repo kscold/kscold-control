@@ -63,6 +63,26 @@ export class LoginAttemptRepositoryImpl implements ILoginAttemptRepository {
     }));
   }
 
+  async failuresByIp(
+    since: Date,
+  ): Promise<Array<{ ip: string; failures: number; lastAt: Date }>> {
+    const rows = await this.repo
+      .createQueryBuilder('attempt')
+      .select('attempt.ip', 'ip')
+      .addSelect('COUNT(*)::int', 'failures')
+      .addSelect('MAX(attempt.createdAt)', 'lastAt')
+      .where('attempt.createdAt >= :since', { since })
+      .andWhere("attempt.result <> 'success'")
+      .andWhere('attempt.ip IS NOT NULL')
+      .groupBy('attempt.ip')
+      .getRawMany<{ ip: string; failures: number; lastAt: Date | string }>();
+    return rows.map((row) => ({
+      ip: row.ip,
+      failures: Number(row.failures),
+      lastAt: new Date(row.lastAt),
+    }));
+  }
+
   async deleteBefore(cutoff: Date): Promise<number> {
     const result = await this.repo.delete({ createdAt: LessThan(cutoff) });
     return result.affected ?? 0;
