@@ -23,7 +23,10 @@ function userRepository(...users: Array<Pick<User, 'id' | 'email'>>) {
     users.map((user) => [user.id, { ...user, password: 'old-hash' } as User]),
   );
   return {
-    findById: async (id: string) => rows.get(id) ?? null,
+    findById: async (id: string) => {
+      const row = rows.get(id);
+      return row ? { ...row } : null;
+    },
     findByEmail: async (email: string) =>
       [...rows.values()].find((user) => user.email === email) ?? null,
     save: async (user: User) => {
@@ -43,6 +46,7 @@ describe('사용자 세션 끊기', () => {
     const open = (userId: string) => harness.sessions.open(userId, browser);
     return {
       ...harness,
+      users,
       open,
       update: new UpdateUserUseCase(users, harness.sessions),
       revokeAll: new RevokeUserSessionsUseCase(users, harness.sessions),
@@ -80,6 +84,26 @@ describe('사용자 세션 끊기', () => {
 
     await expect(alive(current.id)).resolves.toBe(true);
     await expect(alive(stolen.id)).resolves.toBe(false);
+  });
+
+  it('세션을 끊지 못하면 비밀번호도 바뀌지 않는다', async () => {
+    const { update, open, alive, sessions, users } = await setup();
+    const admin = await open('admin-1');
+    const attacker = await open('user-1');
+    jest
+      .spyOn(sessions, 'revokeAllForUser')
+      .mockRejectedValueOnce(new Error('connection refused'));
+
+    await expect(
+      update.execute(
+        'user-1',
+        { password: 'new-password-123' },
+        { id: 'admin-1', sessionId: admin.id },
+      ),
+    ).rejects.toThrow('connection refused');
+
+    expect((await users.findById('user-1'))?.password).toBe('old-hash');
+    await expect(alive(attacker.id)).resolves.toBe(true);
   });
 
   it('비밀번호를 바꾸지 않은 수정은 세션을 끊지 않는다', async () => {

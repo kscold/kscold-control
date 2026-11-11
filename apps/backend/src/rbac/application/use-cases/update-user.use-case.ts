@@ -51,12 +51,11 @@ export class UpdateUserUseCase {
     // Update password if provided (using Phase 1 utility)
     if (dto.password) {
       user.password = await PasswordHasher.hash(dto.password);
+      // 끊기가 실패하면 비밀번호도 그대로 둔다. 끊은 뒤 저장이 실패하면 세션만 끊긴 채 남아 안전한 쪽으로 멈춘다.
+      await this.authSessions.revokeAllForUser(userId, actor);
     }
 
     const updatedUser = await this.userRepository.save(user);
-    if (dto.password) {
-      await this.authSessions.revokeAllForUser(userId, actor);
-    }
 
     return UserResponseDto.fromEntity(updatedUser, true);
   }
