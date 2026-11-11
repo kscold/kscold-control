@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/shared/model';
+import { authService } from '../api/auth.service';
 
 /**
  * 로그인, 로그아웃, 입력 검증 등 인증 로직을 담당하는 훅
@@ -12,8 +13,19 @@ export function useAuth() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [registrationEnabled, setRegistrationEnabled] = useState(false);
   const { login: storeLogin, register: storeRegister } = useAuthStore();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    let active = true;
+    void authService.isRegistrationEnabled().then((enabled) => {
+      if (active) setRegistrationEnabled(enabled);
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
 
   /**
    * 로그인 폼 제출을 처리한다
@@ -55,6 +67,7 @@ export function useAuth() {
     confirmPassword,
     error,
     isLoading,
+    registrationEnabled,
     setEmail,
     setPassword,
     setConfirmPassword,

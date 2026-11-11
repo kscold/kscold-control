@@ -13,6 +13,7 @@ import {
 import { AuthGuard } from '@nestjs/passport';
 import type { Request as ExpressRequest } from 'express';
 import {
+  isRegistrationEnabled,
   RegisterUseCase,
   LoginUseCase,
   GetMeUseCase,
@@ -47,6 +48,12 @@ export class AuthController {
     private readonly startImpersonationUseCase: StartImpersonationUseCase,
     private readonly authSessions: AuthSessionService,
   ) {}
+
+  /** 로그인 화면이 가입 버튼을 보일지 정한다. */
+  @Get('registration')
+  registration() {
+    return { enabled: isRegistrationEnabled() };
+  }
 
   @Post('register')
   @HttpCode(HttpStatus.CREATED)

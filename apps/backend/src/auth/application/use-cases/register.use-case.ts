@@ -1,4 +1,9 @@
-import { ConflictException, Inject, Injectable } from '@nestjs/common';
+import {
+  ConflictException,
+  Inject,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
 import {
   IUserRepository,
@@ -11,6 +16,13 @@ import {
 import { RegisterDto } from '../dto';
 import { ROLES } from '../../../common/constants/roles';
 
+/** 공개 가입은 운영자가 CONTROL_REGISTRATION_ENABLED=true 로 열 때만 받는다. */
+export function isRegistrationEnabled(): boolean {
+  return (
+    process.env.CONTROL_REGISTRATION_ENABLED?.trim().toLowerCase() === 'true'
+  );
+}
+
 /** 회원가입 */
 @Injectable()
 export class RegisterUseCase {
@@ -22,6 +34,7 @@ export class RegisterUseCase {
   ) {}
 
   async execute(dto: RegisterDto) {
+    if (!isRegistrationEnabled()) throw new NotFoundException();
     const { email, password } = dto;
     const roleName = ROLES.PENDING_APPROVAL;
 
