@@ -87,6 +87,7 @@ module.exports = {
           'SSH_AUDIT_DIR',
           'CONTROL_BIND_HOST',
           'CONTROL_TRUSTED_PROXIES',
+          'CONTROL_PROXY_SECRET',
         ]),
       },
       // 자동 재시작

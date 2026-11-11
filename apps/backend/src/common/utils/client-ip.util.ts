@@ -1,3 +1,4 @@
+import { createHash, timingSafeEqual } from 'node:crypto';
 import { BlockList, isIP } from 'node:net';
 import type { IncomingHttpHeaders } from 'node:http';
 
@@ -7,19 +8,29 @@ export interface ClientAddressSource {
   socket?: { remoteAddress?: string } | null;
 }
 
-const LOOPBACK_PROXIES = '127.0.0.0/8,::1';
+/** X-Real-IP 를 믿을 조건. 소켓 상대가 `proxies` 안이고, `secret` 이 있으면 그 값까지 맞아야 한다. */
+export interface ProxyTrust {
+  proxies: BlockList;
+  secret: string | null;
+}
+
+export const PROXY_SECRET_HEADER = 'x-control-proxy-secret';
+const LOOPBACK_PROXIES = ['127.0.0.0/8', '::1'];
+const MIN_PROXY_SECRET_LENGTH = 32;
+/** IPv4 를 담은 IPv6 표기도 45자를 넘지 않는다. 더 긴 값은 저장 칸(varchar 64)을 넘기기 전에 버린다. */
+const MAX_IP_INPUT_LENGTH = 64;
 
 /**
- * `CONTROL_TRUSTED_PROXIES`(쉼표로 구분한 IP·CIDR)를 읽는다. 비어 있으면 루프백만 믿는다.
+ * `CONTROL_TRUSTED_PROXIES`(쉼표로 구분한 IP·CIDR)를 읽는다. 항목이 하나도 없으면 루프백만 믿는다.
  * 잘못된 항목을 건너뛰면 모르는 사이에 위조 헤더를 믿게 되므로 기동을 멈춘다.
  */
 export function parseTrustedProxies(raw: string | undefined): BlockList {
   const list = new BlockList();
-  const entries = (raw?.trim() || LOOPBACK_PROXIES)
+  const configured = (raw ?? '')
     .split(',')
     .map((entry) => entry.trim())
     .filter(Boolean);
-  for (const entry of entries) {
+  for (const entry of configured.length ? configured : LOOPBACK_PROXIES) {
     const [address, prefix, ...rest] = entry.split('/');
     const family = isIP(address);
     const type = family === 4 ? 'ipv4' : 'ipv6';
@@ -40,37 +51,88 @@ export function parseTrustedProxies(raw: string | undefined): BlockList {
   return list;
 }
 
-let configuredProxies: BlockList | undefined;
+/** 짧은 값은 추측할 수 있으니 기동을 멈춘다. 비우면 null(헤더 확인 안 함). */
+export function parseProxySecret(raw: string | undefined): string | null {
+  const secret = raw?.trim();
+  if (!secret) return null;
+  if (secret.length < MIN_PROXY_SECRET_LENGTH) {
+    throw new Error(
+      `CONTROL_PROXY_SECRET 은 ${MIN_PROXY_SECRET_LENGTH}자 이상이어야 합니다.`,
+    );
+  }
+  return secret;
+}
 
-export function configuredTrustedProxies(): BlockList {
-  configuredProxies ??= parseTrustedProxies(
-    process.env.CONTROL_TRUSTED_PROXIES,
-  );
-  return configuredProxies;
+let configured: ProxyTrust | undefined;
+
+export function configuredProxyTrust(): ProxyTrust {
+  configured ??= {
+    proxies: parseTrustedProxies(process.env.CONTROL_TRUSTED_PROXIES),
+    secret: parseProxySecret(process.env.CONTROL_PROXY_SECRET),
+  };
+  return configured;
 }
 
 /** IPv6 에 담긴 IPv4(::ffff:203.0.113.5)는 IPv4 로 펴서 같은 주소가 한 표기로 남게 한다. */
 function normalizeIp(value: string | undefined): string | null {
   const trimmed = value?.trim();
-  if (!trimmed) return null;
-  const mapped = /^::ffff:/i.test(trimmed) ? trimmed.slice(7) : null;
-  const address = mapped && isIP(mapped) === 4 ? mapped : trimmed;
+  if (!trimmed || trimmed.length > MAX_IP_INPUT_LENGTH) return null;
+  const withoutZone = trimmed.split('%')[0];
+  const mapped = /^::ffff:/i.test(withoutZone) ? withoutZone.slice(7) : null;
+  const address = mapped && isIP(mapped) === 4 ? mapped : withoutZone;
   return isIP(address) ? address : null;
 }
 
+function digest(value: string): Buffer {
+  return createHash('sha256').update(value).digest();
+}
+
+/** 길이가 달라도 같은 시간에 비교하도록 해시끼리 견준다. */
+function proxySecretMatches(
+  headers: IncomingHttpHeaders,
+  secret: string,
+): boolean {
+  const presented = headers[PROXY_SECRET_HEADER];
+  return (
+    typeof presented === 'string' &&
+    timingSafeEqual(digest(presented), digest(secret))
+  );
+}
+
+/** 프록시 비밀값 헤더를 지우기 전에 계산해 둔 요청별 IP */
+const resolvedIps = new WeakMap<object, string | null>();
+
 /**
  * 요청을 보낸 사용자의 IP.
- * 헤더는 누구나 써 넣을 수 있으므로 소켓 상대가 믿는 프록시일 때만 X-Real-IP 를 쓴다.
+ * 헤더는 누구나 써 넣을 수 있으므로 소켓 상대가 믿는 프록시이고 프록시 비밀값까지 맞을 때만 X-Real-IP 를 쓴다.
  */
 export function clientIp(
   source: ClientAddressSource,
-  trustedProxies: BlockList = configuredTrustedProxies(),
+  trust: ProxyTrust = configuredProxyTrust(),
 ): string | null {
+  if (resolvedIps.has(source)) return resolvedIps.get(source) ?? null;
   const peer = normalizeIp(source.socket?.remoteAddress);
   if (!peer) return null;
-  if (!trustedProxies.check(peer, isIP(peer) === 4 ? 'ipv4' : 'ipv6')) {
+  if (
+    !trust.proxies.check(peer, isIP(peer) === 4 ? 'ipv4' : 'ipv6') ||
+    (trust.secret !== null && !proxySecretMatches(source.headers, trust.secret))
+  ) {
     return peer;
   }
   const realIp = source.headers['x-real-ip'];
   return (typeof realIp === 'string' ? normalizeIp(realIp) : null) ?? peer;
+}
+
+/**
+ * 모든 HTTP 요청 맨 앞에서 IP 를 정해 두고 프록시 비밀값 헤더를 지운다.
+ * 뒤의 로깅·감사·오류 보고가 요청 헤더를 통째로 남겨도 비밀값이 새지 않는다.
+ */
+export function resolveClientIpOnce(
+  req: ClientAddressSource,
+  _res: unknown,
+  next: () => void,
+): void {
+  resolvedIps.set(req, clientIp(req));
+  delete req.headers[PROXY_SECRET_HEADER];
+  next();
 }
