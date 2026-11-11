@@ -12,6 +12,8 @@ function overview(pendingAuth: number): SshAccessOverview {
       updatedAt: null,
       pfEnabled: null,
       blockedCount: null,
+      allCount: null,
+      sshOnlyCount: null,
     },
     summary: {
       since: '',

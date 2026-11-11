@@ -5,6 +5,7 @@ import {
   Get,
   Param,
   ParseIntPipe,
+  Patch,
   Post,
   Query,
   UseGuards,
@@ -18,7 +19,12 @@ import {
   SshAccessService,
   type SshSession,
 } from '../../application/services/ssh-access.service';
-import { SshBlockDto, SshIpDto } from '../../application/dto/ssh-access.dto';
+import {
+  SshBlockDto,
+  SshBlockScopeDto,
+  SshIpDto,
+  SshKnownLabelDto,
+} from '../../application/dto/ssh-access.dto';
 
 /**
  * 맥미니 SSH 접속 기록·열린 세션·차단
@@ -66,10 +72,30 @@ export class SshAccessController {
     targetId: (ctx) => (ctx.response as { ip: string }).ip,
     metadata: (ctx) => ({
       reason: (ctx.response as { reason: string | null }).reason,
+      scope: (ctx.response as { scope: string }).scope,
     }),
   })
   block(@Body() dto: SshBlockDto) {
-    return this.ssh.block(dto.ip, dto.reason ?? null);
+    return this.ssh.block(dto.ip, dto.reason ?? null, dto.scope ?? 'all');
+  }
+
+  @Patch('blocks/:ip')
+  @RequirePermissions(PERMISSIONS.SECURITY_MANAGE)
+  @Audit({
+    domain: 'security',
+    action: 'ssh.block.scope',
+    summary: (ctx) =>
+      `IP ${ctx.params.ip}의 차단 범위를 ${
+        (ctx.body as SshBlockScopeDto).scope === 'ssh'
+          ? 'SSH 만'
+          : '모든 접속(사이트 포함)'
+      }으로 바꿨습니다.`,
+    targetType: 'ip',
+    targetId: (ctx) => ctx.params.ip,
+    metadata: (ctx) => ({ scope: (ctx.body as SshBlockScopeDto).scope }),
+  })
+  setScope(@Param('ip') ip: string, @Body() dto: SshBlockScopeDto) {
+    return this.ssh.setBlockScope(ip, dto.scope);
   }
 
   @Delete('blocks/:ip')
@@ -99,7 +125,25 @@ export class SshAccessController {
     targetId: (ctx) => (ctx.body as SshIpDto).ip,
   })
   async addKnown(@Body() dto: SshIpDto) {
-    return { items: await this.ssh.addKnownIp(dto.ip) };
+    return { items: await this.ssh.addKnownIp(dto.ip, dto.label ?? null) };
+  }
+
+  @Patch('known-ips/:ip')
+  @RequirePermissions(PERMISSIONS.SECURITY_MANAGE)
+  @Audit({
+    domain: 'security',
+    action: 'ssh.known-ip.label',
+    summary: (ctx) =>
+      `내 IP ${ctx.params.ip}의 별칭을 "${
+        (ctx.body as SshKnownLabelDto).label ?? ''
+      }"(으)로 바꿨습니다.`,
+    targetType: 'ip',
+    targetId: (ctx) => ctx.params.ip,
+  })
+  async labelKnown(@Param('ip') ip: string, @Body() dto: SshKnownLabelDto) {
+    return {
+      items: await this.ssh.setKnownIpLabel(ip, dto.label ?? null),
+    };
   }
 
   @Delete('known-ips/:ip')

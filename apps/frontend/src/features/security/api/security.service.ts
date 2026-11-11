@@ -5,6 +5,7 @@ import type {
   CreateIpBanInput,
   SshAccessOverview,
   SshBlock,
+  SshBlockScope,
   SshSession,
 } from '../model/security.types';
 
@@ -88,16 +89,32 @@ export class SecurityService extends BaseApiService {
     }
   }
 
-  async blockSshIp(ip: string, reason?: string): Promise<SshBlock> {
+  async blockSshIp(
+    ip: string,
+    reason?: string,
+    scope: SshBlockScope = 'all',
+  ): Promise<SshBlock> {
     try {
       const { data } = await api.post<SshBlock>(`${this.basePath}/ssh/blocks`, {
         ip,
         reason: reason || undefined,
+        scope,
       });
       return data;
     } catch (error) {
       this.logError('SecurityService', 'blockSshIp', error);
       this.handleError(error, 'SSH 차단 실패');
+    }
+  }
+
+  async setSshBlockScope(ip: string, scope: SshBlockScope): Promise<void> {
+    try {
+      await api.patch(`${this.basePath}/ssh/blocks/${encodeURIComponent(ip)}`, {
+        scope,
+      });
+    } catch (error) {
+      this.logError('SecurityService', 'setSshBlockScope', error);
+      this.handleError(error, '차단 범위 변경 실패');
     }
   }
 
@@ -110,12 +127,27 @@ export class SecurityService extends BaseApiService {
     }
   }
 
-  async addSshKnownIp(ip: string): Promise<void> {
+  async addSshKnownIp(ip: string, label?: string): Promise<void> {
     try {
-      await api.post(`${this.basePath}/ssh/known-ips`, { ip });
+      await api.post(`${this.basePath}/ssh/known-ips`, {
+        ip,
+        label: label || undefined,
+      });
     } catch (error) {
       this.logError('SecurityService', 'addSshKnownIp', error);
       this.handleError(error, '내 IP 등록 실패');
+    }
+  }
+
+  async setSshKnownIpLabel(ip: string, label: string): Promise<void> {
+    try {
+      await api.patch(
+        `${this.basePath}/ssh/known-ips/${encodeURIComponent(ip)}`,
+        { label: label || undefined },
+      );
+    } catch (error) {
+      this.logError('SecurityService', 'setSshKnownIpLabel', error);
+      this.handleError(error, '내 IP 별칭 변경 실패');
     }
   }
 

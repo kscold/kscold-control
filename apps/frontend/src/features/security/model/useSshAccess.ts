@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { securityService } from '../api/security.service';
-import type { SshAccessOverview } from '../model/security.types';
+import type { SshAccessOverview, SshBlockScope } from '../model/security.types';
 
 /** 화면이 보이는 동안만 15초마다 조회함. */
 const REFRESH_MS = 15_000;
@@ -63,10 +63,15 @@ export function useSshAccess(days: number) {
     reload: load,
     terminate: (pid: number) =>
       run(() => securityService.terminateSshSession(pid)),
-    block: (ip: string, reason?: string) =>
-      run(() => securityService.blockSshIp(ip, reason)),
+    block: (ip: string, reason?: string, scope: SshBlockScope = 'all') =>
+      run(() => securityService.blockSshIp(ip, reason, scope)),
+    setScope: (ip: string, scope: SshBlockScope) =>
+      run(() => securityService.setSshBlockScope(ip, scope)),
     unblock: (ip: string) => run(() => securityService.unblockSshIp(ip)),
-    addKnown: (ip: string) => run(() => securityService.addSshKnownIp(ip)),
+    addKnown: (ip: string, label?: string) =>
+      run(() => securityService.addSshKnownIp(ip, label)),
+    labelKnown: (ip: string, label: string) =>
+      run(() => securityService.setSshKnownIpLabel(ip, label)),
     removeKnown: (ip: string) =>
       run(() => securityService.removeSshKnownIp(ip)),
   };

@@ -54,6 +54,7 @@ describe('SshAccessService', () => {
         source: 'auto',
         blockedAt: now,
         reason: 'root 시도',
+        scope: 'all',
       },
     ]);
     expect(o.guard.running).toBe(false);
@@ -105,6 +106,53 @@ describe('SshAccessService', () => {
     await expect(service.addKnownIp('not-an-ip')).rejects.toBeInstanceOf(
       BadRequestException,
     );
+  });
+
+  it('차단 범위를 SSH 만·모든 접속으로 바꾸고 해제하면 범위 기록도 지운다', async () => {
+    await service.block('5.5.5.5', null, 'ssh');
+    expect(await read('ssh-block-scope.tsv')).toBe('5.5.5.5\tssh\n');
+    await fs.writeFile(
+      join(dir, 'ssh-block-auto.tsv'),
+      '6.6.6.6\t2026-11-10 17:00:00\t-\troot\n',
+    );
+    expect((await service.setBlockScope('6.6.6.6', 'ssh')).scope).toBe('ssh');
+    const scopes = Object.fromEntries(
+      (await service.overview(7)).blocks.map((b) => [b.ip, b.scope]),
+    );
+    expect(scopes).toEqual({ '5.5.5.5': 'ssh', '6.6.6.6': 'ssh' });
+
+    await service.setBlockScope('6.6.6.6', 'all');
+    await service.unblock('5.5.5.5');
+    expect(await read('ssh-block-scope.tsv')).toBe('');
+    await expect(
+      service.setBlockScope('7.7.7.7', 'ssh'),
+    ).rejects.toBeInstanceOf(NotFoundException);
+  });
+
+  it('내 IP 별칭을 남기고, 다른 IP 를 바꿔도 별칭이 지워지지 않는다', async () => {
+    await fs.writeFile(
+      join(dir, 'ssh-known-ips.txt'),
+      '# 메모\n203.0.113.10\t회사\n203.0.113.20 집(맥미니)\n',
+    );
+    await service.addKnownIp('198.51.100.7');
+    await service.setKnownIpLabel('198.51.100.7', '휴대폰\t테더링');
+    expect(await read('ssh-known-ips.txt')).toBe(
+      '203.0.113.10\t회사\n203.0.113.20\t집(맥미니)\n198.51.100.7\t휴대폰 테더링\n',
+    );
+    const o = await service.overview(7);
+    expect(o.knownIps).toEqual([
+      { ip: '203.0.113.10', label: '회사' },
+      { ip: '203.0.113.20', label: '집(맥미니)' },
+      { ip: '198.51.100.7', label: '휴대폰 테더링' },
+    ]);
+    await service.setKnownIpLabel('198.51.100.7', null);
+    expect(await service.removeKnownIp('203.0.113.10')).toEqual([
+      { ip: '203.0.113.20', label: '집(맥미니)' },
+      { ip: '198.51.100.7', label: null },
+    ]);
+    await expect(
+      service.setKnownIpLabel('9.9.9.9', 'x'),
+    ).rejects.toBeInstanceOf(NotFoundException);
   });
 
   it('목록에 없는 프로세스는 끊지 않는다', async () => {

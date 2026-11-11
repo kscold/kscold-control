@@ -65,11 +65,20 @@ export interface SshSession {
   known: boolean;
 }
 
+/** 차단 범위 — all: 모든 접속(SSH·운영 사이트), ssh: SSH 만 */
+export type SshBlockScope = 'all' | 'ssh';
+
 export interface SshBlock {
   ip: string;
   source: 'auto' | 'manual';
   blockedAt: string | null;
   reason: string | null;
+  scope: SshBlockScope;
+}
+
+export interface SshKnownIp {
+  ip: string;
+  label: string | null;
 }
 
 export interface SshAccessOverview {
@@ -80,6 +89,8 @@ export interface SshAccessOverview {
     updatedAt: string | null;
     pfEnabled: boolean | null;
     blockedCount: number | null;
+    allCount: number | null;
+    sshOnlyCount: number | null;
   };
   summary: {
     since: string;
@@ -93,6 +104,6 @@ export interface SshAccessOverview {
   events: SshAuditEvent[];
   sessions: SshSession[];
   pendingAuth: number;
-  knownIps: string[];
+  knownIps: SshKnownIp[];
   blocks: SshBlock[];
 }
