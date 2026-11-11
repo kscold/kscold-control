@@ -17,6 +17,7 @@ import { mfaService } from '../api/mfa.service';
 import {
   RECOVERY_CODE_COUNT,
   type EnrolledLogin,
+  type MfaEnrollmentStart,
   type MfaStatus,
 } from '../model/mfa.types';
 import { isCompleteOtp, useMfaCodeForm } from '../model/useMfaCodeForm';
@@ -30,6 +31,7 @@ const LOW_RECOVERY_CODES = 2;
 type SettingsDialog =
   | { kind: 'closed' }
   | { kind: 'regenerate' }
+  | { kind: 'password' }
   | {
       kind: 'enroll';
       challenge: MfaChallengeToken;
@@ -102,6 +104,69 @@ function RegenerateCodesDialog({
         onChange={form.setCode}
         className={CODE_INPUT_CLASS}
         inputRef={form.inputRef}
+      />
+      {form.error && (
+        <p role="alert" className="mt-2 text-sm text-red-400">
+          {form.error}
+        </p>
+      )}
+    </Dialog>
+  );
+}
+
+function ConfirmPasswordDialog({
+  onClose,
+  onConfirmed,
+}: {
+  onClose: () => void;
+  onConfirmed: (start: MfaEnrollmentStart) => void;
+}) {
+  const passwordId = useId();
+  const form = useMfaCodeForm({
+    submit: (password) => mfaService.startEnrollment(password),
+    onSuccess: onConfirmed,
+  });
+
+  return (
+    <Dialog
+      open
+      title="비밀번호 확인"
+      description="2단계 인증을 켜기 전에 이 계정의 비밀번호를 한 번 더 확인합니다."
+      onClose={onClose}
+      busy={form.submitting}
+      onSubmit={form.handleSubmit}
+      footer={
+        <>
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={form.submitting}
+            className={dialogButtonClass()}
+          >
+            취소
+          </button>
+          <button
+            type="submit"
+            disabled={!form.code || form.submitting}
+            className={dialogButtonClass('emerald')}
+          >
+            {form.submitting ? '확인 중...' : '다음'}
+          </button>
+        </>
+      }
+    >
+      <label htmlFor={passwordId} className={DIALOG_LABEL_CLASS}>
+        비밀번호
+      </label>
+      <input
+        id={passwordId}
+        ref={form.inputRef}
+        type="password"
+        autoComplete="current-password"
+        autoFocus
+        value={form.code}
+        onChange={(event) => form.setCode(event.target.value)}
+        className={dialogInputClass('emerald')}
       />
       {form.error && (
         <p role="alert" className="mt-2 text-sm text-red-400">
@@ -218,7 +283,6 @@ export function MfaSettingsSection() {
   const [status, setStatus] = useState<MfaStatus | null>(null);
   const [loadError, setLoadError] = useState('');
   const [dialog, setDialog] = useState<SettingsDialog>({ kind: 'closed' });
-  const [starting, setStarting] = useState(false);
   const [notice, setNotice] = useState('');
 
   const load = useCallback(async () => {
@@ -243,23 +307,6 @@ export function MfaSettingsSection() {
   const showCodes = (codes: string[]) => {
     setDialog({ kind: 'codes', codes });
     void load();
-  };
-
-  const startEnrollment = async () => {
-    setStarting(true);
-    setNotice('');
-    try {
-      setDialog({ kind: 'enroll', ...(await mfaService.startEnrollment()) });
-    } catch (error) {
-      setNotice(
-        error instanceof Error
-          ? error.message
-          : '2단계 인증 설정을 시작하지 못했습니다.',
-      );
-      void load();
-    } finally {
-      setStarting(false);
-    }
   };
 
   const handleEnrolled = (login: EnrolledLogin) => {
@@ -347,11 +394,13 @@ export function MfaSettingsSection() {
               <>
                 <button
                   type="button"
-                  disabled={starting}
-                  onClick={() => void startEnrollment()}
+                  onClick={() => {
+                    setNotice('');
+                    setDialog({ kind: 'password' });
+                  }}
                   className={dialogButtonClass('emerald')}
                 >
-                  {starting ? '준비 중...' : '2단계 인증 켜기'}
+                  2단계 인증 켜기
                 </button>
                 <p className="text-xs leading-5 text-gray-500">
                   켜면 지금 쓰는 이 화면을 뺀 다른 기기의 로그인이 모두
@@ -371,6 +420,12 @@ export function MfaSettingsSection() {
 
       {dialog.kind === 'regenerate' && (
         <RegenerateCodesDialog onClose={close} onRegenerated={showCodes} />
+      )}
+      {dialog.kind === 'password' && (
+        <ConfirmPasswordDialog
+          onClose={close}
+          onConfirmed={(start) => setDialog({ kind: 'enroll', ...start })}
+        />
       )}
       {dialog.kind === 'enroll' && (
         <EnrollDialog

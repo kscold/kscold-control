@@ -85,9 +85,9 @@ export const mfaService = {
     );
   },
 
-  startEnrollment() {
+  startEnrollment(password: string) {
     return request(
-      () => api.post<MfaEnrollmentStart>('/auth/mfa/enrollment'),
+      () => api.post<MfaEnrollmentStart>('/auth/mfa/enrollment', { password }),
       '2단계 인증 설정을 시작하지 못했습니다.',
     );
   },

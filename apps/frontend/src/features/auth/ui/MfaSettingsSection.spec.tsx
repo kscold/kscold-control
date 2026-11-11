@@ -93,7 +93,7 @@ it('현재 코드를 확인하고 새 복구 코드를 같은 창에서 보여 �
   expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
 });
 
-it('스스로 켜면 확인 토큰으로 설정을 마치고 새 세션으로 바꾼다', async () => {
+it('비밀번호를 다시 확인한 뒤에만 설정을 시작하고 확인 토큰으로 마친다', async () => {
   vi.spyOn(api, 'get').mockResolvedValue({
     data: {
       enabled: false,
@@ -102,15 +102,23 @@ it('스스로 켜면 확인 토큰으로 설정을 마치고 새 세션으로 �
       required: false,
     },
   });
-  vi.spyOn(api, 'post').mockResolvedValue({
-    data: {
-      challenge: { token: 'challenge-2', expiresAt: '2099-01-01T00:00:00Z' },
-      enrollment: {
-        secret: 'JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP',
-        otpauthUri: 'otpauth://totp/kscold-control:admin%40example.com',
+  const start = vi
+    .spyOn(api, 'post')
+    .mockRejectedValueOnce(
+      rejection(403, {
+        code: 'MFA_PASSWORD_INVALID',
+        message: '비밀번호가 맞지 않습니다.',
+      }),
+    )
+    .mockResolvedValueOnce({
+      data: {
+        challenge: { token: 'challenge-2', expiresAt: '2099-01-01T00:00:00Z' },
+        enrollment: {
+          secret: 'JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP',
+          otpauthUri: 'otpauth://totp/kscold-control:admin%40example.com',
+        },
       },
-    },
-  });
+    });
   const complete = vi.spyOn(axios, 'post').mockResolvedValue({
     data: {
       kind: 'authenticated',
@@ -125,7 +133,33 @@ it('스스로 켜면 확인 토큰으로 설정을 마치고 새 세션으로 �
   await person.click(
     await screen.findByRole('button', { name: '2단계 인증 켜기' }),
   );
-  const dialog = await screen.findByRole('dialog');
+  const passwordDialog = await screen.findByRole('dialog');
+  await person.type(
+    within(passwordDialog).getByLabelText('비밀번호'),
+    'wrong password',
+  );
+  await person.click(
+    within(passwordDialog).getByRole('button', { name: '다음' }),
+  );
+  expect(await within(passwordDialog).findByRole('alert')).toHaveTextContent(
+    '비밀번호가 맞지 않습니다.',
+  );
+  expect(within(passwordDialog).getByLabelText('비밀번호')).toHaveValue('');
+
+  await person.type(
+    within(passwordDialog).getByLabelText('비밀번호'),
+    'correct horse',
+  );
+  await person.click(
+    within(passwordDialog).getByRole('button', { name: '다음' }),
+  );
+  expect(start).toHaveBeenLastCalledWith('/auth/mfa/enrollment', {
+    password: 'correct horse',
+  });
+
+  const dialog = await screen.findByRole('dialog', {
+    name: '2단계 인증 켜기',
+  });
   expect(dialog).toHaveTextContent('다른 기기의 로그인이 모두 끊깁니다');
   await person.type(
     within(dialog).getByLabelText('앱에 표시된 6자리 코드'),
