@@ -25,7 +25,11 @@ export class NginxBlocklistWriterImpl implements INginxBlocklistWriter {
   async apply(ips: string[]): Promise<{ reloaded: boolean; output: string }> {
     const content = this.renderConfig(ips);
     await fs.mkdir(NGINX_CONF_DIR, { recursive: true });
-    await fs.writeFile(BLOCKLIST_FILE, content, 'utf-8');
+    // 다른 이름으로 다 쓴 뒤 바꿔 끼워, nginx -t 가 쓰다 만 파일을 읽지 않게 한다.
+    // conf.d 는 폴더째 마운트되어 있어 이름을 바꿔도 컨테이너가 새 파일을 본다. *.conf 만 읽으므로 임시 파일은 무시된다.
+    const temp = `${BLOCKLIST_FILE}.${process.pid}.tmp`;
+    await fs.writeFile(temp, content, 'utf-8');
+    await fs.rename(temp, BLOCKLIST_FILE);
 
     const test = await this.runtime.testConfig();
     if (!test.success) {

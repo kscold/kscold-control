@@ -14,6 +14,8 @@ export interface CreateBanParams {
   source?: IpBanSource;
   createdBy: string | null;
   requesterIp: string | null;
+  /** nginx 반영을 잠시 모았다가 한다. 몰려 오는 자동 차단마다 nginx 를 다시 읽지 않게 한다. */
+  deferResync?: boolean;
 }
 
 /** IP 차단 생성 — allowlist 보호 검증 후 저장하고 nginx 재동기화 */
@@ -46,7 +48,8 @@ export class CreateIpBanUseCase {
       createdBy: params.createdBy,
     });
 
-    await this.resyncBlocklist.execute();
+    if (params.deferResync) this.resyncBlocklist.executeSoon();
+    else await this.resyncBlocklist.execute();
     return ban;
   }
 }
