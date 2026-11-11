@@ -106,7 +106,7 @@ target의 ID·표시명·설명·instance·location·정렬값과 실제 host/po
 3. root 소유 tools 디렉터리에 `env-management.mjs`, 검토된 `deploy-ubuntu.mjs`, 기존 `ssh-entrypoint.sh`,
    새 `env-ssh-entrypoint.sh`를 검토한 SHA로 함께 원자 설치한다. PM2 시작 전 guard가 먼저 적용되어 있어야 한다.
    전용 새 SSH 키를 provision한다. 기존 CI 키와 `slacord-ci` forced handler는 보존한다.
-   `/usr/local/sbin/gadoc-kms-env`는 이미지에 들어 있다(`docker/gadoc/gadoc-kms-env.sh`, GaDoc 저장소
+   `/usr/local/sbin/gadoc-kms-env`는 대상 서비스 이미지에 들어 있다(운영 이미지 구성은 별도 비공개 저장소, GaDoc 저장소
    `env-ssh-entrypoint.sh`와 같은 내용). 새 public key에만 `restrict,command="/usr/local/sbin/gadoc-kms-env"`를 지정한다.
    infra 담당자가 확인한 `/usr/local/bin/node`, `/usr/bin/flock`, `/usr/bin/timeout`,
    `/usr/local/bin/pm2`와 PM2 데이터 볼륨 `/root/.pm2`를 사용한다. 재설치 전에도 경로를 다시 확인한다.
