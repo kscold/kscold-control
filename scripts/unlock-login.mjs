@@ -77,11 +77,12 @@ async function unlockAddress(client) {
         AND created_at > now() - interval '1 day'`,
     [keys],
   );
+  // 백엔드는 자기 시계로 만료를 본다. DB 가 도는 VM 시계가 조금 앞서면 now() 로 적은 만료가 아직 오지 않은 것으로 보이므로, 같은 호스트의 시계로 적는다.
   const lifted = await client.query(
-    `UPDATE ip_bans SET expires_at = now(), updated_at = now()
+    `UPDATE ip_bans SET expires_at = $2, updated_at = $2
       WHERE ip = ANY($1) AND active AND source = 'auto-login'
-        AND (expires_at IS NULL OR expires_at > now())`,
-    [keys],
+        AND (expires_at IS NULL OR expires_at > $2)`,
+    [keys, new Date()],
   );
   console.log(
     `${keys.join(', ')}: 실패·거절 기록 ${cleared.rowCount}건을 지우고 로그인 자동 차단 ${lifted.rowCount}건을 만료시켰습니다.`,
