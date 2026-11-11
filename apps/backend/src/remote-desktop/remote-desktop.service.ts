@@ -10,7 +10,8 @@ import {
 import { HttpAdapterHost } from '@nestjs/core';
 import { ConfigService } from '@nestjs/config';
 import { randomBytes } from 'node:crypto';
-import { createConnection } from 'node:net';
+import { createConnection, type Socket } from 'node:net';
+import { StringDecoder } from 'node:string_decoder';
 import type { Server, IncomingMessage } from 'node:http';
 import type { Duplex } from 'node:stream';
 import { WebSocketServer, WebSocket, createWebSocketStream } from 'ws';
@@ -22,13 +23,30 @@ import type { JwtPayload } from '../common/types/jwt-request.type';
 import { isGlobalAdministrator } from '../common/utils/role-access.util';
 import { SessionVerifier } from '../auth/application/services/session-verifier.service';
 import { SessionConnectionRegistry } from '../auth/application/services/session-connection-registry.service';
-import type { DesktopConnection } from './remote-desktop-targets.service';
+import type {
+  DesktopConnection,
+  DesktopProtocol,
+} from './remote-desktop-targets.service';
+import {
+  encodeInstruction,
+  InstructionReader,
+  rdpHandshake,
+} from './guacamole';
+
+const PATHS: Record<DesktopProtocol, string> = {
+  vnc: '/api/remote-desktop/socket',
+  rdp: '/api/remote-desktop/guac',
+};
 
 interface DesktopTicket {
   userId: string;
   sessionId: string;
   expires: number;
+  protocol: DesktopProtocol;
+  host: string;
   port: number;
+  // RDP 계정은 브라우저로 보내지 않고 서버가 guacd 에 직접 넘김.
+  credentials?: { username: string; password: string };
 }
 
 export function canControlDesktop(
@@ -52,7 +70,8 @@ export class RemoteDesktopService
     noServer: true,
     maxPayload: 1024 * 1024,
     perMessageDeflate: false,
-    handleProtocols: () => 'binary',
+    handleProtocols: (protocols) =>
+      protocols.has('guacamole') ? 'guacamole' : 'binary',
   });
 
   constructor(
@@ -69,6 +88,8 @@ export class RemoteDesktopService
         '관리자 본인 계정으로만 원격 접속할 수 있습니다.',
       );
     const settings = this.settings();
+    const protocol = connection?.protocol ?? 'vnc';
+    if (protocol === 'rdp') this.guacd();
     const now = Date.now();
     for (const [key, value] of this.tickets) {
       if (value.expires <= now || value.userId === user.id)
@@ -81,10 +102,17 @@ export class RemoteDesktopService
       userId: user.id,
       sessionId: user.sessionId,
       expires: now + 30_000,
+      protocol,
+      host: connection?.host || '127.0.0.1',
       port: connection?.port ?? settings.port,
+      ...(protocol === 'rdp' && connection?.credentials
+        ? { credentials: connection.credentials }
+        : {}),
     });
+    if (protocol === 'rdp') return { ticket, protocol, suggestedUsername: '' };
     return {
       ticket,
+      protocol,
       suggestedUsername:
         !connection || connection.id === 'local'
           ? this.config.get<string>('REMOTE_DESKTOP_USERNAME') || ''
@@ -122,6 +150,16 @@ export class RemoteDesktopService
     return { origin, port };
   }
 
+  private guacd() {
+    const host = this.config.get<string>('GUACD_HOST');
+    const port = Number(this.config.get<string>('GUACD_PORT') || '4822');
+    if (!host || !Number.isInteger(port) || port < 1 || port > 65535)
+      throw new ServiceUnavailableException(
+        'RDP 중계 서버(guacd)가 설정되지 않았습니다. GUACD_HOST 를 확인하세요.',
+      );
+    return { host, port };
+  }
+
   onApplicationBootstrap() {
     const server: Server = this.adapter.httpAdapter.getHttpServer();
     this.server = server;
@@ -133,7 +171,8 @@ export class RemoteDesktopService
     socket: Duplex,
     head: Buffer,
   ) => {
-    if (request.url?.split('?')[0] !== '/api/remote-desktop/socket') return;
+    const path = request.url?.split('?')[0];
+    if (path !== PATHS.vnc && path !== PATHS.rdp) return;
     if (this.stopping || this.pending.size >= 100) {
       socket.destroy();
       return;
@@ -159,24 +198,29 @@ export class RemoteDesktopService
 
   private async accept(request: IncomingMessage, socket: Duplex, head: Buffer) {
     const { origin } = this.settings();
-    if (
-      request.url !== '/api/remote-desktop/socket' ||
-      request.headers.origin !== origin ||
-      this.sockets.size >= 3
-    )
+    if (request.headers.origin !== origin || this.sockets.size >= 3)
       throw new Error('Rejected');
     const protocols = (request.headers['sec-websocket-protocol'] || '')
       .split(',')
       .map((value) => value.trim());
-    const key = protocols
-      .find((value) => /^ticket\.[a-f0-9]{64}$/.test(value))
-      ?.slice(7);
+    // guacamole-common-js 터널은 하위 프로토콜을 'guacamole' 하나로 고정하고 주소 뒤에 "?" + 데이터를 붙임.
+    // 그래서 RDP 표는 한 번 쓰고 30초 안에 만료되는 값을 쿼리로 받음.
+    const rdp = request.url?.match(
+      /^\/api\/remote-desktop\/guac\?ticket=([a-f0-9]{64})$/,
+    );
+    const key =
+      request.url === PATHS.vnc
+        ? protocols
+            .find((value) => /^ticket\.[a-f0-9]{64}$/.test(value))
+            ?.slice(7)
+        : rdp?.[1];
     const ticket = key ? this.tickets.get(key) : undefined;
     if (key) this.tickets.delete(key);
     if (
       !ticket ||
       ticket.expires <= Date.now() ||
-      !protocols.includes('binary')
+      !protocols.includes(ticket.protocol === 'rdp' ? 'guacamole' : 'binary') ||
+      (ticket.protocol === 'rdp') !== Boolean(rdp)
     )
       throw new Error('Rejected');
     const user = await this.users.findByIdWithRoles(ticket.userId);
@@ -199,11 +243,16 @@ export class RemoteDesktopService
   }
 
   private connect(client: WebSocket, ticket: DesktopTicket) {
-    const { userId, sessionId, port } = ticket;
+    const { userId, sessionId, host, port } = ticket;
     this.sockets.add(client);
-    // 브라우저가 지정한 호스트로 접속하지 않는다. 원격 호스트는 별도 SSH 로컬 터널을 사용한다.
-    const target = createConnection({ host: '127.0.0.1', port });
-    const stream = createWebSocketStream(client);
+    // 주소·계정은 브라우저 입력이 아니라 저장 시 검증한 대상 값만 씀.
+    const target =
+      ticket.protocol === 'rdp'
+        ? createConnection(this.guacd())
+        : createConnection({ host, port });
+    // RDP 는 명령 단위로 직접 중계하므로 바이트 스트림을 만들지 않음.
+    const stream =
+      ticket.protocol === 'vnc' ? createWebSocketStream(client) : undefined;
     let closed = false;
     const close = () => {
       if (closed) return;
@@ -213,10 +262,12 @@ export class RemoteDesktopService
       clearInterval(check);
       clearInterval(heartbeat);
       unbindSession();
-      target.unpipe(stream);
-      stream.unpipe(target);
+      if (stream) target.unpipe(stream);
+      stream?.unpipe(target);
+      target.removeAllListeners('data');
+      client.removeAllListeners('message');
       target.destroy();
-      stream.destroy();
+      stream?.destroy();
       client.terminate();
       this.sockets.delete(client);
       this.cleanup.delete(client);
@@ -255,16 +306,92 @@ export class RemoteDesktopService
     this.cleanup.set(client, close);
     target.once('connect', () => {
       if (closed) return;
+      if (ticket.protocol === 'rdp') {
+        this.bridgeGuacamole(
+          client,
+          target,
+          ticket,
+          () => {
+            clearTimeout(connectionTimeout);
+            this.logger.log({ event: 'remote-desktop.connected', userId });
+          },
+          close,
+        );
+        return;
+      }
       clearTimeout(connectionTimeout);
-      target.pipe(stream).pipe(target);
+      if (stream) target.pipe(stream).pipe(target);
       this.logger.log({ event: 'remote-desktop.connected', userId });
     });
     target.on('error', close);
     target.on('close', close);
-    stream.on('error', close);
-    stream.once('close', close);
+    stream?.on('error', close);
+    stream?.once('close', close);
     client.on('error', close);
     client.once('close', close);
+  }
+
+  // guacd 와 핸드셰이크를 마친 뒤 명령 단위로 중계함. 브라우저가 보내는 내부 명령(opcode "")은 guacd 로 넘기지 않음.
+  private bridgeGuacamole(
+    client: WebSocket,
+    target: Socket,
+    ticket: DesktopTicket,
+    ready: () => void,
+    close: () => void,
+  ) {
+    const decoder = new StringDecoder('utf8');
+    const reader = new InstructionReader();
+    let connected = false;
+    target.write(encodeInstruction('select', 'rdp'));
+    target.on('data', (chunk: Buffer) => {
+      let instructions;
+      try {
+        instructions = reader.push(decoder.write(chunk));
+      } catch {
+        return close();
+      }
+      if (!connected) {
+        const index = instructions.findIndex(
+          (item) => item.opcode === 'args' || item.opcode === 'ready',
+        );
+        if (index === -1) return;
+        const first = instructions[index];
+        if (first.opcode === 'args') {
+          target.write(
+            rdpHandshake(first.args, {
+              hostname: ticket.host,
+              port: ticket.port,
+              ...ticket.credentials,
+            }),
+          );
+          instructions = instructions.slice(index + 1);
+          const ready = instructions.findIndex(
+            (item) => item.opcode === 'ready',
+          );
+          if (ready === -1) return;
+          instructions = instructions.slice(ready);
+        }
+        connected = true;
+        ready();
+        // 브라우저 터널은 첫 내부 명령의 값을 연결 ID로 씀.
+        client.send(encodeInstruction('', instructions[0].args[0] ?? ''));
+        instructions = instructions.slice(1);
+      }
+      if (instructions.length)
+        client.send(instructions.map((item) => item.raw).join(''));
+    });
+    client.on('message', (data, binary) => {
+      if (binary) return close();
+      const text = Buffer.isBuffer(data)
+        ? data.toString('utf8')
+        : Buffer.concat(data as Buffer[]).toString('utf8');
+      if (text.startsWith('0.,')) {
+        // 터널 안정성 확인용 ping 은 그대로 돌려보냄.
+        if (text.startsWith('0.,4.ping,')) client.send(text);
+        return;
+      }
+      if (connected) target.write(text);
+    });
   }
 
   onModuleDestroy() {

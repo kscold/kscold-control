@@ -17,6 +17,14 @@ import { useAuthStore } from '@/shared/model/auth.store';
 import { RemoteTargets } from './RemoteTargets';
 import './remote-desktop.css';
 
+// VNC(noVNC)와 RDP(guacamole) 연결이 화면에 내주는 공통 동작
+interface DesktopClient {
+  disconnect(): void;
+  clipboardPasteFrom(text: string): void;
+  viewOnly: boolean;
+  sendCredentials?: RFB['sendCredentials'];
+}
+
 export default function RemoteDesktopPage() {
   const { user, token, impersonation } = useAuthStore();
   const allowed =
@@ -26,7 +34,7 @@ export default function RemoteDesktopPage() {
     );
   const screen = useRef<HTMLDivElement>(null);
   const frame = useRef<HTMLDivElement>(null);
-  const client = useRef<RFB | null>(null);
+  const client = useRef<DesktopClient | null>(null);
   const generation = useRef(0);
   const pending = useRef<AbortController | null>(null);
   const [status, setStatus] = useState<
@@ -120,6 +128,7 @@ export default function RemoteDesktopPage() {
     try {
       const { data } = await api.post<{
         ticket: string;
+        protocol?: 'vnc' | 'rdp';
         suggestedUsername?: string;
         credentials?: { username: string; password: string };
       }>(
@@ -128,6 +137,40 @@ export default function RemoteDesktopPage() {
         { timeout: 10_000, signal: controller.signal },
       );
       if (generation.current !== attempt || !screen.current) return;
+      if (data.protocol === 'rdp') {
+        const { openRdp } = await import('./rdp-client');
+        if (generation.current !== attempt || !screen.current) return;
+        const guac = new URL(
+          `${API_URL}/api/remote-desktop/guac`,
+          window.location.origin,
+        );
+        guac.protocol = guac.protocol === 'https:' ? 'wss:' : 'ws:';
+        const rdp: DesktopClient = openRdp(
+          screen.current,
+          guac.href,
+          data.ticket,
+          {
+            onConnect: () => {
+              if (client.current !== rdp) return;
+              setStatus('connected');
+              setMessage('연결됨 · 최대 15분 후 종료됩니다.');
+            },
+            onDisconnect: () => {
+              if (client.current !== rdp) return;
+              disconnect();
+              setMessage(
+                '연결이 종료되었습니다. 원격 데스크톱 설정과 저장된 계정을 확인한 뒤 다시 연결하세요.',
+              );
+            },
+            onClipboard: (text) => {
+              if (client.current === rdp) setClipboard(text);
+            },
+          },
+        );
+        client.current = rdp;
+        rdp.viewOnly = viewOnly;
+        return;
+      }
       setUsername(data.credentials?.username ?? data.suggestedUsername ?? '');
       const url = new URL(
         `${API_URL}/api/remote-desktop/socket`,
@@ -369,7 +412,7 @@ export default function RemoteDesktopPage() {
                   className="desktop-auth-form"
                   onSubmit={(event) => {
                     event.preventDefault();
-                    client.current?.sendCredentials({
+                    client.current?.sendCredentials?.({
                       username,
                       password,
                       target: '',

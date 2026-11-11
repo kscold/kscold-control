@@ -132,6 +132,109 @@ describe('원격 데스크톱 보안 중계', () => {
     await Promise.all([closed, clientClosed]);
   });
 
+  it('대상에 저장된 주소로 연결하고 없으면 서버 자신으로 연결한다', async () => {
+    // 기본값(127.0.0.1)으로는 닿지 않는 주소에서만 듣게 해서 대상 주소를 쓰는지 확인함.
+    const other = createTcpServer((socket) => socket.pipe(socket));
+    other.listen(0, '::1');
+    await once(other, 'listening');
+    const incoming = once(other, 'connection');
+    const { ticket } = service.issue(administrator, {
+      id: 'second',
+      host: '::1',
+      protocol: 'vnc',
+      port: (other.address() as AddressInfo).port,
+    });
+    const client = connect(ticket);
+    await once(client, 'open');
+    const [target] = await incoming;
+    const closed = once(target, 'close');
+    client.close();
+    await closed;
+    await new Promise<void>((resolve) => other.close(() => resolve()));
+  });
+
+  describe('RDP(guacd 중계)', () => {
+    const rdpTarget = {
+      id: 'windows',
+      host: '10.0.0.5',
+      port: 3389,
+      protocol: 'rdp' as const,
+      credentials: { username: 'tester', password: 'not-a-real-password' },
+    };
+    let guacd: ReturnType<typeof createTcpServer>;
+    let received = '';
+
+    beforeEach(async () => {
+      received = '';
+      guacd = createTcpServer((socket) => {
+        socket.on('data', (chunk) => {
+          received += chunk.toString();
+          if (received === '6.select,3.rdp;')
+            socket.write(
+              '4.args,13.VERSION_1_5_0,8.hostname,4.port,8.username,8.password,8.security;',
+            );
+          else if (received.includes('7.connect,'))
+            socket.write('5.ready,5.$abcd;4.sync,1.1;');
+        });
+      });
+      guacd.listen(0, '127.0.0.1');
+      await once(guacd, 'listening');
+      config.set('GUACD_HOST', '127.0.0.1');
+      config.set('GUACD_PORT', String((guacd.address() as AddressInfo).port));
+    });
+
+    afterEach(async () => {
+      await new Promise<void>((resolve) => guacd.close(() => resolve()));
+    });
+
+    function guac(ticket: string) {
+      return new WebSocket(
+        url.replace('/socket', `/guac?ticket=${ticket}`),
+        'guacamole',
+        { origin: 'https://control.example.com' },
+      );
+    }
+
+    it('guacd 가 없으면 RDP 표를 발급하지 않는다', () => {
+      config.set('GUACD_HOST', '');
+      expect(() => service.issue(administrator, rdpTarget)).toThrow('guacd');
+    });
+
+    it('RDP 계정은 브라우저로 보내지 않고 guacd 에만 넘긴다', async () => {
+      const issued = service.issue(administrator, rdpTarget);
+      expect(JSON.stringify(issued)).not.toContain('not-a-real-password');
+      const client = guac(issued.ticket);
+      const messages: string[] = [];
+      client.on('message', (data) => messages.push(data.toString()));
+      await once(client, 'open');
+      await new Promise<void>((resolve) => {
+        const timer = setInterval(() => {
+          if (messages.length >= 2) {
+            clearInterval(timer);
+            resolve();
+          }
+        }, 5);
+      });
+      expect(messages).toEqual(['0.,5.$abcd;', '4.sync,1.1;']);
+      expect(received).toContain(
+        '7.connect,13.VERSION_1_5_0,8.10.0.0.5,4.3389,6.tester,19.not-a-real-password,3.any;',
+      );
+      client.send('0.,4.ping,3.123;');
+      const [pong] = await once(client, 'message');
+      expect(pong.toString()).toBe('0.,4.ping,3.123;');
+      expect(received).not.toContain('ping');
+      client.close();
+    });
+
+    it('VNC 표로 RDP 경로에 붙거나 RDP 표로 VNC 경로에 붙을 수 없다', async () => {
+      const vnc = guac(service.issue(administrator).ticket);
+      await once(vnc, 'error');
+      const rdp = connect(service.issue(administrator, rdpTarget).ticket);
+      await once(rdp, 'error');
+      expect(received).toBe('');
+    });
+  });
+
   it('원격 TCP 종료 시 브라우저 소켓도 종료한다', async () => {
     const { client, target } = await session();
     const closed = once(client, 'close');
@@ -202,11 +305,11 @@ describe('원격 데스크톱 보안 중계', () => {
     config.set('REMOTE_DESKTOP_USERNAME', 'default-user');
     expect(service.issue(administrator).suggestedUsername).toBe('default-user');
     expect(
-      service.issue(administrator, { id: 'local', port: 5900 })
+      service.issue(administrator, { id: 'local', port: 5900, protocol: 'vnc' })
         .suggestedUsername,
     ).toBe('default-user');
     expect(
-      service.issue(administrator, { id: 'other', port: 5901 })
+      service.issue(administrator, { id: 'other', port: 5901, protocol: 'vnc' })
         .suggestedUsername,
     ).toBe('');
   });

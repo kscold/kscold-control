@@ -19,6 +19,7 @@ import {
 } from './remote-desktop.service';
 import { RemoteDesktopTargetsService } from './remote-desktop-targets.service';
 import { SaveDesktopTargetDto } from './presentation/dto/save-desktop-target.dto';
+import { Audit } from '../common/decorators/audit.decorator';
 
 @Controller('remote-desktop')
 @UseGuards(AuthGuard('jwt'))
@@ -63,6 +64,26 @@ export class RemoteDesktopController {
   removeTarget(@Req() request: JwtRequest, @Param('id') id: string) {
     this.authorize(request);
     return this.targets.remove(id);
+  }
+
+  @Get('targets/:id/status')
+  @Header('Cache-Control', 'no-store')
+  status(@Req() request: JwtRequest, @Param('id') id: string) {
+    this.authorize(request);
+    return this.targets.status(id);
+  }
+
+  @Post('targets/:id/wake')
+  @Audit({
+    domain: 'security',
+    action: 'remote-desktop.wake',
+    summary: (ctx) => `원격 대상 ${ctx.params.id}에 깨우기 신호를 보냈습니다.`,
+    targetType: 'remote-desktop-target',
+    targetId: (ctx) => ctx.params.id,
+  })
+  wake(@Req() request: JwtRequest, @Param('id') id: string) {
+    this.authorize(request);
+    return this.targets.wake(id);
   }
 
   @Post('targets/:id/ticket')
