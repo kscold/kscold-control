@@ -50,6 +50,11 @@ export class IpAllowlistService {
     return { protected: false };
   }
 
+  /** 운영자가 SECURITY_ALLOWLIST 에 직접 적은 주소인가. 기본 내부 대역은 여기에 들지 않는다. */
+  isListed(ip: string): boolean {
+    return this.extraAllow().some((cidr) => this.isInCidr(ip, cidr));
+  }
+
   private extraAllow(): string[] {
     const raw = process.env.SECURITY_ALLOWLIST;
     if (!raw) return [];
@@ -69,8 +74,14 @@ export class IpAllowlistService {
 
   private isInCidr(ip: string, cidr: string): boolean {
     const [range, bitsRaw] = cidr.split('/');
-    if (!range || !bitsRaw) return false;
-    const bits = parseInt(bitsRaw, 10);
+    if (!range) return false;
+    // 접두 길이 없이 적은 주소(.env.example 의 127.0.0.1 처럼)는 그 주소 하나로 본다.
+    const bits =
+      bitsRaw === undefined
+        ? net.isIPv6(range)
+          ? 128
+          : 32
+        : parseInt(bitsRaw, 10);
     if (Number.isNaN(bits)) return false;
 
     const v4 = net.isIPv4(range) && net.isIPv4(ip);

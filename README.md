@@ -153,6 +153,7 @@ npm install -g @openai/codex
 | `CONTROL_BIND_HOST`               | `127.0.0.1`                | Address the backend listens on            |
 | `CONTROL_TRUSTED_PROXIES`         | `127.0.0.1,::1`            | Proxies allowed to send `X-Real-IP`       |
 | `CONTROL_PROXY_SECRET`            | —                          | Shared secret the proxy must also send    |
+| `SECURITY_ALLOWLIST`              | —                          | IPs never banned or login-throttled       |
 | `CONTROL_FRONTEND_DIST_PATH`      | built-in `frontend/dist`   | Atomically published production UI path   |
 | `NODE_ENV`                        | `development`              | `production` disables TypeORM auto-sync   |
 | `CLAUDE_WORKING_DIR`              | `$HOME`                    | Working directory for AI coding sessions  |

@@ -19,12 +19,13 @@ import {
 
 // 사용자/역할 저장소는 RbacModule이 단일 소유·export 한다 (중복 구현 제거)
 import { RbacModule } from '../rbac/rbac.module';
+import { SecurityModule } from '../security/security.module';
 
 // 전략(Passport)
 import { JwtStrategy } from './infrastructure/strategies/jwt.strategy';
 
 @Module({
-  imports: [RbacModule, PassportModule, AuthSessionModule],
+  imports: [RbacModule, PassportModule, AuthSessionModule, SecurityModule],
   controllers: [AuthController],
   providers: [
     // 서비스

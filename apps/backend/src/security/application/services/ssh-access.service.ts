@@ -131,6 +131,11 @@ export class SshAccessService {
     return join(this.dir, name);
   }
 
+  /** 내 IP 목록의 주소만 */
+  knownIps(): Promise<string[]> {
+    return this.readKnownIps();
+  }
+
   /** 방화벽 차단 목록만 — 웹 IP 차단 화면에서 같이 보여 주려고 기록·프로세스는 읽지 않음 */
   async firewallBlocks(): Promise<{
     guard: SshGuardStatus;
