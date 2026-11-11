@@ -127,6 +127,20 @@ async function openSmokeSession(connectionString, userId) {
   }
 }
 
+async function revokeSmokeSession(connectionString, sessionId) {
+  const client = new Client({ connectionString });
+
+  try {
+    await client.connect();
+    await client.query(
+      'UPDATE auth_sessions SET revoked_at = now() WHERE id = $1',
+      [sessionId],
+    );
+  } finally {
+    await client.end();
+  }
+}
+
 async function validateToken(token) {
   const response = await fetch(`${baseUrl}/api/auth/me`, {
     headers: {
@@ -146,6 +160,7 @@ async function createPersistedAdminAuthState() {
   }
 
   for (const connectionString of buildConnectionCandidates(env)) {
+    let sessionId = null;
     try {
       const user = await findAdminUser(connectionString);
       if (!user) {
@@ -153,6 +168,7 @@ async function createPersistedAdminAuthState() {
       }
 
       const session = await openSmokeSession(connectionString, user.id);
+      sessionId = session.id;
       const token = jwt.sign(
         {
           sub: user.id,
@@ -164,22 +180,24 @@ async function createPersistedAdminAuthState() {
         jwtSecret,
       );
 
-      const isValid = await validateToken(token);
-      if (!isValid) {
-        continue;
+      if (await validateToken(token)) {
+        const persistedState = JSON.stringify({
+          state: {
+            token,
+            user,
+          },
+          version: 0,
+        });
+
+        return { persistedState, token, user };
       }
-
-      const persistedState = JSON.stringify({
-        state: {
-          token,
-          user,
-        },
-        version: 0,
-      });
-
-      return { persistedState, token, user };
     } catch {
-      continue;
+      // 다음 후보 DB 로 넘어간다.
+    }
+    if (sessionId) {
+      await revokeSmokeSession(connectionString, sessionId).catch(
+        () => undefined,
+      );
     }
   }
 
@@ -660,7 +678,7 @@ function findTreePath(node, targetPath, currentPath = '') {
 async function run() {
   const { persistedState, token, user } = await createPersistedAdminAuthState();
   const projectName = createProjectName();
-  const fixture = await createFixtureDirectory(projectName);
+  let fixture = null;
   let project = null;
   let browser = null;
   let page = null;
@@ -669,6 +687,7 @@ async function run() {
   console.log(`[repository-live-smoke] Authenticated as: ${user.email}`);
 
   try {
+    fixture = await createFixtureDirectory(projectName);
     project = await apiRequest('/repository/projects', token, {
       method: 'POST',
       body: JSON.stringify({
@@ -886,7 +905,9 @@ async function run() {
       }
     }
 
-    await fsp.rm(fixture.tempRoot, { recursive: true, force: true });
+    if (fixture) {
+      await fsp.rm(fixture.tempRoot, { recursive: true, force: true });
+    }
     await fetch(`${baseUrl}/api/auth/logout`, {
       method: 'POST',
       headers: { Authorization: `Bearer ${token}` },
