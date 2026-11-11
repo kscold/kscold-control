@@ -64,6 +64,8 @@ module.exports = {
           'REMOTE_DESKTOP_ORIGIN',
           'REMOTE_DESKTOP_PORT',
           'REMOTE_DESKTOP_USERNAME',
+          'GUACD_HOST',
+          'GUACD_PORT',
           'ADMIN_EMAIL',
           'ADMIN_PASSWORD',
           'SEED_ADMIN_BOOTSTRAP',

@@ -1,6 +1,8 @@
 import {
   IsBoolean,
+  IsIn,
   IsInt,
+  IsOptional,
   IsString,
   Max,
   MaxLength,
@@ -29,4 +31,24 @@ export class SaveDesktopTargetDto {
 
   @IsBoolean()
   saveCredentials: boolean;
+
+  // 같은 망의 사설 IPv4. 비우면 서버 자신(127.0.0.1)으로 연결함.
+  @IsOptional()
+  @IsString()
+  @MaxLength(15)
+  host?: string;
+
+  @IsOptional()
+  @IsIn(['vnc', 'rdp'])
+  protocol?: 'vnc' | 'rdp';
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(17)
+  wakeMac?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(15)
+  wakeBroadcast?: string;
 }

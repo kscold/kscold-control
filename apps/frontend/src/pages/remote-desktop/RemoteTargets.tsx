@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { api } from '@/shared/api';
 
 interface Target {
@@ -6,6 +6,9 @@ interface Target {
   name: string;
   port: number;
   hasCredentials: boolean;
+  host: string | null;
+  wakeMac: string | null;
+  protocol?: 'vnc' | 'rdp';
 }
 const emptyForm = {
   name: '',
@@ -13,8 +16,14 @@ const emptyForm = {
   username: '',
   password: '',
   saveCredentials: true,
+  host: '',
+  wakeMac: '',
+  protocol: 'vnc' as 'vnc' | 'rdp',
 };
 const button = 'desktop-button';
+// 켜지는 데 보통 1분 안팎이라 5초 간격으로 2분까지 확인함.
+const WAKE_POLL_MS = 5_000;
+const WAKE_LIMIT_MS = 120_000;
 
 export function RemoteTargets({
   onConnect,
@@ -28,6 +37,68 @@ export function RemoteTargets({
   const [form, setForm] = useState(emptyForm);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const [online, setOnline] = useState<Record<string, boolean>>({});
+  const [waking, setWaking] = useState<Record<string, string>>({});
+  const timers = useRef(new Set<ReturnType<typeof setTimeout>>());
+
+  useEffect(() => {
+    const pending = timers.current;
+    return () => {
+      for (const timer of pending) clearTimeout(timer);
+    };
+  }, []);
+
+  const probe = async (id: string) => {
+    try {
+      const { data } = await api.get<{ online: boolean }>(
+        `/remote-desktop/targets/${encodeURIComponent(id)}/status`,
+        { timeout: 10_000 },
+      );
+      setOnline((current) => ({ ...current, [id]: data.online }));
+      return data.online;
+    } catch {
+      return false;
+    }
+  };
+
+  async function wake(target: Target) {
+    setError('');
+    setWaking((current) => ({ ...current, [target.id]: '깨우는 중' }));
+    try {
+      await api.post(
+        `/remote-desktop/targets/${encodeURIComponent(target.id)}/wake`,
+        undefined,
+        { timeout: 10_000 },
+      );
+    } catch {
+      setWaking(({ [target.id]: _, ...rest }) => rest);
+      setError('깨우기 신호를 보내지 못했습니다. 잠시 뒤 다시 시도하세요.');
+      return;
+    }
+    const started = Date.now();
+    const poll = async () => {
+      if (await probe(target.id)) {
+        setWaking(({ [target.id]: _, ...rest }) => rest);
+        return;
+      }
+      const elapsed = Date.now() - started;
+      if (elapsed >= WAKE_LIMIT_MS) {
+        setWaking(({ [target.id]: _, ...rest }) => rest);
+        setError(`${target.name}이(가) 2분 안에 켜지지 않았습니다.`);
+        return;
+      }
+      setWaking((current) => ({
+        ...current,
+        [target.id]: `켜지기를 기다리는 중 · ${Math.round(elapsed / 1000)}초`,
+      }));
+      const timer = setTimeout(() => {
+        timers.current.delete(timer);
+        void poll();
+      }, WAKE_POLL_MS);
+      timers.current.add(timer);
+    };
+    await poll();
+  }
 
   const refresh = async () => {
     const { data } = await api.get<Target[]>('/remote-desktop/targets', {
@@ -41,7 +112,9 @@ export function RemoteTargets({
     void api
       .get<Target[]>('/remote-desktop/targets', { timeout: 10_000 })
       .then(({ data }) => {
-        if (active) setTargets(data);
+        if (!active) return;
+        setTargets(data);
+        for (const target of data) void probe(target.id);
       })
       .catch(() => {
         if (active) setError('저장된 원격 대상 목록을 불러오지 못했습니다.');
@@ -93,10 +166,12 @@ export function RemoteTargets({
         </button>
       </div>
       <p className="my-2 text-xs text-gray-400">
-        기본 대상은 맥미니입니다. 다른 컴퓨터는 SSH 터널의 로컬 포트로
-        등록하세요. 암호는 서버에 암호화하여 보관하며 연결 시에만 사용합니다.
+        기본 대상은 맥미니입니다. 같은 망의 다른 컴퓨터는 사설 IP 주소로, 망
+        밖의 컴퓨터는 SSH 터널의 로컬 포트로 등록하세요. MAC 주소를 넣으면 꺼진
+        PC를 깨울 수 있습니다. 암호는 서버에 암호화하여 보관하며 연결 시에만
+        사용합니다.
       </p>
-      <div className="grid gap-3">
+      <div className="grid grid-cols-1 gap-3">
         {targets.map((target) => (
           <div
             key={target.id}
@@ -110,15 +185,51 @@ export function RemoteTargets({
               {target.name} ·{' '}
               {target.hasCredentials ? '저장된 계정으로 연결' : '연결'}
             </button>
-            <p className="my-1 text-xs text-gray-500">
-              로컬 포트 {target.port}
+            <p className="my-1 flex items-center gap-2 text-xs text-gray-500">
+              <span
+                role="img"
+                aria-label={
+                  online[target.id] === undefined
+                    ? '상태 확인 중'
+                    : online[target.id]
+                      ? '켜짐'
+                      : '꺼짐'
+                }
+                className={`inline-block h-2 w-2 rounded-full ${
+                  online[target.id]
+                    ? 'bg-emerald-400'
+                    : online[target.id] === false
+                      ? 'bg-gray-600'
+                      : 'bg-gray-800'
+                }`}
+              />
+              {target.host
+                ? `${target.host}:${target.port}`
+                : `로컬 포트 ${target.port}`}
+              {target.protocol === 'rdp' ? ' · RDP' : ''}
               {target.id === 'local' ? ' · 기본 대상' : ''}
             </p>
+            {target.wakeMac && (
+              <button
+                className={button}
+                disabled={busy || disabled || Boolean(waking[target.id])}
+                onClick={() => void wake(target)}
+              >
+                {waking[target.id] ?? '깨우기'}
+              </button>
+            )}
             <button
               className={button}
               disabled={busy || disabled}
               onClick={() => {
-                setForm({ ...emptyForm, name: target.name, port: target.port });
+                setForm({
+                  ...emptyForm,
+                  name: target.name,
+                  port: target.port,
+                  host: target.host ?? '',
+                  wakeMac: target.wakeMac ?? '',
+                  protocol: target.protocol ?? 'vnc',
+                });
                 setEditing({ id: target.id });
               }}
             >
@@ -161,7 +272,7 @@ export function RemoteTargets({
       )}
       {editing && (
         <form
-          className="mt-3 grid gap-2 sm:grid-cols-2"
+          className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2"
           onSubmit={(event) => {
             event.preventDefault();
             void save();
@@ -183,8 +294,57 @@ export function RemoteTargets({
               }
             />
           </label>
+          {editing.id !== 'local' && (
+            <>
+              <label>
+                같은 망 주소 (사설 IPv4, 비우면 이 서버)
+                <input
+                  inputMode="decimal"
+                  maxLength={15}
+                  placeholder="10.0.0.x"
+                  className="block w-full rounded bg-gray-900 p-2"
+                  value={form.host}
+                  onChange={(event) =>
+                    setForm({ ...form, host: event.target.value })
+                  }
+                />
+              </label>
+              <label>
+                연결 방식
+                <select
+                  className="block w-full rounded bg-gray-900 p-2"
+                  value={form.protocol}
+                  onChange={(event) =>
+                    setForm({
+                      ...form,
+                      protocol: event.target.value as 'vnc' | 'rdp',
+                      port:
+                        event.target.value === 'rdp' && form.port === 5901
+                          ? 3389
+                          : form.port,
+                    })
+                  }
+                >
+                  <option value="vnc">화면 공유 (VNC)</option>
+                  <option value="rdp">Windows 원격 데스크톱 (RDP)</option>
+                </select>
+              </label>
+              <label>
+                깨우기용 MAC 주소 (선택)
+                <input
+                  maxLength={17}
+                  placeholder="00:00:5E:00:53:01"
+                  className="block w-full rounded bg-gray-900 p-2"
+                  value={form.wakeMac}
+                  onChange={(event) =>
+                    setForm({ ...form, wakeMac: event.target.value })
+                  }
+                />
+              </label>
+            </>
+          )}
           <label>
-            로컬 연결 포트
+            연결 포트
             <input
               required
               type="number"

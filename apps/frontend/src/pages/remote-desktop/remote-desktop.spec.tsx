@@ -24,7 +24,9 @@ const fixture = vi.hoisted(() => ({
   disconnect: vi.fn(),
   clients: [] as EventTarget[],
   options: undefined as unknown,
+  openRdp: vi.fn(),
 }));
+vi.mock('./rdp-client', () => ({ openRdp: fixture.openRdp }));
 vi.mock('@/shared/model/auth.store', () => ({
   useAuthStore: () => fixture.auth,
 }));
@@ -164,6 +166,90 @@ describe('원격 데스크톱 화면', () => {
       '/remote-desktop/targets/second/ticket',
       '/remote-desktop/targets/second/ticket',
     ]);
+  });
+
+  it('RDP 대상은 noVNC 대신 guacamole 터널로 열고 계정을 받지 않는다', async () => {
+    fixture.get.mockResolvedValueOnce({
+      data: [
+        {
+          id: 'windows',
+          name: '윈도우 PC',
+          port: 3389,
+          hasCredentials: true,
+          host: '10.0.0.5',
+          wakeMac: null,
+          protocol: 'rdp',
+        },
+      ],
+    });
+    fixture.post.mockResolvedValue({
+      data: { ticket: 'rdp-ticket', protocol: 'rdp' },
+    });
+    fixture.openRdp.mockImplementation(() => ({
+      disconnect: vi.fn(),
+      clipboardPasteFrom: vi.fn(),
+      viewOnly: false,
+    }));
+    show();
+    fireEvent.click(screen.getByRole('button', { name: '접속 대상' }));
+    fireEvent.click(
+      await screen.findByRole('button', {
+        name: '윈도우 PC · 저장된 계정으로 연결',
+      }),
+    );
+    await waitFor(() => expect(fixture.openRdp).toHaveBeenCalledTimes(1));
+    const [, url, ticket] = fixture.openRdp.mock.calls[0];
+    expect(url).toMatch(/^ws:.*\/api\/remote-desktop\/guac$/);
+    expect(ticket).toBe('rdp-ticket');
+    expect(fixture.clients).toHaveLength(0);
+  });
+
+  it('깨우기 후 켜질 때까지 5초마다 상태를 확인한다', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      let online = false;
+      fixture.get.mockImplementation(async (path: string) =>
+        path.endsWith('/status')
+          ? { data: { online } }
+          : {
+              data: [
+                {
+                  id: 'windows',
+                  name: '윈도우 PC',
+                  port: 3389,
+                  hasCredentials: false,
+                  host: '10.0.0.5',
+                  wakeMac: '00:00:5e:00:53:01',
+                  protocol: 'rdp',
+                },
+              ],
+            },
+      );
+      fixture.post.mockResolvedValue({ data: { sent: true } });
+      show();
+      fireEvent.click(screen.getByRole('button', { name: '접속 대상' }));
+      fireEvent.click(await screen.findByRole('button', { name: '깨우기' }));
+      expect(
+        await screen.findByRole('button', { name: /켜지기를 기다리는 중/ }),
+      ).toBeDisabled();
+      expect(fixture.post).toHaveBeenCalledWith(
+        '/remote-desktop/targets/windows/wake',
+        undefined,
+        expect.anything(),
+      );
+      online = true;
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(5_000);
+      });
+      expect(
+        await screen.findByRole('button', { name: '깨우기' }),
+      ).toBeEnabled();
+      expect(screen.getByRole('img', { name: '켜짐' })).toBeTruthy();
+    } finally {
+      fixture.get.mockReset();
+      fixture.get.mockResolvedValue({ data: [] });
+      vi.useRealTimers();
+    }
   });
 
   it('관리자도 사용자 미리보기에서는 접속할 수 없다', () => {
