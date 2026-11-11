@@ -9,12 +9,24 @@ import {
   PanelsTopLeft,
   Clipboard,
   Maximize,
+  Power,
+  KeyRound,
 } from 'lucide-react';
 import { api } from '@/shared/api';
 import { API_URL } from '@/shared/config';
 import { ROLES } from '@/shared/config/roles';
 import { useAuthStore } from '@/shared/model/auth.store';
-import { RemoteTargets } from './RemoteTargets';
+import { Dialog, dialogButtonClass } from '@/shared/ui';
+import { OnlinePill, RemoteTargets } from './RemoteTargets';
+import { TargetDialog, type TargetDialogMode } from './TargetDialog';
+import {
+  LOCAL_TARGET,
+  addressOf,
+  needsCredentials,
+  protocolOf,
+  type Target,
+} from './target-model';
+import { useRemoteTargets, wakeLabel } from './useRemoteTargets';
 import './remote-desktop.css';
 
 // VNC(noVNC)와 RDP(guacamole) 연결이 화면에 내주는 공통 동작
@@ -50,7 +62,23 @@ export default function RemoteDesktopPage() {
   const [focused, setFocused] = useState(false);
   const [targetsOpen, setTargetsOpen] = useState(false);
   const [clipboardOpen, setClipboardOpen] = useState(false);
-  const [selected, setSelected] = useState({ id: 'local', name: '맥미니' });
+  const [selectedId, setSelectedId] = useState('local');
+  const [dialog, setDialog] = useState<TargetDialogMode | null>(null);
+  const [removing, setRemoving] = useState<Target | null>(null);
+  const [notice, setNotice] = useState('');
+  // 연결이 붙기 전에 끊기면 원인 후보를 카드에 보여 줌
+  const [failed, setFailed] = useState(false);
+  const remote = useRemoteTargets();
+  const selected =
+    remote.targets.find((target) => target.id === selectedId) ??
+    remote.targets[0] ??
+    LOCAL_TARGET;
+
+  useEffect(() => {
+    if (!notice) return;
+    const timer = setTimeout(() => setNotice(''), 4_000);
+    return () => clearTimeout(timer);
+  }, [notice]);
 
   const restore = () => {
     setFocused(false);
@@ -114,9 +142,21 @@ export default function RemoteDesktopPage() {
     };
   }, [token, allowed]);
 
-  async function connect(target = selected) {
+  // RDP 는 계정 없이 열면 접속 직후 끊기므로 먼저 계정을 받음
+  function requestConnect(target: Target = selected) {
+    if (needsCredentials(target)) {
+      setSelectedId(target.id);
+      setTargetsOpen(false);
+      setDialog({ kind: 'credentials', target });
+      return;
+    }
+    void connect(target);
+  }
+
+  async function connect(target: Target = selected) {
     disconnect();
-    setSelected(target);
+    setFailed(false);
+    setSelectedId(target.id);
     setTargetsOpen(false);
     setClipboardOpen(false);
     setUsername('');
@@ -145,6 +185,7 @@ export default function RemoteDesktopPage() {
           window.location.origin,
         );
         guac.protocol = guac.protocol === 'https:' ? 'wss:' : 'ws:';
+        let opened = false;
         const rdp: DesktopClient = openRdp(
           screen.current,
           guac.href,
@@ -152,15 +193,19 @@ export default function RemoteDesktopPage() {
           {
             onConnect: () => {
               if (client.current !== rdp) return;
+              opened = true;
               setStatus('connected');
               setMessage('연결됨 · 최대 15분 후 종료됩니다.');
             },
             onDisconnect: () => {
               if (client.current !== rdp) return;
               disconnect();
-              setMessage(
-                '연결이 종료되었습니다. 원격 데스크톱 설정과 저장된 계정을 확인한 뒤 다시 연결하세요.',
-              );
+              if (opened) {
+                setMessage('원격 연결이 끝났습니다. 다시 연결할 수 있습니다.');
+                return;
+              }
+              setFailed(true);
+              setMessage(`${target.name}에 연결하지 못했습니다.`);
             },
             onClipboard: (text) => {
               if (client.current === rdp) setClipboard(text);
@@ -300,7 +345,7 @@ export default function RemoteDesktopPage() {
         <button
           className={`${button} desktop-primary`}
           hidden={status !== 'idle'}
-          onClick={() => void connect()}
+          onClick={() => requestConnect()}
         >
           연결
         </button>
@@ -352,8 +397,21 @@ export default function RemoteDesktopPage() {
             <X size={18} />
           </button>
           <RemoteTargets
+            targets={remote.targets}
+            selectedId={selected.id}
+            online={remote.online}
+            waking={remote.waking}
+            error={remote.error}
             disabled={status !== 'idle'}
-            onConnect={(id, name) => void connect({ id, name })}
+            onSelect={(target) => {
+              setSelectedId(target.id);
+              setFailed(false);
+            }}
+            onConnect={(target) => requestConnect(target)}
+            onWake={(target) => void remote.wake(target)}
+            onAdd={() => setDialog({ kind: 'create' })}
+            onEdit={(target) => setDialog({ kind: 'edit', target })}
+            onRemove={setRemoving}
           />
           <Link to="/terminal" className="desktop-recovery">
             연결 문제 해결 · 복구용 터미널
@@ -392,20 +450,73 @@ export default function RemoteDesktopPage() {
                 />
               )}
               {status === 'idle' && (
-                <div className="desktop-idle-actions">
-                  <button
-                    className={`${button} desktop-primary`}
-                    onClick={() => void connect()}
-                  >
-                    화면 연결하기
-                  </button>
-                  <button
-                    className={button}
-                    onClick={() => setTargetsOpen(true)}
-                  >
-                    다른 컴퓨터 선택
-                  </button>
-                </div>
+                <>
+                  <div className="desktop-card-meta">
+                    <span className="desktop-badge">
+                      {protocolOf(selected).toUpperCase()}
+                    </span>
+                    <span className="truncate">{addressOf(selected)}</span>
+                    <OnlinePill online={remote.online[selected.id]} />
+                  </div>
+                  {failed && (
+                    <div className="desktop-failure" role="alert">
+                      <p>연결하지 못했습니다. 아래를 확인하세요.</p>
+                      <ul>
+                        <li>저장된 계정과 암호가 맞는지</li>
+                        <li>대상 컴퓨터가 켜져 있고 원격 접속을 허용하는지</li>
+                        <li>계속되면 중계 서버 상태를 관리자에게 확인</li>
+                      </ul>
+                    </div>
+                  )}
+                  <div className="desktop-idle-actions">
+                    {selected.wakeMac &&
+                    remote.online[selected.id] === false ? (
+                      <>
+                        <button
+                          className={`${button} desktop-primary`}
+                          disabled={Boolean(remote.waking[selected.id])}
+                          onClick={() => void remote.wake(selected)}
+                        >
+                          {remote.waking[selected.id] ? (
+                            <Loader2 size={15} className="animate-spin" />
+                          ) : (
+                            <Power size={15} />
+                          )}
+                          {remote.waking[selected.id]
+                            ? wakeLabel(remote.waking[selected.id])
+                            : '컴퓨터 깨우기'}
+                        </button>
+                        <button
+                          className={button}
+                          disabled={Boolean(remote.waking[selected.id])}
+                          onClick={() => requestConnect()}
+                        >
+                          꺼져 있어도 연결 시도
+                        </button>
+                      </>
+                    ) : (
+                      <button
+                        className={`${button} desktop-primary`}
+                        onClick={() => requestConnect()}
+                      >
+                        {needsCredentials(selected) ? (
+                          <>
+                            <KeyRound size={15} />
+                            계정 입력 후 연결
+                          </>
+                        ) : (
+                          '화면 연결하기'
+                        )}
+                      </button>
+                    )}
+                    <button
+                      className={button}
+                      onClick={() => setTargetsOpen(true)}
+                    >
+                      다른 컴퓨터 선택
+                    </button>
+                  </div>
+                </>
               )}
               {status === 'credentials' && (
                 <form
@@ -458,6 +569,71 @@ export default function RemoteDesktopPage() {
           </div>
         )}
       </div>
+      {notice && (
+        <div aria-live="polite" className="desktop-toast">
+          {notice}
+        </div>
+      )}
+      {dialog && (
+        <TargetDialog
+          key={dialog.kind + ('target' in dialog ? dialog.target.id : '')}
+          mode={dialog}
+          onClose={() => setDialog(null)}
+          onSave={async (id, payload) => {
+            const saved = await remote.save(id, payload);
+            setDialog(null);
+            if (!saved) return;
+            setSelectedId(saved.id);
+            setNotice(
+              saved.hasCredentials
+                ? `${saved.name} 저장됨 · 계정 저장됨`
+                : `${saved.name} 저장됨`,
+            );
+            if (dialog.kind === 'credentials') void connect(saved);
+          }}
+        />
+      )}
+      <Dialog
+        open={Boolean(removing)}
+        role="alertdialog"
+        title={
+          removing?.id === 'local'
+            ? '저장된 접속 정보를 지울까요?'
+            : `${removing?.name}을(를) 삭제할까요?`
+        }
+        description={
+          removing?.id === 'local'
+            ? '기본 대상은 남고 저장된 계정과 암호만 지웁니다.'
+            : '대상과 저장된 계정·암호를 함께 지웁니다.'
+        }
+        onClose={() => setRemoving(null)}
+        footer={
+          <>
+            <button
+              className={dialogButtonClass()}
+              onClick={() => setRemoving(null)}
+            >
+              취소
+            </button>
+            <button
+              className={dialogButtonClass('red')}
+              onClick={async () => {
+                const target = removing;
+                setRemoving(null);
+                if (!target) return;
+                try {
+                  await remote.remove(target.id);
+                  setNotice(`${target.name} 삭제됨`);
+                } catch {
+                  remote.setError('원격 대상을 삭제하지 못했습니다.');
+                }
+              }}
+            >
+              {removing?.id === 'local' ? '지우기' : '삭제'}
+            </button>
+          </>
+        }
+      />
       {clipboardOpen && (
         <aside className="desktop-panel" aria-label="텍스트 복사·붙여넣기">
           <button

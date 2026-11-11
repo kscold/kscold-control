@@ -122,8 +122,18 @@ export class RemoteDesktopTargetsService {
   }
 
   async save(id: string | undefined, input: SaveDesktopTargetDto) {
-    if (!input.name.trim() || (input.saveCredentials && !input.password))
-      throw new BadRequestException('대상 이름과 저장할 암호를 입력하세요.');
+    if (!input.name.trim())
+      throw new BadRequestException('대상 이름을 입력하세요.');
+    // 수정할 때 암호를 비우면 저장된 암호를 그대로 씀. 사용자 이름도 비우면 기존 값을 씀.
+    const kept =
+      input.saveCredentials && !input.password && id
+        ? (await this.connection(id)).credentials
+        : undefined;
+    if (input.saveCredentials && !input.password && !kept)
+      throw new BadRequestException('저장할 암호를 입력하세요.');
+    const account = kept
+      ? { username: input.username || kept.username, password: kept.password }
+      : { username: input.username, password: input.password };
     const targetId = id || randomUUID();
     const network = this.network(targetId, input);
     if (id && id !== 'local') {
@@ -136,10 +146,7 @@ export class RemoteDesktopTargetsService {
     }
     const encrypted = input.saveCredentials
       ? this.encryption.encrypt(
-          JSON.stringify({
-            username: input.username,
-            password: input.password,
-          }),
+          JSON.stringify(account),
           `remote-desktop:${targetId}`,
         )
       : { encryptedPayload: '', iv: '', authTag: '' };
