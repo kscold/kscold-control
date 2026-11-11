@@ -42,6 +42,10 @@ const RESULT_CLASS: Record<SshAuditEvent['result'], string> = {
 
 type EventFilter = 'external' | 'success' | 'failure' | 'all';
 
+function blockConfirmation(ip: string): string {
+  return `${ip}를 차단 목록에 추가할까요?\n적용 중인 방화벽 규칙에 따라 SSH와 운영 사이트 접속이 차단될 수 있습니다.`;
+}
+
 function ScopeBadge({ scope }: { scope: SshIpScope }) {
   const s = SCOPE_LABEL[scope];
   return (
@@ -133,8 +137,17 @@ export function SshAccessPanel() {
 
   if (!data) {
     return ssh.error ? (
-      <div className="rounded-lg border border-red-900/50 bg-red-950/30 px-4 py-3 text-sm text-red-400">
+      <div
+        role="alert"
+        className="rounded-lg border border-red-900/50 bg-red-950/30 px-4 py-3 text-sm text-red-400"
+      >
         {ssh.error}
+        <button
+          className={`${smallButton} ml-3`}
+          onClick={() => void ssh.reload()}
+        >
+          다시 시도
+        </button>
       </div>
     ) : (
       <div className="flex items-center justify-center py-12">
@@ -170,7 +183,7 @@ export function SshAccessPanel() {
             disabled={working !== null}
             onClick={() =>
               confirmAct(
-                `${row.ip} 를 막을까요?\n맥미니 방화벽에서 이 IP 의 모든 접속(SSH·운영 중인 사이트)을 막습니다.`,
+                blockConfirmation(row.ip),
                 `block:${row.ip}`,
                 () => ssh.block(row.ip, 'Control 에서 차단'),
               )
@@ -185,6 +198,14 @@ export function SshAccessPanel() {
 
   return (
     <div className="space-y-6">
+      {ssh.error && (
+        <p
+          role="alert"
+          className="rounded-lg border border-amber-800 bg-amber-950/30 p-3 text-sm text-amber-200"
+        >
+          새로고침에 실패해 이전 조회 결과를 표시합니다. {ssh.error}
+        </p>
+      )}
       {/* 상태 */}
       <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
         <Stat
@@ -253,7 +274,7 @@ export function SshAccessPanel() {
                 : 'border-gray-800 text-gray-400 hover:text-white'
             }`}
           >
-            {d === 1 ? '오늘' : `${d}일`}
+            {d === 1 ? '최근 24시간' : `${d}일`}
           </button>
         ))}
         <button
@@ -303,7 +324,8 @@ export function SshAccessPanel() {
                           confirmAct(
                             `${s.ip} 를 내 IP 로 표시할까요?`,
                             `known:${s.ip}`,
-                            () => ssh.addKnown(s.ip as string),
+                            () =>
+                              s.ip ? ssh.addKnown(s.ip) : Promise.resolve(),
                           )
                         }
                       >
@@ -338,7 +360,7 @@ export function SshAccessPanel() {
       </Section>
 
       {/* 차단 */}
-      <Section title="SSH 차단 중인 IP" count={data.blocks.length}>
+      <Section title="차단 목록 IP" count={data.blocks.length}>
         {canManage && (
           <form
             className="mb-3 grid grid-cols-1 gap-2 sm:grid-cols-[minmax(0,12rem)_minmax(0,1fr)_auto]"
@@ -346,11 +368,15 @@ export function SshAccessPanel() {
               e.preventDefault();
               const ip = blockIp.trim();
               if (!ip) return;
-              void act(`block:${ip}`, async () => {
-                await ssh.block(ip, blockReason.trim() || undefined);
-                setBlockIp('');
-                setBlockReason('');
-              });
+              confirmAct(
+                blockConfirmation(ip),
+                `block:${ip}`,
+                async () => {
+                  await ssh.block(ip, blockReason.trim() || undefined);
+                  setBlockIp('');
+                  setBlockReason('');
+                },
+              );
             }}
           >
             <input
@@ -378,7 +404,9 @@ export function SshAccessPanel() {
           자동 차단: 외부에서 root·없는 계정으로 시도하면 바로, 그 밖의 계정은
           1시간에 3번 실패하면 막습니다. 자동으로 풀지 않습니다. 성공한 적 있는
           IP·내 IP·내부망· Tailscale 은 막지 않습니다. 막은 IP 는 SSH 뿐 아니라
-          맥미니에서 운영 중인 사이트에도 들어오지 못합니다.
+          맥미니에서 운영 중인 사이트에도 적용되도록 설정할 수 있습니다. 이
+          화면은 요청 목록이며 실제 적용 범위는 서버에 설치된 방화벽 규칙에
+          따릅니다.
         </p>
         {data.blocks.length === 0 ? (
           <Empty text="막고 있는 IP 가 없습니다" />
@@ -415,7 +443,7 @@ export function SshAccessPanel() {
                     disabled={working !== null}
                     onClick={() =>
                       confirmAct(
-                        `${b.ip} 의 SSH 차단을 풀까요?${
+                        `${b.ip}의 차단을 풀까요?${
                           b.source === 'auto'
                             ? '\n같은 시도가 다시 오면 또 자동으로 막힙니다. 내 IP 라면 "내 IP" 로 표시하세요.'
                             : ''
