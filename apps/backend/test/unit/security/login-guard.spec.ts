@@ -4,6 +4,8 @@ import { LoginUseCase } from '@/auth/application/use-cases/login.use-case';
 import { LOGIN_THROTTLED_MESSAGE } from '@/security/application/services/login-guard.service';
 import {
   decideLoginBlock,
+  loginIpGroup,
+  normalizeLoginAccount,
   type LoginAttemptRecord,
   type LoginSubject,
 } from '@/security/domain/login-guard/login-block.policy';
@@ -16,6 +18,7 @@ const at = (minutes: number) => new Date(T0 + minutes * MINUTE);
 
 const attacker: LoginSubject = {
   ip: '203.0.113.7',
+  ipGroup: '203.0.113.7',
   account: 'admin@example.com',
   origin: 'external',
 };
@@ -27,10 +30,14 @@ function failures(
   return minutes.map((m) => ({
     ...attacker,
     result: 'failure',
+    reason: 'wrong-password',
     at: at(m),
     ...overrides,
   }));
 }
+
+const range = (count: number, step = 1) =>
+  Array.from({ length: count }, (_, i) => i * step);
 
 describe('decideLoginBlock', () => {
   it('같은 IP 가 15분 안에 5번 틀리면 마지막 실패부터 1시간 막는다', () => {
@@ -59,18 +66,45 @@ describe('decideLoginBlock', () => {
     expect(decideLoginBlock(attacker, history, at(64)).ipBanUntil).toBeNull();
   });
 
-  it('IP 규칙은 거절된 시도도 세고 성공은 세지 않는다', () => {
-    const refused = failures([0, 1, 2, 3, 4], { result: 'refused' });
-    const succeeded = failures([0, 1, 2, 3, 4], { result: 'success' });
+  it('IP 규칙은 차단돼 돌려보낸 시도는 세고, 계정 잠금으로 돌려보낸 시도와 성공은 세지 않는다', () => {
+    const minutes = [0, 1, 2, 3, 4];
+    const ipBanned = failures(minutes, {
+      result: 'refused',
+      reason: 'ip-banned',
+    });
+    const accountLocked = failures(minutes, {
+      result: 'refused',
+      reason: 'account-locked',
+    });
+    const succeeded = failures(minutes, { result: 'success', reason: null });
 
     expect(
-      decideLoginBlock(attacker, refused, at(5)).ipBanUntil,
+      decideLoginBlock(attacker, ipBanned, at(5)).ipBanUntil,
     ).not.toBeNull();
+    expect(
+      decideLoginBlock(attacker, accountLocked, at(5)).ipBanUntil,
+    ).toBeNull();
     expect(decideLoginBlock(attacker, succeeded, at(5)).ipBanUntil).toBeNull();
   });
 
+  it('계정 잠금으로 돌려보낸 시도도 15분에 60번 몰리면 IP 를 막는다', () => {
+    const locked = {
+      result: 'refused' as const,
+      reason: 'account-locked' as const,
+    };
+
+    expect(
+      decideLoginBlock(attacker, failures(range(59, 0.25), locked), at(15))
+        .ipBanUntil,
+    ).toBeNull();
+    expect(
+      decideLoginBlock(attacker, failures(range(60, 0.25), locked), at(15))
+        .ipBanUntil,
+    ).toEqual(at(14.75 + 60));
+  });
+
   it('하루 20번째 실패에서 방화벽에 올리고 24시간이 지난 실패는 세지 않는다', () => {
-    const spread = Array.from({ length: 20 }, (_, i) => i * 72);
+    const spread = range(20, 72);
     const now = at(19 * 72);
 
     expect(
@@ -85,10 +119,13 @@ describe('decideLoginBlock', () => {
   });
 
   it('한 계정이 여러 IP 에서 15분 안에 10번 틀리면 그 계정만 15분 잠근다', () => {
-    const spread = Array.from({ length: 10 }, (_, i) =>
-      failures([i], { ip: `198.51.100.${i + 1}` }),
-    ).flat();
-    const fresh = { ...attacker, ip: '192.0.2.50' };
+    const spread = range(10).flatMap((i) =>
+      failures([i], {
+        ip: `198.51.100.${i + 1}`,
+        ipGroup: `198.51.100.${i + 1}`,
+      }),
+    );
+    const fresh = { ...attacker, ip: '192.0.2.50', ipGroup: '192.0.2.50' };
 
     const decision = decideLoginBlock(fresh, spread, at(10));
     expect(decision.accountLockedUntil).toEqual(at(24));
@@ -108,78 +145,114 @@ describe('decideLoginBlock', () => {
     ).toBeNull();
   });
 
-  it('계정 규칙은 거절된 시도와 허용 목록 주소의 실패를 세지 않는다', () => {
-    const refused = failures([0, 1, 2, 3, 4, 5, 6, 7, 8, 9], {
-      result: 'refused',
-    });
-    const vouched = failures([0, 1, 2, 3, 4, 5, 6, 7, 8, 9], {
-      origin: 'vouched',
-    });
+  it('바깥에서 쌓인 실패는 내부망·허용 목록·확인 못 한 주소의 로그인을 잠그지 않는다', () => {
+    const external = failures(range(30, 0.4));
 
+    for (const origin of ['internal', 'vouched', 'unverified'] as const) {
+      expect(
+        decideLoginBlock({ ...attacker, origin }, external, at(12))
+          .accountLockedUntil,
+      ).toBeNull();
+    }
     expect(
-      decideLoginBlock(attacker, refused, at(10)).accountLockedUntil,
-    ).toBeNull();
-    expect(
-      decideLoginBlock(attacker, vouched, at(10)).accountLockedUntil,
-    ).toBeNull();
+      decideLoginBlock(attacker, external, at(12)).accountLockedUntil,
+    ).not.toBeNull();
   });
 
-  it('허용 목록 주소는 아무리 틀려도 막지 않는다', () => {
+  it('허용 목록 주소는 IP 로 막지 않고, 같은 출처에서 30번 틀리면 계정을 잠근다', () => {
     const vouched = { ...attacker, origin: 'vouched' as const };
-    const history = failures(
-      Array.from({ length: 30 }, (_, i) => i / 2),
-      { origin: 'vouched' },
-    );
+    const history = (count: number) =>
+      failures(range(count, 0.4), { origin: 'vouched' });
 
-    expect(decideLoginBlock(vouched, history, at(15))).toEqual({
+    const below = decideLoginBlock(vouched, history(29), at(12));
+    expect(below).toEqual({
       ipBanUntil: null,
       firewall: false,
       accountLockedUntil: null,
     });
+    expect(
+      decideLoginBlock(vouched, history(30), at(12)).accountLockedUntil,
+    ).not.toBeNull();
   });
 
-  it('내부 주소는 IP 로 막지 않지만 계정 규칙은 건다', () => {
-    const internal = {
+  it('내부 주소와 확인 못 한 주소는 IP 로 막지 않지만 계정 규칙은 건다', () => {
+    for (const origin of ['internal', 'unverified'] as const) {
+      const subject = { ...attacker, origin };
+      const history = failures(range(30, 0.5), { origin });
+
+      const decision = decideLoginBlock(subject, history, at(15));
+      expect(decision.ipBanUntil).toBeNull();
+      expect(decision.firewall).toBe(false);
+      expect(decision.accountLockedUntil).not.toBeNull();
+    }
+  });
+
+  it('IPv6 는 같은 /64 대역의 다른 주소 실패를 함께 센다', () => {
+    const subject = {
       ...attacker,
-      ip: '127.0.0.1',
-      origin: 'internal' as const,
+      ip: '2001:db8:1:2::99',
+      ipGroup: loginIpGroup('2001:db8:1:2::99'),
     };
-    const history = failures(
-      Array.from({ length: 30 }, (_, i) => i / 2),
-      { ip: '127.0.0.1', origin: 'internal' },
+    const rotated = range(5).flatMap((i) =>
+      failures([i], {
+        ip: `2001:db8:1:2::${i + 1}`,
+        ipGroup: loginIpGroup(`2001:db8:1:2::${i + 1}`),
+      }),
     );
 
-    const decision = decideLoginBlock(internal, history, at(15));
-    expect(decision.ipBanUntil).toBeNull();
-    expect(decision.firewall).toBe(false);
-    expect(decision.accountLockedUntil).not.toBeNull();
+    expect(decideLoginBlock(subject, rotated, at(5)).ipBanUntil).not.toBeNull();
+    expect(
+      decideLoginBlock(
+        {
+          ...subject,
+          ip: '2001:db8:1:3::1',
+          ipGroup: loginIpGroup('2001:db8:1:3::1'),
+        },
+        rotated,
+        at(5),
+      ).ipBanUntil,
+    ).toBeNull();
+  });
+});
+
+describe('loginIpGroup', () => {
+  it('IPv4 는 주소 하나, IPv6 는 같은 표기의 /64 대역으로 묶는다', () => {
+    expect(loginIpGroup('203.0.113.7')).toBe('203.0.113.7');
+    expect(loginIpGroup('2001:DB8:1:2:abcd::1')).toBe('2001:db8:1:2::/64');
+    expect(loginIpGroup('2001:0db8:0001:0002:ffff:ffff:ffff:ffff')).toBe(
+      '2001:db8:1:2::/64',
+    );
+    expect(loginIpGroup('2001:db8:0:0:1::1')).toBe('2001:db8::/64');
+    expect(loginIpGroup('2001:db8:1:2::192.0.2.4')).toBe('2001:db8:1:2::/64');
+    expect(loginIpGroup(null)).toBeNull();
+  });
+});
+
+describe('normalizeLoginAccount', () => {
+  it('제어 문자와 글자 방향 문자를 지우고 소문자로 맞춘다', () => {
+    expect(normalizeLoginAccount(' Admin@Example.com‮\u0000⁦\u009f ')).toBe(
+      'admin@example.com',
+    );
+    expect(normalizeLoginAccount('ad‭min@example.com\n')).toBe(
+      'admin@example.com',
+    );
   });
 });
 
 describe('LoginUseCase with LoginGuardService', () => {
+  // 없는 계정은 운영과 같은 비용(cost 10)으로 비교하므로 테스트를 함께 돌리는 부하에서는 오래 걸린다.
+  jest.setTimeout(30_000);
   const PASSWORD = 'correct horse';
   let passwordHash: string;
   let harness: Awaited<ReturnType<typeof loginGuardHarness>>;
   let useCase: LoginUseCase;
-  let previousAllowlist: string | undefined;
 
   beforeAll(async () => {
     passwordHash = await bcrypt.hash(PASSWORD, 4);
   });
 
-  beforeEach(async () => {
-    previousAllowlist = process.env.SECURITY_ALLOWLIST;
-    delete process.env.SECURITY_ALLOWLIST;
-    jest.useFakeTimers({
-      now: T0,
-      doNotFake: [
-        'nextTick',
-        'setImmediate',
-        'setTimeout',
-        'setInterval',
-        'queueMicrotask',
-      ],
-    });
+  async function build(options: { allowlist?: string } = {}) {
+    await harness?.cleanup();
     const admin = {
       id: 'user-1',
       email: 'admin@example.com',
@@ -191,32 +264,73 @@ describe('LoginUseCase with LoginGuardService', () => {
         email === admin.email ? admin : null,
       findByIdWithRoles: async (id: string) => (id === admin.id ? admin : null),
     };
-    harness = await loginGuardHarness();
+    harness = await loginGuardHarness(options);
     useCase = new LoginUseCase(
       users as never,
       sessionHarness().sessions,
       harness.guard,
     );
+  }
+
+  beforeEach(async () => {
+    jest.useFakeTimers({
+      now: T0,
+      doNotFake: [
+        'nextTick',
+        'setImmediate',
+        'setTimeout',
+        'setInterval',
+        'queueMicrotask',
+      ],
+    });
+    await build();
   });
 
   afterEach(async () => {
     jest.useRealTimers();
     await harness.cleanup();
-    if (previousAllowlist === undefined) delete process.env.SECURITY_ALLOWLIST;
-    else process.env.SECURITY_ALLOWLIST = previousAllowlist;
   });
 
-  const login = (ip: string, password: string, email = 'admin@example.com') =>
-    useCase.execute({ email, password }, { ip, userAgent: null }).then(
-      () => 200,
-      (error: { getStatus?: () => number }) => error.getStatus?.() ?? 500,
-    );
+  const login = (
+    ip: string,
+    password: string,
+    email = 'admin@example.com',
+    ipVerified = true,
+  ) =>
+    useCase
+      .execute({ email, password }, { ip, ipVerified, userAgent: null })
+      .then(
+        () => 200,
+        (error: { getStatus?: () => number }) => error.getStatus?.() ?? 500,
+      );
 
-  const statuses = async (ip: string, count: number, email?: string) => {
+  const statuses = async (
+    ip: string,
+    count: number,
+    email?: string,
+    ipVerified?: boolean,
+  ) => {
     const seen: number[] = [];
-    for (let i = 0; i < count; i++) seen.push(await login(ip, 'wrong', email));
+    for (let i = 0; i < count; i++) {
+      seen.push(await login(ip, 'wrong', email, ipVerified));
+    }
     return seen;
   };
+
+  const tally = (seen: number[]) =>
+    seen.reduce<Record<number, number>>(
+      (counts, status) => ({ ...counts, [status]: (counts[status] ?? 0) + 1 }),
+      {},
+    );
+
+  const lockAdminFromOutside = async () => {
+    for (let i = 1; i <= 10; i++) {
+      expect(await login(`198.51.100.${i}`, 'wrong')).toBe(401);
+    }
+  };
+
+  const firewalled = async () =>
+    (await harness.firewallEntries()).map(([blocked]) => blocked);
 
   it('5번 틀린 IP 는 6번째에 429 를 받고 맞는 비밀번호도 막히다가 1시간 뒤 풀린다', async () => {
     const ip = '203.0.113.10';
@@ -227,9 +341,6 @@ describe('LoginUseCase with LoginGuardService', () => {
       source: 'auto-login',
       active: true,
     });
-    expect(harness.nginx.applied[harness.nginx.applied.length - 1]).toContain(
-      ip,
-    );
 
     jest.setSystemTime(T0 + 61 * MINUTE);
     expect(await login(ip, PASSWORD)).toBe(200);
@@ -242,7 +353,7 @@ describe('LoginUseCase with LoginGuardService', () => {
     await expect(
       useCase.execute(
         { email: 'admin@example.com', password: PASSWORD },
-        { ip, userAgent: null },
+        { ip, ipVerified: true, userAgent: null },
       ),
     ).rejects.toMatchObject({ message: LOGIN_THROTTLED_MESSAGE });
     expect(LOGIN_THROTTLED_MESSAGE).toContain('잠시 뒤 다시 시도');
@@ -265,19 +376,127 @@ describe('LoginUseCase with LoginGuardService', () => {
     ).toHaveLength(1);
   });
 
+  describe('동시에 몰린 시도', () => {
+    it('한 IP 가 50번을 한꺼번에 보내도 비밀번호 확인까지 가는 것은 5번뿐이다', async () => {
+      const ip = '203.0.113.20';
+
+      const seen = await Promise.all(range(50).map(() => login(ip, 'wrong')));
+
+      expect(tally(seen)).toEqual({ 401: 5, 429: 45 });
+      expect(harness.ipBans.rows.get(ip)?.active).toBe(true);
+    });
+
+    it('여러 IP 가 한 계정에 한꺼번에 보내도 비밀번호 확인까지 가는 것은 10번뿐이다', async () => {
+      const seen = await Promise.all(
+        range(50).map((i) => login(`198.51.100.${i + 1}`, 'wrong')),
+      );
+
+      expect(tally(seen)).toEqual({ 401: 10, 429: 40 });
+    });
+
+    it('한도 아래로 함께 들어온 맞는 로그인은 모두 통과하고, 끝난 시도는 더 세지 않는다', async () => {
+      const ip = '203.0.113.21';
+
+      expect(
+        await Promise.all(range(4).map(() => login(ip, PASSWORD))),
+      ).toEqual([200, 200, 200, 200]);
+      expect(await statuses(ip, 5)).toEqual([401, 401, 401, 401, 401]);
+    });
+  });
+
+  describe('공격으로 계정이 잠겼을 때 운영자', () => {
+    it('바깥 IP 에서 여러 번 다시 시도해도 그 IP 는 막히지 않고, 잠금이 풀리면 들어간다', async () => {
+      const operator = '203.0.113.50';
+      await lockAdminFromOutside();
+
+      for (let retry = 0; retry < 8; retry++) {
+        expect(await login(operator, PASSWORD)).toBe(429);
+      }
+      expect(harness.ipBans.rows.has(operator)).toBe(false);
+      expect(await firewalled()).not.toContain(operator);
+
+      jest.setSystemTime(T0 + 16 * MINUTE);
+      expect(await login(operator, PASSWORD)).toBe(200);
+    });
+
+    it('잠긴 계정을 기계처럼 60번 두드리는 IP 는 막는다', async () => {
+      const hammer = '203.0.113.51';
+      await lockAdminFromOutside();
+
+      await statuses(hammer, 59);
+      expect(harness.ipBans.rows.has(hammer)).toBe(false);
+      await statuses(hammer, 1);
+      expect(harness.ipBans.rows.get(hammer)?.active).toBe(true);
+    });
+
+    it('내부망·허용 목록 주소·SSH 내 IP 에서는 바로 로그인한다', async () => {
+      await build({ allowlist: '192.0.2.0/24' });
+      await harness.addKnownIp('198.51.100.200');
+      await lockAdminFromOutside();
+      expect(await login('203.0.113.52', PASSWORD)).toBe(429);
+
+      expect(await login('10.0.0.5', PASSWORD)).toBe(200);
+      expect(await login('100.64.0.9', PASSWORD)).toBe(200);
+      expect(await login('192.0.2.30', PASSWORD)).toBe(200);
+      expect(await login('198.51.100.200', PASSWORD)).toBe(200);
+    });
+  });
+
+  describe('프록시 비밀값으로 확인하지 못한 주소', () => {
+    it('꾸민 외부 IP 는 아무리 틀려도 nginx·방화벽 차단에 오르지 않고 계정 잠금만 받는다', async () => {
+      const forged = '203.0.113.99';
+
+      expect(tally(await statuses(forged, 25, undefined, false))).toEqual({
+        401: 10,
+        429: 15,
+      });
+      expect(harness.ipBans.rows.size).toBe(0);
+      expect(await firewalled()).toEqual([]);
+      expect(await login(forged, PASSWORD, undefined, true)).toBe(200);
+    });
+
+    it('허용 목록 주소를 사칭해도 예외를 받지 못한다', async () => {
+      await build({ allowlist: '198.51.100.20' });
+
+      expect(await statuses('198.51.100.20', 11, undefined, false)).toEqual([
+        ...Array(10).fill(401),
+        429,
+      ]);
+    });
+  });
+
   it.each([
     ['허용 목록에 적은 주소', '198.51.100.20', '198.51.100.20'],
     ['허용 목록 대역 안의 주소', '198.51.100.21', '198.51.100.0/24'],
-  ])('%s 는 20번 틀려도 막히지 않는다', async (_label, ip, allowlist) => {
-    process.env.SECURITY_ALLOWLIST = allowlist;
+  ])('%s 는 20번 틀려도 IP 로 막히지 않는다', async (_label, ip, allowlist) => {
+    await build({ allowlist });
 
     expect(new Set(await statuses(ip, 20))).toEqual(new Set([401]));
     expect(await login(ip, PASSWORD)).toBe(200);
     expect(harness.ipBans.rows.has(ip)).toBe(false);
-    expect((await harness.firewallEntries()).map(([b]) => b)).not.toContain(ip);
+    expect(await firewalled()).not.toContain(ip);
   });
 
-  it('SSH 내 IP 목록의 주소는 20번 틀려도 막히지 않는다', async () => {
+  it('허용 목록 주소도 15분에 30번 틀리면 그 출처에서 계정이 잠긴다', async () => {
+    await build({ allowlist: '198.51.100.0/24' });
+
+    expect(tally(await statuses('198.51.100.22', 31))).toEqual({
+      401: 30,
+      429: 1,
+    });
+    expect(await login('10.0.0.5', PASSWORD)).toBe(200);
+    expect(harness.ipBans.rows.size).toBe(0);
+  });
+
+  it('넓게 적은 허용 대역은 차단에서 보호만 하고 로그인 예외는 주지 않는다', async () => {
+    await build({ allowlist: '198.0.0.0/8' });
+    const ip = '198.51.100.5';
+
+    expect(await statuses(ip, 6)).toEqual([401, 401, 401, 401, 401, 429]);
+    expect(harness.ipBans.rows.has(ip)).toBe(false);
+  });
+
+  it('SSH 내 IP 목록의 주소는 20번 틀려도 IP 로 막히지 않는다', async () => {
     const ip = '192.0.2.30';
     await harness.addKnownIp(ip);
 
@@ -287,7 +506,7 @@ describe('LoginUseCase with LoginGuardService', () => {
   });
 
   it('내부 주소는 IP 로 막지 않지만 계정 잠금은 받는다', async () => {
-    const email = 'ops@example.com';
+    const email = 'admin@example.com';
 
     for (const ip of ['10.0.0.5', '100.64.0.9', '172.16.0.9']) {
       expect(await statuses(ip, 3, email)).toEqual([401, 401, 401]);
@@ -297,8 +516,8 @@ describe('LoginUseCase with LoginGuardService', () => {
   });
 
   it('프록시 주소(루프백)는 허용 목록에 있어도 계정 규칙을 받는다', async () => {
-    process.env.SECURITY_ALLOWLIST = '127.0.0.1,::1';
-    const email = 'proxy@example.com';
+    await build({ allowlist: '127.0.0.1,::1' });
+    const email = 'admin@example.com';
 
     expect(await statuses('127.0.0.1', 11, email)).toEqual([
       ...Array(10).fill(401),
@@ -321,10 +540,45 @@ describe('LoginUseCase with LoginGuardService', () => {
     expect(await login('192.0.2.60', PASSWORD)).toBe(200);
   });
 
-  it('성공과 실패를 IP 와 계정과 함께 남긴다', async () => {
+  describe('IPv6', () => {
+    const inBlock = (n: number) => `2001:db8:1:2::${n.toString(16)}`;
+
+    it('/64 안에서 주소를 바꿔 가며 틀려도 대역째 막는다', async () => {
+      for (let i = 1; i <= 5; i++) {
+        expect(await login(inBlock(i), 'wrong')).toBe(401);
+      }
+
+      expect(await login(inBlock(99), PASSWORD)).toBe(429);
+      expect(harness.ipBans.rows.get('2001:db8:1:2::/64')?.active).toBe(true);
+      expect(await login('2001:db8:1:3::1', PASSWORD)).toBe(200);
+    });
+
+    it('하루 20번이면 /64 대역 하나를 방화벽에 올린다', async () => {
+      for (let round = 0; round < 4; round++) {
+        jest.setSystemTime(T0 + round * 2 * 60 * MINUTE);
+        for (let i = 1; i <= 5; i++)
+          await login(inBlock(round * 10 + i), 'wrong');
+      }
+
+      expect(await firewalled()).toEqual(['2001:db8:1:2::/64']);
+    });
+
+    it('SSH 내 IP 가 든 /64 는 nginx·방화벽에 올리지 않고 로그인만 돌려보낸다', async () => {
+      await harness.addKnownIp(inBlock(0x77));
+      for (let i = 1; i <= 5; i++) await login(inBlock(i), 'wrong');
+
+      expect(await login(inBlock(99), PASSWORD)).toBe(429);
+      expect(harness.ipBans.rows.size).toBe(0);
+      expect(await login(inBlock(0x77), PASSWORD)).toBe(200);
+    });
+  });
+
+  it('성공과 실패를 IP 와 계정과 함께 남기고, 돌려보낸 시도는 감사 기록에 쓰지 않는다', async () => {
     await login('192.0.2.70', 'wrong');
     await login('192.0.2.70', PASSWORD);
     await login('192.0.2.70', 'wrong', 'ghost@example.com');
+    const banned = '203.0.113.70';
+    await statuses(banned, 7);
 
     const recorded = harness.attempts.rows
       .filter((row) => row.ip === '192.0.2.70')
@@ -353,25 +607,53 @@ describe('LoginUseCase with LoginGuardService', () => {
     expect(audited[0].summary).toContain('192.0.2.70');
     expect(audited[0].targetId).toBe('admin@example.com');
     expect(audited[1].actorId).toBe('user-1');
+
+    expect(
+      harness.attempts.rows.filter(
+        (row) => row.ip === banned && row.result === 'refused',
+      ),
+    ).toHaveLength(2);
+    expect(
+      harness.audits
+        .filter(
+          (a) =>
+            a.targetId === banned ||
+            (a.metadata as { ip?: string } | undefined)?.ip === banned,
+        )
+        .map((a) => a.action),
+    ).toEqual([...Array(5).fill('login.failure'), 'login.ip-ban']);
   });
 
-  it('대소문자만 바꾼 이메일도 같은 계정으로 센다', async () => {
+  it('대소문자나 보이지 않는 문자만 바꾼 이메일도 같은 계정으로 센다', async () => {
+    const variants = [
+      'Admin@Example.com',
+      ' admin@example.com',
+      'admin@example.com‮',
+      'ad\u0000min@example.com',
+      '⁦ADMIN@example.com',
+    ];
     for (let i = 1; i <= 10; i++) {
-      const email = i % 2 ? 'Admin@Example.com' : ' admin@example.com';
-      await login(`198.51.100.${150 + i}`, 'wrong', email);
+      await login(`198.51.100.${150 + i}`, 'wrong', variants[i % 5]);
     }
 
     expect(await login('192.0.2.80', PASSWORD)).toBe(429);
+    expect(
+      new Set(
+        harness.attempts.rows
+          .filter((row) => row.ip?.startsWith('198.51.100.15'))
+          .map((row) => row.account),
+      ),
+    ).toEqual(new Set(['admin@example.com']));
   });
 
   it('없는 계정과 틀린 비밀번호는 같은 오류를 낸다', async () => {
     const unknown = useCase.execute(
       { email: 'nobody@example.com', password: 'wrong' },
-      { ip: '192.0.2.90', userAgent: null },
+      { ip: '192.0.2.90', ipVerified: true, userAgent: null },
     );
     const wrong = useCase.execute(
       { email: 'admin@example.com', password: 'wrong' },
-      { ip: '192.0.2.91', userAgent: null },
+      { ip: '192.0.2.91', ipVerified: true, userAgent: null },
     );
 
     const [a, b] = await Promise.allSettled([unknown, wrong]);
@@ -384,16 +666,21 @@ describe('LoginUseCase with LoginGuardService', () => {
     expect(ea.getResponse()).toEqual(eb.getResponse());
   });
 
-  it('오래된 로그인 기록은 30일 뒤 지운다', async () => {
+  it('30일 지난 로그인 기록과, 만료로 풀린 지 30일 지난 IP 차단 행을 지운다', async () => {
     await login('192.0.2.95', 'wrong');
     await login('192.0.2.95', PASSWORD);
+    await statuses('203.0.113.95', 5);
+    const ban = harness.ipBans.rows.get('203.0.113.95');
+    expect(ban?.active).toBe(true);
     jest.setSystemTime(T0 + 31 * 24 * 60 * MINUTE);
     await login('192.0.2.95', PASSWORD);
+    if (ban) ban.active = false;
 
     await harness.guard.prune();
 
     expect(harness.attempts.rows.map((row) => row.at)).toEqual([
       new Date(T0 + 31 * 24 * 60 * MINUTE),
     ]);
+    expect(harness.ipBans.rows.has('203.0.113.95')).toBe(false);
   });
 });

@@ -18,4 +18,6 @@ export interface IIpBanRepository {
   create(input: CreateIpBanInput): Promise<IpBan>;
   deactivate(id: string): Promise<IpBan | null>;
   removeExpired(now: Date): Promise<IpBan[]>;
+  /** 만료로 풀린 지 오래된 차단 행을 지운다. 지운 행 수를 돌려준다. */
+  deleteExpiredBefore(cutoff: Date): Promise<number>;
 }

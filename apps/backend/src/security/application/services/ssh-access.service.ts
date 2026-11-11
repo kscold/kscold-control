@@ -20,6 +20,7 @@ import {
   type SshAuditSummary,
   type SshIpScope,
 } from '../../domain/ssh-audit/ssh-audit.model';
+import { parseIpRange } from '../../domain/ip-range';
 
 const execFileAsync = promisify(execFile);
 
@@ -250,7 +251,7 @@ export class SshAccessService {
     reason: string | null,
     scope: SshBlockScope = 'all',
   ): Promise<SshBlock> {
-    const value = normalizeIp(ip);
+    const value = normalizeBlockTarget(ip);
     if (classifySshIp(value) !== 'external') {
       throw new BadRequestException(
         '맥미니·내부망·Tailscale 주소는 막을 수 없습니다',
@@ -287,7 +288,7 @@ export class SshAccessService {
   private async unblockEntry(
     ip: string,
   ): Promise<{ ip: string; released: Array<SshBlock['source']> }> {
-    const value = normalizeIp(ip);
+    const value = normalizeBlockTarget(ip);
     const released: Array<SshBlock['source']> = [];
     const manualLines = await this.readLines('ssh-block-manual.txt');
     const kept = manualLines.filter((l) => l.split('\t')[0]?.trim() !== value);
@@ -311,7 +312,7 @@ export class SshAccessService {
     ip: string,
     scope: SshBlockScope,
   ): Promise<SshBlock> {
-    const value = normalizeIp(ip);
+    const value = normalizeBlockTarget(ip);
     const target = (await this.readBlocks()).find((b) => b.ip === value);
     if (!target) throw new NotFoundException('차단 목록에 없는 IP 입니다');
     await this.writeScope(value, scope);
@@ -630,6 +631,16 @@ function cleanLabel(label: string | null | undefined): string | null {
       .trim()
       .slice(0, 40) || null
   );
+}
+
+/** 방화벽 차단 대상은 IP 하나이거나, 로그인 차단이 올리는 IPv6 /64 대역이다. */
+function normalizeBlockTarget(value: string): string {
+  const text = String(value ?? '').trim();
+  if (!text.includes('/')) return normalizeIp(text);
+  if (!parseIpRange(text)) {
+    throw new BadRequestException('IP 주소나 대역 형식이 아닙니다');
+  }
+  return text;
 }
 
 function normalizeIp(ip: string): string {

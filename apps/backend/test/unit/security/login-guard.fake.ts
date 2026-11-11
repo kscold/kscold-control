@@ -9,10 +9,7 @@ import { SshAccessService } from '@/security/application/services/ssh-access.ser
 import { CreateIpBanUseCase } from '@/security/application/use-cases/create-ip-ban.use-case';
 import { ResyncBlocklistUseCase } from '@/security/application/use-cases/resync-blocklist.use-case';
 import type { IpBan } from '@/security/domain/entities/ip-ban.entity';
-import type {
-  LoginAttemptReason,
-  LoginAttemptRecord,
-} from '@/security/domain/login-guard/login-block.policy';
+import type { LoginAttemptRecord } from '@/security/domain/login-guard/login-block.policy';
 import type {
   CreateIpBanInput,
   IIpBanRepository,
@@ -22,18 +19,14 @@ import type { INginxBlocklistWriter } from '@/security/domain/repositories/nginx
 
 /** SQL 저장소와 같은 조건으로 기록을 고른다. */
 export class InMemoryLoginAttemptRepository implements ILoginAttemptRepository {
-  readonly rows: Array<
-    LoginAttemptRecord & { reason: LoginAttemptReason | null }
-  > = [];
+  readonly rows: LoginAttemptRecord[] = [];
 
-  async append(
-    row: LoginAttemptRecord & { reason: LoginAttemptReason | null },
-  ) {
+  async append(row: LoginAttemptRecord) {
     this.rows.push({ ...row });
   }
 
   async recent(query: {
-    ip: string | null;
+    ipGroup: string | null;
     ipSince: Date;
     account: string;
     accountSince: Date;
@@ -41,12 +34,12 @@ export class InMemoryLoginAttemptRepository implements ILoginAttemptRepository {
     return this.rows
       .filter(
         (row) =>
-          (query.ip !== null &&
-            row.ip === query.ip &&
+          (query.ipGroup !== null &&
+            row.ipGroup === query.ipGroup &&
             row.at > query.ipSince) ||
           (row.account === query.account && row.at > query.accountSince),
       )
-      .map(({ reason: _reason, ...record }) => record);
+      .map((row) => ({ ...row }));
   }
 
   async deleteBefore(cutoff: Date) {
@@ -92,6 +85,16 @@ export class InMemoryIpBanRepository implements IIpBanRepository {
   async removeExpired() {
     return [];
   }
+  async deleteExpiredBefore(cutoff: Date) {
+    let removed = 0;
+    for (const [ip, ban] of this.rows) {
+      if (!ban.active && ban.expiresAt && ban.expiresAt < cutoff) {
+        this.rows.delete(ip);
+        removed++;
+      }
+    }
+    return removed;
+  }
 }
 
 /** nginx 를 건드리지 않고, 적용하려던 차단 목록만 남긴다. */
@@ -103,7 +106,8 @@ export class RecordingBlocklistWriter implements INginxBlocklistWriter {
   }
 }
 
-export async function loginGuardHarness() {
+/** allowlist 는 SECURITY_ALLOWLIST 값이다. 기동할 때 한 번 읽으므로 만들 때 넘긴다. */
+export async function loginGuardHarness(options: { allowlist?: string } = {}) {
   const sshDir = await fs.mkdtemp(join(tmpdir(), 'login-guard-'));
   process.env.SSH_AUDIT_DIR = sshDir;
   const attempts = new InMemoryLoginAttemptRepository();
@@ -115,16 +119,17 @@ export async function loginGuardHarness() {
       audits.push(input);
     },
   } as unknown as AuditLogService;
+  const previousAllowlist = process.env.SECURITY_ALLOWLIST;
+  process.env.SECURITY_ALLOWLIST = options.allowlist ?? '';
   const allowlist = new IpAllowlistService();
+  if (previousAllowlist === undefined) delete process.env.SECURITY_ALLOWLIST;
+  else process.env.SECURITY_ALLOWLIST = previousAllowlist;
   const sshAccess = new SshAccessService();
+  const resync = new ResyncBlocklistUseCase(ipBans, nginx);
   const guard = new LoginGuardService(
     attempts,
     ipBans,
-    new CreateIpBanUseCase(
-      ipBans,
-      allowlist,
-      new ResyncBlocklistUseCase(ipBans, nginx),
-    ),
+    new CreateIpBanUseCase(ipBans, allowlist, resync),
     allowlist,
     sshAccess,
     audit,
@@ -135,6 +140,7 @@ export async function loginGuardHarness() {
     attempts,
     ipBans,
     nginx,
+    resync,
     audits,
     sshDir,
     firewallEntries: async () =>
@@ -148,6 +154,7 @@ export async function loginGuardHarness() {
         .map((line) => line.split('\t')),
     addKnownIp: (ip: string) => sshAccess.addKnownIp(ip),
     cleanup: async () => {
+      resync.onModuleDestroy();
       delete process.env.SSH_AUDIT_DIR;
       await fs.rm(sshDir, { recursive: true, force: true });
     },

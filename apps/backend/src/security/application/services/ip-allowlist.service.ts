@@ -1,5 +1,42 @@
 import { Injectable, Logger } from '@nestjs/common';
-import * as net from 'net';
+import {
+  parseIpRange,
+  rangeContains,
+  rangesOverlap,
+  type IpFamily,
+  type IpRange,
+} from '../../domain/ip-range';
+
+const PRIVATE_RANGES = [
+  '127.0.0.0/8',
+  '10.0.0.0/8',
+  '172.16.0.0/12',
+  '192.168.0.0/16',
+  '::1/128',
+  'fc00::/7',
+  'fe80::/10',
+].map((cidr) => parseIpRange(cidr) as IpRange);
+
+/** 이보다 넓은 대역은 차단에서 보호만 하고 로그인 예외로는 쓰지 않는다. */
+const MIN_LOGIN_EXEMPT_PREFIX: Record<IpFamily, number> = {
+  ipv4: 16,
+  ipv6: 48,
+};
+
+/** 잘못 적은 항목을 건너뛰면 모르는 사이에 보호·예외 범위가 바뀌므로 기동을 멈춘다. */
+export function parseSecurityAllowlist(raw: string | undefined): IpRange[] {
+  return (raw ?? '')
+    .split(',')
+    .map((entry) => entry.trim())
+    .filter(Boolean)
+    .map((entry) => {
+      const range = parseIpRange(entry);
+      if (!range) {
+        throw new Error(`SECURITY_ALLOWLIST 항목을 읽을 수 없습니다: ${entry}`);
+      }
+      return range;
+    });
+}
 
 /**
  * IP를 차단해도 되는지 판단한다.
@@ -8,60 +45,64 @@ import * as net from 'net';
 @Injectable()
 export class IpAllowlistService {
   private readonly logger = new Logger(IpAllowlistService.name);
+  private readonly listed = parseSecurityAllowlist(
+    process.env.SECURITY_ALLOWLIST,
+  );
+  private readonly loginExempt = this.listed.filter(
+    (range) => range.prefix >= MIN_LOGIN_EXEMPT_PREFIX[range.family],
+  );
 
-  private readonly defaultAllow: string[] = [
-    '127.0.0.0/8',
-    '10.0.0.0/8',
-    '172.16.0.0/12',
-    '192.168.0.0/16',
-    '::1/128',
-    'fc00::/7',
-    'fe80::/10',
-  ];
+  constructor() {
+    for (const range of this.listed) {
+      if (!this.loginExempt.includes(range)) {
+        this.logger.warn(
+          `SECURITY_ALLOWLIST 의 ${range.label} 은 넓어서 차단에서 보호만 하고 로그인 예외로는 쓰지 않습니다.`,
+        );
+      }
+    }
+  }
 
+  /** 대상은 IP 하나나 대역(IPv6 /64 로그인 차단)이다. 보호 대역과 겹치면 막지 않는다. */
   isProtected(
-    ip: string,
+    target: string,
     requesterIp: string | null,
   ): {
     protected: boolean;
     reason?: string;
   } {
-    if (!net.isIP(ip)) {
+    const range = parseIpRange(target);
+    if (!range) {
       return { protected: true, reason: '유효한 IP 주소가 아닙니다.' };
     }
 
-    if (requesterIp && this.isSameIp(ip, requesterIp)) {
+    if (requesterIp && this.isSameIp(target, requesterIp)) {
       return {
         protected: true,
         reason: '요청자 본인 IP는 차단할 수 없습니다.',
       };
     }
 
-    const ranges = [...this.defaultAllow, ...this.extraAllow()];
-    for (const cidr of ranges) {
-      if (this.isInCidr(ip, cidr)) {
-        return {
-          protected: true,
-          reason: `${cidr} 대역은 allowlist에 의해 보호됩니다.`,
-        };
-      }
+    const hit = [...PRIVATE_RANGES, ...this.listed].find((allowed) =>
+      rangesOverlap(allowed, range),
+    );
+    if (hit) {
+      return {
+        protected: true,
+        reason: `${hit.label} 대역은 allowlist에 의해 보호됩니다.`,
+      };
     }
 
     return { protected: false };
   }
 
-  /** 운영자가 SECURITY_ALLOWLIST 에 직접 적은 주소인가. 기본 내부 대역은 여기에 들지 않는다. */
+  /** 운영자가 SECURITY_ALLOWLIST 에 적은 좁은 대역 안의 주소인가. 기본 내부 대역은 여기에 들지 않는다. */
   isListed(ip: string): boolean {
-    return this.extraAllow().some((cidr) => this.isInCidr(ip, cidr));
+    return this.loginExempt.some((range) => rangeContains(range, ip));
   }
 
-  private extraAllow(): string[] {
-    const raw = process.env.SECURITY_ALLOWLIST;
-    if (!raw) return [];
-    return raw
-      .split(',')
-      .map((s) => s.trim())
-      .filter(Boolean);
+  /** 루프백·사설망처럼 기본으로 보호하는 대역 안의 주소인가 */
+  isPrivate(ip: string): boolean {
+    return PRIVATE_RANGES.some((range) => rangeContains(range, ip));
   }
 
   private isSameIp(a: string, b: string): boolean {
@@ -70,62 +111,5 @@ export class IpAllowlistService {
     const stripA = a.replace(/^::ffff:/, '');
     const stripB = b.replace(/^::ffff:/, '');
     return stripA === stripB;
-  }
-
-  private isInCidr(ip: string, cidr: string): boolean {
-    const [range, bitsRaw] = cidr.split('/');
-    if (!range) return false;
-    // 접두 길이 없이 적은 주소(.env.example 의 127.0.0.1 처럼)는 그 주소 하나로 본다.
-    const bits =
-      bitsRaw === undefined
-        ? net.isIPv6(range)
-          ? 128
-          : 32
-        : parseInt(bitsRaw, 10);
-    if (Number.isNaN(bits)) return false;
-
-    const v4 = net.isIPv4(range) && net.isIPv4(ip);
-    const v6 = net.isIPv6(range) && net.isIPv6(ip);
-    if (!v4 && !v6) return false;
-
-    const ipBytes = v4 ? this.v4ToBytes(ip) : this.v6ToBytes(ip);
-    const rangeBytes = v4 ? this.v4ToBytes(range) : this.v6ToBytes(range);
-    const totalBits = v4 ? 32 : 128;
-    if (bits < 0 || bits > totalBits) return false;
-
-    let remaining = bits;
-    for (let i = 0; i < ipBytes.length && remaining > 0; i++) {
-      const take = Math.min(8, remaining);
-      const mask = take === 8 ? 0xff : (0xff << (8 - take)) & 0xff;
-      if ((ipBytes[i] & mask) !== (rangeBytes[i] & mask)) return false;
-      remaining -= take;
-    }
-    return true;
-  }
-
-  private v4ToBytes(ip: string): number[] {
-    return ip.split('.').map((p) => parseInt(p, 10) & 0xff);
-  }
-
-  private v6ToBytes(ip: string): number[] {
-    // 단순 전개
-    const expanded = this.expandV6(ip);
-    const bytes: number[] = [];
-    for (const group of expanded.split(':')) {
-      const v = parseInt(group, 16);
-      bytes.push((v >> 8) & 0xff, v & 0xff);
-    }
-    return bytes;
-  }
-
-  private expandV6(ip: string): string {
-    if (!ip.includes('::')) return ip;
-    const [left, right] = ip.split('::');
-    const leftGroups = left ? left.split(':') : [];
-    const rightGroups = right ? right.split(':') : [];
-    const missing = 8 - leftGroups.length - rightGroups.length;
-    return [...leftGroups, ...Array(missing).fill('0'), ...rightGroups].join(
-      ':',
-    );
   }
 }

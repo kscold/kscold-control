@@ -14,6 +14,10 @@ export class LoginAttempt {
   @Column({ type: 'varchar', length: 64, nullable: true })
   ip: string | null;
 
+  /** IP 규칙을 세는 단위(IPv6 는 /64 대역). 대역으로 찾으려고 따로 둔다. */
+  @Column({ name: 'ip_group', type: 'varchar', length: 64, nullable: true })
+  ipGroup: string | null;
+
   @Column({ type: 'varchar', length: 320 })
   account: string;
 

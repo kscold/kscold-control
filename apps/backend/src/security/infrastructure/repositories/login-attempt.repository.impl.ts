@@ -3,10 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { LessThan, Repository } from 'typeorm';
 import { LoginAttempt } from '../../domain/entities/login-attempt.entity';
 import type { ILoginAttemptRepository } from '../../domain/repositories/login-attempt.repository';
-import type {
-  LoginAttemptReason,
-  LoginAttemptRecord,
-} from '../../domain/login-guard/login-block.policy';
+import type { LoginAttemptRecord } from '../../domain/login-guard/login-block.policy';
 
 @Injectable()
 export class LoginAttemptRepositoryImpl implements ILoginAttemptRepository {
@@ -15,11 +12,10 @@ export class LoginAttemptRepositoryImpl implements ILoginAttemptRepository {
     private readonly repo: Repository<LoginAttempt>,
   ) {}
 
-  async append(
-    attempt: LoginAttemptRecord & { reason: LoginAttemptReason | null },
-  ): Promise<void> {
+  async append(attempt: LoginAttemptRecord): Promise<void> {
     await this.repo.insert({
       ip: attempt.ip,
+      ipGroup: attempt.ipGroup,
       account: attempt.account,
       origin: attempt.origin,
       result: attempt.result,
@@ -29,7 +25,7 @@ export class LoginAttemptRepositoryImpl implements ILoginAttemptRepository {
   }
 
   async recent(query: {
-    ip: string | null;
+    ipGroup: string | null;
     ipSince: Date;
     account: string;
     accountSince: Date;
@@ -38,21 +34,25 @@ export class LoginAttemptRepositoryImpl implements ILoginAttemptRepository {
       .createQueryBuilder('attempt')
       .select([
         'attempt.ip',
+        'attempt.ipGroup',
         'attempt.account',
         'attempt.origin',
         'attempt.result',
+        'attempt.reason',
         'attempt.createdAt',
       ])
       .where(
-        '(attempt.ip = :ip AND attempt.createdAt > :ipSince) OR (attempt.account = :account AND attempt.createdAt > :accountSince)',
+        '(attempt.ipGroup = :ipGroup AND attempt.createdAt > :ipSince) OR (attempt.account = :account AND attempt.createdAt > :accountSince)',
         query,
       )
       .getMany();
     return rows.map((row) => ({
       ip: row.ip,
+      ipGroup: row.ipGroup,
       account: row.account,
       origin: row.origin,
       result: row.result,
+      reason: row.reason,
       at: row.createdAt,
     }));
   }

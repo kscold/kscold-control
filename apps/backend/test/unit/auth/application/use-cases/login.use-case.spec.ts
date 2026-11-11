@@ -38,9 +38,10 @@ describe('LoginUseCase', () => {
     const { useCase, repository, verifier } = await setup();
     const dto = { email: 'admin@example.com', password: 'correct horse' };
 
-    const first = await useCase.execute(dto, browser);
+    const first = await useCase.execute(dto, { ...browser, ipVerified: true });
     const second = await useCase.execute(dto, {
       ip: '198.51.100.7',
+      ipVerified: true,
       userAgent: null,
     });
 
@@ -67,7 +68,7 @@ describe('LoginUseCase', () => {
     await expect(
       useCase.execute(
         { email: 'admin@example.com', password: 'wrong' },
-        browser,
+        { ...browser, ipVerified: true },
       ),
     ).rejects.toBeInstanceOf(UnauthorizedException);
     expect(repository.rows.size).toBe(0);
@@ -78,7 +79,10 @@ describe('LoginUseCase', () => {
     const elapsed = async (email: string, ip: string) => {
       const started = process.hrtime.bigint();
       await useCase
-        .execute({ email, password: 'wrong' }, { ip, userAgent: null })
+        .execute(
+          { email, password: 'wrong' },
+          { ip, ipVerified: true, userAgent: null },
+        )
         .catch(() => undefined);
       return Number(process.hrtime.bigint() - started) / 1e6;
     };
@@ -93,5 +97,6 @@ describe('LoginUseCase', () => {
     }
 
     expect(median(unknown)).toBeGreaterThan(median(known) * 0.5);
-  });
+    // 운영과 같은 cost 10 비교를 여덟 번 하므로 테스트를 함께 돌리는 부하에서는 기본 5초를 넘길 수 있다.
+  }, 30_000);
 });

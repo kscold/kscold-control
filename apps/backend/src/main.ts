@@ -20,7 +20,7 @@ async function bootstrap() {
   });
   if (!proxyTrust.secret) {
     new Logger('ClientIp').warn(
-      'CONTROL_PROXY_SECRET 이 비어 있어 믿는 프록시 주소에서 온 X-Real-IP 를 그대로 믿습니다. 같은 컴퓨터의 다른 프로세스도 이 헤더를 위조할 수 있습니다.',
+      'CONTROL_PROXY_SECRET 이 비어 있어 믿는 프록시 주소에서 온 X-Real-IP 를 그대로 믿습니다. 같은 컴퓨터의 다른 프로세스도 이 헤더를 위조할 수 있습니다. 그래서 로그인 실패에 따른 자동 IP 차단(nginx·방화벽)과 허용 목록 예외는 꺼지고 계정 잠금만 걸립니다.',
     );
   }
   app.use(resolveClientIpAndDropProxySecret);

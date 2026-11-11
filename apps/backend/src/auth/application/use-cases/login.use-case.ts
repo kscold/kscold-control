@@ -4,8 +4,12 @@ import {
   IUserRepository,
   USER_REPOSITORY,
 } from '../../../rbac/domain/repositories/user.repository.interface';
+import type { User } from '../../../rbac/domain/entities/user.entity';
 import { PasswordHasher } from '../../../common/utils/password-hasher.util';
-import { LoginGuardService } from '../../../security/application/services/login-guard.service';
+import {
+  LoginGuardService,
+  type LoginClient,
+} from '../../../security/application/services/login-guard.service';
 import { LoginDto } from '../dto';
 import {
   AuthSessionService,
@@ -25,25 +29,22 @@ export class LoginUseCase {
     private readonly loginGuard: LoginGuardService,
   ) {}
 
-  async execute(dto: LoginDto, client: SessionClient) {
+  async execute(dto: LoginDto, client: SessionClient & LoginClient) {
     const { email, password } = dto;
-    const attempt = await this.loginGuard.admit(client.ip, email);
-
-    const account = await this.userRepository.findByEmail(email);
-    // 역할 조회를 비밀번호 비교와 함께 돌린다. 있는 계정만 역할을 더 읽느라 늦어지면 응답 시간으로 계정 유무가 드러난다.
-    const [isPasswordValid, withRoles] = await Promise.all([
-      PasswordHasher.compare(
-        password,
-        account?.password ?? (await this.unknownAccountHash),
-      ),
-      account ? this.userRepository.findByIdWithRoles(account.id) : null,
-    ]);
-    const user = isPasswordValid ? withRoles : null;
+    const user = await this.loginGuard.check<User>(client, email, async () => {
+      const account = await this.userRepository.findByEmail(email);
+      // 역할 조회를 비밀번호 비교와 함께 돌린다. 있는 계정만 역할을 더 읽느라 늦어지면 응답 시간으로 계정 유무가 드러난다.
+      const [isPasswordValid, withRoles] = await Promise.all([
+        PasswordHasher.compare(
+          password,
+          account?.password ?? (await this.unknownAccountHash),
+        ),
+        account ? this.userRepository.findByIdWithRoles(account.id) : null,
+      ]);
+      if (isPasswordValid && withRoles) return { user: withRoles };
+      return { failure: account ? 'wrong-password' : 'unknown-account' };
+    });
     if (!user) {
-      await this.loginGuard.failed(
-        attempt,
-        account ? 'wrong-password' : 'unknown-account',
-      );
       throw new UnauthorizedException(
         '이메일 또는 비밀번호가 올바르지 않습니다.',
       );
@@ -59,7 +60,6 @@ export class LoginUseCase {
 
     const session = await this.authSessions.open(user.id, client);
     const accessToken = this.authSessions.signAccessToken(payload, session);
-    await this.loginGuard.succeeded(attempt, user);
 
     return {
       accessToken,

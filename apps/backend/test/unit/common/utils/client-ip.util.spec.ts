@@ -1,4 +1,5 @@
 import {
+  clientAddress,
   clientIp,
   parseProxySecret,
   parseTrustedProxies,
@@ -176,6 +177,26 @@ describe('clientIp', () => {
           withSecret,
         ),
       ).toBe('198.51.100.20');
+    });
+
+    it('비밀값이 맞는 프록시가 알려 준 주소만 확인된 주소다', () => {
+      const proxied = (headers: Record<string, string>, realIp?: string) =>
+        clientAddress(request('127.0.0.1', realIp, headers), withSecret);
+
+      expect(
+        proxied({ 'x-control-proxy-secret': SECRET }, '203.0.113.9'),
+      ).toEqual({ ip: '203.0.113.9', verified: true });
+      expect(proxied({}, '203.0.113.9')).toEqual({
+        ip: '127.0.0.1',
+        verified: false,
+      });
+      expect(proxied({ 'x-control-proxy-secret': SECRET })).toEqual({
+        ip: '127.0.0.1',
+        verified: false,
+      });
+      expect(
+        clientAddress(request('127.0.0.1', '203.0.113.9'), loopbackOnly),
+      ).toEqual({ ip: '203.0.113.9', verified: false });
     });
 
     it('비밀값이 짧으면 기동을 멈추고 비우면 확인하지 않는다', () => {
