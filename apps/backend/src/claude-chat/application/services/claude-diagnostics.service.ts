@@ -3,6 +3,7 @@ import { existsSync } from 'node:fs';
 import path from 'node:path';
 import process from 'node:process';
 import { spawn } from 'node:child_process';
+import { childProcessEnv } from '../../../common/utils';
 
 interface ClaudeDiagnosticsCheck {
   ok: boolean;
@@ -123,7 +124,12 @@ export class ClaudeDiagnosticsService {
         ],
         {
           cwd: process.cwd(),
-          env: process.env,
+          // 진단 스크립트가 띄우는 claude 도 채팅 에이전트와 같은 환경만 받는다.
+          env: childProcessEnv(process.env, {
+            ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY,
+            CLAUDE_CODE_BIN: process.env.CLAUDE_CODE_BIN,
+            CLAUDE_BINARY_PATH: process.env.CLAUDE_BINARY_PATH,
+          }),
           stdio: ['ignore', 'pipe', 'pipe'],
         },
       );

@@ -9,7 +9,7 @@ import { promises as fs } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { promisify } from 'node:util';
-import { isPathInsideRoot } from '../../../common/utils';
+import { childProcessEnv, isPathInsideRoot } from '../../../common/utils';
 import { PtyManagerService } from './pty-manager.service';
 import type {
   GitCommandResult,
@@ -151,6 +151,9 @@ export class WorkspaceGitService {
     try {
       const { stdout, stderr } = await execFileAsync('git', args, {
         cwd,
+        // 작업 폴더는 터미널과 에이전트가 고칠 수 있어 .git/config 의 fsmonitor 같은
+        // 설정이 명령을 실행할 수 있다. 그 명령도 비밀값을 보지 못하게 한다.
+        env: childProcessEnv(process.env),
         encoding: 'utf8',
         maxBuffer: 8 * 1024 * 1024,
       });

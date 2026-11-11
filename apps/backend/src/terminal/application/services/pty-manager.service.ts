@@ -4,6 +4,7 @@ import path from 'node:path';
 import * as pty from 'node-pty';
 import { IPtyManager } from '../../domain/repositories/pty-manager.interface';
 import {
+  childProcessEnv,
   getHomeDirectory,
   getWorkingDirectory as resolveWorkingDirectory,
   prependClaudeBinaryDir,
@@ -118,27 +119,16 @@ export class PtyManagerService implements IPtyManager {
       cols: 100,
       rows: 30,
       cwd: workingDir,
-      env: {
-        ...Object.fromEntries(
-          Object.entries(process.env).filter(
-            ([key]) => !key.startsWith('CLAUDE'),
-          ),
-        ),
+      env: childProcessEnv(process.env, {
         HOME: homeDir,
         SHELL: shellPath,
         ZDOTDIR: zdotdir,
         TERM: 'xterm-256color',
         COLORTERM: 'truecolor',
         CLAUDE_WORKING_DIR: workingDir,
-        ...(claudeBinaryPath
-          ? {
-              CLAUDE_CODE_BIN: claudeBinaryPath,
-              PATH: prependClaudeBinaryDir(claudeBinaryPath),
-            }
-          : {
-              PATH: process.env.PATH,
-            }),
-      },
+        CLAUDE_CODE_BIN: claudeBinaryPath ?? undefined,
+        PATH: prependClaudeBinaryDir(claudeBinaryPath),
+      }),
     });
 
     this.processes.set(sessionId, shell);

@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { spawn, ChildProcess } from 'child_process';
 import { createInterface } from 'readline';
 import {
+  childProcessEnv,
   getHomeDirectory,
   getWorkingDirectory as resolveWorkingDirectory,
   prependClaudeBinaryDir,
@@ -94,23 +95,16 @@ export class ClaudeProcessManagerService {
     const claudeBinaryPath = this.getClaudeBinaryPath();
     const command = claudeBinaryPath || 'claude';
 
-    // CLAUDE* 환경변수 제거 (중첩 실행 방지)
-    // ANTHROPIC_API_KEY를 명시적으로 넣지 않음 →
-    //   PM2 env에 있으면 filteredEnv에 포함됨
-    //   없으면 claude가 ~/.claude.json / keychain에서 직접 읽음
-    const filteredEnv = Object.fromEntries(
-      Object.entries(process.env).filter(([key]) => !key.startsWith('CLAUDE')),
-    );
-
     const child = spawn(command, args, {
       cwd: workingDir,
-      env: {
-        ...filteredEnv,
+      // API 키가 없으면 claude 는 HOME 의 ~/.claude.json 이나 키체인 로그인을 쓴다.
+      env: childProcessEnv(process.env, {
+        ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY,
         HOME: homeDir,
         PATH: prependClaudeBinaryDir(claudeBinaryPath),
-        ...(claudeBinaryPath ? { CLAUDE_CODE_BIN: claudeBinaryPath } : {}),
+        CLAUDE_CODE_BIN: claudeBinaryPath ?? undefined,
         CLAUDE_WORKING_DIR: workingDir,
-      },
+      }),
       stdio: ['pipe', 'pipe', 'pipe'],
     });
 
