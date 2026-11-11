@@ -15,6 +15,8 @@ import type {
 } from '@/security/domain/repositories/ip-geo.reader';
 import { fakeIpGeo, geo } from './ip-geo.fake';
 
+const asRoot = process.getuid?.() === 0;
+
 const US = '203.0.113.10';
 const CN = '203.0.113.20';
 const KR = '198.51.100.30';
@@ -250,6 +252,156 @@ describe('SshCountryGuardService', () => {
     });
     await expect(guard.update({ allowedCountries: [] })).rejects.toThrow(
       '한 나라 이상',
+    );
+  });
+
+  it('판단하는 사이 운영자가 모든 접속을 막아도 SSH 만으로 좁히지 않는다', async () => {
+    let operator: Promise<unknown> | null = null;
+    const reader = fakeIpGeo(GEO);
+    const { ssh, guard } = setup({
+      status: reader.status,
+      lookup: (ip) => {
+        // 국가 규칙이 나라를 고르는 바로 그때 운영자의 차단 요청이 들어온다
+        if (ip === US && !operator) {
+          operator = ssh.block(US, '운영자가 막음', 'all');
+        }
+        return reader.lookup(ip);
+      },
+    });
+    await appendLog(line('인증중끊김', 'deploy', US));
+
+    await guard.run();
+    await operator;
+
+    expect((await blocks(ssh)).map((b) => [b.ip, b.scope])).toEqual([
+      [US, 'all'],
+    ]);
+  });
+
+  it('차단기가 같은 IP 를 자동으로 막으면 이 규칙이 적은 SSH 만 범위를 모든 접속으로 넓힌다', async () => {
+    const { ssh, guard } = setup();
+    await appendLog(line('인증중끊김', 'deploy', US));
+    await guard.run();
+    expect((await blocks(ssh)).map((b) => b.scope)).toEqual(['ssh']);
+
+    // 자동 차단이 더 늦게 올라와 목록에서 먼저 나온다
+    await fs.writeFile(
+      join(dir, 'ssh-block-auto.tsv'),
+      `${US}\t2099-01-01 00:00:00\t5\t시도 초과\n`,
+    );
+    await guard.run();
+
+    expect(
+      (await ssh.firewallBlocks()).items.map((b) => [b.source, b.scope]),
+    ).toEqual([
+      ['auto', 'all'],
+      ['manual', 'all'],
+    ]);
+    expect(audits.map((a) => a.action)).toEqual([
+      'ssh.country-block',
+      'ssh.country-block.widen',
+    ]);
+  });
+
+  it('국가 규칙을 꺼 두어도 자동 차단된 IP 의 SSH 만 범위는 넓힌다', async () => {
+    const { ssh, guard } = setup();
+    await appendLog(line('인증중끊김', 'deploy', US));
+    await guard.run();
+    await guard.update({ enabled: false });
+    await fs.writeFile(
+      join(dir, 'ssh-block-auto.tsv'),
+      `${US}\t2099-01-01 00:00:00\t5\t시도 초과\n`,
+    );
+
+    await guard.run();
+
+    expect((await blocks(ssh)).map((b) => b.scope)).toEqual(['all', 'all']);
+  });
+
+  it('운영자가 SSH 만으로 둔 자동 차단은 국가 규칙과 무관하면 건드리지 않는다', async () => {
+    const { ssh, guard } = setup();
+    await fs.writeFile(
+      join(dir, 'ssh-block-auto.tsv'),
+      `${US}\t2099-01-01 00:00:00\t5\t시도 초과\n`,
+    );
+    await ssh.setBlockScope(US, 'ssh');
+
+    await guard.run();
+
+    expect((await blocks(ssh)).map((b) => b.scope)).toEqual(['ssh']);
+  });
+
+  (asRoot ? it.skip : it)(
+    '설정 파일을 읽지 못하면 꺼진 것으로 알리고, 다시 저장하면 되살린다',
+    async () => {
+      const { ssh, guard } = setup();
+      const path = join(dir, 'ssh-country-guard.json');
+      await fs.writeFile(path, '{"enabled":true,"allowedCountries":["KR"]}');
+      await fs.chmod(path, 0o000);
+      await appendLog(line('실패', 'root', US));
+
+      await guard.run();
+      expect(await blocks(ssh)).toEqual([]);
+      expect(await guard.status([])).toEqual(
+        expect.objectContaining({
+          enabled: false,
+          state: 'off',
+          error: expect.stringContaining('EACCES'),
+        }),
+      );
+
+      await guard.update({ enabled: true });
+      expect(await guard.status([])).toEqual(
+        expect.objectContaining({ enabled: true, state: 'on', error: null }),
+      );
+      await guard.run();
+      expect((await blocks(ssh)).map((b) => b.ip)).toEqual([US]);
+    },
+  );
+
+  it.each([
+    ['JSON 이 아님', '{enabled'],
+    ['모르는 국가 코드', '{"enabled":true,"allowedCountries":["KR","ZZ"]}'],
+    ['켜 두고 허용 국가가 빔', '{"enabled":true,"allowedCountries":[]}'],
+  ])('설정 파일 형식이 틀리면(%s) 꺼진 것으로 알린다', async (_, raw) => {
+    const { guard } = setup();
+    await fs.writeFile(join(dir, 'ssh-country-guard.json'), raw);
+
+    expect(await guard.status([])).toEqual(
+      expect.objectContaining({
+        enabled: false,
+        state: 'off',
+        error: expect.stringContaining('형식이 맞지 않아'),
+      }),
+    );
+  });
+
+  it('ISO 3166-1 에 없는 국가 코드는 저장하지 않는다', async () => {
+    const { guard } = setup();
+
+    await expect(
+      guard.update({ allowedCountries: ['KR', 'zz', 'XK'] }),
+    ).rejects.toThrow('ISO 3166-1 국가 코드가 아닙니다: ZZ, XK');
+    await expect(
+      guard.update({ allowedCountries: ['jp', 'kr'] }),
+    ).resolves.toEqual({ enabled: true, allowedCountries: ['JP', 'KR'] });
+  });
+
+  it('동시에 들어온 설정 변경을 하나씩 써서 서로 덮어쓰지 않는다', async () => {
+    const { guard } = setup();
+
+    await Promise.all([
+      guard.update({ enabled: false }),
+      guard.update({ allowedCountries: ['KR', 'US'] }),
+      guard.update({ allowedCountries: ['JP', 'KR', 'US'] }),
+    ]);
+
+    await expect(guard.settings()).resolves.toEqual({
+      enabled: false,
+      allowedCountries: ['JP', 'KR', 'US'],
+    });
+    expect((await fs.readdir(dir)).filter((f) => f.endsWith('.tmp'))).toEqual(
+      [],
     );
   });
 

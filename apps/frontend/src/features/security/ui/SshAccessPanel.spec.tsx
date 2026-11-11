@@ -89,6 +89,7 @@ function overview(): SshAccessOverview {
       enabled: true,
       state: 'on',
       allowedCountries: ['JP', 'KR'],
+      error: null,
       blockedByCountry: [],
     },
   };
@@ -327,4 +328,28 @@ it('보기 권한만 있으면 국가 설정을 바꾸는 버튼을 숨긴다', 
   await screen.findByText(/허용 국가 밖 SSH 차단 · 켜짐/);
   expect(screen.queryByRole('button', { name: '끄기' })).toBeNull();
   expect(screen.queryByLabelText('허용할 국가 코드')).toBeNull();
+});
+
+it('설정 파일을 읽지 못하면 까닭을 보여 주고 켜기로 다시 쓸 수 있다', async () => {
+  signIn([PERMISSIONS.SECURITY_READ, PERMISSIONS.SECURITY_MANAGE]);
+  const data = overview();
+  data.countryGuard = {
+    ...data.countryGuard,
+    enabled: false,
+    state: 'off',
+    allowedCountries: ['KR'],
+    error:
+      'ssh-country-guard.json 을 읽지 못해(EACCES) 국가 차단을 꺼 두었습니다. 켜거나 허용 국가를 바꾸면 파일을 새로 씁니다.',
+  };
+  vi.spyOn(securityService, 'getSshAccess').mockResolvedValue(data);
+  const update = vi
+    .spyOn(securityService, 'updateSshCountryGuard')
+    .mockResolvedValue(undefined);
+  renderPanel();
+
+  expect(
+    await screen.findByText(/읽지 못해\(EACCES\) 국가 차단을 꺼 두었습니다/),
+  ).toBeInTheDocument();
+  await userEvent.click(screen.getByRole('button', { name: '켜기' }));
+  await waitFor(() => expect(update).toHaveBeenCalledWith({ enabled: true }));
 });

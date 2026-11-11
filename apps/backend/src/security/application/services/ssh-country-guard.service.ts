@@ -5,9 +5,11 @@ import {
   Logger,
 } from '@nestjs/common';
 import { Interval } from '@nestjs/schedule';
+import { randomUUID } from 'node:crypto';
 import { promises as fs } from 'node:fs';
 import { join } from 'node:path';
 import { AuditLogService } from '../../../audit/application/services/audit-log.service';
+import type { CreateAuditEventInput } from '../../../audit/domain/types/audit-event.type';
 import { parseIpRange, rangeContains } from '../../domain/ip-range';
 import {
   IP_GEO_READER,
@@ -17,7 +19,7 @@ import {
 import {
   DEFAULT_COUNTRY_GUARD_SETTINGS,
   countryBlockReason,
-  normalizeCountries,
+  parseCountries,
   parseCountryBlockReason,
   planCountryBlocks,
   type CountryBlockAction,
@@ -31,6 +33,7 @@ import {
   sshAuditDir,
   type SshAuditCursor,
   type SshBlock,
+  type SshBlockTransaction,
 } from './ssh-access.service';
 
 const SETTINGS_FILE = 'ssh-country-guard.json';
@@ -42,6 +45,8 @@ export interface SshCountryGuardStatus {
   /** off: 꺼 둠, no-geo: IP 위치 파일이 준비되지 않아 쉼, on: 동작 중 */
   state: 'off' | 'no-geo' | 'on';
   allowedCountries: string[];
+  /** 설정 파일을 읽지 못해 꺼 둔 까닭. 화면에서 바꾸면 파일을 새로 쓴다 */
+  error: string | null;
   /** 이 규칙이 올린 차단 수 (나라별) */
   blockedByCountry: Array<{
     country: string;
@@ -62,6 +67,7 @@ export class SshCountryGuardService {
   // 도는 중에 설정이 바뀌면 그 차례가 읽은 위치를 버리고 다음 차례에 7일을 다시 본다.
   private generation = 0;
   private running = false;
+  private writing: Promise<unknown> = Promise.resolve();
 
   constructor(
     private readonly ssh: SshAccessService,
@@ -71,54 +77,18 @@ export class SshCountryGuardService {
   ) {}
 
   async settings(): Promise<CountryGuardSettings> {
-    let raw: string;
-    try {
-      raw = await fs.readFile(this.settingsPath(), 'utf8');
-    } catch (error) {
-      if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
-      return { ...DEFAULT_COUNTRY_GUARD_SETTINGS };
-    }
-    const data = parseJsonObject(raw);
-    const countries = Array.isArray(data?.allowedCountries)
-      ? normalizeCountries(data.allowedCountries)
-      : null;
-    if (typeof data?.enabled !== 'boolean' || !countries) {
-      // 망가진 설정으로 막기 시작하면 운영자가 잠길 수 있어 꺼진 것으로 본다. 화면에서 다시 켜면 새로 쓴다.
-      this.logger.warn(`${SETTINGS_FILE} 형식이 맞지 않아 국가 차단을 끕니다`);
-      return { ...DEFAULT_COUNTRY_GUARD_SETTINGS, enabled: false };
-    }
-    return { enabled: data.enabled, allowedCountries: countries };
+    return (await this.load()).settings;
   }
 
-  async update(
-    patch: Partial<CountryGuardSettings>,
-  ): Promise<CountryGuardSettings> {
-    const current = await this.settings();
-    const allowedCountries = patch.allowedCountries
-      ? normalizeCountries(patch.allowedCountries)
-      : current.allowedCountries;
-    if (!allowedCountries) {
-      throw new BadRequestException(
-        '허용 국가는 두 글자 국가 코드로 한 나라 이상 적어 주세요',
-      );
-    }
-    const next: CountryGuardSettings = {
-      enabled: patch.enabled ?? current.enabled,
-      allowedCountries,
-    };
-    const path = this.settingsPath();
-    const tmp = `${path}.${process.pid}.tmp`;
-    await fs.writeFile(tmp, `${JSON.stringify(next, null, 2)}\n`, {
-      mode: 0o644,
-    });
-    await fs.rename(tmp, path);
-    this.generation += 1;
-    this.cursor = null;
-    return next;
+  /** 두 요청이 같은 설정을 읽고 서로 덮어쓰지 않도록 한 번에 하나씩 쓴다. */
+  update(patch: Partial<CountryGuardSettings>): Promise<CountryGuardSettings> {
+    const result = this.writing.then(() => this.write(patch));
+    this.writing = result.catch(() => undefined);
+    return result;
   }
 
   async status(blocks: readonly SshBlock[]): Promise<SshCountryGuardStatus> {
-    const settings = await this.settings();
+    const { settings, error } = await this.load();
     const counts = new Map<
       string,
       { countryName: string | null; count: number }
@@ -136,6 +106,7 @@ export class SshCountryGuardService {
     }
     return {
       ...settings,
+      error,
       state: !settings.enabled
         ? 'off'
         : this.geo.status().state === 'ready'
@@ -149,12 +120,14 @@ export class SshCountryGuardService {
     };
   }
 
-  /** 이 규칙이 그 나라에 올린 차단을 모두 푼다. 다른 규칙의 차단은 그대로 둔다. */
+  /** 이 규칙이 그 나라에 올린 차단을 모두 푼다. 같은 IP 의 자동 차단도 함께 풀린다. */
   async unblockCountry(
     country: string,
   ): Promise<{ country: string; released: string[] }> {
-    const [code] = normalizeCountries([country]) ?? [];
-    if (!code) throw new BadRequestException('두 글자 국가 코드가 아닙니다');
+    const code = country.trim().toUpperCase();
+    if (!/^[A-Z]{2}$/.test(code)) {
+      throw new BadRequestException('두 글자 국가 코드가 아닙니다');
+    }
     const { items } = await this.ssh.firewallBlocks();
     const released: string[] = [];
     for (const block of items) {
@@ -175,11 +148,17 @@ export class SshCountryGuardService {
     this.running = true;
     try {
       const settings = await this.settings();
-      if (!settings.enabled || this.geo.status().state !== 'ready') return;
+      const active = settings.enabled && this.geo.status().state === 'ready';
       const generation = this.generation;
-      const { events, cursor } = await this.readNew();
-      await this.apply(events, settings);
-      if (generation === this.generation) this.cursor = cursor;
+      const read = active ? await this.readNew() : null;
+      const audits = await this.ssh.transaction(async (tx) => [
+        ...(await this.widenAutoBlocked(tx)),
+        ...(read && read.events.length > 0
+          ? await this.blockOutsiders(tx, read.events, settings)
+          : []),
+      ]);
+      for (const input of audits) this.record(input);
+      if (read && generation === this.generation) this.cursor = read.cursor;
     } catch (error) {
       this.logger.error(`허용 국가 밖 SSH 차단 실패: ${String(error)}`);
     } finally {
@@ -197,32 +176,64 @@ export class SshCountryGuardService {
     return { events: await this.ssh.recentEvents(RESCAN_DAYS), cursor };
   }
 
-  private async apply(
+  /**
+   * 범위 파일은 IP 마다 한 줄이라, 이 규칙이 적은 SSH 만 범위가 같은 IP 의 자동 차단(공격 규칙)까지 좁힌다.
+   * 차단기가 공격으로 막은 IP 는 모든 접속을 막아야 하므로 넓힌다.
+   */
+  private async widenAutoBlocked(
+    tx: SshBlockTransaction,
+  ): Promise<CreateAuditEventInput[]> {
+    const blocks = await tx.blocks();
+    const auto = new Set(
+      blocks.filter((b) => b.source === 'auto').map((b) => b.ip),
+    );
+    const audits: CreateAuditEventInput[] = [];
+    for (const block of blocks) {
+      if (!auto.has(block.ip) || block.scope !== 'ssh' || !isOwnContact(block))
+        continue;
+      await tx.setScope(block.ip, 'all');
+      audits.push({
+        domain: 'security',
+        action: 'ssh.country-block.widen',
+        summary: `허용 국가 밖이라 SSH 만 막던 IP ${block.ip} 를 차단기가 공격으로 막아 SSH·사이트 모두로 넓혔습니다.`,
+        targetType: 'ip',
+        targetId: block.ip,
+        metadata: { country: parseCountryBlockReason(block.reason)?.country },
+      });
+    }
+    return audits;
+  }
+
+  private async blockOutsiders(
+    tx: SshBlockTransaction,
     events: readonly SshAuditEvent[],
     settings: CountryGuardSettings,
-  ): Promise<void> {
-    if (events.length === 0) return;
-    const [known, { items }] = await Promise.all([
-      this.ssh.knownIps(),
-      this.ssh.firewallBlocks(),
-    ]);
+  ): Promise<CreateAuditEventInput[]> {
+    const [known, blocks] = await Promise.all([tx.knownIps(), tx.blocks()]);
     const knownSet = new Set(known);
     const { actions, unknownCountryIps } = planCountryBlocks(events, {
       allowed: new Set(settings.allowedCountries),
       countryOf: (ip) => externalGeo(this.geo, ip)?.country ?? null,
       isExempt: (ip) =>
         knownSet.has(ip) || this.allowlist.isProtected(ip, null).protected,
-      existing: (ip) => existingBlock(items, ip),
+      existing: (ip) => existingBlock(blocks, ip),
     });
-    for (const action of actions) await this.act(action);
     if (unknownCountryIps > 0) {
       this.logger.log(
         `위치를 모르는 외부 IP ${unknownCountryIps}개는 나라로 막지 않았습니다`,
       );
     }
+    const audits: CreateAuditEventInput[] = [];
+    for (const action of actions) {
+      if (await this.act(tx, action)) audits.push(auditOf(action));
+    }
+    return audits;
   }
 
-  private async act(action: CountryBlockAction): Promise<void> {
+  private async act(
+    tx: SshBlockTransaction,
+    action: CountryBlockAction,
+  ): Promise<boolean> {
     const reason = countryBlockReason(
       action.kind,
       action.country,
@@ -230,51 +241,133 @@ export class SshCountryGuardService {
     );
     try {
       if (action.action === 'widen') {
-        await this.ssh.widenBlock(action.ip, reason);
+        await tx.widen(action.ip, reason);
       } else {
-        await this.ssh.block(
+        await tx.block(
           action.ip,
           reason,
           action.kind === 'attack' ? 'all' : 'ssh',
         );
       }
+      return true;
     } catch (error) {
       this.logger.warn(`${action.ip} 를 막지 못했습니다: ${String(error)}`);
-      return;
+      return false;
     }
-    const scope = action.kind === 'attack' ? 'SSH·사이트 모두' : 'SSH 만';
-    const users = action.users.join(', ') || '알 수 없음';
-    const summary = action.succeeded
-      ? `허용 국가 밖(${action.country})의 IP ${action.ip} 에서 SSH 로그인이 성공했습니다 (계정 ${users}). 침입일 수 있습니다. 방화벽에서 ${scope} 막았고 열린 세션은 끊지 않았으니 SSH 탭에서 확인해 끊으세요.`
-      : action.action === 'widen'
-        ? `허용 국가 밖(${action.country})의 IP ${action.ip} 가 SSH 공격을 해 SSH 만 막던 차단을 SSH·사이트 모두로 넓혔습니다 (계정 ${users}).`
-        : `허용 국가 밖(${action.country})의 IP ${action.ip} 를 방화벽에서 ${scope} 막았습니다 (계정 ${users}).`;
+  }
+
+  private record(input: CreateAuditEventInput) {
     void this.audit
-      .record({
-        domain: 'security',
-        action: action.succeeded
-          ? 'ssh.country-intrusion'
-          : action.action === 'widen'
-            ? 'ssh.country-block.widen'
-            : 'ssh.country-block',
-        summary,
-        targetType: 'ip',
-        targetId: action.ip,
-        metadata: {
-          country: action.country,
-          kind: action.kind,
-          users: action.users,
-          succeeded: action.succeeded,
-        },
-      })
+      .record(input)
       .catch((error: Error) =>
         this.logger.error(`국가 차단 감사 기록 실패: ${error.message}`),
       );
   }
 
+  /** 읽지 못하거나 형식이 틀린 설정으로 막기 시작하면 운영자가 잠길 수 있어 꺼진 것으로 본다. */
+  private async load(): Promise<{
+    settings: CountryGuardSettings;
+    error: string | null;
+  }> {
+    const off = (why: string) => {
+      const error = `${SETTINGS_FILE} ${why} 국가 차단을 꺼 두었습니다. 켜거나 허용 국가를 바꾸면 파일을 새로 씁니다.`;
+      this.logger.warn(error);
+      return {
+        settings: { ...DEFAULT_COUNTRY_GUARD_SETTINGS, enabled: false },
+        error,
+      };
+    };
+    let raw: string;
+    try {
+      raw = await fs.readFile(this.settingsPath(), 'utf8');
+    } catch (error) {
+      const code = (error as NodeJS.ErrnoException).code;
+      if (code === 'ENOENT') {
+        return { settings: { ...DEFAULT_COUNTRY_GUARD_SETTINGS }, error: null };
+      }
+      return off(`을 읽지 못해(${code ?? String(error)})`);
+    }
+    const data = parseJsonObject(raw);
+    const countries = Array.isArray(data?.allowedCountries)
+      ? parseCountries(data.allowedCountries)
+      : null;
+    if (
+      typeof data?.enabled !== 'boolean' ||
+      !countries ||
+      countries.unknown.length > 0 ||
+      countries.codes.length === 0
+    ) {
+      return off('형식이 맞지 않아');
+    }
+    return {
+      settings: { enabled: data.enabled, allowedCountries: countries.codes },
+      error: null,
+    };
+  }
+
+  private async write(
+    patch: Partial<CountryGuardSettings>,
+  ): Promise<CountryGuardSettings> {
+    const { settings: current } = await this.load();
+    let allowedCountries = current.allowedCountries;
+    if (patch.allowedCountries) {
+      const { codes, unknown } = parseCountries(patch.allowedCountries);
+      if (unknown.length > 0) {
+        throw new BadRequestException(
+          `ISO 3166-1 국가 코드가 아닙니다: ${unknown.join(', ')}`,
+        );
+      }
+      allowedCountries = codes;
+    }
+    if (allowedCountries.length === 0) {
+      // 허용 국가가 비면 모든 나라를 막아 운영자도 잠긴다.
+      throw new BadRequestException('허용 국가를 한 나라 이상 적어 주세요');
+    }
+    const next: CountryGuardSettings = {
+      enabled: patch.enabled ?? current.enabled,
+      allowedCountries,
+    };
+    const path = this.settingsPath();
+    const tmp = `${path}.${process.pid}.${randomUUID()}.tmp`;
+    await fs.writeFile(tmp, `${JSON.stringify(next, null, 2)}\n`, {
+      mode: 0o644,
+    });
+    await fs.rename(tmp, path);
+    this.generation += 1;
+    this.cursor = null;
+    return next;
+  }
+
   private settingsPath() {
     return join(sshAuditDir(), SETTINGS_FILE);
   }
+}
+
+function auditOf(action: CountryBlockAction): CreateAuditEventInput {
+  const scope = action.kind === 'attack' ? 'SSH·사이트 모두' : 'SSH 만';
+  const users = action.users.join(', ') || '알 수 없음';
+  const summary = action.succeeded
+    ? `허용 국가 밖(${action.country})의 IP ${action.ip} 에서 SSH 로그인이 성공했습니다 (계정 ${users}). 침입일 수 있습니다. 방화벽에서 ${scope} 막았고 열린 세션은 끊지 않았으니 SSH 탭에서 확인해 끊으세요.`
+    : action.action === 'widen'
+      ? `허용 국가 밖(${action.country})의 IP ${action.ip} 가 SSH 공격을 해 SSH 만 막던 차단을 SSH·사이트 모두로 넓혔습니다 (계정 ${users}).`
+      : `허용 국가 밖(${action.country})의 IP ${action.ip} 를 방화벽에서 ${scope} 막았습니다 (계정 ${users}).`;
+  return {
+    domain: 'security',
+    action: action.succeeded
+      ? 'ssh.country-intrusion'
+      : action.action === 'widen'
+        ? 'ssh.country-block.widen'
+        : 'ssh.country-block',
+    summary,
+    targetType: 'ip',
+    targetId: action.ip,
+    metadata: {
+      country: action.country,
+      kind: action.kind,
+      users: action.users,
+      succeeded: action.succeeded,
+    },
+  };
 }
 
 function parseJsonObject(raw: string): Record<string, unknown> | null {
@@ -288,13 +381,18 @@ function parseJsonObject(raw: string): Record<string, unknown> | null {
   }
 }
 
+function isOwnContact(block: SshBlock): boolean {
+  return (
+    block.source === 'manual' &&
+    parseCountryBlockReason(block.reason)?.kind === 'contact'
+  );
+}
+
+/** 범위는 IP 마다 하나라, 같은 IP 의 항목이 여럿이면(손·자동) 모두 같은 범위를 보인다. */
 function existingBlock(blocks: readonly SshBlock[], ip: string): ExistingBlock {
-  const exact = blocks.find((b) => b.ip === ip);
-  if (exact) {
-    const own = parseCountryBlockReason(exact.reason);
-    return exact.source === 'manual' &&
-      own?.kind === 'contact' &&
-      exact.scope === 'ssh'
+  const exact = blocks.filter((b) => b.ip === ip);
+  if (exact.length > 0) {
+    return exact[0].scope === 'ssh' && exact.some(isOwnContact)
       ? 'widenable'
       : 'other';
   }

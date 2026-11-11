@@ -33,6 +33,7 @@ function overview(pendingAuth: number): SshAccessOverview {
       enabled: true,
       state: 'on',
       allowedCountries: ['KR'],
+      error: null,
       blockedByCountry: [],
     },
   };

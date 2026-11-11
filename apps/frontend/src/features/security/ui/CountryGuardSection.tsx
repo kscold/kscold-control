@@ -64,12 +64,26 @@ export function CountryGuardSection({
           </button>
         )}
       </div>
-      <p className="mb-3 text-xs text-gray-500">
+      {guard.error && (
+        <p
+          role="alert"
+          className="mb-2 rounded-lg border border-red-900/60 bg-red-950/20 px-3 py-2 text-xs text-red-200"
+        >
+          {guard.error}
+        </p>
+      )}
+      <p className="mb-1 text-xs text-gray-500">
         {guard.state === 'on'
           ? `허용 국가 ${list.join(', ')} 밖에서 오는 SSH 접속은 계정·성공 여부와 상관없이 실패 횟수를 기다리지 않고 바로 막습니다. 접속만 하면 SSH 만, 비밀번호 실패·없는 계정·root 시도가 보이면 SSH·사이트 모두 막습니다. 내 IP·내부망·위치를 모르는 IP 는 막지 않습니다.`
           : guard.state === 'no-geo'
             ? 'IP 위치 파일(CONTROL_IP_GEO_DB_PATH)이 준비되지 않아 나라를 알 수 없어 쉬고 있습니다.'
             : `꺼 두었습니다. 켜면 최근 7일 기록부터 다시 보고 허용 국가 ${list.join(', ')} 밖의 IP 를 막습니다.`}
+      </p>
+      <p className="mb-3 text-xs text-gray-500">
+        허용 밖 나라의 IP 는 차단을 풀어도 Control 을 다시 시작하거나 설정을
+        바꾸면 최근 7일 기록으로 다시 막힙니다. 계속 들이려면 그 나라를
+        허용하거나 내 IP 로 표시하세요. 해외에서 스스로 막혔다면
+        Tailscale·내부망으로 들어와 풀면 됩니다.
       </p>
 
       <div className="flex flex-wrap items-center gap-2">
@@ -152,7 +166,7 @@ export function CountryGuardSection({
               disabled={disabled}
               onClick={() =>
                 confirm(
-                  `${b.country} 에서 허용 국가 밖이라 막은 IP ${b.count}개를 모두 풀까요?\n다른 규칙으로 막은 차단은 그대로 둡니다.`,
+                  `${b.country} 에서 허용 국가 밖이라 막은 IP ${b.count}개를 모두 풀까요?\n같은 IP 를 차단기가 자동으로 막은 것도 함께 풀립니다. 그 밖의 차단은 그대로 둡니다.`,
                   `country-unblock:${b.country}`,
                   () => onUnblockCountry(b.country),
                 )

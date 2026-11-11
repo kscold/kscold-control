@@ -102,6 +102,8 @@ export interface SshCountryGuard {
   enabled: boolean;
   state: 'off' | 'no-geo' | 'on';
   allowedCountries: string[];
+  /** 설정 파일을 읽지 못해 꺼 둔 까닭. 바꾸면 파일을 새로 씀 */
+  error: string | null;
   blockedByCountry: Array<{
     country: string;
     countryName: string | null;

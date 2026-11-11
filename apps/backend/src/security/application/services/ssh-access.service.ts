@@ -86,6 +86,16 @@ export interface SshBlock {
   geo: IpGeo | null;
 }
 
+/** 차단 목록을 한 차례 안에서 읽고 바꾸는 손잡이. transaction 밖에서는 쓰지 않는다. */
+export interface SshBlockTransaction {
+  blocks(): Promise<SshBlock[]>;
+  knownIps(): Promise<string[]>;
+  block(ip: string, reason: string, scope: SshBlockScope): Promise<SshBlock>;
+  /** 손으로 막은 항목의 이유를 바꾸고 모든 접속을 막도록 넓힘 */
+  widen(ip: string, reason: string): Promise<void>;
+  setScope(ip: string, scope: SshBlockScope): Promise<void>;
+}
+
 /** 내 IP — 별칭(회사·집 등)을 같이 둠 */
 export interface SshKnownIp {
   ip: string;
@@ -159,16 +169,28 @@ export class SshAccessService {
   block(ip: string, reason: string | null, scope: SshBlockScope = 'all') {
     return this.change(() => this.blockEntry(ip, reason, scope));
   }
-  /** 손으로 막은 항목의 이유를 바꾸고 모든 접속을 막도록 넓힘 */
-  widenBlock(ip: string, reason: string) {
-    return this.change(() => this.widenBlockEntry(ip, reason));
-  }
   unblock(ip: string) {
     return this.change(() => this.unblockEntry(ip));
   }
   /** 막는 범위 바꾸기 — 모든 접속(사이트 포함) 또는 SSH 만. 차단기가 15초 안에 반영 */
   setBlockScope(ip: string, scope: SshBlockScope) {
     return this.change(() => this.setBlockScopeEntry(ip, scope));
+  }
+  /**
+   * 차단 목록을 읽고 판단해 쓰는 일을 다른 변경과 섞이지 않게 한 차례로 돌린다.
+   * 밖에서 읽은 목록으로 판단하면 그 사이 운영자가 올린 더 넓은 차단을 좁힐 수 있다.
+   */
+  transaction<T>(work: (tx: SshBlockTransaction) => Promise<T>): Promise<T> {
+    return this.change(() =>
+      work({
+        blocks: () => this.readBlocks(),
+        knownIps: () => this.readKnownIps(),
+        block: (ip, reason, scope) => this.blockEntry(ip, reason, scope),
+        widen: (ip, reason) => this.widenBlockEntry(ip, reason),
+        setScope: (ip, scope) =>
+          this.writeScope(normalizeBlockTarget(ip), scope),
+      }),
+    );
   }
 
   private file(name: string) {

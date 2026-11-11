@@ -1,3 +1,4 @@
+import { ISO_COUNTRY_CODES } from './iso-country-codes';
 import { classifySshIp, type SshAuditEvent } from './ssh-audit.model';
 
 /** 허용 국가 밖 SSH 차단 설정. 저장된 값이 없으면 한국만 허용하고 켠다. */
@@ -12,15 +13,18 @@ export const DEFAULT_COUNTRY_GUARD_SETTINGS: CountryGuardSettings = {
   allowedCountries: ['KR'],
 };
 
-/** 대문자 두 글자로 맞춘다. 읽을 수 없는 값이 있거나 비면 null */
-export function normalizeCountries(codes: readonly unknown[]): string[] | null {
+/** 대문자로 맞춰 정렬·중복 제거한 코드와, ISO 3166-1 에 없는 값 */
+export function parseCountries(codes: readonly unknown[]): {
+  codes: string[];
+  unknown: string[];
+} {
   const values = codes.map((code) =>
-    typeof code === 'string' ? code.trim().toUpperCase() : '',
+    typeof code === 'string' ? code.trim().toUpperCase() : String(code),
   );
-  if (values.length === 0 || values.some((v) => !/^[A-Z]{2}$/.test(v))) {
-    return null;
-  }
-  return [...new Set(values)].sort();
+  return {
+    codes: [...new Set(values.filter((v) => ISO_COUNTRY_CODES.has(v)))].sort(),
+    unknown: values.filter((v) => !ISO_COUNTRY_CODES.has(v)),
+  };
 }
 
 /**
