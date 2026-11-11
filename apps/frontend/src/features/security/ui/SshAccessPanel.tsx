@@ -16,6 +16,7 @@ import { useModalStore } from '@/shared/model/modal.store';
 import { FirewallBlockList } from './FirewallBlockList';
 import { smallButton, usePaged } from '../model/paging';
 import { Pager } from './Pager';
+import { GeoLabel } from './GeoLabel';
 import { usePermissions, formatShortDateTime } from '@/shared/lib';
 import { PERMISSIONS } from '@/shared/config/permissions';
 import { useSshAccess } from '../model/useSshAccess';
@@ -598,6 +599,7 @@ export function SshAccessPanel() {
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="font-mono text-sm text-white">{r.ip}</span>
+                    <GeoLabel geo={r.geo} />
                     <ScopeBadge scope={r.scope} />
                     {r.known && <KnownBadge label={labels.get(r.ip)} />}
                     {r.scope === 'external' && r.success > 0 && !r.known && (

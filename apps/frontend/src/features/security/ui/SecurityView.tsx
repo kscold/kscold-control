@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { lazy, Suspense, useState } from 'react';
 import { Shield, Plus, Loader2, RefreshCw } from 'lucide-react';
 import { SshAccessPanel } from './SshAccessPanel';
 import { useIpBans } from '../model/useIpBans';
@@ -10,16 +10,29 @@ import { FirewallBlockList } from './FirewallBlockList';
 import { BanList } from './BanList';
 import { AddBanModal } from './AddBanModal';
 
-type SecurityTab = 'ssh' | 'bans';
+// 세계 지도 자료가 커서 탭을 열 때만 받는다
+const AttackMapPanel = lazy(() => import('./AttackMapPanel'));
+
+const TABS = [
+  ['ssh', 'SSH 접속'],
+  ['map', '공격 지도'],
+  ['bans', '사이트 IP 차단'],
+] as const;
+
+type SecurityTab = (typeof TABS)[number][0];
 
 const TAB_KEY = 'security-tab';
+
+const isTab = (value: string | null): value is SecurityTab =>
+  TABS.some(([key]) => key === value);
 
 function initialTab(): SecurityTab {
   if (typeof window === 'undefined') return 'ssh';
   const fromUrl = new URLSearchParams(window.location.search).get('tab');
-  if (fromUrl === 'bans' || fromUrl === 'ssh') return fromUrl;
+  if (isTab(fromUrl)) return fromUrl;
   try {
-    return window.localStorage.getItem(TAB_KEY) === 'bans' ? 'bans' : 'ssh';
+    const saved = window.localStorage.getItem(TAB_KEY);
+    return isTab(saved) ? saved : 'ssh';
   } catch {
     return 'ssh';
   }
@@ -99,7 +112,9 @@ export function SecurityView() {
           <p className="mt-1 text-sm text-gray-500">
             {tab === 'ssh'
               ? '맥미니 SSH 접속 기록 · 열린 세션 · 공격 IP 차단'
-              : `사이트 접속 차단 — 방화벽 ${firewallAll.length}건 · nginx ${active.length}건`}
+              : tab === 'map'
+                ? '공격 IP 가 어느 나라·도시에서 오는지'
+                : `사이트 접속 차단 — 방화벽 ${firewallAll.length}건 · nginx ${active.length}건`}
           </p>
         </div>
 
@@ -128,12 +143,7 @@ export function SecurityView() {
       </div>
 
       <div className="mb-6 flex gap-1 border-b border-gray-800" role="tablist">
-        {(
-          [
-            ['ssh', 'SSH 접속'],
-            ['bans', '사이트 IP 차단'],
-          ] as const
-        ).map(([key, label]) => (
+        {TABS.map(([key, label]) => (
           <button
             key={key}
             role="tab"
@@ -152,6 +162,16 @@ export function SecurityView() {
 
       {tab === 'ssh' ? (
         <SshAccessPanel />
+      ) : tab === 'map' ? (
+        <Suspense
+          fallback={
+            <div className="flex items-center justify-center py-12">
+              <Loader2 size={24} className="animate-spin text-gray-600" />
+            </div>
+          }
+        >
+          <AttackMapPanel />
+        </Suspense>
       ) : (
         <>
           {error && (

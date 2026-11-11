@@ -1,6 +1,7 @@
 import { api } from '@/shared/api/client';
 import { BaseApiService } from '@/shared/api/base.service';
 import type {
+  AttackMapView,
   IpBan,
   CreateIpBanInput,
   SshAccessOverview,
@@ -75,6 +76,23 @@ export class SecurityService extends BaseApiService {
       if (signal?.aborted) throw error;
       this.logError('SecurityService', 'getSshAccess', error);
       this.handleError(error, 'SSH 접속 기록 조회 실패');
+    }
+  }
+
+  async getAttackMap(
+    days: number,
+    signal?: AbortSignal,
+  ): Promise<AttackMapView> {
+    try {
+      const { data } = await api.get<AttackMapView>(
+        `${this.basePath}/attack-map`,
+        { params: { days }, signal, timeout: 15_000 },
+      );
+      return data;
+    } catch (error) {
+      if (signal?.aborted) throw error;
+      this.logError('SecurityService', 'getAttackMap', error);
+      this.handleError(error, '공격 지도 조회 실패');
     }
   }
 

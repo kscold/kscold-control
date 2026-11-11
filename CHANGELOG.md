@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- 접속 보안에 공격 지도 탭을 더함. SSH 공격과 Control 로그인 실패 IP 를 세계 지도에 찍고 나라별 시도·IP·차단 비율 순위를 보여 줌. SSH IP 요약과 방화벽 차단 목록에도 국기와 도시를 붙임. `CONTROL_IP_GEO_DB_PATH` 에 DB-IP City Lite 파일을 두어야 켜짐 (docs/attack-map.md).
+
 ## 1.6.0 - 2026-11-11
 
 보안 1단계: 인터넷에 열린 콘솔을 비밀번호 하나로는 뚫지 못하게 함.

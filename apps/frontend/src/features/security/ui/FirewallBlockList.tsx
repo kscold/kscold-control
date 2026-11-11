@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import type { SshBlock, SshBlockScope } from '../model/security.types';
 import { smallButton, usePaged } from '../model/paging';
 import { Pager } from './Pager';
+import { GeoLabel } from './GeoLabel';
 
 const BLOCK_SCOPE_LABEL: Record<
   SshBlockScope,
@@ -79,6 +80,7 @@ export function FirewallBlockList({
                   <span className="truncate font-mono text-sm text-white">
                     {b.ip}
                   </span>
+                  <GeoLabel geo={b.geo} />
                   <span
                     className={`shrink-0 rounded-full border px-2 py-0.5 text-[10px] ${
                       b.source === 'auto'
