@@ -1,7 +1,10 @@
-import { useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import {
   Ban,
   CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
+  Pencil,
   Loader2,
   Plug,
   RefreshCw,
@@ -17,6 +20,7 @@ import { PERMISSIONS } from '@/shared/config/permissions';
 import { useSshAccess } from '../model/useSshAccess';
 import type {
   SshAuditEvent,
+  SshBlockScope,
   SshIpScope,
   SshIpSummary,
 } from '../model/security.types';
@@ -42,8 +46,75 @@ const RESULT_CLASS: Record<SshAuditEvent['result'], string> = {
 
 type EventFilter = 'external' | 'success' | 'failure' | 'all';
 
-function blockConfirmation(ip: string): string {
-  return `${ip}를 차단 목록에 추가할까요?\n적용 중인 방화벽 규칙에 따라 SSH와 운영 사이트 접속이 차단될 수 있습니다.`;
+function blockConfirmation(ip: string, scope: SshBlockScope = 'all'): string {
+  return scope === 'ssh'
+    ? `${ip}의 SSH 접속을 막을까요?\n운영 중인 사이트 접속은 그대로입니다.`
+    : `${ip}를 막을까요?\n맥미니 방화벽에서 SSH 와 운영 중인 사이트 접속을 모두 막습니다.`;
+}
+
+const BLOCK_SCOPE_LABEL: Record<
+  SshBlockScope,
+  { label: string; className: string }
+> = {
+  all: {
+    label: 'SSH·사이트',
+    className: 'border-red-500/30 bg-red-500/10 text-red-300',
+  },
+  ssh: {
+    label: 'SSH 만',
+    className: 'border-amber-500/30 bg-amber-500/10 text-amber-300',
+  },
+};
+
+/** 긴 목록을 쪽으로 나눔 — 목록이 줄어 쪽이 사라지면 마지막 쪽으로 */
+function usePaged<T>(items: T[], size: number) {
+  const [page, setPage] = useState(0);
+  const pages = Math.max(1, Math.ceil(items.length / size));
+  const current = Math.min(page, pages - 1);
+  return {
+    items: items.slice(current * size, current * size + size),
+    page: current,
+    pages,
+    total: items.length,
+    setPage,
+  };
+}
+
+function Pager({
+  page,
+  pages,
+  total,
+  setPage,
+}: {
+  page: number;
+  pages: number;
+  total: number;
+  setPage: (p: number) => void;
+}) {
+  if (pages <= 1) return null;
+  return (
+    <div className="mt-2 flex items-center justify-end gap-2 text-xs text-gray-500">
+      <span>
+        {total}개 중 {page + 1}/{pages}쪽
+      </span>
+      <button
+        aria-label="이전 쪽"
+        className={smallButton}
+        disabled={page === 0}
+        onClick={() => setPage(page - 1)}
+      >
+        <ChevronLeft size={12} />
+      </button>
+      <button
+        aria-label="다음 쪽"
+        className={smallButton}
+        disabled={page >= pages - 1}
+        onClick={() => setPage(page + 1)}
+      >
+        <ChevronRight size={12} />
+      </button>
+    </div>
+  );
 }
 
 function ScopeBadge({ scope }: { scope: SshIpScope }) {
@@ -90,6 +161,13 @@ export function SshAccessPanel() {
   const [filter, setFilter] = useState<EventFilter>('external');
   const [blockIp, setBlockIp] = useState('');
   const [blockReason, setBlockReason] = useState('');
+  const [blockScope, setBlockScope] = useState<SshBlockScope>('all');
+  const [blockQuery, setBlockQuery] = useState('');
+  const [knownIp, setKnownIp] = useState('');
+  const [knownLabel, setKnownLabel] = useState('');
+  const [editing, setEditing] = useState<{ ip: string; label: string } | null>(
+    null,
+  );
   const [working, setWorking] = useState<string | null>(null);
   const ssh = useSshAccess(days);
   const { showConfirm, showAlert } = useModalStore();
@@ -101,6 +179,19 @@ export function SshAccessPanel() {
     () => new Set((data?.blocks ?? []).map((b) => b.ip)),
     [data],
   );
+  const labels = useMemo(
+    () => new Map((data?.knownIps ?? []).map((k) => [k.ip, k.label])),
+    [data],
+  );
+  const blockList = useMemo(() => {
+    const q = blockQuery.trim().toLowerCase();
+    const list = data?.blocks ?? [];
+    return q
+      ? list.filter((b) =>
+          `${b.ip} ${b.reason ?? ''}`.toLowerCase().includes(q),
+        )
+      : list;
+  }, [data, blockQuery]);
 
   const act = async (key: string, fn: () => Promise<unknown>) => {
     setWorking(key);
@@ -134,6 +225,14 @@ export function SshAccessPanel() {
         return list;
     }
   }, [data, filter]);
+
+  const blockPage = usePaged(blockList, 10);
+  const ipPage = usePaged(data?.summary.ips ?? [], 10);
+  const eventPage = usePaged(events, 20);
+  const { setPage: setEventPage } = eventPage;
+  const { setPage: setBlockPage } = blockPage;
+  useEffect(() => setEventPage(0), [filter, days, setEventPage]);
+  useEffect(() => setBlockPage(0), [blockQuery, setBlockPage]);
 
   if (!data) {
     return ssh.error ? (
@@ -182,10 +281,8 @@ export function SshAccessPanel() {
             className={`${smallButton} hover:border-red-700 hover:text-red-300`}
             disabled={working !== null}
             onClick={() =>
-              confirmAct(
-                blockConfirmation(row.ip),
-                `block:${row.ip}`,
-                () => ssh.block(row.ip, 'Control 에서 차단'),
+              confirmAct(blockConfirmation(row.ip), `block:${row.ip}`, () =>
+                ssh.block(row.ip, 'Control 에서 차단'),
               )
             }
           >
@@ -226,7 +323,9 @@ export function SshAccessPanel() {
           tone={guardOk ? 'ok' : 'warn'}
           hint={
             guardOk
-              ? `차단기 동작 중 · ${formatShortDateTime(guard.updatedAt)}`
+              ? guard.allCount !== null && guard.sshOnlyCount !== null
+                ? `SSH·사이트 ${guard.allCount} · SSH 만 ${guard.sshOnlyCount}`
+                : `차단기 동작 중 · ${formatShortDateTime(guard.updatedAt)}`
               : guard.installed
                 ? '차단기 멈춤'
                 : '차단기 미설치'
@@ -262,6 +361,136 @@ export function SshAccessPanel() {
           )}
         </div>
       )}
+
+      {/* 내 IP — 자주 보는 정보라 위에 둠 */}
+      <Section title="내 IP" count={data.knownIps.length}>
+        <p className="mb-2 text-xs text-gray-500">
+          내가 쓰는 공인 IP 입니다. 여기서 성공한 접속은 경고(★)를 띄우지 않고
+          자동 차단하지 않습니다. 별칭(회사·집 등)을 붙여 두면 세션·요약에도
+          보입니다.
+        </p>
+        {data.knownIps.length === 0 ? (
+          <Empty text="등록된 IP 가 없습니다. 아래에서 추가하거나 열린 세션·IP 요약에서 '내 IP' 를 누르세요" />
+        ) : (
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-4">
+            {data.knownIps.map((k) => (
+              <div
+                key={k.ip}
+                className="flex items-center gap-2 rounded-xl border border-emerald-900 bg-emerald-950/20 px-3 py-2"
+              >
+                {editing?.ip === k.ip ? (
+                  <form
+                    className="flex min-w-0 flex-1 items-center gap-1"
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      const label = editing.label.trim();
+                      setEditing(null);
+                      void act(`label:${k.ip}`, () =>
+                        ssh.labelKnown(k.ip, label),
+                      );
+                    }}
+                  >
+                    <input
+                      autoFocus
+                      aria-label={`${k.ip} 별칭`}
+                      value={editing.label}
+                      maxLength={40}
+                      onChange={(e) =>
+                        setEditing({ ip: k.ip, label: e.target.value })
+                      }
+                      onKeyDown={(e) => {
+                        if (e.key === 'Escape') setEditing(null);
+                      }}
+                      placeholder="예: 회사"
+                      className="min-w-0 flex-1 rounded-md border border-gray-700 bg-gray-900 px-2 py-1 text-xs text-white focus:border-emerald-600 focus:outline-none"
+                    />
+                    <button type="submit" className={smallButton}>
+                      저장
+                    </button>
+                  </form>
+                ) : (
+                  <>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-medium text-emerald-200">
+                        {k.label ?? (
+                          <span className="text-gray-500">별칭 없음</span>
+                        )}
+                      </p>
+                      <p className="truncate font-mono text-xs text-gray-400">
+                        {k.ip}
+                      </p>
+                    </div>
+                    {canManage && (
+                      <div className="flex shrink-0 gap-1">
+                        <button
+                          aria-label={`${k.ip} 별칭 바꾸기`}
+                          className={smallButton}
+                          disabled={working !== null}
+                          onClick={() =>
+                            setEditing({ ip: k.ip, label: k.label ?? '' })
+                          }
+                        >
+                          <Pencil size={12} />
+                        </button>
+                        <button
+                          aria-label={`${k.ip} 빼기`}
+                          className={`${smallButton} hover:border-red-700 hover:text-red-300`}
+                          disabled={working !== null}
+                          onClick={() =>
+                            confirmAct(
+                              `${k.label ? `${k.label}(${k.ip})` : k.ip} 를 내 IP 목록에서 뺄까요?`,
+                              `unknown:${k.ip}`,
+                              () => ssh.removeKnown(k.ip),
+                            )
+                          }
+                        >
+                          <X size={12} />
+                        </button>
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+        {canManage && (
+          <form
+            className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-[minmax(0,12rem)_minmax(0,12rem)_auto]"
+            onSubmit={(e) => {
+              e.preventDefault();
+              const ip = knownIp.trim();
+              if (!ip) return;
+              void act(`known:${ip}`, async () => {
+                await ssh.addKnown(ip, knownLabel.trim() || undefined);
+                setKnownIp('');
+                setKnownLabel('');
+              });
+            }}
+          >
+            <input
+              value={knownIp}
+              onChange={(e) => setKnownIp(e.target.value)}
+              placeholder="추가할 IP"
+              className="min-w-0 rounded-lg border border-gray-800 bg-gray-900 px-3 py-1.5 font-mono text-xs text-white placeholder:text-gray-600 focus:border-emerald-700 focus:outline-none"
+            />
+            <input
+              value={knownLabel}
+              onChange={(e) => setKnownLabel(e.target.value)}
+              maxLength={40}
+              placeholder="별칭 (예: 집)"
+              className="min-w-0 rounded-lg border border-gray-800 bg-gray-900 px-3 py-1.5 text-xs text-white placeholder:text-gray-600 focus:border-emerald-700 focus:outline-none"
+            />
+            <button
+              type="submit"
+              disabled={!knownIp.trim() || working !== null}
+              className={`${smallButton} justify-center`}
+            >
+              <UserCheck size={12} /> 내 IP 추가
+            </button>
+          </form>
+        )}
+      </Section>
 
       <div className="flex flex-wrap items-center gap-2">
         {[1, 7, 30].map((d) => (
@@ -305,7 +534,9 @@ export function SshAccessPanel() {
                       {s.ip ?? '주소 모름'}
                     </span>
                     <ScopeBadge scope={s.scope} />
-                    {s.known && <KnownBadge />}
+                    {s.known && (
+                      <KnownBadge label={s.ip ? labels.get(s.ip) : null} />
+                    )}
                     {s.scope === 'external' && !s.known && <UnknownBadge />}
                   </div>
                   <p className="mt-1 truncate text-xs text-gray-500">
@@ -360,19 +591,37 @@ export function SshAccessPanel() {
       </Section>
 
       {/* 차단 */}
-      <Section title="차단 목록 IP" count={data.blocks.length}>
+      <Section
+        title="차단 중인 IP"
+        count={data.blocks.length}
+        action={
+          data.blocks.length > 10 ? (
+            <input
+              value={blockQuery}
+              onChange={(e) => setBlockQuery(e.target.value)}
+              placeholder="IP·이유 찾기"
+              aria-label="차단 목록 찾기"
+              className="w-40 min-w-0 rounded-lg border border-gray-800 bg-gray-900 px-2 py-1 text-xs text-white placeholder:text-gray-600 focus:border-gray-600 focus:outline-none"
+            />
+          ) : undefined
+        }
+      >
         {canManage && (
           <form
-            className="mb-3 grid grid-cols-1 gap-2 sm:grid-cols-[minmax(0,12rem)_minmax(0,1fr)_auto]"
+            className="mb-3 grid grid-cols-1 gap-2 sm:grid-cols-[minmax(0,12rem)_minmax(0,1fr)_auto_auto]"
             onSubmit={(e) => {
               e.preventDefault();
               const ip = blockIp.trim();
               if (!ip) return;
               confirmAct(
-                blockConfirmation(ip),
+                blockConfirmation(ip, blockScope),
                 `block:${ip}`,
                 async () => {
-                  await ssh.block(ip, blockReason.trim() || undefined);
+                  await ssh.block(
+                    ip,
+                    blockReason.trim() || undefined,
+                    blockScope,
+                  );
                   setBlockIp('');
                   setBlockReason('');
                 },
@@ -391,6 +640,15 @@ export function SshAccessPanel() {
               placeholder="이유 (선택)"
               className="min-w-0 rounded-lg border border-gray-800 bg-gray-900 px-3 py-2 text-sm text-white placeholder:text-gray-600 focus:border-red-700 focus:outline-none"
             />
+            <select
+              value={blockScope}
+              onChange={(e) => setBlockScope(e.target.value as SshBlockScope)}
+              aria-label="막을 범위"
+              className="rounded-lg border border-gray-800 bg-gray-900 px-2 py-2 text-sm text-white focus:border-red-700 focus:outline-none"
+            >
+              <option value="all">SSH·사이트 모두</option>
+              <option value="ssh">SSH 만</option>
+            </select>
             <button
               type="submit"
               disabled={!blockIp.trim() || working !== null}
@@ -402,17 +660,20 @@ export function SshAccessPanel() {
         )}
         <p className="mb-3 text-xs text-gray-500">
           자동 차단: 외부에서 root·없는 계정으로 시도하면 바로, 그 밖의 계정은
-          1시간에 3번 실패하면 막습니다. 자동으로 풀지 않습니다. 성공한 적 있는
-          IP·내 IP·내부망· Tailscale 은 막지 않습니다. 막은 IP 는 SSH 뿐 아니라
-          맥미니에서 운영 중인 사이트에도 적용되도록 설정할 수 있습니다. 이
-          화면은 요청 목록이며 실제 적용 범위는 서버에 설치된 방화벽 규칙에
-          따릅니다.
+          1시간에 3번 실패하면 막습니다(최근 7일 기록). 자동으로 풀지 않습니다.
+          성공한 적 있는 IP·내 IP·내부망·Tailscale 은 막지 않습니다. 기본은 SSH
+          와 맥미니에서 운영 중인 사이트를 모두 막고, IP 마다 SSH 만 막도록 바꿀
+          수 있습니다.
         </p>
-        {data.blocks.length === 0 ? (
-          <Empty text="막고 있는 IP 가 없습니다" />
+        {blockList.length === 0 ? (
+          <Empty
+            text={
+              blockQuery ? '찾는 IP 가 없습니다' : '막고 있는 IP 가 없습니다'
+            }
+          />
         ) : (
           <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
-            {data.blocks.map((b) => (
+            {blockPage.items.map((b) => (
               <div
                 key={`${b.source}:${b.ip}`}
                 className="flex items-start gap-3 rounded-xl border border-gray-800 bg-gray-900/60 p-3"
@@ -431,6 +692,11 @@ export function SshAccessPanel() {
                     >
                       {b.source === 'auto' ? '자동' : '수동'}
                     </span>
+                    <span
+                      className={`shrink-0 rounded-full border px-2 py-0.5 text-[10px] ${BLOCK_SCOPE_LABEL[b.scope].className}`}
+                    >
+                      {BLOCK_SCOPE_LABEL[b.scope].label}
+                    </span>
                   </div>
                   <p className="mt-1 truncate text-xs text-gray-500">
                     {b.blockedAt ?? '-'}
@@ -438,28 +704,48 @@ export function SshAccessPanel() {
                   </p>
                 </div>
                 {canManage && (
-                  <button
-                    className={smallButton}
-                    disabled={working !== null}
-                    onClick={() =>
-                      confirmAct(
-                        `${b.ip}의 차단을 풀까요?${
-                          b.source === 'auto'
-                            ? '\n같은 시도가 다시 오면 또 자동으로 막힙니다. 내 IP 라면 "내 IP" 로 표시하세요.'
-                            : ''
-                        }`,
-                        `unblock:${b.ip}`,
-                        () => ssh.unblock(b.ip),
-                      )
-                    }
-                  >
-                    해제
-                  </button>
+                  <div className="flex shrink-0 gap-1">
+                    <button
+                      className={smallButton}
+                      disabled={working !== null}
+                      onClick={() => {
+                        const next: SshBlockScope =
+                          b.scope === 'all' ? 'ssh' : 'all';
+                        confirmAct(
+                          next === 'ssh'
+                            ? `${b.ip} 를 SSH 만 막도록 바꿀까요?\n운영 중인 사이트에는 다시 들어올 수 있습니다.`
+                            : `${b.ip} 를 사이트까지 막을까요?\nSSH 와 맥미니에서 운영 중인 사이트 접속을 모두 막습니다.`,
+                          `scope:${b.ip}`,
+                          () => ssh.setScope(b.ip, next),
+                        );
+                      }}
+                    >
+                      {b.scope === 'all' ? 'SSH 만' : '사이트까지'}
+                    </button>
+                    <button
+                      className={smallButton}
+                      disabled={working !== null}
+                      onClick={() =>
+                        confirmAct(
+                          `${b.ip} 의 차단을 풀까요?${
+                            b.source === 'auto'
+                              ? '\n같은 시도가 다시 오면 또 자동으로 막힙니다. 내 IP 라면 "내 IP" 로 표시하세요.'
+                              : ''
+                          }`,
+                          `unblock:${b.ip}`,
+                          () => ssh.unblock(b.ip),
+                        )
+                      }
+                    >
+                      해제
+                    </button>
+                  </div>
                 )}
               </div>
             ))}
           </div>
         )}
+        <Pager {...blockPage} />
       </Section>
 
       {/* IP 별 */}
@@ -468,7 +754,7 @@ export function SshAccessPanel() {
           <Empty text="기록이 없습니다" />
         ) : (
           <div className="space-y-2">
-            {summary.ips.slice(0, 50).map((r: SshIpSummary) => (
+            {ipPage.items.map((r: SshIpSummary) => (
               <div
                 key={r.ip}
                 className={`flex items-center gap-3 rounded-xl border bg-gray-900/60 p-3 ${
@@ -481,7 +767,7 @@ export function SshAccessPanel() {
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="font-mono text-sm text-white">{r.ip}</span>
                     <ScopeBadge scope={r.scope} />
-                    {r.known && <KnownBadge />}
+                    {r.known && <KnownBadge label={labels.get(r.ip)} />}
                     {r.scope === 'external' && r.success > 0 && !r.known && (
                       <UnknownBadge />
                     )}
@@ -502,6 +788,7 @@ export function SshAccessPanel() {
             ))}
           </div>
         )}
+        <Pager {...ipPage} />
         {summary.triedUsers.length > 0 && (
           <p className="mt-3 text-xs text-gray-500">
             시도된 계정:{' '}
@@ -545,7 +832,7 @@ export function SshAccessPanel() {
           <Empty text="해당하는 기록이 없습니다" />
         ) : (
           <div className="divide-y divide-gray-900 overflow-hidden rounded-xl border border-gray-800 bg-gray-900/40">
-            {events.slice(0, 200).map((e, i) => (
+            {eventPage.items.map((e, i) => (
               <div
                 key={`${e.at}-${i}`}
                 className="flex items-center gap-3 px-3 py-2 text-xs"
@@ -557,7 +844,13 @@ export function SshAccessPanel() {
                   {e.result}
                 </span>
                 <span className="min-w-0 flex-1 truncate font-mono text-gray-300">
-                  {e.ip ?? '-'}{' '}
+                  {e.ip ?? '-'}
+                  {e.ip && labels.get(e.ip) && (
+                    <span className="text-emerald-400">
+                      {' '}
+                      ({labels.get(e.ip)})
+                    </span>
+                  )}{' '}
                   <span className="text-gray-500">· {e.user ?? '-'}</span>
                   {e.method && (
                     <span className="text-gray-600"> · {e.method}</span>
@@ -570,44 +863,7 @@ export function SshAccessPanel() {
             ))}
           </div>
         )}
-      </Section>
-
-      {/* 내 IP */}
-      <Section title="내 IP" count={data.knownIps.length}>
-        <p className="mb-2 text-xs text-gray-500">
-          내가 쓰는 공인 IP 입니다. 여기 있는 IP 에서 성공한 접속은 경고(★)를
-          띄우지 않고, 자동 차단하지 않습니다.
-        </p>
-        {data.knownIps.length === 0 ? (
-          <Empty text="등록된 IP 가 없습니다. 열린 세션이나 IP 요약에서 '내 IP' 를 누르세요" />
-        ) : (
-          <div className="flex flex-wrap gap-2">
-            {data.knownIps.map((ip) => (
-              <span
-                key={ip}
-                className="inline-flex items-center gap-1 rounded-full border border-emerald-800 bg-emerald-950/30 px-3 py-1 font-mono text-xs text-emerald-200"
-              >
-                {ip}
-                {canManage && (
-                  <button
-                    aria-label={`${ip} 빼기`}
-                    className="text-emerald-500 hover:text-white"
-                    disabled={working !== null}
-                    onClick={() =>
-                      confirmAct(
-                        `${ip} 를 내 IP 목록에서 뺄까요?`,
-                        `unknown:${ip}`,
-                        () => ssh.removeKnown(ip),
-                      )
-                    }
-                  >
-                    <X size={12} />
-                  </button>
-                )}
-              </span>
-            ))}
-          </div>
-        )}
+        <Pager {...eventPage} />
       </Section>
     </div>
   );
@@ -656,10 +912,10 @@ function Empty({ text }: { text: string }) {
   );
 }
 
-function KnownBadge() {
+function KnownBadge({ label }: { label?: string | null }) {
   return (
     <span className="shrink-0 rounded-full border border-emerald-800 px-2 py-0.5 text-[10px] text-emerald-300">
-      내 IP
+      내 IP{label ? ` · ${label}` : ''}
     </span>
   );
 }
