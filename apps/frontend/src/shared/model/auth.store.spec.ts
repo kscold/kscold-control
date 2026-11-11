@@ -197,10 +197,15 @@ describe('auth.store 토큰 선제 갱신', () => {
     permissions: ['rbac:manage'],
   };
 
-  /** exp 만 담은 최소 형태의 JWT — 서명 검증은 서버 몫이라 여기선 불필요하다 */
-  const tokenExpiringIn = (ms: number) => {
+  /** exp(와 세션 절대 만료 maxExp)만 담은 최소 형태의 JWT — 서명 검증은 서버 몫이라 여기선 불필요하다 */
+  const tokenExpiringIn = (ms: number, maxMs?: number) => {
+    const seconds = (offset: number) =>
+      Math.floor((Date.now() + offset) / 1000);
     const payload = btoa(
-      JSON.stringify({ exp: Math.floor((Date.now() + ms) / 1000) }),
+      JSON.stringify({
+        exp: seconds(ms),
+        ...(maxMs === undefined ? {} : { maxExp: seconds(maxMs) }),
+      }),
     );
     return `header.${payload}.signature`;
   };
@@ -230,6 +235,30 @@ describe('auth.store 토큰 선제 갱신', () => {
     );
     expect(post).toHaveBeenCalledTimes(1);
     expect(useAuthStore.getState().token).toBe('refreshed-token');
+  });
+
+  it('로그인 한도까지 남은 시간이 있으면 갱신한다', async () => {
+    useAuthStore.setState({ token: tokenExpiringIn(2 * HOUR, 5 * 24 * HOUR) });
+    const post = vi.spyOn(axios, 'post').mockResolvedValue({
+      data: { accessToken: 'refreshed-token', user },
+    });
+
+    await expect(useAuthStore.getState().ensureFreshToken()).resolves.toBe(
+      true,
+    );
+    expect(post).toHaveBeenCalledTimes(1);
+  });
+
+  it('만료가 로그인 한도에 닿은 토큰은 갱신해도 늘지 않으므로 서버를 부르지 않는다', async () => {
+    const capped = tokenExpiringIn(2 * HOUR, 2 * HOUR);
+    useAuthStore.setState({ token: capped });
+    const post = vi.spyOn(axios, 'post');
+
+    await expect(useAuthStore.getState().ensureFreshToken()).resolves.toBe(
+      false,
+    );
+    expect(post).not.toHaveBeenCalled();
+    expect(useAuthStore.getState().token).toBe(capped);
   });
 
   it('수명이 넉넉하면 서버를 부르지 않는다', async () => {
