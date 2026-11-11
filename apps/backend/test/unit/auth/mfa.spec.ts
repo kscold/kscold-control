@@ -87,6 +87,22 @@ describe('TOTP', () => {
 });
 
 describe('MfaConfig', () => {
+  // ConfigService 는 없는 키를 process.env 에서 읽어, 운영 .env 를 불러온 배포 검사에서 값이 섞인다.
+  const saved = {
+    key: process.env.CONTROL_MFA_ENCRYPTION_KEY,
+    roles: process.env.CONTROL_MFA_REQUIRED_ROLES,
+  };
+  beforeEach(() => {
+    delete process.env.CONTROL_MFA_ENCRYPTION_KEY;
+    delete process.env.CONTROL_MFA_REQUIRED_ROLES;
+  });
+  afterAll(() => {
+    if (saved.key !== undefined)
+      process.env.CONTROL_MFA_ENCRYPTION_KEY = saved.key;
+    if (saved.roles !== undefined)
+      process.env.CONTROL_MFA_REQUIRED_ROLES = saved.roles;
+  });
+
   const key = randomBytes(32);
   const config = new MfaConfig(key, new Set(['admin']), 'kscold-control');
 
