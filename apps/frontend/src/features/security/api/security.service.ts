@@ -7,6 +7,7 @@ import type {
   SshAccessOverview,
   SshBlock,
   SshBlockScope,
+  SshCountryGuard,
   SshFirewallBlocks,
   SshSession,
 } from '../model/security.types';
@@ -146,6 +147,28 @@ export class SecurityService extends BaseApiService {
     } catch (error) {
       this.logError('SecurityService', 'setSshBlockScope', error);
       this.handleError(error, '차단 범위 변경 실패');
+    }
+  }
+
+  async updateSshCountryGuard(
+    patch: Partial<Pick<SshCountryGuard, 'enabled' | 'allowedCountries'>>,
+  ): Promise<void> {
+    try {
+      await api.patch(`${this.basePath}/ssh/country-guard`, patch);
+    } catch (error) {
+      this.logError('SecurityService', 'updateSshCountryGuard', error);
+      this.handleError(error, '국가 차단 설정 변경 실패');
+    }
+  }
+
+  async unblockSshCountry(country: string): Promise<void> {
+    try {
+      await api.post(
+        `${this.basePath}/ssh/country-guard/countries/${encodeURIComponent(country)}/unblock`,
+      );
+    } catch (error) {
+      this.logError('SecurityService', 'unblockSshCountry', error);
+      this.handleError(error, '나라별 차단 해제 실패');
     }
   }
 

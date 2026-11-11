@@ -85,6 +85,13 @@ function overview(): SshAccessOverview {
         geo: null,
       },
     ],
+    countryGuard: {
+      enabled: true,
+      state: 'on',
+      allowedCountries: ['JP', 'KR'],
+      error: null,
+      blockedByCountry: [],
+    },
   };
 }
 
@@ -252,4 +259,97 @@ it('긴 차단 목록은 10개씩 쪽으로 나눈다', async () => {
   await userEvent.type(screen.getByLabelText('차단 목록 찾기'), '5.5.5.23');
   expect(screen.getByText('5.5.5.23')).toBeInTheDocument();
   expect(screen.queryByText('5.5.5.11')).toBeNull();
+});
+
+it('허용 국가를 보여 주고 나라를 빼기 전에 확인을 받는다', async () => {
+  signIn([PERMISSIONS.SECURITY_READ, PERMISSIONS.SECURITY_MANAGE]);
+  vi.spyOn(securityService, 'getSshAccess').mockResolvedValue(overview());
+  const update = vi
+    .spyOn(securityService, 'updateSshCountryGuard')
+    .mockResolvedValue(undefined);
+  renderPanel();
+
+  expect(
+    await screen.findByText(/허용 국가 밖 SSH 차단 · 켜짐/),
+  ).toBeInTheDocument();
+  expect(
+    screen.getByText(/허용 국가 JP\(.+\), KR\(.+\) 밖에서/),
+  ).toBeInTheDocument();
+
+  await userEvent.click(screen.getByRole('button', { name: 'JP 허용 해제' }));
+  expect(update).not.toHaveBeenCalled();
+  const dialog = await screen.findByRole('alertdialog');
+  await userEvent.click(within(dialog).getByRole('button', { name: '확인' }));
+  await waitFor(() =>
+    expect(update).toHaveBeenCalledWith({ allowedCountries: ['KR'] }),
+  );
+
+  await userEvent.type(screen.getByLabelText('허용할 국가 코드'), 'us');
+  await userEvent.click(screen.getByRole('button', { name: '허용' }));
+  await waitFor(() =>
+    expect(update).toHaveBeenCalledWith({
+      allowedCountries: ['JP', 'KR', 'US'],
+    }),
+  );
+  await userEvent.click(screen.getByRole('button', { name: '끄기' }));
+  await waitFor(() => expect(update).toHaveBeenCalledWith({ enabled: false }));
+});
+
+it('다시 허용한 나라에 남은 차단 수를 알리고 한 번에 풀 수 있다', async () => {
+  signIn([PERMISSIONS.SECURITY_READ, PERMISSIONS.SECURITY_MANAGE]);
+  const data = overview();
+  data.countryGuard.blockedByCountry = [
+    { country: 'JP', countryName: '일본', count: 3 },
+    { country: 'CN', countryName: '중국', count: 5 },
+  ];
+  vi.spyOn(securityService, 'getSshAccess').mockResolvedValue(data);
+  const unblock = vi
+    .spyOn(securityService, 'unblockSshCountry')
+    .mockResolvedValue(undefined);
+  renderPanel();
+
+  expect(
+    await screen.findByText(/JP 를 허용했지만 이 규칙이 막아 둔 IP 3개/),
+  ).toBeInTheDocument();
+  expect(screen.queryByText(/CN 를 허용했지만/)).toBeNull();
+  await userEvent.click(
+    screen.getByRole('button', { name: '이 나라 차단 모두 해제' }),
+  );
+  const dialog = await screen.findByRole('alertdialog');
+  await userEvent.click(within(dialog).getByRole('button', { name: '확인' }));
+  await waitFor(() => expect(unblock).toHaveBeenCalledWith('JP'));
+});
+
+it('보기 권한만 있으면 국가 설정을 바꾸는 버튼을 숨긴다', async () => {
+  signIn([PERMISSIONS.SECURITY_READ]);
+  vi.spyOn(securityService, 'getSshAccess').mockResolvedValue(overview());
+  renderPanel();
+
+  await screen.findByText(/허용 국가 밖 SSH 차단 · 켜짐/);
+  expect(screen.queryByRole('button', { name: '끄기' })).toBeNull();
+  expect(screen.queryByLabelText('허용할 국가 코드')).toBeNull();
+});
+
+it('설정 파일을 읽지 못하면 까닭을 보여 주고 켜기로 다시 쓸 수 있다', async () => {
+  signIn([PERMISSIONS.SECURITY_READ, PERMISSIONS.SECURITY_MANAGE]);
+  const data = overview();
+  data.countryGuard = {
+    ...data.countryGuard,
+    enabled: false,
+    state: 'off',
+    allowedCountries: ['KR'],
+    error:
+      'ssh-country-guard.json 을 읽지 못해(EACCES) 국가 차단을 꺼 두었습니다. 켜거나 허용 국가를 바꾸면 파일을 새로 씁니다.',
+  };
+  vi.spyOn(securityService, 'getSshAccess').mockResolvedValue(data);
+  const update = vi
+    .spyOn(securityService, 'updateSshCountryGuard')
+    .mockResolvedValue(undefined);
+  renderPanel();
+
+  expect(
+    await screen.findByText(/읽지 못해\(EACCES\) 국가 차단을 꺼 두었습니다/),
+  ).toBeInTheDocument();
+  await userEvent.click(screen.getByRole('button', { name: '켜기' }));
+  await waitFor(() => expect(update).toHaveBeenCalledWith({ enabled: true }));
 });

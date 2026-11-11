@@ -22,9 +22,12 @@ import {
 import {
   SshBlockDto,
   SshBlockScopeDto,
+  SshCountryGuardDto,
   SshIpDto,
   SshKnownLabelDto,
 } from '../../application/dto/ssh-access.dto';
+import { SshCountryGuardService } from '../../application/services/ssh-country-guard.service';
+import type { CountryGuardSettings } from '../../domain/ssh-audit/country-guard.policy';
 
 /**
  * 맥미니 SSH 접속 기록·열린 세션·차단
@@ -33,12 +36,54 @@ import {
 @Controller('security/ssh')
 @UseGuards(AuthGuard('jwt'), PermissionsGuard)
 export class SshAccessController {
-  constructor(private readonly ssh: SshAccessService) {}
+  constructor(
+    private readonly ssh: SshAccessService,
+    private readonly countryGuard: SshCountryGuardService,
+  ) {}
 
   @Get()
   @RequirePermissions(PERMISSIONS.SECURITY_READ)
-  overview(@Query('days') days?: string) {
-    return this.ssh.overview(Number(days ?? 7));
+  async overview(@Query('days') days?: string) {
+    const overview = await this.ssh.overview(Number(days ?? 7));
+    return {
+      ...overview,
+      countryGuard: await this.countryGuard.status(overview.blocks),
+    };
+  }
+
+  @Patch('country-guard')
+  @RequirePermissions(PERMISSIONS.SECURITY_MANAGE)
+  @Audit({
+    domain: 'security',
+    action: 'ssh.country-guard.update',
+    summary: (ctx) => {
+      const s = ctx.response as CountryGuardSettings;
+      return `허용 국가 밖 SSH 차단을 ${s.enabled ? '켰' : '껐'}습니다 (허용 국가 ${s.allowedCountries.join(', ')}).`;
+    },
+    targetType: 'ssh-country-guard',
+    metadata: (ctx) => ({ ...(ctx.response as CountryGuardSettings) }),
+  })
+  updateCountryGuard(@Body() dto: SshCountryGuardDto) {
+    return this.countryGuard.update(dto);
+  }
+
+  @Post('country-guard/countries/:country/unblock')
+  @RequirePermissions(PERMISSIONS.SECURITY_MANAGE)
+  @Audit({
+    domain: 'security',
+    action: 'ssh.country-guard.unblock-country',
+    summary: (ctx) => {
+      const r = ctx.response as { country: string; released: string[] };
+      return `허용 국가 밖 SSH 차단 중 ${r.country} 차단 ${r.released.length}개를 풀었습니다.`;
+    },
+    targetType: 'country',
+    targetId: (ctx) => ctx.params.country,
+    metadata: (ctx) => ({
+      released: (ctx.response as { released: string[] }).released,
+    }),
+  })
+  unblockCountry(@Param('country') country: string) {
+    return this.countryGuard.unblockCountry(country);
   }
 
   @Get('blocks')

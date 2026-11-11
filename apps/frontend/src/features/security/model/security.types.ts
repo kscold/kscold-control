@@ -97,6 +97,20 @@ export interface SshFirewallBlocks {
   items: SshBlock[];
 }
 
+/** 허용 국가 밖 SSH 차단. state — off: 꺼 둠, no-geo: IP 위치 파일이 준비되지 않아 쉼, on: 동작 중 */
+export interface SshCountryGuard {
+  enabled: boolean;
+  state: 'off' | 'no-geo' | 'on';
+  allowedCountries: string[];
+  /** 설정 파일을 읽지 못해 꺼 둔 까닭. 바꾸면 파일을 새로 씀 */
+  error: string | null;
+  blockedByCountry: Array<{
+    country: string;
+    countryName: string | null;
+    count: number;
+  }>;
+}
+
 export interface SshAccessOverview {
   recorder: { logPath: string; exists: boolean; updatedAt: string | null };
   guard: {
@@ -122,6 +136,7 @@ export interface SshAccessOverview {
   pendingAuth: number;
   knownIps: SshKnownIp[];
   blocks: SshBlock[];
+  countryGuard: SshCountryGuard;
 }
 
 // ---- 공격 지도 ----

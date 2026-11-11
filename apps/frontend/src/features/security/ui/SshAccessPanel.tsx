@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { useModalStore } from '@/shared/model/modal.store';
 import { FirewallBlockList } from './FirewallBlockList';
+import { CountryGuardSection } from './CountryGuardSection';
 import { smallButton, usePaged } from '../model/paging';
 import { Pager } from './Pager';
 import { GeoLabel } from './GeoLabel';
@@ -512,6 +513,16 @@ export function SshAccessPanel() {
 
       {/* 차단 */}
       <Section title="차단 중인 IP" count={data.blocks.length}>
+        <CountryGuardSection
+          guard={data.countryGuard}
+          canManage={canManage}
+          disabled={working !== null}
+          confirm={confirmAct}
+          onUpdate={(patch) =>
+            act('country-guard', () => ssh.updateCountryGuard(patch))
+          }
+          onUnblockCountry={ssh.unblockCountry}
+        />
         {canManage && (
           <form
             className="mb-3 grid grid-cols-1 gap-2 sm:grid-cols-[minmax(0,12rem)_minmax(0,1fr)_auto_auto]"
@@ -569,7 +580,8 @@ export function SshAccessPanel() {
           1시간에 3번 실패하면 막습니다(최근 7일 기록). 자동으로 풀지 않습니다.
           성공한 적 있는 IP·내 IP·내부망·Tailscale 은 막지 않습니다. 기본은 SSH
           와 맥미니에서 운영 중인 사이트를 모두 막고, IP 마다 SSH 만 막도록 바꿀
-          수 있습니다.
+          수 있습니다. 허용 국가 밖 차단은 위 설정을 따르며 성공한 로그인도
+          막습니다.
         </p>
         <FirewallBlockList
           blocks={data.blocks}

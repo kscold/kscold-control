@@ -41,6 +41,7 @@ const execFileAsync = promisify(execFile);
 
 /** 기록 파일 하나에서 끝부분만 읽는 크기 — 기록기는 20MB 에서 .1 로 넘김 */
 const TAIL_BYTES = 8 * 1024 * 1024;
+const AUDIT_LOG = 'ssh-audit.log';
 const MAX_EVENTS = 400;
 /** 차단기 상태 파일이 이보다 오래되면 꺼진 것으로 봄 (차단기는 15초마다 씀) */
 const GUARD_STALE_MS = 2 * 60 * 1000;
@@ -55,6 +56,12 @@ const INTERNAL_RANGES = [
   '192.168.0.0/16',
   '100.64.0.0/10',
 ].map((cidr) => parseIpRange(cidr) as IpRange);
+
+/** 기록 파일을 어디까지 읽었는지. 기록기가 파일을 .1 로 넘기면 inode 가 바뀐다. */
+export interface SshAuditCursor {
+  ino: number;
+  offset: number;
+}
 
 export interface SshSession {
   pid: number;
@@ -77,6 +84,16 @@ export interface SshBlock {
   reason: string | null;
   scope: SshBlockScope;
   geo: IpGeo | null;
+}
+
+/** 차단 목록을 한 차례 안에서 읽고 바꾸는 손잡이. transaction 밖에서는 쓰지 않는다. */
+export interface SshBlockTransaction {
+  blocks(): Promise<SshBlock[]>;
+  knownIps(): Promise<string[]>;
+  block(ip: string, reason: string, scope: SshBlockScope): Promise<SshBlock>;
+  /** 손으로 막은 항목의 이유를 바꾸고 모든 접속을 막도록 넓힘 */
+  widen(ip: string, reason: string): Promise<void>;
+  setScope(ip: string, scope: SshBlockScope): Promise<void>;
 }
 
 /** 내 IP — 별칭(회사·집 등)을 같이 둠 */
@@ -121,8 +138,7 @@ export interface SshAccessOverview {
 @Injectable()
 export class SshAccessService {
   private readonly logger = new Logger(SshAccessService.name);
-  private readonly dir =
-    process.env.SSH_AUDIT_DIR || join(homedir(), 'server-watchdog');
+  private readonly dir = sshAuditDir();
   private mutation: Promise<void> = Promise.resolve();
 
   constructor(
@@ -160,6 +176,22 @@ export class SshAccessService {
   setBlockScope(ip: string, scope: SshBlockScope) {
     return this.change(() => this.setBlockScopeEntry(ip, scope));
   }
+  /**
+   * 차단 목록을 읽고 판단해 쓰는 일을 다른 변경과 섞이지 않게 한 차례로 돌린다.
+   * 밖에서 읽은 목록으로 판단하면 그 사이 운영자가 올린 더 넓은 차단을 좁힐 수 있다.
+   */
+  transaction<T>(work: (tx: SshBlockTransaction) => Promise<T>): Promise<T> {
+    return this.change(() =>
+      work({
+        blocks: () => this.readBlocks(),
+        knownIps: () => this.readKnownIps(),
+        block: (ip, reason, scope) => this.blockEntry(ip, reason, scope),
+        widen: (ip, reason) => this.widenBlockEntry(ip, reason),
+        setScope: (ip, scope) =>
+          this.writeScope(normalizeBlockTarget(ip), scope),
+      }),
+    );
+  }
 
   private file(name: string) {
     return join(this.dir, name);
@@ -180,6 +212,44 @@ export class SshAccessService {
       this.readBlocks(),
     ]);
     return { guard, items };
+  }
+
+  /** 기간 안의 접속 기록 (오래된 것부터) */
+  recentEvents(days: number): Promise<SshAuditEvent[]> {
+    return this.readEvents(sinceOf(days));
+  }
+
+  /** 지금 기록 파일의 끝 */
+  async auditCursor(): Promise<SshAuditCursor> {
+    const stat = await fs.stat(this.file(AUDIT_LOG)).catch(() => null);
+    return stat ? { ino: stat.ino, offset: stat.size } : { ino: 0, offset: 0 };
+  }
+
+  /** cursor 뒤에 붙은 기록. 끝이 줄바꿈으로 끝나지 않은 줄은 다음에 읽는다. */
+  async eventsAfter(
+    cursor: SshAuditCursor,
+  ): Promise<{ events: SshAuditEvent[]; cursor: SshAuditCursor }> {
+    const path = this.file(AUDIT_LOG);
+    const stat = await fs.stat(path).catch(() => null);
+    if (!stat) return { events: [], cursor: { ino: 0, offset: 0 } };
+    const lines: string[] = [];
+    let start = cursor.offset;
+    if (stat.ino !== cursor.ino || stat.size < cursor.offset) {
+      const rotated = await fs.stat(`${path}.1`).catch(() => null);
+      if (rotated?.ino === cursor.ino) {
+        lines.push(
+          ...(await this.readSpan(`${path}.1`, cursor.offset, rotated.size))
+            .lines,
+        );
+      }
+      start = 0;
+    }
+    const current = await this.readSpan(path, start, stat.size);
+    lines.push(...current.lines);
+    return {
+      events: lines.flatMap((line) => parseSshAuditLine(line) ?? []),
+      cursor: { ino: stat.ino, offset: current.end },
+    };
   }
 
   /** 공격 지도용 — 기간 안의 IP 별 요약과 차단 목록. 세션 프로세스는 보지 않는다. */
@@ -205,7 +275,7 @@ export class SshAccessService {
 
   async overview(days: number): Promise<SshAccessOverview> {
     const since = sinceOf(days);
-    const logPath = this.file('ssh-audit.log');
+    const logPath = this.file(AUDIT_LOG);
 
     const [events, logStat, knownIps, blocks, guard, procs] = await Promise.all(
       [
@@ -325,11 +395,7 @@ export class SshAccessService {
       scope,
       geo: externalGeo(this.geo, value),
       blockedAt: formatLocal(new Date()),
-      reason:
-        reason
-          ?.replace(/[\t\r\n]+/g, ' ')
-          .trim()
-          .slice(0, 200) || null,
+      reason: cleanReason(reason),
     };
     await this.appendLine(
       'ssh-block-manual.txt',
@@ -391,6 +457,22 @@ export class SshAccessService {
     return { ip: value, released };
   }
 
+  private async widenBlockEntry(ip: string, reason: string): Promise<void> {
+    const value = normalizeBlockTarget(ip);
+    const lines = await this.readLines('ssh-block-manual.txt');
+    let found = false;
+    const next = lines.map((line) => {
+      const [entryIp, at] = line.split('\t');
+      if (entryIp?.trim() !== value) return line;
+      found = true;
+      return [value, at?.trim() ?? '', cleanReason(reason) ?? ''].join('\t');
+    });
+    if (!found)
+      throw new NotFoundException('손으로 막은 목록에 없는 IP 입니다');
+    await this.writeLines('ssh-block-manual.txt', next);
+    await this.writeScope(value, 'all');
+  }
+
   private async setBlockScopeEntry(
     ip: string,
     scope: SshBlockScope,
@@ -405,11 +487,11 @@ export class SshAccessService {
   // ---- 읽기 ----
 
   private async readEvents(since: string): Promise<SshAuditEvent[]> {
-    const current = await this.tail(this.file('ssh-audit.log'));
+    const current = await this.tail(this.file(AUDIT_LOG));
     const first = current.find((l) => l.trim());
     // 지금 파일이 기간 시작보다 늦게 시작하면 넘겨 둔 .1 도 읽음
     const needOld = !first || first.slice(0, 19) > since;
-    const old = needOld ? await this.tail(this.file('ssh-audit.log.1')) : [];
+    const old = needOld ? await this.tail(this.file(`${AUDIT_LOG}.1`)) : [];
     const events: SshAuditEvent[] = [];
     for (const line of [...old, ...current]) {
       const e = parseSshAuditLine(line);
@@ -435,6 +517,35 @@ export class SshAccessService {
         this.logger.warn(`SSH 기록 읽기 실패 ${path}: ${String(error)}`);
       }
       return [];
+    } finally {
+      await handle?.close();
+    }
+  }
+
+  /** start 부터 마지막 줄바꿈까지. 한 번에 TAIL_BYTES 만 읽고 나머지는 다음 차례에 읽는다. */
+  private async readSpan(
+    path: string,
+    start: number,
+    size: number,
+  ): Promise<{ lines: string[]; end: number }> {
+    const until = Math.min(size, start + TAIL_BYTES);
+    if (until <= start) return { lines: [], end: start };
+    let handle: fs.FileHandle | null = null;
+    try {
+      handle = await fs.open(path, 'r');
+      const buf = Buffer.alloc(until - start);
+      const { bytesRead } = await handle.read(buf, 0, buf.length, start);
+      const lastNewline = buf.subarray(0, bytesRead).lastIndexOf(0x0a);
+      if (lastNewline < 0) return { lines: [], end: start };
+      return {
+        lines: buf.subarray(0, lastNewline).toString('utf8').split('\n'),
+        end: start + lastNewline + 1,
+      };
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
+        this.logger.warn(`SSH 기록 읽기 실패 ${path}: ${String(error)}`);
+      }
+      return { lines: [], end: start };
     } finally {
       await handle?.close();
     }
@@ -709,6 +820,20 @@ export class SshAccessService {
   private async appendLine(name: string, line: string) {
     await fs.appendFile(this.file(name), `${line}\n`, { mode: 0o644 });
   }
+}
+
+/** SSH 기록·차단 파일 폴더 */
+export function sshAuditDir(): string {
+  return process.env.SSH_AUDIT_DIR || join(homedir(), 'server-watchdog');
+}
+
+function cleanReason(reason: string | null | undefined): string | null {
+  return (
+    reason
+      ?.replace(/[\t\r\n]+/g, ' ')
+      .trim()
+      .slice(0, 200) || null
+  );
 }
 
 function cleanLabel(label: string | null | undefined): string | null {
