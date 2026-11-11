@@ -70,6 +70,7 @@ module.exports = {
           'CLAUDE_CODE_BIN',
           'CLAUDE_BINARY_PATH',
           'CODEX_BIN',
+          'ANTHROPIC_API_KEY',
           'OPENAI_API_KEY',
           'OPENAI_MODEL',
           'REPOSITORY_UPLOAD_SESSION_DIR',

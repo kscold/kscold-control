@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { spawn, ChildProcess } from 'child_process';
 import { createInterface } from 'readline';
-import { getWorkingDirectory } from '../../../common/utils';
+import { childProcessEnv, getWorkingDirectory } from '../../../common/utils';
 
 export interface CodexStreamEvent {
   type: 'text-delta' | 'message-end' | 'error' | 'process-exit';
@@ -51,10 +51,10 @@ export class CodexProcessManagerService {
     // codex --full-auto -q runs in non-interactive quiet mode
     const child = spawn(binary, ['--full-auto', '-q', prompt], {
       cwd: workingDir,
-      env: {
-        ...process.env,
-        OPENAI_API_KEY: process.env.OPENAI_API_KEY ?? '',
-      },
+      // API 키가 없으면 codex 는 HOME 의 ~/.codex 로그인을 쓴다.
+      env: childProcessEnv(process.env, {
+        OPENAI_API_KEY: process.env.OPENAI_API_KEY,
+      }),
       stdio: ['pipe', 'pipe', 'pipe'],
     });
 

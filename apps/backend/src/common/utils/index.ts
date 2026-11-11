@@ -1,3 +1,4 @@
+export * from './child-process-env.util';
 export * from './claude-cli.util';
 export * from './password-hasher.util';
 export * from './permission-extractor.util';
