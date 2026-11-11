@@ -58,6 +58,7 @@ const REASON_LABEL: Record<LoginAttemptReason, string> = {
   'unknown-account': '없는 계정',
   'ip-banned': '차단된 IP',
   'account-locked': '계정 잠시 잠김',
+  'in-flight': '확인 중인 시도와 겹침',
 };
 
 /**
@@ -148,22 +149,18 @@ export class LoginGuardService {
   }
 
   /**
-   * 확인한 주소만 IP 규칙과 허용 목록 예외를 받는다. 프록시 자신의 주소는 헤더가 빠졌을 때 모든 접속이 모이는 자리라
-   * 허용 목록에 있어도 믿지 않는다.
+   * 확인한 주소만 IP 규칙과 허용 목록 예외를 받는다. 프록시 자신·루프백 주소는 헤더가 빠졌을 때 모든 접속이 모이는 자리라
+   * 확인했든 허용 목록에 있든 local 로 센다.
    */
   private async originOf({
     ip,
     ipVerified,
   }: LoginClient): Promise<LoginOrigin> {
     if (!ip) return 'unverified';
-    const internal =
-      this.isProxyAddress(ip) ||
-      classifySshIp(ip) !== 'external' ||
-      this.allowlist.isPrivate(ip);
-    // 확인하지 못했어도 내부 주소면 계정 잠금을 내부망 몫으로 센다. 내부 출처는 IP 로 막지 않으니
-    // 꾸민 내부 주소로는 내부망 몫의 잠금만 건드릴 수 있고, 비밀값이 없을 때도 바깥 실패가 내부망 로그인을 잠그지 못한다.
-    if (!ipVerified) return internal ? 'internal' : 'unverified';
-    if (this.isProxyAddress(ip)) return 'internal';
+    const scope = classifySshIp(ip);
+    if (scope === 'local' || this.isProxyAddress(ip)) return 'local';
+    const internal = scope !== 'external' || this.allowlist.isPrivate(ip);
+    if (!ipVerified) return internal ? 'local' : 'unverified';
     if (
       this.allowlist.isListed(ip) ||
       (await this.sshAccess.knownIps()).includes(ip)
@@ -193,19 +190,15 @@ export class LoginGuardService {
       this.history(subject, now),
     ]);
     const settled = decideLoginBlock(subject, history, now);
-    // 확인 중인 시도까지 셈한 판정은 기록만으로 막히지 않을 때만 본다. 이미 잠긴 계정에 몰린 시도가
-    // 서로를 IP 실패로 세면, 공격으로 잠긴 계정에 다시 시도한 운영자의 IP 가 막힐 수 있다.
     const withPending = decideLoginBlock(subject, [...history, ...ahead], now);
     const reason: LoginAttemptReason | null =
       banned || settled.ipBanUntil
         ? 'ip-banned'
         : settled.accountLockedUntil
           ? 'account-locked'
-          : withPending.ipBanUntil
-            ? 'ip-banned'
-            : withPending.accountLockedUntil
-              ? 'account-locked'
-              : null;
+          : withPending.ipBanUntil || withPending.accountLockedUntil
+            ? 'in-flight'
+            : null;
     if (!reason) return;
 
     await this.record(subject, 'refused', reason);
@@ -227,6 +220,7 @@ export class LoginGuardService {
       ipGroup: subject.origin === 'external' ? subject.ipGroup : null,
       ipSince: since.ip,
       account: subject.account,
+      origin: subject.origin,
       accountSince: since.account,
     });
   }

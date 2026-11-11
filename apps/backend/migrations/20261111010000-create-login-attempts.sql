@@ -8,14 +8,15 @@ CREATE TABLE IF NOT EXISTS login_attempts (
   reason varchar(32),
   created_at timestamptz NOT NULL DEFAULT now(),
   CONSTRAINT login_attempts_origin_check
-    CHECK (origin IN ('vouched', 'internal', 'external', 'unverified')),
+    CHECK (origin IN ('vouched', 'internal', 'local', 'external', 'unverified')),
   CONSTRAINT login_attempts_result_check
     CHECK (result IN ('success', 'failure', 'refused'))
 );
 
 CREATE INDEX IF NOT EXISTS idx_login_attempts_ip_group_created_at
   ON login_attempts (ip_group, created_at);
-CREATE INDEX IF NOT EXISTS idx_login_attempts_account_created_at
-  ON login_attempts (account, created_at);
+CREATE INDEX IF NOT EXISTS idx_login_attempts_account_failures
+  ON login_attempts (account, origin, created_at)
+  WHERE result = 'failure';
 CREATE INDEX IF NOT EXISTS idx_login_attempts_created_at
   ON login_attempts (created_at);

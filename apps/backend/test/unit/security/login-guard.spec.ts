@@ -3,6 +3,12 @@ import * as bcrypt from 'bcrypt';
 import { LoginUseCase } from '@/auth/application/use-cases/login.use-case';
 import { LOGIN_THROTTLED_MESSAGE } from '@/security/application/services/login-guard.service';
 import {
+  clientAddress,
+  parseTrustedProxies,
+  type ClientAddress,
+  type ProxyTrust,
+} from '@/common/utils/client-ip.util';
+import {
   decideLoginBlock,
   loginIpGroup,
   normalizeLoginAccount,
@@ -148,7 +154,12 @@ describe('decideLoginBlock', () => {
   it('바깥에서 쌓인 실패는 내부망·허용 목록·확인 못 한 주소의 로그인을 잠그지 않는다', () => {
     const external = failures(range(30, 0.4));
 
-    for (const origin of ['internal', 'vouched', 'unverified'] as const) {
+    for (const origin of [
+      'internal',
+      'local',
+      'vouched',
+      'unverified',
+    ] as const) {
       expect(
         decideLoginBlock({ ...attacker, origin }, external, at(12))
           .accountLockedUntil,
@@ -176,7 +187,7 @@ describe('decideLoginBlock', () => {
   });
 
   it('내부 주소와 확인 못 한 주소는 IP 로 막지 않지만 계정 규칙은 건다', () => {
-    for (const origin of ['internal', 'unverified'] as const) {
+    for (const origin of ['internal', 'local', 'unverified'] as const) {
       const subject = { ...attacker, origin };
       const history = failures(range(30, 0.5), { origin });
 
@@ -236,6 +247,12 @@ describe('normalizeLoginAccount', () => {
     expect(normalizeLoginAccount('ad‭min@example.com\n')).toBe(
       'admin@example.com',
     );
+  });
+
+  it('폭 없는 문자와 BOM 을 지운다', () => {
+    expect(
+      normalizeLoginAccount('\ufeffad\u200bmi\u200cn@exa\u200dmple.com'),
+    ).toBe('admin@example.com');
   });
 });
 
@@ -394,6 +411,21 @@ describe('LoginUseCase with LoginGuardService', () => {
       expect(tally(seen)).toEqual({ 401: 10, 429: 40 });
     });
 
+    it('네 번 틀린 뒤 맞는 비밀번호를 두 번 눌러도 IP 가 막히지 않는다', async () => {
+      const ip = '203.0.113.22';
+      expect(await statuses(ip, 4)).toEqual([401, 401, 401, 401]);
+
+      const doubleSubmit = await Promise.all([
+        login(ip, PASSWORD),
+        login(ip, PASSWORD),
+      ]);
+
+      expect(doubleSubmit.sort()).toEqual([200, 429]);
+      expect(harness.ipBans.rows.has(ip)).toBe(false);
+      expect(await login(ip, PASSWORD)).toBe(200);
+      expect(await statuses(ip, 1)).toEqual([401]);
+    });
+
     it('한도 아래로 함께 들어온 맞는 로그인은 모두 통과하고, 끝난 시도는 더 세지 않는다', async () => {
       const ip = '203.0.113.21';
 
@@ -477,6 +509,112 @@ describe('LoginUseCase with LoginGuardService', () => {
     });
   });
 
+  describe('같은 컴퓨터의 프로세스·컨테이너가 보낸 시도', () => {
+    const SECRET = 'proxy-secret-for-tests-0123456789abcdef';
+    const withSecret: ProxyTrust = {
+      proxies: parseTrustedProxies(undefined),
+      secret: SECRET,
+    };
+    const withoutSecret: ProxyTrust = { ...withSecret, secret: null };
+    const request = (
+      trust: ProxyTrust,
+      peer: string,
+      headers: Record<string, string> = {},
+    ) => clientAddress({ headers, socket: { remoteAddress: peer } }, trust);
+    const loginAs = (address: ClientAddress, password: string) =>
+      useCase
+        .execute(
+          { email: 'admin@example.com', password },
+          { ip: address.ip, ipVerified: address.verified, userAgent: null },
+        )
+        .then(
+          () => 200,
+          (error: { getStatus?: () => number }) => error.getStatus?.() ?? 500,
+        );
+
+    it('비밀값이 있으면 비밀값 없이·틀린 비밀값으로·직접 들어온 실패가 확인된 내부망 로그인을 잠그지 못한다', async () => {
+      const lan = request(withSecret, '127.0.0.1', {
+        'x-control-proxy-secret': SECRET,
+        'x-real-ip': '10.0.0.5',
+      });
+      const tailscale = request(withSecret, '127.0.0.1', {
+        'x-control-proxy-secret': SECRET,
+        'x-real-ip': '100.64.0.9',
+      });
+      const local = [
+        request(withSecret, '127.0.0.1', { 'x-real-ip': '10.0.0.5' }),
+        request(withSecret, '127.0.0.1', {
+          'x-control-proxy-secret': 'x'.repeat(SECRET.length),
+          'x-real-ip': '10.0.0.5',
+        }),
+        request(withSecret, '172.17.0.2'),
+      ];
+      expect(lan).toEqual({ ip: '10.0.0.5', verified: true });
+
+      for (let i = 0; i < 10; i++) {
+        expect(await loginAs(local[i % 3], 'wrong')).toBe(401);
+      }
+
+      expect(await loginAs(local[0], PASSWORD)).toBe(429);
+      expect(await loginAs(lan, PASSWORD)).toBe(200);
+      expect(await loginAs(tailscale, PASSWORD)).toBe(200);
+      expect(harness.ipBans.rows.size).toBe(0);
+    });
+
+    it('비밀값이 있으면 확인된 프록시 자신의 주소도 내부망과 따로 센다', async () => {
+      const proxySelf = request(withSecret, '127.0.0.1', {
+        'x-control-proxy-secret': SECRET,
+        'x-real-ip': '127.0.0.1',
+      });
+      const lan = request(withSecret, '127.0.0.1', {
+        'x-control-proxy-secret': SECRET,
+        'x-real-ip': '192.168.1.9',
+      });
+
+      for (let i = 0; i < 10; i++) {
+        expect(await loginAs(proxySelf, 'wrong')).toBe(401);
+      }
+
+      expect(await loginAs(proxySelf, PASSWORD)).toBe(429);
+      expect(await loginAs(lan, PASSWORD)).toBe(200);
+    });
+
+    it('비밀값이 없으면 바깥 실패와 로컬 실패가 서로를 잠그지 않는다', async () => {
+      const outside = (n: number) =>
+        request(withoutSecret, '127.0.0.1', { 'x-real-ip': `198.51.100.${n}` });
+      const lan = request(withoutSecret, '127.0.0.1', {
+        'x-real-ip': '10.0.0.5',
+      });
+      const localProcess = request(withoutSecret, '127.0.0.1');
+
+      for (let i = 1; i <= 10; i++) {
+        expect(await loginAs(outside(i), 'wrong')).toBe(401);
+      }
+      expect(await loginAs(outside(11), PASSWORD)).toBe(429);
+      expect(await loginAs(lan, PASSWORD)).toBe(200);
+
+      jest.setSystemTime(T0 + 31 * MINUTE);
+      for (let i = 0; i < 10; i++) {
+        expect(await loginAs(localProcess, 'wrong')).toBe(401);
+      }
+      expect(await loginAs(outside(12), PASSWORD)).toBe(200);
+    });
+
+    it('비밀값이 없으면 내부망 로그인은 로컬 프로세스와 한 잠금을 나눠 쓴다', async () => {
+      const localProcess = request(withoutSecret, '127.0.0.1');
+      const lan = request(withoutSecret, '127.0.0.1', {
+        'x-real-ip': '10.0.0.5',
+      });
+      expect(lan).toEqual({ ip: '10.0.0.5', verified: false });
+
+      for (let i = 0; i < 10; i++) {
+        expect(await loginAs(localProcess, 'wrong')).toBe(401);
+      }
+
+      expect(await loginAs(lan, PASSWORD)).toBe(429);
+    });
+  });
+
   it.each([
     ['허용 목록에 적은 주소', '198.51.100.20', '198.51.100.20'],
     ['허용 목록 대역 안의 주소', '198.51.100.21', '198.51.100.0/24'],
@@ -523,7 +661,7 @@ describe('LoginUseCase with LoginGuardService', () => {
     for (const ip of ['10.0.0.5', '100.64.0.9', '172.16.0.9']) {
       expect(await statuses(ip, 3, email)).toEqual([401, 401, 401]);
     }
-    expect(await statuses('127.0.0.1', 2, email)).toEqual([401, 429]);
+    expect(await statuses('192.168.1.9', 2, email)).toEqual([401, 429]);
     expect(harness.ipBans.rows.size).toBe(0);
   });
 

@@ -9,7 +9,10 @@ import { SshAccessService } from '@/security/application/services/ssh-access.ser
 import { CreateIpBanUseCase } from '@/security/application/use-cases/create-ip-ban.use-case';
 import { ResyncBlocklistUseCase } from '@/security/application/use-cases/resync-blocklist.use-case';
 import type { IpBan } from '@/security/domain/entities/ip-ban.entity';
-import type { LoginAttemptRecord } from '@/security/domain/login-guard/login-block.policy';
+import type {
+  LoginAttemptRecord,
+  LoginOrigin,
+} from '@/security/domain/login-guard/login-block.policy';
 import type {
   CreateIpBanInput,
   IIpBanRepository,
@@ -29,16 +32,20 @@ export class InMemoryLoginAttemptRepository implements ILoginAttemptRepository {
     ipGroup: string | null;
     ipSince: Date;
     account: string;
+    origin: LoginOrigin;
     accountSince: Date;
   }) {
     return this.rows
       .filter(
         (row) =>
-          row.result !== 'success' &&
-          ((query.ipGroup !== null &&
+          (query.ipGroup !== null &&
             row.ipGroup === query.ipGroup &&
-            row.at > query.ipSince) ||
-            (row.account === query.account && row.at > query.accountSince)),
+            row.at > query.ipSince &&
+            row.result !== 'success') ||
+          (row.account === query.account &&
+            row.origin === query.origin &&
+            row.at > query.accountSince &&
+            row.result === 'failure'),
       )
       .map((row) => ({ ...row }));
   }

@@ -181,8 +181,10 @@ npm install -g @openai/codex
 Failed logins are counted per IP and per account (`login_attempts`). An IP with 5 failures in 15 minutes gets a 1-hour nginx ban, 20 in a day goes to the host firewall list, and an account with 10 failures in 15 minutes is locked for 15 minutes. IPv6 addresses are counted per /64.
 
 - Account locks are kept per origin. Failures from the internet never lock logins from the LAN, Tailscale, or an allowlisted address, so an attacker cannot lock the operator out from there.
+- Attempts any process or container on the host could send (loopback, the proxy's own address, and internal addresses not confirmed by the proxy secret) have their own lock, so they cannot lock verified LAN and Tailscale logins.
+- A request refused only because earlier attempts from the same IP are still being checked is not counted against that IP, so double-submitting a correct password after a few typos does not ban it.
 - `SECURITY_ALLOWLIST` entries of /16 (IPv4) or /48 (IPv6) and narrower, plus SSH known IPs, are never IP-banned; their failures only lock that account after 30 tries. Wider entries only protect from bans. A malformed entry stops startup.
-- Automatic IP bans and the allowlist exemption only apply when `CONTROL_PROXY_SECRET` is set, because without it a local process can forge `X-Real-IP`. Without the secret only account locks apply, LAN and Tailscale logins keep their own lock, and the backend logs a warning at startup.
+- Automatic IP bans and the allowlist exemption only apply when `CONTROL_PROXY_SECRET` is set, because without it a local process can forge `X-Real-IP`. Without the secret only account locks apply, internet logins and LAN logins keep separate locks, LAN and Tailscale logins share theirs with local processes, and the backend logs a warning at startup.
 
 Emergency unlock, run on the host (the HTTP API is not used, since the admin may be locked out):
 

@@ -4,17 +4,28 @@ import { isIP } from 'node:net';
  * 로그인 시도가 어디서 왔는지. 규칙은 이 값으로 갈리고, 계정 잠금도 출처마다 따로 센다.
  * 바깥에서 실패를 쌓아도 내부망·허용 목록에서의 로그인은 잠기지 않게 하려는 것이다.
  * - vouched: 운영자가 적어 둔 주소(SECURITY_ALLOWLIST, SSH 내 IP). IP 로 막지 않고, 계정 잠금은 더 넉넉하다.
- * - internal: 루프백·사설망·Tailscale·프록시 자신. IP 로 막지 않는다.
+ * - internal: 프록시 비밀값으로 확인한 사설망·Tailscale 주소. IP 로 막지 않는다.
+ * - local: 같은 컴퓨터의 프로세스·컨테이너도 낼 수 있는 시도. 프록시 자신·루프백 주소와, 확인하지 못한 내부 주소다.
+ *   이 몫을 internal 과 나눠야 로컬 프로세스가 내부망 로그인을 잠그지 못한다. 비밀값이 없으면 내부망 로그인도 여기에 든다.
  * - external: 그 밖의 확인된 주소. 모든 규칙이 걸린다.
  * - unverified: 프록시 비밀값으로 확인하지 못한 바깥 주소. 꾸민 주소일 수 있어 IP 로 막지도 예외로 두지도 않는다.
  */
-export type LoginOrigin = 'vouched' | 'internal' | 'external' | 'unverified';
+export type LoginOrigin =
+  'vouched' | 'internal' | 'local' | 'external' | 'unverified';
 
 /** refused 는 비밀번호를 보기 전에 돌려보낸 시도다. */
 export type LoginAttemptResult = 'success' | 'failure' | 'refused';
 
+/**
+ * in-flight 는 기록만으로는 막히지 않지만, 확인 중인 시도가 모두 틀렸다고 가정하면 한도에 닿아 돌려보낸 시도다.
+ * 앞선 시도가 맞을 수도 있으니 IP 실패로 세지 않는다.
+ */
 export type LoginAttemptReason =
-  'wrong-password' | 'unknown-account' | 'ip-banned' | 'account-locked';
+  | 'wrong-password'
+  | 'unknown-account'
+  | 'ip-banned'
+  | 'account-locked'
+  | 'in-flight';
 
 export interface LoginSubject {
   /** 접속한 주소 그대로 */
@@ -64,16 +75,23 @@ export const LOGIN_BLOCK_POLICY: LoginBlockPolicy = {
   firewall: { attempts: 20, windowMs: DAY },
   account: {
     // 허용 목록 주소는 공유기 뒤 여러 사람일 수 있어 세기는 하되 넉넉하게 둔다.
-    attempts: { external: 10, internal: 10, unverified: 10, vouched: 30 },
+    attempts: {
+      external: 10,
+      internal: 10,
+      local: 10,
+      unverified: 10,
+      vouched: 30,
+    },
     windowMs: 15 * MINUTE,
     lockMs: 15 * MINUTE,
   },
   retentionMs: 30 * DAY,
 };
 
-/** C0·C1 제어 문자와 글자 방향을 바꾸는 문자. 감사 화면에서 계정 이름을 다르게 보이게 할 수 있다. */
-// eslint-disable-next-line no-control-regex -- 제어 문자를 지우려는 것이다.
-const INVISIBLE_CHARS = /[\u0000-\u001f\u007f-\u009f‪-‮⁦-⁩]/g;
+/** C0·C1 제어 문자, 폭 없는 문자, 글자 방향을 바꾸는 문자. 감사 화면에서 계정 이름을 다르게 보이게 할 수 있다. */
+const INVISIBLE_CHARS =
+  // eslint-disable-next-line no-control-regex -- 제어 문자를 지우려는 것이다.
+  /[\u0000-\u001f\u007f-\u009f\u200b-\u200d\u202a-\u202e\u2066-\u2069\ufeff]/g;
 
 export function normalizeLoginAccount(email: string): string {
   return email.replace(INVISIBLE_CHARS, '').trim().toLowerCase().slice(0, 320);
@@ -117,8 +135,8 @@ export function loginHistorySince(
 }
 
 /**
- * IP 실패로 세는 시도. 계정이 잠겨서 돌려보낸 시도는 세지 않는다.
- * 세면 공격으로 잠긴 계정에 몇 번 다시 시도한 운영자의 IP 가 막힌다.
+ * IP 실패로 세는 시도. 계정이 잠겨서, 또는 확인 중인 시도와 겹쳐서 돌려보낸 시도는 세지 않는다.
+ * 세면 공격으로 잠긴 계정에 다시 시도하거나 맞는 비밀번호를 두 번 누른 운영자의 IP 가 막힌다.
  */
 function isIpStrike(attempt: LoginAttemptRecord): boolean {
   return (

@@ -3,7 +3,10 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { LessThan, Repository } from 'typeorm';
 import { LoginAttempt } from '../../domain/entities/login-attempt.entity';
 import type { ILoginAttemptRepository } from '../../domain/repositories/login-attempt.repository';
-import type { LoginAttemptRecord } from '../../domain/login-guard/login-block.policy';
+import type {
+  LoginAttemptRecord,
+  LoginOrigin,
+} from '../../domain/login-guard/login-block.policy';
 
 @Injectable()
 export class LoginAttemptRepositoryImpl implements ILoginAttemptRepository {
@@ -28,6 +31,7 @@ export class LoginAttemptRepositoryImpl implements ILoginAttemptRepository {
     ipGroup: string | null;
     ipSince: Date;
     account: string;
+    origin: LoginOrigin;
     accountSince: Date;
   }): Promise<LoginAttemptRecord[]> {
     const rows = await this.repo
@@ -41,12 +45,12 @@ export class LoginAttemptRepositoryImpl implements ILoginAttemptRepository {
         'attempt.reason',
         'attempt.createdAt',
       ])
+      // 판정은 성공을 세지 않는다. 자주 쓰는 주소일수록 성공 행이 쌓여 로그인마다 읽는 양이 늘지 않게 뺀다.
       .where(
-        '(attempt.ipGroup = :ipGroup AND attempt.createdAt > :ipSince) OR (attempt.account = :account AND attempt.createdAt > :accountSince)',
+        "(attempt.ipGroup = :ipGroup AND attempt.createdAt > :ipSince AND attempt.result <> 'success')" +
+          " OR (attempt.account = :account AND attempt.origin = :origin AND attempt.createdAt > :accountSince AND attempt.result = 'failure')",
         query,
       )
-      // 판정은 성공을 세지 않는다. 자주 쓰는 주소일수록 성공 행이 쌓여 로그인마다 읽는 양이 늘지 않게 뺀다.
-      .andWhere("attempt.result <> 'success'")
       .getMany();
     return rows.map((row) => ({
       ip: row.ip,
