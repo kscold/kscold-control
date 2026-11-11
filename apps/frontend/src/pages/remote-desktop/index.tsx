@@ -11,6 +11,8 @@ import {
   Maximize,
   Power,
   KeyRound,
+  Keyboard,
+  Hand,
 } from 'lucide-react';
 import { api } from '@/shared/api';
 import { API_URL } from '@/shared/config';
@@ -27,6 +29,8 @@ import {
   type Target,
 } from './target-model';
 import { useRemoteTargets, wakeLabel } from './useRemoteTargets';
+import { keysymForChar, keysymForKey } from './display-fit';
+import type { TouchMode } from './rdp-client';
 import './remote-desktop.css';
 
 // VNC(noVNC)와 RDP(guacamole) 연결이 화면에 내주는 공통 동작
@@ -35,6 +39,18 @@ interface DesktopClient {
   clipboardPasteFrom(text: string): void;
   viewOnly: boolean;
   sendCredentials?: RFB['sendCredentials'];
+  // RDP 는 sendKeysym, VNC 는 noVNC 의 sendKey 로 키를 보냄
+  sendKeysym?(keysym: number): void;
+  sendKey?: RFB['sendKey'];
+  touchMode?: TouchMode;
+}
+
+// 화면 키보드 입력칸에서 받은 키 하나를 누르고 뗌
+function pressKey(target: DesktopClient | null, keysym: number | undefined) {
+  if (!target || keysym === undefined || target.viewOnly) return;
+  if (target.sendKeysym) return target.sendKeysym(keysym);
+  target.sendKey?.(keysym, null, true);
+  target.sendKey?.(keysym, null, false);
 }
 
 export default function RemoteDesktopPage() {
@@ -49,6 +65,12 @@ export default function RemoteDesktopPage() {
   const client = useRef<DesktopClient | null>(null);
   const generation = useRef(0);
   const pending = useRef<AbortController | null>(null);
+  const keyInput = useRef<HTMLInputElement>(null);
+  const [keyboardOpen, setKeyboardOpen] = useState(false);
+  // 조합 끝 글자를 이미 보냈는지 기억함 (사파리는 compositionend 뒤 input 을 한 번 더 보냄)
+  const composed = useRef('');
+  const [protocol, setProtocol] = useState<'vnc' | 'rdp'>('vnc');
+  const [touchMode, setTouchMode] = useState<TouchMode>('touchpad');
   const [status, setStatus] = useState<
     'idle' | 'connecting' | 'credentials' | 'connected'
   >('idle');
@@ -120,6 +142,7 @@ export default function RemoteDesktopPage() {
     release();
     setStatus('idle');
     setFocused(false);
+    setKeyboardOpen(false);
     setPassword('');
     setClipboard('');
   };
@@ -214,6 +237,8 @@ export default function RemoteDesktopPage() {
         );
         client.current = rdp;
         rdp.viewOnly = viewOnly;
+        rdp.touchMode = touchMode;
+        setProtocol('rdp');
         return;
       }
       setUsername(data.credentials?.username ?? data.suggestedUsername ?? '');
@@ -230,7 +255,11 @@ export default function RemoteDesktopPage() {
           : {}),
       });
       client.current = rfb;
+      setProtocol('vnc');
+      // 맥 화면 공유는 해상도를 못 바꾸므로 비율을 지켜 영역에 맞춰 줄이기만 함
       rfb.scaleViewport = true;
+      // 원격 커서가 비어 있어도 작은 점으로 위치를 보여 줌
+      rfb.showDotCursor = true;
       rfb.viewOnly = viewOnly;
       rfb.addEventListener('connect', () => {
         if (client.current !== rfb) return;
@@ -280,6 +309,49 @@ export default function RemoteDesktopPage() {
     );
 
   const button = 'desktop-button';
+  const connected = status === 'connected';
+  const toggleKeyboard = () => {
+    const input = keyInput.current;
+    if (!input) return;
+    if (keyboardOpen) input.blur();
+    else input.focus();
+  };
+  const inputTools = connected && (
+    <>
+      <button
+        className={button}
+        aria-label="화면 키보드"
+        aria-pressed={keyboardOpen}
+        disabled={viewOnly}
+        // 누르는 순간 입력칸 초점을 잃지 않게 함
+        onMouseDown={(event) => event.preventDefault()}
+        onClick={toggleKeyboard}
+      >
+        <Keyboard size={16} />
+        <span className="desktop-label">키보드</span>
+      </button>
+      {protocol === 'rdp' && (
+        <button
+          className={button}
+          aria-label={
+            touchMode === 'touchpad'
+              ? '터치 방식: 터치패드'
+              : '터치 방식: 직접 누르기'
+          }
+          onClick={() => {
+            const next = touchMode === 'touchpad' ? 'touchscreen' : 'touchpad';
+            setTouchMode(next);
+            if (client.current) client.current.touchMode = next;
+          }}
+        >
+          <Hand size={16} />
+          <span className="desktop-label">
+            {touchMode === 'touchpad' ? '터치패드' : '직접 누르기'}
+          </span>
+        </button>
+      )}
+    </>
+  );
   return (
     <div
       ref={frame}
@@ -290,7 +362,8 @@ export default function RemoteDesktopPage() {
       }
     >
       {focused && (
-        <div className="absolute right-2 top-2 z-10 flex gap-1 rounded-lg border border-gray-700 bg-gray-950/90 p-1">
+        <div className="desktop-float-tools">
+          {inputTools}
           <button
             className={button}
             onClick={() => setClipboardOpen(!clipboardOpen)}
@@ -322,6 +395,7 @@ export default function RemoteDesktopPage() {
         </div>
         <button
           className={button}
+          aria-label="접속 대상"
           aria-expanded={targetsOpen}
           onClick={() => {
             setTargetsOpen(!targetsOpen);
@@ -329,10 +403,11 @@ export default function RemoteDesktopPage() {
           }}
         >
           <PanelsTopLeft size={16} />
-          접속 대상
+          <span className="desktop-label">접속 대상</span>
         </button>
         <button
           className={button}
+          aria-label="클립보드"
           aria-expanded={clipboardOpen}
           onClick={() => {
             setClipboardOpen(!clipboardOpen);
@@ -340,8 +415,9 @@ export default function RemoteDesktopPage() {
           }}
         >
           <Clipboard size={16} />
-          클립보드
+          <span className="desktop-label">클립보드</span>
         </button>
+        {inputTools}
         <button
           className={`${button} desktop-primary`}
           hidden={status !== 'idle'}
@@ -358,6 +434,7 @@ export default function RemoteDesktopPage() {
         </button>
         <button
           className={button}
+          aria-label="전체 화면"
           onClick={() => {
             setFocused(true);
             if (frame.current?.requestFullscreen)
@@ -369,12 +446,12 @@ export default function RemoteDesktopPage() {
           }}
         >
           <Maximize size={16} />
-          전체 화면
+          <span className="desktop-label">전체 화면</span>
         </button>
         <button className={button} onClick={() => setFocused(true)}>
           도구 접기
         </button>
-        <label className="flex items-center gap-2 text-sm">
+        <label className="flex items-center gap-2 text-xs">
           <input
             type="checkbox"
             checked={viewOnly}
@@ -426,8 +503,54 @@ export default function RemoteDesktopPage() {
           ref={screen}
           role="region"
           aria-label="원격 화면"
-          className="absolute inset-0 overflow-hidden"
+          className="desktop-screen"
         />
+        {connected && (
+          // 휴대폰 화면 키보드를 띄우기 위한 숨은 입력칸. 받은 글자는 바로 원격으로 보내고 비움
+          <input
+            ref={keyInput}
+            aria-label="원격 키 입력"
+            className="desktop-key-input"
+            autoCapitalize="off"
+            autoComplete="off"
+            autoCorrect="off"
+            spellCheck={false}
+            enterKeyHint="send"
+            onFocus={() => setKeyboardOpen(true)}
+            onBlur={() => setKeyboardOpen(false)}
+            onKeyDown={(event) => {
+              const keysym = keysymForKey(event.key);
+              if (keysym === undefined) return;
+              event.preventDefault();
+              pressKey(client.current, keysym);
+            }}
+            onInput={(event) => {
+              const input = event.currentTarget;
+              const native = event.nativeEvent as InputEvent;
+              if (native.isComposing) return;
+              const repeated =
+                composed.current &&
+                (native.inputType === 'insertFromComposition' ||
+                  native.data === composed.current);
+              composed.current = '';
+              if (repeated) {
+                input.value = '';
+                return;
+              }
+              if (native.inputType === 'deleteContentBackward')
+                pressKey(client.current, keysymForKey('Backspace'));
+              for (const char of native.data ?? '')
+                pressKey(client.current, keysymForChar(char));
+              input.value = '';
+            }}
+            onCompositionEnd={(event) => {
+              composed.current = event.data;
+              for (const char of event.data)
+                pressKey(client.current, keysymForChar(char));
+              event.currentTarget.value = '';
+            }}
+          />
+        )}
         {status !== 'connected' && (
           <div className="desktop-overlay">
             <div className="desktop-connect-card">
