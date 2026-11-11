@@ -34,10 +34,11 @@ export class InMemoryLoginAttemptRepository implements ILoginAttemptRepository {
     return this.rows
       .filter(
         (row) =>
-          (query.ipGroup !== null &&
+          row.result !== 'success' &&
+          ((query.ipGroup !== null &&
             row.ipGroup === query.ipGroup &&
             row.at > query.ipSince) ||
-          (row.account === query.account && row.at > query.accountSince),
+            (row.account === query.account && row.at > query.accountSince)),
       )
       .map((row) => ({ ...row }));
   }

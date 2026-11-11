@@ -45,6 +45,8 @@ export class LoginAttemptRepositoryImpl implements ILoginAttemptRepository {
         '(attempt.ipGroup = :ipGroup AND attempt.createdAt > :ipSince) OR (attempt.account = :account AND attempt.createdAt > :accountSince)',
         query,
       )
+      // 판정은 성공을 세지 않는다. 자주 쓰는 주소일수록 성공 행이 쌓여 로그인마다 읽는 양이 늘지 않게 뺀다.
+      .andWhere("attempt.result <> 'success'")
       .getMany();
     return rows.map((row) => ({
       ip: row.ip,
