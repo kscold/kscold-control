@@ -80,9 +80,9 @@ describe('ssh-audit model', () => {
     expect(classifySshIp('127.0.0.1')).toBe('local');
     expect(classifySshIp('::1')).toBe('local');
     expect(classifySshIp('192.168.0.22')).toBe('lan');
-    expect(classifySshIp('100.90.228.44')).toBe('tailscale');
+    expect(classifySshIp('100.100.1.2')).toBe('tailscale');
     expect(classifySshIp('100.128.0.1')).toBe('external');
-    expect(classifySshIp('1.225.192.81')).toBe('external');
+    expect(classifySshIp('203.0.113.10')).toBe('external');
     expect(classifySshIp(null)).toBe('unknown');
   });
 
@@ -101,7 +101,7 @@ describe('ssh-audit model', () => {
         '2026-11-10 10:00:02',
         '성공',
         'kscold',
-        '1.225.192.81',
+        '203.0.113.10',
         'publickey',
         '',
       ),
@@ -120,7 +120,7 @@ describe('ssh-audit model', () => {
 
     const s = summarizeSshAudit(
       events,
-      new Set(['1.225.192.81']),
+      new Set(['203.0.113.10']),
       '2026-11-03 00:00:00',
     );
 
@@ -128,7 +128,7 @@ describe('ssh-audit model', () => {
     expect(s.externalFailure).toBe(1);
     expect(s.unknownExternalSuccessIps).toBe(1);
     expect(s.ips[0]).toMatchObject({ ip: '9.9.9.9', known: false, success: 1 });
-    expect(s.ips.find((r) => r.ip === '1.225.192.81')?.known).toBe(true);
+    expect(s.ips.find((r) => r.ip === '203.0.113.10')?.known).toBe(true);
     expect(s.triedUsers).toEqual([{ user: 'root', count: 1 }]);
   });
 
@@ -150,8 +150,8 @@ describe('ssh-audit model', () => {
   });
 
   it('lsof 주소에서 원격 IP·포트를 뽑는다', () => {
-    expect(parseRemoteEndpoint('192.168.0.88:22->1.225.192.81:62297')).toEqual({
-      ip: '1.225.192.81',
+    expect(parseRemoteEndpoint('192.168.1.10:22->203.0.113.10:62297')).toEqual({
+      ip: '203.0.113.10',
       port: 62297,
     });
     expect(parseRemoteEndpoint('[::1]:22->[::1]:5000')).toEqual({

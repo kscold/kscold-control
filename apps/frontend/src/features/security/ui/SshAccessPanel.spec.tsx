@@ -31,7 +31,7 @@ function overview(): SshAccessOverview {
       unknownExternalSuccessIps: 1,
       ips: [
         {
-          ip: '14.39.199.71',
+          ip: '198.51.100.7',
           scope: 'external',
           known: false,
           success: 1,
@@ -48,7 +48,7 @@ function overview(): SshAccessOverview {
         at: '2026-11-10 17:56:22',
         result: '성공',
         user: 'kscold',
-        ip: '14.39.199.71',
+        ip: '198.51.100.7',
         method: 'password',
         message: '',
         scope: 'external',
@@ -60,14 +60,14 @@ function overview(): SshAccessOverview {
         user: 'kscold',
         tty: null,
         startedAt: '2026-11-10T00:10:15.000Z',
-        ip: '1.225.192.81',
+        ip: '203.0.113.10',
         port: 62297,
         scope: 'external',
         known: true,
       },
     ],
     pendingAuth: 2,
-    knownIps: [{ ip: '1.225.192.81', label: '회사' }],
+    knownIps: [{ ip: '203.0.113.10', label: '회사' }],
     blocks: [
       {
         ip: '222.99.122.102',
@@ -192,14 +192,14 @@ it('내 IP 를 별칭과 함께 위에 보여 주고 별칭을 바꾼다', async
   // 열린 세션에도 별칭이 붙는다
   expect(screen.getByText('내 IP · 회사')).toBeInTheDocument();
   await userEvent.click(
-    screen.getByRole('button', { name: '1.225.192.81 별칭 바꾸기' }),
+    screen.getByRole('button', { name: '203.0.113.10 별칭 바꾸기' }),
   );
-  const input = screen.getByRole('textbox', { name: '1.225.192.81 별칭' });
+  const input = screen.getByRole('textbox', { name: '203.0.113.10 별칭' });
   await userEvent.clear(input);
   await userEvent.type(input, '회사 사무실');
   await userEvent.click(screen.getByRole('button', { name: '저장' }));
   await waitFor(() =>
-    expect(label).toHaveBeenCalledWith('1.225.192.81', '회사 사무실'),
+    expect(label).toHaveBeenCalledWith('203.0.113.10', '회사 사무실'),
   );
 });
 
