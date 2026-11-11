@@ -28,6 +28,7 @@ const TAIL_BYTES = 8 * 1024 * 1024;
 const MAX_EVENTS = 400;
 /** 차단기 상태 파일이 이보다 오래되면 꺼진 것으로 봄 (차단기는 15초마다 씀) */
 const GUARD_STALE_MS = 2 * 60 * 1000;
+const PROCESS_TIMEOUT_MS = 5_000;
 
 export interface SshSession {
   pid: number;
@@ -79,6 +80,30 @@ export class SshAccessService {
   private readonly logger = new Logger(SshAccessService.name);
   private readonly dir =
     process.env.SSH_AUDIT_DIR || join(homedir(), 'server-watchdog');
+  private mutation: Promise<void> = Promise.resolve();
+
+  // 단일 Control 프로세스의 읽기-수정-쓰기가 서로 덮어쓰지 않도록 순서를 보장함.
+  private change<T>(action: () => Promise<T>): Promise<T> {
+    const result = this.mutation.then(action);
+    this.mutation = result.then(
+      () => undefined,
+      () => undefined,
+    );
+    return result;
+  }
+
+  addKnownIp(ip: string) {
+    return this.change(() => this.addKnownIpEntry(ip));
+  }
+  removeKnownIp(ip: string) {
+    return this.change(() => this.removeKnownIpEntry(ip));
+  }
+  block(ip: string, reason: string | null) {
+    return this.change(() => this.blockEntry(ip, reason));
+  }
+  unblock(ip: string) {
+    return this.change(() => this.unblockEntry(ip));
+  }
 
   private file(name: string) {
     return join(this.dir, name);
@@ -141,7 +166,7 @@ export class SshAccessService {
     return { ...target, known: false };
   }
 
-  async addKnownIp(ip: string): Promise<string[]> {
+  private async addKnownIpEntry(ip: string): Promise<string[]> {
     const value = normalizeIp(ip);
     const list = await this.readKnownIps();
     if (!list.includes(value)) {
@@ -153,14 +178,17 @@ export class SshAccessService {
     return list;
   }
 
-  async removeKnownIp(ip: string): Promise<string[]> {
+  private async removeKnownIpEntry(ip: string): Promise<string[]> {
     const value = normalizeIp(ip);
     const list = (await this.readKnownIps()).filter((v) => v !== value);
     await this.writeLines('ssh-known-ips.txt', list);
     return list;
   }
 
-  async block(ip: string, reason: string | null): Promise<SshBlock> {
+  private async blockEntry(
+    ip: string,
+    reason: string | null,
+  ): Promise<SshBlock> {
     const value = normalizeIp(ip);
     const scope = classifySshIp(value);
     if (scope !== 'external') {
@@ -194,7 +222,7 @@ export class SshAccessService {
   }
 
   /** 차단 해제 — 손으로 막은 것은 목록에서 지우고, 자동 차단은 차단기에 해제를 요청 */
-  async unblock(
+  private async unblockEntry(
     ip: string,
   ): Promise<{ ip: string; released: Array<SshBlock['source']> }> {
     const value = normalizeIp(ip);
@@ -358,7 +386,7 @@ export class SshAccessService {
         await execFileAsync(
           '/bin/ps',
           ['-axww', '-o', 'pid=,user=,lstart=,command='],
-          { env, maxBuffer: 8 * 1024 * 1024 },
+          { env, maxBuffer: 8 * 1024 * 1024, timeout: PROCESS_TIMEOUT_MS },
         )
       ).stdout;
     } catch (error) {
@@ -435,7 +463,11 @@ export class SshAccessService {
             '-F',
             'pn',
           ],
-          { env: { ...process.env, LC_ALL: 'C' }, maxBuffer: 4 * 1024 * 1024 },
+          {
+            env: { ...process.env, LC_ALL: 'C' },
+            maxBuffer: 4 * 1024 * 1024,
+            timeout: PROCESS_TIMEOUT_MS,
+          },
         )
       ).stdout;
     } catch (error) {
