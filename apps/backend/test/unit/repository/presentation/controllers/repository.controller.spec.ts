@@ -28,7 +28,7 @@ describe('RepositoryController private files', () => {
   });
 
   it('일반 사용자의 env 파일 조회에는 프로젝트 소유자 범위를 적용한다', async () => {
-    const execute = jest.fn().mockResolvedValue({ content: 'fixture-only' });
+    const execute = vi.fn().mockResolvedValue({ content: 'fixture-only' });
     const controller: RepositoryController = Object.assign(
       Object.create(RepositoryController.prototype),
       {

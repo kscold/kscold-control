@@ -1,3 +1,4 @@
+import type { Mocked, Mock } from 'vitest';
 import { Test, TestingModule } from '@nestjs/testing';
 import { DockerCleanupService } from '@/docker/application/services/docker-cleanup.service';
 import { ComposeService } from '@/docker/application/services/compose.service';
@@ -16,8 +17,8 @@ import {
 
 describe('DockerCleanupService', () => {
   let service: DockerCleanupService;
-  let dockerCleanupGateway: jest.Mocked<IDockerCleanupGateway>;
-  let dockerArtifactGateway: jest.Mocked<IDockerArtifactGateway>;
+  let dockerCleanupGateway: Mocked<IDockerCleanupGateway>;
+  let dockerArtifactGateway: Mocked<IDockerArtifactGateway>;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -26,31 +27,31 @@ describe('DockerCleanupService', () => {
         {
           provide: ComposeService,
           useValue: {
-            listServices: jest.fn().mockReturnValue(['nginx', 'ubuntu-blog']),
+            listServices: vi.fn().mockReturnValue(['nginx', 'ubuntu-blog']),
           },
         },
         {
           provide: DOCKER_CLEANUP_GATEWAY,
           useValue: {
-            getUsageSummary: jest.fn(),
-            getDetailedUsage: jest.fn(),
-            pruneDanglingImages: jest.fn(),
-            pruneExitedContainers: jest.fn(),
-            pruneDanglingVolumes: jest.fn(),
-            pruneBuildCache: jest.fn(),
+            getUsageSummary: vi.fn(),
+            getDetailedUsage: vi.fn(),
+            pruneDanglingImages: vi.fn(),
+            pruneExitedContainers: vi.fn(),
+            pruneDanglingVolumes: vi.fn(),
+            pruneBuildCache: vi.fn(),
           },
         },
         {
           provide: DOCKER_ARTIFACT_GATEWAY,
           useValue: {
-            listArtifacts: jest.fn(),
+            listArtifacts: vi.fn(),
           },
         },
         {
           provide: DOCKER_CLIENT,
           useValue: {
-            listContainers: jest.fn(),
-            inspectContainer: jest.fn(),
+            listContainers: vi.fn(),
+            inspectContainer: vi.fn(),
           } satisfies Partial<IDockerClient>,
         },
       ],
@@ -95,10 +96,10 @@ describe('DockerCleanupService', () => {
     );
 
     (
-      jest.spyOn(
+      vi.spyOn(
         service as never,
         'collectComposeOrphans' as never,
-      ) as unknown as jest.Mock
+      ) as unknown as Mock
     ).mockResolvedValue([
       {
         id: 'orphan-1',

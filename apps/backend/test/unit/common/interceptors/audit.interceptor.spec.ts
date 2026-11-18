@@ -13,7 +13,7 @@ import type { AuditLogService } from '../../../../src/audit/application/services
  * 특히 action/summary/targetId 를 고정 문자열과 컨텍스트 팩토리 양쪽으로 받을 수 있어야 한다.
  */
 describe('AuditInterceptor', () => {
-  const recordMock = jest.fn().mockResolvedValue(undefined);
+  const recordMock = vi.fn().mockResolvedValue(undefined);
   const auditLogService = { record: recordMock } as unknown as AuditLogService;
 
   /** @Audit 메타데이터와 요청/응답을 주고 실제 기록된 인자를 돌려준다. */
@@ -28,7 +28,7 @@ describe('AuditInterceptor', () => {
     } = {},
   ) {
     const reflector = {
-      get: jest.fn().mockReturnValue(meta),
+      get: vi.fn().mockReturnValue(meta),
     } as unknown as Reflector;
     const interceptor = new AuditInterceptor(reflector, auditLogService);
 
@@ -40,7 +40,7 @@ describe('AuditInterceptor', () => {
       _auditExtra: options.auditExtra,
     };
     const context = {
-      getHandler: () => jest.fn(),
+      getHandler: () => vi.fn(),
       switchToHttp: () => ({ getRequest: () => request }),
     } as unknown as ExecutionContext;
     const next = {
@@ -64,11 +64,11 @@ describe('AuditInterceptor', () => {
 
   it('@Audit 이 없는 핸들러는 감사 로그를 남기지 않는다', async () => {
     const reflector = {
-      get: jest.fn().mockReturnValue(undefined),
+      get: vi.fn().mockReturnValue(undefined),
     } as unknown as Reflector;
     const interceptor = new AuditInterceptor(reflector, auditLogService);
     const context = {
-      getHandler: () => jest.fn(),
+      getHandler: () => vi.fn(),
       switchToHttp: () => ({ getRequest: () => ({}) }),
     } as unknown as ExecutionContext;
 

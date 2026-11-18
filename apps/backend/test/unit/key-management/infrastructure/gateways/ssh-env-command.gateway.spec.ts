@@ -66,8 +66,8 @@ const record = {
 };
 
 function fixture() {
-  const targets = { get: jest.fn().mockResolvedValue(target) };
-  const ssh = { execute: jest.fn() };
+  const targets = { get: vi.fn().mockResolvedValue(target) };
+  const ssh = { execute: vi.fn() };
   const gateway = new SshEnvCommandGateway(
     targets as any,
     ssh as any,
@@ -338,7 +338,7 @@ describe('SshEnvCommandGateway', () => {
 describe('env-v1 target registration contract and routing', () => {
   const serviceFor = (row: unknown) =>
     new KeyManagementTargetService({
-      findEnabledById: jest.fn().mockResolvedValue(row),
+      findEnabledById: vi.fn().mockResolvedValue(row),
     } as any);
 
   it('DB에 명시적으로 등록된 대상만 활성화한다', async () => {
@@ -411,13 +411,13 @@ describe('env-v1 target registration contract and routing', () => {
     '%s의 기존 경로를 유지하면서 provider를 선택한다',
     async (provider, deploymentProvider, index) => {
       const targets = {
-        get: jest
+        get: vi
           .fn()
           .mockResolvedValue({ ...target, provider, deploymentProvider }),
       };
       const gateways = Array.from({ length: 3 }, () => ({
-        readLatest: jest.fn().mockResolvedValue('selected'),
-        trigger: jest.fn(),
+        readLatest: vi.fn().mockResolvedValue('selected'),
+        trigger: vi.fn(),
       }));
       const secrets = new RoutingSecretStoreGateway(
         targets as any,

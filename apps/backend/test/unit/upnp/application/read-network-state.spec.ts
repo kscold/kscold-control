@@ -6,16 +6,16 @@ import type { IUpnpGatewayRepository } from '@/upnp/domain/repositories/upnp-gat
 
 describe('UPnP 조회 실패 응답', () => {
   const gateway = {
-    getExternalIp: jest.fn(),
-    getMappings: jest.fn(),
-    addMapping: jest.fn(),
-    removeMapping: jest.fn(),
+    getExternalIp: vi.fn(),
+    getMappings: vi.fn(),
+    addMapping: vi.fn(),
+    removeMapping: vi.fn(),
   } satisfies IUpnpGatewayRepository;
   beforeEach(() => {
-    jest.resetAllMocks();
-    jest.spyOn(Logger.prototype, 'warn').mockImplementation(() => {});
+    vi.resetAllMocks();
+    vi.spyOn(Logger.prototype, 'warn').mockImplementation(() => {});
   });
-  afterEach(() => jest.restoreAllMocks());
+  afterEach(() => vi.restoreAllMocks());
 
   it('실제 빈 목록은 그대로 반환함', async () => {
     gateway.getMappings.mockResolvedValue([]);
@@ -54,7 +54,7 @@ describe('UPnP 조회 실패 응답', () => {
       'fixture-never-log',
     );
     expect(
-      JSON.stringify(jest.mocked(Logger.prototype.warn).mock.calls),
+      JSON.stringify(vi.mocked(Logger.prototype.warn).mock.calls),
     ).not.toContain('fixture-never-log');
   });
 });

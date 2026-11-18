@@ -46,31 +46,31 @@ function inspection(
 
 describe('작업 폴더 정리 실행', () => {
   const targetRepository = {
-    findById: jest.fn(),
-    findEnabled: jest.fn(),
-    findByNameOrRoot: jest.fn(),
-    create: jest.fn(),
-    update: jest.fn(),
-    remove: jest.fn(),
-    moveScheduleCursor: jest.fn(),
+    findById: vi.fn(),
+    findEnabled: vi.fn(),
+    findByNameOrRoot: vi.fn(),
+    create: vi.fn(),
+    update: vi.fn(),
+    remove: vi.fn(),
+    moveScheduleCursor: vi.fn(),
   };
   const runRepository = {
-    start: jest.fn(),
-    finish: jest.fn(),
-    failUnfinished: jest.fn(),
+    start: vi.fn(),
+    finish: vi.fn(),
+    failUnfinished: vi.fn(),
   };
   const workspace = {
-    rootExists: jest.fn(),
-    scan: jest.fn(),
-    remove: jest.fn(),
-    freeBytes: jest.fn(),
+    rootExists: vi.fn(),
+    scan: vi.fn(),
+    remove: vi.fn(),
+    freeBytes: vi.fn(),
   };
   let runner: WorktreeCleanupRunnerService;
 
   beforeEach(() => {
-    jest.resetAllMocks();
+    vi.resetAllMocks();
     for (const level of ['log', 'warn', 'error'] as const) {
-      jest.spyOn(Logger.prototype, level).mockImplementation(() => undefined);
+      vi.spyOn(Logger.prototype, level).mockImplementation(() => undefined);
     }
     targetRepository.findById.mockResolvedValue(target);
     workspace.rootExists.mockResolvedValue(true);
@@ -110,7 +110,7 @@ describe('작업 폴더 정리 실행', () => {
     );
   });
 
-  afterAll(() => jest.restoreAllMocks());
+  afterAll(() => vi.restoreAllMocks());
 
   it('미리보기는 아무것도 지우지 않고 남길 것과 지울 것만 알려준다', async () => {
     const plan = await runner.plan(target);
@@ -247,14 +247,14 @@ describe('작업 폴더 정리 실행', () => {
 
 describe('작업 폴더 정리 대상 관리', () => {
   const targetRepository = {
-    findById: jest.fn(),
-    findByNameOrRoot: jest.fn(),
-    create: jest.fn(),
-    update: jest.fn(),
-    remove: jest.fn(),
+    findById: vi.fn(),
+    findByNameOrRoot: vi.fn(),
+    create: vi.fn(),
+    update: vi.fn(),
+    remove: vi.fn(),
   };
-  const workspace = { rootExists: jest.fn() };
-  const runner = { isRunning: jest.fn() };
+  const workspace = { rootExists: vi.fn() };
+  const runner = { isRunning: vi.fn() };
   const useCase = new ManageWorktreeCleanupTargetUseCase(
     targetRepository as never,
     workspace as never,
@@ -263,7 +263,7 @@ describe('작업 폴더 정리 대상 관리', () => {
   const home = process.env.HOME;
 
   beforeEach(() => {
-    jest.resetAllMocks();
+    vi.resetAllMocks();
     process.env.HOME = '/home/example';
     workspace.rootExists.mockResolvedValue(true);
     targetRepository.findByNameOrRoot.mockResolvedValue(null);

@@ -256,9 +256,8 @@ describe('normalizeLoginAccount', () => {
   });
 });
 
-describe('LoginUseCase with LoginGuardService', () => {
+describe('LoginUseCase with LoginGuardService', { timeout: 30_000 }, () => {
   // 없는 계정은 운영과 같은 비용(cost 10)으로 비교하므로 테스트를 함께 돌리는 부하에서는 오래 걸린다.
-  jest.setTimeout(30_000);
   const PASSWORD = 'correct horse';
   let passwordHash: string;
   let harness: Awaited<ReturnType<typeof loginGuardHarness>>;
@@ -292,21 +291,15 @@ describe('LoginUseCase with LoginGuardService', () => {
   }
 
   beforeEach(async () => {
-    jest.useFakeTimers({
+    vi.useFakeTimers({
       now: T0,
-      doNotFake: [
-        'nextTick',
-        'setImmediate',
-        'setTimeout',
-        'setInterval',
-        'queueMicrotask',
-      ],
+      toFake: ['Date'],
     });
     await build();
   });
 
   afterEach(async () => {
-    jest.useRealTimers();
+    vi.useRealTimers();
     await harness.cleanup();
   });
 
@@ -361,7 +354,7 @@ describe('LoginUseCase with LoginGuardService', () => {
       active: true,
     });
 
-    jest.setSystemTime(T0 + 61 * MINUTE);
+    vi.setSystemTime(T0 + 61 * MINUTE);
     expect(await login(ip, PASSWORD)).toBe(200);
   });
 
@@ -381,7 +374,7 @@ describe('LoginUseCase with LoginGuardService', () => {
   it('하루 20번 실패한 IP 는 호스트 방화벽 차단 목록에 한 번 올라간다', async () => {
     const ip = '203.0.113.12';
     for (let round = 0; round < 4; round++) {
-      jest.setSystemTime(T0 + round * 2 * 60 * MINUTE);
+      vi.setSystemTime(T0 + round * 2 * 60 * MINUTE);
       await statuses(ip, 5);
     }
     await statuses(ip, 3);
@@ -449,7 +442,7 @@ describe('LoginUseCase with LoginGuardService', () => {
       expect(harness.ipBans.rows.has(operator)).toBe(false);
       expect(await firewalled()).not.toContain(operator);
 
-      jest.setSystemTime(T0 + 16 * MINUTE);
+      vi.setSystemTime(T0 + 16 * MINUTE);
       expect(await login(operator, PASSWORD)).toBe(200);
     });
 
@@ -595,7 +588,7 @@ describe('LoginUseCase with LoginGuardService', () => {
       expect(await loginAs(outside(11), PASSWORD)).toBe(429);
       expect(await loginAs(lan, PASSWORD)).toBe(200);
 
-      jest.setSystemTime(T0 + 31 * MINUTE);
+      vi.setSystemTime(T0 + 31 * MINUTE);
       for (let i = 0; i < 10; i++) {
         expect(await loginAs(localProcess, 'wrong')).toBe(401);
       }
@@ -688,7 +681,7 @@ describe('LoginUseCase with LoginGuardService', () => {
     expect(await login('192.0.2.60', PASSWORD)).toBe(429);
     expect(await login('192.0.2.60', 'wrong', 'someone@example.com')).toBe(401);
 
-    jest.setSystemTime(T0 + 16 * MINUTE);
+    vi.setSystemTime(T0 + 16 * MINUTE);
     expect(await login('192.0.2.60', PASSWORD)).toBe(200);
   });
 
@@ -707,7 +700,7 @@ describe('LoginUseCase with LoginGuardService', () => {
 
     it('하루 20번이면 /64 대역 하나를 방화벽에 올린다', async () => {
       for (let round = 0; round < 4; round++) {
-        jest.setSystemTime(T0 + round * 2 * 60 * MINUTE);
+        vi.setSystemTime(T0 + round * 2 * 60 * MINUTE);
         for (let i = 1; i <= 5; i++)
           await login(inBlock(round * 10 + i), 'wrong');
       }
@@ -824,7 +817,7 @@ describe('LoginUseCase with LoginGuardService', () => {
     await statuses('203.0.113.95', 5);
     const ban = harness.ipBans.rows.get('203.0.113.95');
     expect(ban?.active).toBe(true);
-    jest.setSystemTime(T0 + 31 * 24 * 60 * MINUTE);
+    vi.setSystemTime(T0 + 31 * 24 * 60 * MINUTE);
     await login('192.0.2.95', PASSWORD);
     if (ban) ban.active = false;
 

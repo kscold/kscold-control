@@ -1,3 +1,4 @@
+import type { Mocked } from 'vitest';
 import { Test, TestingModule } from '@nestjs/testing';
 import { BadRequestException } from '@nestjs/common';
 import { RemoveComposeServiceUseCase } from '@/docker/application/use-cases/remove-compose-service.use-case';
@@ -10,9 +11,9 @@ import { PortForwardingService } from '@/docker/application/services/port-forwar
 
 describe('RemoveComposeServiceUseCase', () => {
   let useCase: RemoveComposeServiceUseCase;
-  let containerRepo: jest.Mocked<IContainerRepository>;
-  let composeService: jest.Mocked<ComposeService>;
-  let portForwardingService: jest.Mocked<PortForwardingService>;
+  let containerRepo: Mocked<IContainerRepository>;
+  let composeService: Mocked<ComposeService>;
+  let portForwardingService: Mocked<PortForwardingService>;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -21,22 +22,22 @@ describe('RemoveComposeServiceUseCase', () => {
         {
           provide: CONTAINER_REPOSITORY,
           useValue: {
-            findByName: jest.fn(),
-            delete: jest.fn(),
+            findByName: vi.fn(),
+            delete: vi.fn(),
           },
         },
         {
           provide: ComposeService,
           useValue: {
-            hasService: jest.fn(),
-            downService: jest.fn(),
-            removeService: jest.fn(),
+            hasService: vi.fn(),
+            downService: vi.fn(),
+            removeService: vi.fn(),
           },
         },
         {
           provide: PortForwardingService,
           useValue: {
-            removePortForwardingRules: jest.fn(),
+            removePortForwardingRules: vi.fn(),
           },
         },
       ],

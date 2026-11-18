@@ -1,3 +1,4 @@
+import type { Mocked } from 'vitest';
 import { Test, TestingModule } from '@nestjs/testing';
 import { ListContainersUseCase } from '@/docker/application/use-cases/list-containers.use-case';
 import {
@@ -14,29 +15,29 @@ import { Container } from '@/docker/domain/entities/container.entity';
 
 describe('ListContainersUseCase', () => {
   let useCase: ListContainersUseCase;
-  let containerRepo: jest.Mocked<IContainerRepository>;
-  let dockerClient: jest.Mocked<IDockerClient>;
-  let portForwardingService: jest.Mocked<PortForwardingService>;
-  let composeService: jest.Mocked<ComposeService>;
+  let containerRepo: Mocked<IContainerRepository>;
+  let dockerClient: Mocked<IDockerClient>;
+  let portForwardingService: Mocked<PortForwardingService>;
+  let composeService: Mocked<ComposeService>;
 
   beforeEach(async () => {
     const mockContainerRepo: Partial<IContainerRepository> = {
-      findAll: jest.fn(),
-      findByUserId: jest.fn(),
-      save: jest.fn(),
+      findAll: vi.fn(),
+      findByUserId: vi.fn(),
+      save: vi.fn(),
     };
 
     const mockDockerClient: Partial<IDockerClient> = {
-      listContainers: jest.fn(),
-      inspectContainer: jest.fn(),
+      listContainers: vi.fn(),
+      inspectContainer: vi.fn(),
     };
 
     const mockPortForwardingService: Partial<PortForwardingService> = {
-      getExternalAccess: jest.fn(),
+      getExternalAccess: vi.fn(),
     };
 
     const mockComposeService: Partial<ComposeService> = {
-      listServices: jest.fn(),
+      listServices: vi.fn(),
     };
 
     const module: TestingModule = await Test.createTestingModule({

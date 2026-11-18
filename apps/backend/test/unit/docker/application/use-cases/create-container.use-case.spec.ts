@@ -1,3 +1,4 @@
+import type { Mocked } from 'vitest';
 import { Test, TestingModule } from '@nestjs/testing';
 import { CreateContainerUseCase } from '@/docker/application/use-cases/create-container.use-case';
 import {
@@ -14,34 +15,34 @@ import { Container } from '@/docker/domain/entities/container.entity';
 
 describe('CreateContainerUseCase', () => {
   let useCase: CreateContainerUseCase;
-  let containerRepo: jest.Mocked<IContainerRepository>;
-  let dockerClient: jest.Mocked<IDockerClient>;
-  let portForwardingService: jest.Mocked<PortForwardingService>;
+  let containerRepo: Mocked<IContainerRepository>;
+  let dockerClient: Mocked<IDockerClient>;
+  let portForwardingService: Mocked<PortForwardingService>;
 
   beforeEach(async () => {
     // 외부 의존성을 대체해 유스케이스의 흐름만 검증함.
     const mockContainerRepo: Partial<IContainerRepository> = {
-      create: jest.fn(),
-      save: jest.fn(),
-      findById: jest.fn(),
-      findAll: jest.fn(),
-      delete: jest.fn(),
+      create: vi.fn(),
+      save: vi.fn(),
+      findById: vi.fn(),
+      findAll: vi.fn(),
+      delete: vi.fn(),
     };
 
     const mockDockerClient: Partial<IDockerClient> = {
-      pullImage: jest.fn(),
-      createContainer: jest.fn(),
-      startContainer: jest.fn(),
-      stopContainer: jest.fn(),
-      removeContainer: jest.fn(),
-      listContainers: jest.fn(),
-      inspectContainer: jest.fn(),
+      pullImage: vi.fn(),
+      createContainer: vi.fn(),
+      startContainer: vi.fn(),
+      stopContainer: vi.fn(),
+      removeContainer: vi.fn(),
+      listContainers: vi.fn(),
+      inspectContainer: vi.fn(),
     };
 
     const mockPortForwardingService: Partial<PortForwardingService> = {
-      addPortForwardingRules: jest.fn(),
-      getExternalAccess: jest.fn(),
-      removePortForwardingRules: jest.fn(),
+      addPortForwardingRules: vi.fn(),
+      getExternalAccess: vi.fn(),
+      removePortForwardingRules: vi.fn(),
     };
 
     const module: TestingModule = await Test.createTestingModule({

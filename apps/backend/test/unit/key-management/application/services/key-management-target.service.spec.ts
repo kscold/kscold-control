@@ -58,8 +58,8 @@ const projectbetaTarget = {
 describe('KeyManagementTargetService', () => {
   function fixture(rows = [projectalphaTarget, projectbetaTarget]) {
     const repository = {
-      findEnabled: jest.fn().mockResolvedValue(rows),
-      findEnabledById: jest
+      findEnabled: vi.fn().mockResolvedValue(rows),
+      findEnabledById: vi
         .fn()
         .mockImplementation(async (id: string) =>
           rows.find((row) => row.id === id),

@@ -148,7 +148,9 @@ describe('MfaConfig', () => {
   });
 
   it('필수 역할을 비워 두면 기동할 때 경고한다', () => {
-    const warn = jest.spyOn(Logger.prototype, 'warn').mockImplementation();
+    const warn = vi
+      .spyOn(Logger.prototype, 'warn')
+      .mockImplementation(() => undefined);
     const boot = (roles: string) =>
       MfaConfig.fromConfig(
         new ConfigService({
@@ -194,8 +196,8 @@ describe('MfaConfig', () => {
 });
 
 describe('MfaService', () => {
-  beforeEach(() => jest.useFakeTimers({ now: LOGIN_AT }));
-  afterEach(() => jest.useRealTimers());
+  beforeEach(() => vi.useFakeTimers({ now: LOGIN_AT }));
+  afterEach(() => vi.useRealTimers());
 
   async function enrolledAdmin() {
     const harness = await mfaHarness();
@@ -294,7 +296,7 @@ describe('MfaService', () => {
 
   it('등록한 계정은 올바른 OTP 로 mfa 세션을 연다', async () => {
     const harness = await enrolledAdmin();
-    jest.setSystemTime(LOGIN_AT.getTime() + STEP_MS);
+    vi.setSystemTime(LOGIN_AT.getTime() + STEP_MS);
 
     const login = await harness.mfa.verify(
       {
@@ -311,7 +313,7 @@ describe('MfaService', () => {
 
   it('같은 OTP 를 두 번 내면 두 번째는 거절한다', async () => {
     const harness = await enrolledAdmin();
-    jest.setSystemTime(LOGIN_AT.getTime() + STEP_MS);
+    vi.setSystemTime(LOGIN_AT.getTime() + STEP_MS);
     const code = codeAt(harness.secret, new Date());
 
     await harness.mfa.verify(
@@ -377,14 +379,14 @@ describe('MfaService', () => {
 
   it('challenge 는 한 번 쓰면 닫힌다', async () => {
     const harness = await enrolledAdmin();
-    jest.setSystemTime(LOGIN_AT.getTime() + STEP_MS);
+    vi.setSystemTime(LOGIN_AT.getTime() + STEP_MS);
     const challenge = await verifyChallenge(harness);
 
     await harness.mfa.verify(
       { challenge, method: 'totp', code: codeAt(harness.secret, new Date()) },
       browser,
     );
-    jest.setSystemTime(LOGIN_AT.getTime() + 2 * STEP_MS);
+    vi.setSystemTime(LOGIN_AT.getTime() + 2 * STEP_MS);
     await expectMfaError(
       harness.mfa.verify(
         { challenge, method: 'totp', code: codeAt(harness.secret, new Date()) },
@@ -397,7 +399,7 @@ describe('MfaService', () => {
   it('5분이 지난 challenge 는 맞는 코드여도 받지 않는다', async () => {
     const harness = await enrolledAdmin();
     const challenge = await verifyChallenge(harness);
-    jest.setSystemTime(LOGIN_AT.getTime() + 5 * 60 * 1000);
+    vi.setSystemTime(LOGIN_AT.getTime() + 5 * 60 * 1000);
 
     await expectMfaError(
       harness.mfa.verify(
@@ -428,7 +430,7 @@ describe('MfaService', () => {
       'MFA_CHALLENGE_EXPIRED',
     );
     expect(harness.failures()).toHaveLength(5);
-    jest.setSystemTime(LOGIN_AT.getTime() + STEP_MS);
+    vi.setSystemTime(LOGIN_AT.getTime() + STEP_MS);
     await expectMfaError(
       harness.mfa.verify(
         { challenge, method: 'totp', code: codeAt(harness.secret, new Date()) },
@@ -440,7 +442,7 @@ describe('MfaService', () => {
 
   it('복구 코드를 다시 만들려면 지금 OTP 가 맞아야 하고 예전 코드는 버린다', async () => {
     const harness = await enrolledAdmin();
-    jest.setSystemTime(LOGIN_AT.getTime() + STEP_MS);
+    vi.setSystemTime(LOGIN_AT.getTime() + STEP_MS);
 
     const refused = await expectMfaError(
       harness.mfa.regenerateRecoveryCodes(harness.admin, '000000', browser),
@@ -493,8 +495,8 @@ describe('MfaService', () => {
 });
 
 describe('MfaService 동시 요청과 시도 한도', () => {
-  beforeEach(() => jest.useFakeTimers({ now: LOGIN_AT }));
-  afterEach(() => jest.useRealTimers());
+  beforeEach(() => vi.useFakeTimers({ now: LOGIN_AT }));
+  afterEach(() => vi.useRealTimers());
 
   async function enrolled() {
     const harness = await mfaHarness();
@@ -510,7 +512,7 @@ describe('MfaService 동시 요청과 시도 한도', () => {
       },
       browser,
     );
-    jest.setSystemTime(LOGIN_AT.getTime() + STEP_MS);
+    vi.setSystemTime(LOGIN_AT.getTime() + STEP_MS);
     const secret = step.enrollment.secret;
     const right = () => codeAt(secret, new Date());
     const wrong = () => (right() === '000000' ? '111111' : '000000');
@@ -629,7 +631,7 @@ describe('MfaService 동시 요청과 시도 한도', () => {
         .map((row) => row.reason),
     ).toEqual(['account-locked', 'account-locked', 'account-locked']);
 
-    jest.setSystemTime(Date.now() + 15 * 60 * 1000 + 1);
+    vi.setSystemTime(Date.now() + 15 * 60 * 1000 + 1);
     await expect(statusOf(guess(await challenge(), right()))).resolves.toBe(
       200,
     );
@@ -640,8 +642,8 @@ describe('비밀번호와 OTP 로그인에 로그인 차단을 함께 건다', (
   const ATTACKER = '198.51.100.20';
   const OWNER = '192.0.2.50';
 
-  beforeEach(() => jest.useFakeTimers({ now: LOGIN_AT }));
-  afterEach(() => jest.useRealTimers());
+  beforeEach(() => vi.useFakeTimers({ now: LOGIN_AT }));
+  afterEach(() => vi.useRealTimers());
 
   async function enrolledLogin() {
     const harness = await mfaHarness({ allowlist: OWNER });
@@ -672,7 +674,7 @@ describe('비밀번호와 OTP 로그인에 로그인 차단을 함께 건다', (
       },
       client(OWNER),
     );
-    jest.setSystemTime(LOGIN_AT.getTime() + STEP_MS);
+    vi.setSystemTime(LOGIN_AT.getTime() + STEP_MS);
     const right = () => codeAt(first.enrollment.secret, new Date());
     const wrong = () => (right() === '000000' ? '111111' : '000000');
 
@@ -758,8 +760,8 @@ describe('비밀번호와 OTP 로그인에 로그인 차단을 함께 건다', (
 });
 
 describe('로그인한 화면에서 2단계 인증 켜기', () => {
-  beforeEach(() => jest.useFakeTimers({ now: LOGIN_AT }));
-  afterEach(() => jest.useRealTimers());
+  beforeEach(() => vi.useFakeTimers({ now: LOGIN_AT }));
+  afterEach(() => vi.useRealTimers());
 
   async function signedInOperator() {
     const harness = await mfaHarness();

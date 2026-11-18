@@ -41,12 +41,12 @@ describe('BackupController', () => {
   } as BackupRun;
   const request = { user: { id: 'user-1', email: 'admin@example.com' } };
 
-  const getBackupOverview = { execute: jest.fn() };
-  const createBackupTarget = { execute: jest.fn() };
-  const updateBackupTarget = { execute: jest.fn() };
-  const deleteBackupTarget = { execute: jest.fn() };
-  const runBackupTarget = { execute: jest.fn() };
-  const listBackupRuns = { execute: jest.fn() };
+  const getBackupOverview = { execute: vi.fn() };
+  const createBackupTarget = { execute: vi.fn() };
+  const updateBackupTarget = { execute: vi.fn() };
+  const deleteBackupTarget = { execute: vi.fn() };
+  const runBackupTarget = { execute: vi.fn() };
+  const listBackupRuns = { execute: vi.fn() };
 
   const controller = new BackupController(
     getBackupOverview as never,
@@ -58,7 +58,7 @@ describe('BackupController', () => {
   );
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   it('조회는 읽기 권한을, 변경과 실행은 관리 권한을 요구한다', () => {

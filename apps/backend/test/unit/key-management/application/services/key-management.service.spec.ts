@@ -43,26 +43,26 @@ function createFixture() {
     sortOrder: 10,
   } as const;
   const targets = {
-    get: jest.fn().mockResolvedValue(target),
-    list: jest.fn().mockResolvedValue([target]),
+    get: vi.fn().mockResolvedValue(target),
+    list: vi.fn().mockResolvedValue([target]),
   };
   const envDocument = new EnvDocumentService();
   const secretStore = {
-    readLatest: jest.fn().mockImplementation(async () => {
+    readLatest: vi.fn().mockImplementation(async () => {
       calls.push('read');
       return { version: '1', payload: currentEnv, createdAt: null };
     }),
-    readVersion: jest.fn(),
-    addVersion: jest.fn().mockImplementation(async () => {
+    readVersion: vi.fn(),
+    addVersion: vi.fn().mockImplementation(async () => {
       calls.push('add-version');
       return { version: '2', createdAt: null };
     }),
   };
   const deployments = {
-    trigger: jest.fn().mockImplementation(async () => {
+    trigger: vi.fn().mockImplementation(async () => {
       calls.push('deploy');
     }),
-    findByRequestId: jest.fn(),
+    findByRequestId: vi.fn(),
   };
   const backup = {
     id: 'backup-1',
@@ -87,21 +87,21 @@ function createFixture() {
     updatedAt: new Date(),
   } as any;
   const backups = {
-    create: jest.fn().mockImplementation((data) => Object.assign(backup, data)),
-    save: jest.fn().mockImplementation(async (value) => {
+    create: vi.fn().mockImplementation((data) => Object.assign(backup, data)),
+    save: vi.fn().mockImplementation(async (value) => {
       calls.push(`db:${value.status}`);
       return value;
     }),
-    findRecent: jest.fn().mockResolvedValue([]),
-    findByIdWithPayload: jest.fn(),
+    findRecent: vi.fn().mockResolvedValue([]),
+    findByIdWithPayload: vi.fn(),
   };
   const encryption = {
-    encrypt: jest.fn().mockReturnValue({
+    encrypt: vi.fn().mockReturnValue({
       encryptedPayload: 'ciphertext',
       iv: 'iv',
       authTag: 'tag',
     }),
-    decrypt: jest.fn(),
+    decrypt: vi.fn(),
   };
   const service = new KeyManagementService(
     targets as any,

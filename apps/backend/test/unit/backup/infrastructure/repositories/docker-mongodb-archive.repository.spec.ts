@@ -104,13 +104,13 @@ describe('DockerMongodbArchiveRepository', () => {
 
     process.env.FAKE_DOCKER_LOG_DIR = logDir;
     delete process.env.FAKE_DOCKER_MODE;
-    jest.spyOn(Logger.prototype, 'log').mockImplementation(() => undefined);
+    vi.spyOn(Logger.prototype, 'log').mockImplementation(() => undefined);
   });
 
   afterEach(() => {
     delete process.env.FAKE_DOCKER_LOG_DIR;
     delete process.env.FAKE_DOCKER_MODE;
-    jest.restoreAllMocks();
+    vi.restoreAllMocks();
     fs.rmSync(workDir, { recursive: true, force: true });
   });
 

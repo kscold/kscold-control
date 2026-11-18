@@ -1,24 +1,27 @@
+import type { Mock } from 'vitest';
 import Docker from 'dockerode';
 import { homedir, platform } from 'node:os';
 import * as path from 'node:path';
 import { PassThrough } from 'node:stream';
 import { DockerodeClientAdapter } from '@/docker/infrastructure/adapters/dockerode-client.adapter';
 
-jest.mock('dockerode', () => {
-  return jest.fn().mockImplementation(() => ({
-    listContainers: jest.fn(),
-    getContainer: jest.fn(),
-    createContainer: jest.fn(),
-    pull: jest.fn(),
-    modem: {
-      followProgress: jest.fn(),
-      demuxStream: jest.fn(),
-    },
-  }));
-});
+vi.mock('dockerode', () => ({
+  default: vi.fn().mockImplementation(function () {
+    return {
+      listContainers: vi.fn(),
+      getContainer: vi.fn(),
+      createContainer: vi.fn(),
+      pull: vi.fn(),
+      modem: {
+        followProgress: vi.fn(),
+        demuxStream: vi.fn(),
+      },
+    };
+  }),
+}));
 
 describe('DockerodeClientAdapter', () => {
-  const DockerMock = Docker as unknown as jest.Mock;
+  const DockerMock = Docker as unknown as Mock;
   const originalDockerHost = process.env.DOCKER_HOST;
 
   beforeEach(() => {
@@ -67,10 +70,10 @@ describe('DockerodeClientAdapter', () => {
     const docker = DockerMock.mock.results.at(-1)?.value;
     const stream = new PassThrough();
     const exec = {
-      start: jest.fn().mockResolvedValue(stream),
+      start: vi.fn().mockResolvedValue(stream),
     };
     const container = {
-      exec: jest.fn().mockResolvedValue(exec),
+      exec: vi.fn().mockResolvedValue(exec),
     };
 
     docker.modem.demuxStream.mockImplementation(
@@ -98,8 +101,7 @@ describe('DockerodeClientAdapter', () => {
   function processAdapter(output: string, ps = '') {
     const adapter = new DockerodeClientAdapter();
     adapter.onModuleInit();
-    jest
-      .spyOn(adapter as any, 'execCommand')
+    vi.spyOn(adapter as any, 'execCommand')
       .mockResolvedValueOnce(output)
       .mockResolvedValueOnce(ps);
     return adapter;

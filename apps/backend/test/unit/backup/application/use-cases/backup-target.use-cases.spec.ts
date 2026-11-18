@@ -25,18 +25,18 @@ describe('백업 대상 관리 유스케이스', () => {
   } as BackupTarget;
 
   const targetRepository = {
-    findById: jest.fn(),
-    findByName: jest.fn(),
-    create: jest.fn(),
-    update: jest.fn(),
-    remove: jest.fn(),
+    findById: vi.fn(),
+    findByName: vi.fn(),
+    create: vi.fn(),
+    update: vi.fn(),
+    remove: vi.fn(),
   };
-  const secretService = { seal: jest.fn() };
-  const runner = { isRunning: jest.fn() };
+  const secretService = { seal: vi.fn() };
+  const runner = { isRunning: vi.fn() };
 
   beforeEach(() => {
-    jest.resetAllMocks();
-    jest.useFakeTimers().setSystemTime(new Date('2026-10-06T06:00:00.000Z'));
+    vi.resetAllMocks();
+    vi.useFakeTimers().setSystemTime(new Date('2026-10-06T06:00:00.000Z'));
     secretService.seal.mockReturnValue(sealed);
     targetRepository.findById.mockResolvedValue(existing);
     targetRepository.findByName.mockResolvedValue(null);
@@ -50,7 +50,7 @@ describe('백업 대상 관리 유스케이스', () => {
   });
 
   afterEach(() => {
-    jest.useRealTimers();
+    vi.useRealTimers();
   });
 
   describe('등록', () => {

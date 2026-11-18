@@ -1,10 +1,11 @@
+import type { Mocked } from 'vitest';
 import { Test, TestingModule } from '@nestjs/testing';
 import { GetComposeProvisioningTemplateUseCase } from '@/docker/application/use-cases/get-compose-provisioning-template.use-case';
 import { ComposeService } from '@/docker/application/services/compose.service';
 
 describe('GetComposeProvisioningTemplateUseCase', () => {
   let useCase: GetComposeProvisioningTemplateUseCase;
-  let composeService: jest.Mocked<ComposeService>;
+  let composeService: Mocked<ComposeService>;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -13,8 +14,8 @@ describe('GetComposeProvisioningTemplateUseCase', () => {
         {
           provide: ComposeService,
           useValue: {
-            getUsedHostPorts: jest.fn(),
-            listServices: jest.fn(),
+            getUsedHostPorts: vi.fn(),
+            listServices: vi.fn(),
           },
         },
       ],

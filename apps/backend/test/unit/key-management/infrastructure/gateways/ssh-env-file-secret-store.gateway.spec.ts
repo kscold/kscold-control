@@ -35,8 +35,8 @@ function checksum(value: string) {
 }
 
 function fixture() {
-  const targets = { get: jest.fn().mockResolvedValue(target) };
-  const ssh = { execute: jest.fn() };
+  const targets = { get: vi.fn().mockResolvedValue(target) };
+  const ssh = { execute: vi.fn() };
   const gateway = new SshEnvFileSecretStoreGateway(targets as any, ssh as any);
   return { gateway, ssh };
 }

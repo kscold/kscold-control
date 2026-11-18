@@ -207,20 +207,20 @@ describe('clientIp', () => {
     });
   });
 
-  it('요청 첫 단계에서 IP 를 정한 뒤 비밀값 헤더를 지워도 같은 IP 를 돌려준다', () => {
+  it('요청 첫 단계에서 IP 를 정한 뒤 비밀값 헤더를 지워도 같은 IP 를 돌려준다', async () => {
     const env = { ...process.env };
     process.env.CONTROL_PROXY_SECRET = SECRET;
     delete process.env.CONTROL_TRUSTED_PROXIES;
     try {
-      jest.isolateModules(() => {
-        const fresh = jest.requireActual<
-          typeof import('@/common/utils/client-ip.util')
-        >('@/common/utils/client-ip.util');
+      {
+        // 바뀐 환경 변수로 모듈을 새로 읽어 들임
+        vi.resetModules();
+        const fresh = await import('@/common/utils/client-ip.util');
         const proxied = request('127.0.0.1', '203.0.113.9', {
           'x-control-proxy-secret': SECRET,
         });
         const forged = request('127.0.0.1', '203.0.113.9');
-        const next = jest.fn();
+        const next = vi.fn();
 
         fresh.resolveClientIpAndDropProxySecret(proxied, undefined, next);
         fresh.resolveClientIpAndDropProxySecret(forged, undefined, next);
@@ -229,7 +229,7 @@ describe('clientIp', () => {
         expect(proxied.headers).not.toHaveProperty('x-control-proxy-secret');
         expect(fresh.clientIp(proxied)).toBe('203.0.113.9');
         expect(fresh.clientIp(forged)).toBe('127.0.0.1');
-      });
+      }
     } finally {
       process.env = env;
     }

@@ -35,7 +35,7 @@ describe('StartImpersonationUseCase', () => {
       sessionAssurance: adminSession.assurance,
     };
     const userRepository = {
-      findByIdWithRoles: jest.fn().mockResolvedValue(found),
+      findByIdWithRoles: vi.fn().mockResolvedValue(found),
     };
     const useCase = new StartImpersonationUseCase(
       userRepository as any,

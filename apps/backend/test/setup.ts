@@ -1,5 +1,4 @@
 import 'reflect-metadata';
-import '@jest/globals';
 
 // 테스트 전역 설정과 사용자 정의 매처 등록용 파일임.
 expect.extend({

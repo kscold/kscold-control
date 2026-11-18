@@ -4,7 +4,7 @@ import { PERMISSIONS } from '@/common/constants/permissions';
 import { WorktreeCleanupController } from '@/maintenance/presentation/controllers/worktree-cleanup.controller';
 
 describe('WorktreeCleanupController', () => {
-  const none = { execute: jest.fn() };
+  const none = { execute: vi.fn() };
   const controller = new WorktreeCleanupController(
     none as never,
     none as never,

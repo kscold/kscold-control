@@ -6,7 +6,7 @@ import { SecretEncryptionService } from '../../../src/common/crypto/secret-encry
 import { sanitizeHttpRequestBody } from '../../../src/common/utils/http-log-sanitizer.util';
 
 describe('저장된 원격 접속 대상', () => {
-  const query = jest.fn();
+  const query = vi.fn();
   let service: RemoteDesktopTargetsService;
   let encryption: SecretEncryptionService;
   const input = {

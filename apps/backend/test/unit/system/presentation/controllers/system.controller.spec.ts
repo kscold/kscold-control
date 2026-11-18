@@ -2,10 +2,10 @@ import { SystemController } from '@/system/presentation/controllers/system.contr
 import { PERMISSIONS } from '@/common/constants/permissions';
 
 describe('SystemController', () => {
-  const getStatsUseCase = { execute: jest.fn() };
-  const getSystemInfoUseCase = { execute: jest.fn() };
-  const backupMongodbUseCase = { execute: jest.fn() };
-  const listBackupsUseCase = { execute: jest.fn() };
+  const getStatsUseCase = { execute: vi.fn() };
+  const getSystemInfoUseCase = { execute: vi.fn() };
+  const backupMongodbUseCase = { execute: vi.fn() };
+  const listBackupsUseCase = { execute: vi.fn() };
 
   const controller = new SystemController(
     getStatsUseCase as any,
@@ -15,7 +15,7 @@ describe('SystemController', () => {
   );
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   it('대시보드 엔드포인트는 전용 읽기 권한만 요구한다', () => {

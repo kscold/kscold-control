@@ -18,11 +18,11 @@ describe('ApproveKeyManagerUseCase', () => {
       terminalCommandLimit: -1,
     };
     const userRepository = {
-      findByIdWithRoles: jest.fn().mockResolvedValue(user),
-      save: jest.fn(async (value) => value),
+      findByIdWithRoles: vi.fn().mockResolvedValue(user),
+      save: vi.fn(async (value) => value),
     };
     const roleRepository = {
-      findByNameWithPermissions: jest.fn().mockResolvedValue(keyManagerRole),
+      findByNameWithPermissions: vi.fn().mockResolvedValue(keyManagerRole),
     };
     const harness = sessionHarness();
     const useCase = new ApproveKeyManagerUseCase(

@@ -1,3 +1,4 @@
+import type { Mocked } from 'vitest';
 import { BadRequestException } from '@nestjs/common';
 import { type ComposeDocument } from '@/docker/domain/types/compose.type';
 import { type IComposeRuntimeGateway } from '@/docker/domain/gateways/compose-runtime.gateway.interface';
@@ -5,7 +6,7 @@ import { ComposeService } from '@/docker/application/services/compose.service';
 
 describe('ComposeService', () => {
   let compose: ComposeDocument;
-  let composeRuntime: jest.Mocked<IComposeRuntimeGateway>;
+  let composeRuntime: Mocked<IComposeRuntimeGateway>;
   let service: ComposeService;
 
   beforeEach(() => {
@@ -18,11 +19,11 @@ describe('ComposeService', () => {
       },
     };
     composeRuntime = {
-      readCompose: jest.fn(() => compose),
-      writeCompose: jest.fn(),
-      listDockerHostPorts: jest.fn().mockResolvedValue([]),
-      upService: jest.fn(),
-      downService: jest.fn(),
+      readCompose: vi.fn(() => compose),
+      writeCompose: vi.fn(),
+      listDockerHostPorts: vi.fn().mockResolvedValue([]),
+      upService: vi.fn(),
+      downService: vi.fn(),
     };
     service = new ComposeService(composeRuntime);
   });

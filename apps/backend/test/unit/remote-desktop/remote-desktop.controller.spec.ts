@@ -6,8 +6,8 @@ import type { JwtRequest } from '../../../src/common/types/jwt-request.type';
 
 describe('원격 대상 깨우기·상태 권한', () => {
   const targets = {
-    wake: jest.fn().mockResolvedValue({ sent: true }),
-    status: jest.fn().mockResolvedValue({ online: false }),
+    wake: vi.fn().mockResolvedValue({ sent: true }),
+    status: vi.fn().mockResolvedValue({ online: false }),
   };
   const controller = new RemoteDesktopController(
     {} as RemoteDesktopService,
@@ -16,7 +16,7 @@ describe('원격 대상 깨우기·상태 권한', () => {
   const request = (roles: string[], impersonation?: unknown) =>
     ({ user: { id: 'user-id', roles, impersonation } }) as JwtRequest;
 
-  beforeEach(() => jest.clearAllMocks());
+  beforeEach(() => vi.clearAllMocks());
 
   it.each([
     ['일반 사용자', request(['user'])],

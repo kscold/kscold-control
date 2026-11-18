@@ -2,7 +2,7 @@ import { TypeOrmBackupTargetRepository } from '@/backup/infrastructure/repositor
 
 describe('TypeOrmBackupTargetRepository', () => {
   it('목록은 이름순으로 조회한다', async () => {
-    const find = jest.fn().mockResolvedValue([]);
+    const find = vi.fn().mockResolvedValue([]);
     const repository = new TypeOrmBackupTargetRepository({ find } as never);
 
     await repository.findAll();
@@ -11,7 +11,7 @@ describe('TypeOrmBackupTargetRepository', () => {
   });
 
   it('사용 중인 대상만 조회한다', async () => {
-    const find = jest.fn().mockResolvedValue([]);
+    const find = vi.fn().mockResolvedValue([]);
     const repository = new TypeOrmBackupTargetRepository({ find } as never);
 
     await repository.findEnabled();
@@ -24,12 +24,12 @@ describe('TypeOrmBackupTargetRepository', () => {
 
   it('덤프용 조회에서만 암호문 컬럼을 읽는다', async () => {
     const builder = {
-      addSelect: jest.fn().mockReturnThis(),
-      where: jest.fn().mockReturnThis(),
-      getOne: jest.fn().mockResolvedValue(null),
+      addSelect: vi.fn().mockReturnThis(),
+      where: vi.fn().mockReturnThis(),
+      getOne: vi.fn().mockResolvedValue(null),
     };
     const repository = new TypeOrmBackupTargetRepository({
-      createQueryBuilder: jest.fn().mockReturnValue(builder),
+      createQueryBuilder: vi.fn().mockReturnValue(builder),
     } as never);
 
     await repository.findByIdWithSecret('target-1');
@@ -48,9 +48,9 @@ describe('TypeOrmBackupTargetRepository', () => {
     const input = { name: 'app-prod', encryptedUri: 'cipher' };
     const stored = { id: 'target-1', name: 'app-prod' };
     const ormRepository = {
-      create: jest.fn().mockReturnValue(input),
-      save: jest.fn().mockResolvedValue({ id: 'target-1', ...input }),
-      findOne: jest.fn().mockResolvedValue(stored),
+      create: vi.fn().mockReturnValue(input),
+      save: vi.fn().mockResolvedValue({ id: 'target-1', ...input }),
+      findOne: vi.fn().mockResolvedValue(stored),
     };
     const repository = new TypeOrmBackupTargetRepository(
       ormRepository as never,
@@ -64,8 +64,8 @@ describe('TypeOrmBackupTargetRepository', () => {
 
   it('수정은 넘겨받은 컬럼만 고친다', async () => {
     const ormRepository = {
-      update: jest.fn().mockResolvedValue({ affected: 1 }),
-      findOne: jest.fn().mockResolvedValue({ id: 'target-1' }),
+      update: vi.fn().mockResolvedValue({ affected: 1 }),
+      findOne: vi.fn().mockResolvedValue({ id: 'target-1' }),
     };
     const repository = new TypeOrmBackupTargetRepository(
       ormRepository as never,
@@ -81,8 +81,8 @@ describe('TypeOrmBackupTargetRepository', () => {
 
   it('바뀐 항목이 없으면 쓰지 않고 현재 값을 돌려준다', async () => {
     const ormRepository = {
-      update: jest.fn(),
-      findOne: jest.fn().mockResolvedValue({ id: 'target-1' }),
+      update: vi.fn(),
+      findOne: vi.fn().mockResolvedValue({ id: 'target-1' }),
     };
     const repository = new TypeOrmBackupTargetRepository(
       ormRepository as never,
@@ -95,7 +95,7 @@ describe('TypeOrmBackupTargetRepository', () => {
   });
 
   it('예약 기준 시각은 수정 시각을 건드리지 않고 그 컬럼만 옮긴다', async () => {
-    const query = jest.fn().mockResolvedValue(undefined);
+    const query = vi.fn().mockResolvedValue(undefined);
     const repository = new TypeOrmBackupTargetRepository({ query } as never);
     const at = new Date('2026-10-05T18:30:00.000Z');
 
@@ -108,7 +108,7 @@ describe('TypeOrmBackupTargetRepository', () => {
   });
 
   it('id 로 대상을 지운다', async () => {
-    const remove = jest.fn().mockResolvedValue({ affected: 1 });
+    const remove = vi.fn().mockResolvedValue({ affected: 1 });
     const repository = new TypeOrmBackupTargetRepository({
       delete: remove,
     } as never);

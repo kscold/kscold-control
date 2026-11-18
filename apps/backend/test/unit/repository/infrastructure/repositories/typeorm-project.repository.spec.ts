@@ -2,7 +2,7 @@ import { TypeOrmProjectRepository } from '@/repository/infrastructure/repositori
 
 describe('TypeOrmProjectRepository', () => {
   it('프로젝트 목록을 ownerId로 제한한다', async () => {
-    const find = jest.fn().mockResolvedValue([]);
+    const find = vi.fn().mockResolvedValue([]);
     const repository = new TypeOrmProjectRepository({ find } as any);
 
     await repository.findAll('user-1');
@@ -14,7 +14,7 @@ describe('TypeOrmProjectRepository', () => {
   });
 
   it('프로젝트 단건 조회를 ownerId로 제한한다', async () => {
-    const findOne = jest.fn().mockResolvedValue(null);
+    const findOne = vi.fn().mockResolvedValue(null);
     const repository = new TypeOrmProjectRepository({ findOne } as any);
 
     await repository.findById('project-1', 'user-1');

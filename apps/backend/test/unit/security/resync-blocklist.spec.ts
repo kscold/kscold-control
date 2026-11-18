@@ -53,10 +53,10 @@ function setup() {
 }
 
 describe('ResyncBlocklistUseCase', () => {
-  afterEach(() => jest.useRealTimers());
+  afterEach(() => vi.useRealTimers());
 
   it('2초 사이에 몰린 자동 차단 5건은 모아서 nginx 에 한 번 반영한다', async () => {
-    jest.useFakeTimers();
+    vi.useFakeTimers();
     const { nginx, resync, ban } = setup();
     const ips = [
       '203.0.113.1',
@@ -68,16 +68,16 @@ describe('ResyncBlocklistUseCase', () => {
 
     for (const ip of ips) {
       await ban(ip, true);
-      await jest.advanceTimersByTimeAsync(400);
+      await vi.advanceTimersByTimeAsync(400);
     }
     expect(nginx.applied).toEqual([]);
 
-    await jest.advanceTimersByTimeAsync(BATCHED_RESYNC_DELAY_MS);
+    await vi.advanceTimersByTimeAsync(BATCHED_RESYNC_DELAY_MS);
     expect(nginx.applied).toHaveLength(1);
     expect([...nginx.applied[0]].sort()).toEqual(ips);
 
     await ban('203.0.113.6', true);
-    await jest.advanceTimersByTimeAsync(BATCHED_RESYNC_DELAY_MS);
+    await vi.advanceTimersByTimeAsync(BATCHED_RESYNC_DELAY_MS);
     expect(nginx.applied).toHaveLength(2);
     resync.onModuleDestroy();
   });

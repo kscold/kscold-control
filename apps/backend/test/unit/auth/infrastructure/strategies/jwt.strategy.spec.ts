@@ -18,8 +18,8 @@ describe('JwtStrategy', () => {
     const harness = sessionHarness();
     const session = await harness.sessions.open(user.id, browser);
     const strategy = new JwtStrategy(
-      { get: jest.fn().mockReturnValue('a'.repeat(32)) } as any,
-      { validateUser: jest.fn().mockResolvedValue(user) } as any,
+      { get: vi.fn().mockReturnValue('a'.repeat(32)) } as any,
+      { validateUser: vi.fn().mockResolvedValue(user) } as any,
       harness.verifier,
     );
     return { ...harness, session, strategy };

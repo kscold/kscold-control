@@ -23,19 +23,19 @@ describe('BackupTargetAccessService', () => {
 
   function fixture() {
     const repository = {
-      findTargets: jest.fn().mockResolvedValue([
+      findTargets: vi.fn().mockResolvedValue([
         { id: blog, name: 'sample-blog', description: '' },
         { id: projectbeta, name: 'projectbeta-prod', description: '' },
       ]),
-      findTargetIdsByUserId: jest.fn().mockResolvedValue([projectbeta]),
-      findAllAssignments: jest
+      findTargetIdsByUserId: vi.fn().mockResolvedValue([projectbeta]),
+      findAllAssignments: vi
         .fn()
         .mockResolvedValue([{ userId: 'viewer-1', targetIds: [projectbeta] }]),
-      replaceForUser: jest.fn().mockResolvedValue(undefined),
+      replaceForUser: vi.fn().mockResolvedValue(undefined),
     };
     const users = {
       // 키 관리자 역할: 백업은 조회 권한만 있다
-      findByIdWithRoles: jest.fn().mockResolvedValue({
+      findByIdWithRoles: vi.fn().mockResolvedValue({
         id: 'viewer-1',
         roles: [
           { name: 'key_manager', permissions: [{ name: 'backup:read' }] },
@@ -116,7 +116,11 @@ describe('BackupTargetAccessService', () => {
       const { service, repository } = fixture();
 
       await expect(
-        service.replaceUserTargets('viewer-1', [projectbeta, projectbeta], 'admin-1'),
+        service.replaceUserTargets(
+          'viewer-1',
+          [projectbeta, projectbeta],
+          'admin-1',
+        ),
       ).resolves.toEqual({ userId: 'viewer-1', targetIds: [projectbeta] });
       expect(repository.replaceForUser).toHaveBeenCalledWith(
         'viewer-1',

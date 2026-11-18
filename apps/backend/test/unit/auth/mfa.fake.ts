@@ -71,7 +71,7 @@ export async function mfaHarness(options: { allowlist?: string } = {}) {
   const users = new Map<string, ReturnType<typeof account>>();
   const sessions = sessionHarness({ mfaRequiredRoles: ['admin'], users });
   const enrollments = new InMemoryUserMfaRepository();
-  const audit = { record: jest.fn().mockResolvedValue(undefined) };
+  const audit = { record: vi.fn().mockResolvedValue(undefined) };
   const auditActions = (action: string) =>
     audit.record.mock.calls
       .map(([event]) => event)

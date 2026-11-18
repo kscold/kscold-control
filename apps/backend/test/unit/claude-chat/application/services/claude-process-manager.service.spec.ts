@@ -1,6 +1,12 @@
 import { ClaudeProcessManagerService } from '@/claude-chat/application/services/claude-process-manager.service';
-import { secretNames, withBackendEnv } from '../../../../support/backend-secrets';
-import { createFakeAgentCli, waitForExit } from '../../../../support/fake-agent-cli';
+import {
+  secretNames,
+  withBackendEnv,
+} from '../../../../support/backend-secrets';
+import {
+  createFakeAgentCli,
+  waitForExit,
+} from '../../../../support/fake-agent-cli';
 
 describe('ClaudeProcessManagerService child environment', () => {
   const cli = createFakeAgentCli();
@@ -18,7 +24,9 @@ describe('ClaudeProcessManagerService child environment', () => {
     expect(env.CLAUDECODE).toBeUndefined();
     expect(env.NODE_ENV).toBeUndefined();
     expect(env.HOME).toBe(process.env.HOME);
-    expect(env.PATH.split(':')[0]).toBe(require('node:path').dirname(cli.binary));
+    expect(env.PATH.split(':')[0]).toBe(
+      require('node:path').dirname(cli.binary),
+    );
     expect(env.DOCKER_HOST).toBe('unix:///tmp/docker-test.sock');
   });
 });

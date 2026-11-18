@@ -56,7 +56,7 @@ describe('세션에 묶인 연결', () => {
   afterEach(async () => {
     harness.connections.onModuleDestroy();
     await server.close();
-    jest.useRealTimers();
+    vi.useRealTimers();
   });
 
   it('로그아웃하면 그 세션의 소켓만 서버가 끊는다', async () => {
@@ -164,8 +164,14 @@ describe('세션에 묶인 연결', () => {
     const alive = await harness.sessions.open('user-1', browser);
     const revokedTab = await server.connect(outOfBand.id);
     const aliveTab = await server.connect(alive.id);
-    jest.useFakeTimers({
-      doNotFake: ['nextTick', 'setImmediate', 'queueMicrotask'],
+    vi.useFakeTimers({
+      toFake: [
+        'setTimeout',
+        'clearTimeout',
+        'setInterval',
+        'clearInterval',
+        'Date',
+      ],
     });
     harness.connections.onModuleInit();
     harness.repository.rows.set(outOfBand.id, {
@@ -174,38 +180,44 @@ describe('세션에 묶인 연결', () => {
     });
     const reason = disconnectReason(revokedTab);
 
-    await jest.advanceTimersByTimeAsync(SESSION_RECHECK_INTERVAL_MS - 1);
+    await vi.advanceTimersByTimeAsync(SESSION_RECHECK_INTERVAL_MS - 1);
     expect(revokedTab.connected).toBe(true);
-    await jest.advanceTimersByTimeAsync(1);
+    await vi.advanceTimersByTimeAsync(1);
 
-    jest.useRealTimers();
+    vi.useRealTimers();
     await expect(reason).resolves.toBe('io server disconnect');
     expect(aliveTab.connected).toBe(true);
   });
 
   it('만료된 세션의 연결은 재확인 때 닫는다', async () => {
-    jest.useFakeTimers({
+    vi.useFakeTimers({
       now: new Date('2026-01-01T00:00:00.000Z'),
-      doNotFake: ['nextTick', 'setImmediate', 'queueMicrotask'],
+      toFake: [
+        'setTimeout',
+        'clearTimeout',
+        'setInterval',
+        'clearInterval',
+        'Date',
+      ],
     });
     const session = await harness.sessions.open('user-1', browser);
-    const close = jest.fn();
+    const close = vi.fn();
     harness.connections.bind(session.id, close);
 
-    jest.setSystemTime(Date.now() + 7 * DAY - MINUTE);
+    vi.setSystemTime(Date.now() + 7 * DAY - MINUTE);
     await harness.connections.recheck();
     expect(close).not.toHaveBeenCalled();
 
-    jest.setSystemTime(Date.now() + MINUTE);
+    vi.setSystemTime(Date.now() + MINUTE);
     await harness.connections.recheck();
     expect(close).toHaveBeenCalledTimes(1);
   });
 
   it('세션 저장소에 닿지 못하면 연결을 끊지 않고 다음 차례에 다시 본다', async () => {
     const session = await harness.sessions.open('user-1', browser);
-    const close = jest.fn();
+    const close = vi.fn();
     harness.connections.bind(session.id, close);
-    const findById = jest
+    const findById = vi
       .spyOn(harness.repository, 'findById')
       .mockRejectedValueOnce(new Error('connection refused'));
 
@@ -223,8 +235,8 @@ describe('세션에 묶인 연결', () => {
 
   it('먼저 닫힌 연결은 세션이 끊길 때 다시 닫지 않는다', async () => {
     const session = await harness.sessions.open('user-1', browser);
-    const closedEarly = jest.fn();
-    const stillOpen = jest.fn();
+    const closedEarly = vi.fn();
+    const stillOpen = vi.fn();
     const unbind = harness.connections.bind(session.id, closedEarly);
     harness.connections.bind(session.id, stillOpen);
 

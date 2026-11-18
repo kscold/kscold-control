@@ -6,7 +6,7 @@
 [GHSA-gcqx-w48m-w2h4](https://github.com/advisories/GHSA-gcqx-w48m-w2h4)는
 2026-10-28 기준 공식 수정 버전이 없다. 검사를 무시하거나 취약한 이전 버전으로
 내리는 대신, `fork-ts-checker-webpack-plugin > deepmerge` 경로만 이 사본으로
-대체하며 같은 의존성을 쓰는 `jest-config > deepmerge`에도 적용한다.
+대체한다.
 네트워크에서 임의의 포크를 다운로드하지 않으며 런타임 코드는 바꾸지 않는다.
 
 `__proto__`, `constructor`, `prototype` 키를 대상·원본 양쪽에서 제외하고

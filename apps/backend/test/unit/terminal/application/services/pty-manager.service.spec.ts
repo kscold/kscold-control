@@ -1,12 +1,16 @@
+import type { Mock } from 'vitest';
 import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import * as pty from 'node-pty';
 import { PtyManagerService } from '@/terminal/application/services/pty-manager.service';
-import { secretNames, withBackendEnv } from '../../../../support/backend-secrets';
+import {
+  secretNames,
+  withBackendEnv,
+} from '../../../../support/backend-secrets';
 import { createFakeAgentCli } from '../../../../support/fake-agent-cli';
 
-jest.mock('node-pty', () => ({ spawn: jest.fn(() => ({ kill: jest.fn() })) }));
+vi.mock('node-pty', () => ({ spawn: vi.fn(() => ({ kill: vi.fn() })) }));
 
 describe('PtyManagerService shell environment', () => {
   const home = mkdtempSync(path.join(tmpdir(), 'pty-home-'));
@@ -22,7 +26,7 @@ describe('PtyManagerService shell environment', () => {
   it('starts the web terminal shell without any backend secret', () => {
     new PtyManagerService().createPty('session-1');
 
-    const [shell, , options] = (pty.spawn as jest.Mock).mock.calls[0];
+    const [shell, , options] = (pty.spawn as Mock).mock.calls[0];
     const env = options.env as Record<string, string>;
     expect(shell).toBe('/bin/zsh');
     expect(secretNames(env)).toEqual([]);

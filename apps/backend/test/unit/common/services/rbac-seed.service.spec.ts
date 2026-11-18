@@ -63,30 +63,30 @@ describe('RbacSeedService', () => {
     ]);
 
     const permissionRepository = {
-      findByName: jest
+      findByName: vi
         .fn()
         .mockImplementation(async (name: string) => ({ name })),
-      findAll: jest.fn().mockResolvedValue(permissions),
-      create: jest.fn((value) => value),
-      save: jest.fn(async (value) => value),
+      findAll: vi.fn().mockResolvedValue(permissions),
+      create: vi.fn((value) => value),
+      save: vi.fn(async (value) => value),
     };
     const roleRepository = {
-      findByNameWithPermissions: jest
+      findByNameWithPermissions: vi
         .fn()
         .mockImplementation(async (name: string) => rolesByName.get(name)),
-      findByName: jest
+      findByName: vi
         .fn()
         .mockImplementation(async (name: string) => rolesByName.get(name)),
-      create: jest.fn((value) => value),
-      save: jest.fn(async (value) => value),
+      create: vi.fn((value) => value),
+      save: vi.fn(async (value) => value),
     };
     const userRepository = {
-      findByEmailWithRoles: jest.fn().mockResolvedValue({
+      findByEmailWithRoles: vi.fn().mockResolvedValue({
         id: 'admin-user',
         roles: [superAdminRole],
       }),
-      create: jest.fn((value) => value),
-      save: jest.fn(async (value) => value),
+      create: vi.fn((value) => value),
+      save: vi.fn(async (value) => value),
     };
     const service = new RbacSeedService(
       permissionRepository as any,
