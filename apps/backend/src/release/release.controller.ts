@@ -4,6 +4,9 @@ import { existsSync, readFileSync, readdirSync } from 'fs';
 import { join, relative } from 'path';
 import { resolveFrontendDistPath } from '../common/utils/frontend-dist-path.util';
 
+// scripts/lib/frontend-release.mjs 가 남기는 이번 빌드 원본 자산 목록
+const FRONTEND_ASSET_LIST = '.control-frontend-assets.json';
+
 interface ReleaseManifest {
   schemaVersion: number;
   version: string;
@@ -54,7 +57,7 @@ export class ReleaseController {
         ...this.listFiles(join(root, 'apps', 'backend', 'dist')).map(
           (filePath) => relative(root, filePath),
         ),
-        ...this.listFiles(frontendDist).map((filePath) =>
+        ...this.listOwnFrontendFiles(frontendDist).map((filePath) =>
           join('apps', 'frontend', 'dist', relative(frontendDist, filePath)),
         ),
       ]
@@ -110,6 +113,22 @@ export class ReleaseController {
         integrity: 'invalid',
       };
     }
+  }
+
+  // 배포 때 옛 화면이 쓰던 자산을 함께 남겨 두므로, 이번 빌드 원본 목록에 있는 자산만 검사한다.
+  private listOwnFrontendFiles(directory: string): string[] {
+    const ownListPath = join(directory, FRONTEND_ASSET_LIST);
+    if (!existsSync(ownListPath)) return this.listFiles(directory);
+    const own = new Set(
+      JSON.parse(readFileSync(ownListPath, 'utf8')) as string[],
+    );
+    const assets = join(directory, 'assets');
+    return this.listFiles(directory).filter((filePath) => {
+      if (filePath === ownListPath) return false;
+      const fromAssets = relative(assets, filePath);
+      const inAssets = !fromAssets.startsWith('..') && !fromAssets.includes('/');
+      return !inAssets || own.has(fromAssets);
+    });
   }
 
   private listFiles(directory: string): string[] {
