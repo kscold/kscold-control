@@ -54,6 +54,13 @@ test(
       ) {
         return route.fulfill({ json: user });
       }
+      // 로그인 화면이 공개 가입 여부를 묻는 것은 정상 동작이라 닫힌 상태로 응답한다.
+      if (
+        route.request().method() === 'GET' &&
+        url.pathname === '/api/auth/registration'
+      ) {
+        return route.fulfill({ json: { enabled: false } });
+      }
       if (
         route.request().method() === 'GET' &&
         url.pathname === '/api/repository/projects'
