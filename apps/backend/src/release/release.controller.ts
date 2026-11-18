@@ -127,7 +127,8 @@ export class ReleaseController {
       if (filePath === ownListPath) return false;
       const fromAssets = relative(assets, filePath);
       const inAssets = !fromAssets.startsWith('..') && !fromAssets.includes('/');
-      return !inAssets || own.has(fromAssets);
+      // 원본 목록에는 소스맵(.map)이 없으므로 짝이 되는 자산 이름으로 판단한다.
+      return !inAssets || own.has(fromAssets.replace(/\.map$/, ''));
     });
   }
 
