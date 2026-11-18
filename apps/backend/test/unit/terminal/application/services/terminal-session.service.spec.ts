@@ -6,14 +6,14 @@ describe('TerminalSessionService', () => {
 
   function createService() {
     const sessionRepo = {
-      findByIdForUser: jest.fn(),
-      updateActivity: jest.fn(),
+      findByIdForUser: vi.fn(),
+      updateActivity: vi.fn(),
     };
     const messageRepo = {
-      findBySession: jest.fn(),
-      create: jest.fn(),
-      save: jest.fn(),
-      deleteBySession: jest.fn(),
+      findBySession: vi.fn(),
+      create: vi.fn(),
+      save: vi.fn(),
+      deleteBySession: vi.fn(),
     };
 
     return {

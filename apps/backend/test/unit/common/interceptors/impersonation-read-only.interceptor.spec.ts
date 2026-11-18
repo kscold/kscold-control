@@ -4,7 +4,7 @@ import { of } from 'rxjs';
 import { ImpersonationReadOnlyInterceptor } from '@/common/interceptors/impersonation-read-only.interceptor';
 
 describe('ImpersonationReadOnlyInterceptor', () => {
-  const reflector = { get: jest.fn().mockReturnValue(false) };
+  const reflector = { get: vi.fn().mockReturnValue(false) };
   const interceptor = new ImpersonationReadOnlyInterceptor(reflector as any);
 
   beforeEach(() => {
@@ -14,7 +14,7 @@ describe('ImpersonationReadOnlyInterceptor', () => {
   function context(method: string, impersonating: boolean) {
     return {
       getType: () => 'http',
-      getHandler: () => jest.fn(),
+      getHandler: () => vi.fn(),
       switchToHttp: () => ({
         getRequest: () => ({
           method,
@@ -30,7 +30,7 @@ describe('ImpersonationReadOnlyInterceptor', () => {
   }
 
   it('미리보기의 GET 요청은 통과시킨다', () => {
-    const next = { handle: jest.fn(() => of({ ok: true })) } as CallHandler;
+    const next = { handle: vi.fn(() => of({ ok: true })) } as CallHandler;
 
     interceptor.intercept(context('GET', true), next);
 
@@ -38,7 +38,7 @@ describe('ImpersonationReadOnlyInterceptor', () => {
   });
 
   it('미리보기의 쓰기 요청은 컨트롤러 실행 전에 거부한다', () => {
-    const next = { handle: jest.fn(() => of({ ok: true })) } as CallHandler;
+    const next = { handle: vi.fn(() => of({ ok: true })) } as CallHandler;
 
     expect(() => interceptor.intercept(context('PATCH', true), next)).toThrow(
       ForbiddenException,
@@ -47,7 +47,7 @@ describe('ImpersonationReadOnlyInterceptor', () => {
   });
 
   it('일반 관리자 토큰의 쓰기 요청은 그대로 통과시킨다', () => {
-    const next = { handle: jest.fn(() => of({ ok: true })) } as CallHandler;
+    const next = { handle: vi.fn(() => of({ ok: true })) } as CallHandler;
 
     interceptor.intercept(context('POST', false), next);
 
@@ -56,7 +56,7 @@ describe('ImpersonationReadOnlyInterceptor', () => {
 
   it('명시적으로 허용된 읽기 성격의 POST 요청은 통과시킨다', () => {
     reflector.get.mockReturnValue(true);
-    const next = { handle: jest.fn(() => of({ ok: true })) } as CallHandler;
+    const next = { handle: vi.fn(() => of({ ok: true })) } as CallHandler;
 
     interceptor.intercept(context('POST', true), next);
 

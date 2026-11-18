@@ -4,7 +4,7 @@ import { KeyManagementTargetAccessService } from '@/rbac/application/services/ke
 describe('KeyManagementTargetAccessService', () => {
   function fixture() {
     const repository = {
-      findEnabledTargets: jest.fn().mockResolvedValue([
+      findEnabledTargets: vi.fn().mockResolvedValue([
         {
           id: 'projectalpha-production',
           displayName: 'ProjectAlpha Production',
@@ -16,14 +16,14 @@ describe('KeyManagementTargetAccessService', () => {
           environment: 'production',
         },
       ]),
-      findTargetIdsByUserId: jest
+      findTargetIdsByUserId: vi
         .fn()
         .mockResolvedValue(['projectalpha-production']),
-      findAllAssignments: jest.fn().mockResolvedValue([]),
-      replaceForUser: jest.fn().mockResolvedValue(undefined),
+      findAllAssignments: vi.fn().mockResolvedValue([]),
+      replaceForUser: vi.fn().mockResolvedValue(undefined),
     };
     const users = {
-      findByIdWithRoles: jest.fn().mockResolvedValue({
+      findByIdWithRoles: vi.fn().mockResolvedValue({
         id: 'key-manager-1',
         roles: [{ name: 'key_manager' }],
       }),

@@ -96,30 +96,28 @@ function makeSession(buffer = Buffer.from('new')): RepositoryUploadSession {
 function createDependencies(session: RepositoryUploadSession | null = null) {
   let storedSession = session;
   const projectRepository = {
-    findById: jest.fn().mockResolvedValue(project),
-    update: jest.fn().mockImplementation(async (_id, changes) => ({
+    findById: vi.fn().mockResolvedValue(project),
+    update: vi.fn().mockImplementation(async (_id, changes) => ({
       ...project,
       ...changes,
     })),
   };
   const fileStorage = {
-    getFreeBytes: jest.fn().mockResolvedValue(Number.MAX_SAFE_INTEGER),
-    prepareStagedUpload: jest.fn().mockResolvedValue(undefined),
-    writeStagedFile: jest.fn().mockResolvedValue(undefined),
-    inspectStagedUpload: jest.fn(),
-    finalizeStagedUpload: jest.fn(),
-    discardStagedUpload: jest.fn().mockResolvedValue(undefined),
+    getFreeBytes: vi.fn().mockResolvedValue(Number.MAX_SAFE_INTEGER),
+    prepareStagedUpload: vi.fn().mockResolvedValue(undefined),
+    writeStagedFile: vi.fn().mockResolvedValue(undefined),
+    inspectStagedUpload: vi.fn(),
+    finalizeStagedUpload: vi.fn(),
+    discardStagedUpload: vi.fn().mockResolvedValue(undefined),
   };
   const sessionRepository = {
-    findLatestByProject: jest
-      .fn()
-      .mockImplementation(async () => storedSession),
-    findById: jest.fn().mockImplementation(async () => storedSession),
-    create: jest.fn().mockImplementation(async (created) => {
+    findLatestByProject: vi.fn().mockImplementation(async () => storedSession),
+    findById: vi.fn().mockImplementation(async () => storedSession),
+    create: vi.fn().mockImplementation(async (created) => {
       storedSession = created;
       return created;
     }),
-    save: jest.fn().mockImplementation(async (saved) => {
+    save: vi.fn().mockImplementation(async (saved) => {
       storedSession = saved;
       return saved;
     }),

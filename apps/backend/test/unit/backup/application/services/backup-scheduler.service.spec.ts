@@ -19,19 +19,19 @@ describe('BackupSchedulerService', () => {
   }
 
   const targetRepository = {
-    findEnabled: jest.fn(),
-    moveScheduleCursor: jest.fn(),
+    findEnabled: vi.fn(),
+    moveScheduleCursor: vi.fn(),
   };
-  const runner = { isRunning: jest.fn(), runToCompletion: jest.fn() };
+  const runner = { isRunning: vi.fn(), runToCompletion: vi.fn() };
   let service: BackupSchedulerService;
 
   afterAll(() => {
-    jest.restoreAllMocks();
+    vi.restoreAllMocks();
   });
 
   beforeEach(() => {
-    jest.resetAllMocks();
-    jest.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined);
+    vi.resetAllMocks();
+    vi.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined);
     runner.isRunning.mockReturnValue(false);
     runner.runToCompletion.mockResolvedValue({ status: 'success' });
     service = new BackupSchedulerService(

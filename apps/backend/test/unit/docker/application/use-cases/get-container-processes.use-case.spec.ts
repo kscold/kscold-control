@@ -1,3 +1,4 @@
+import type { Mocked } from 'vitest';
 import { Test, TestingModule } from '@nestjs/testing';
 import { ContainerNotFoundException } from '@/common/exceptions';
 import {
@@ -12,8 +13,8 @@ import { GetContainerProcessesUseCase } from '@/docker/application/use-cases/get
 
 describe('GetContainerProcessesUseCase', () => {
   let useCase: GetContainerProcessesUseCase;
-  let containerRepository: jest.Mocked<IContainerRepository>;
-  let dockerClient: jest.Mocked<IDockerClient>;
+  let containerRepository: Mocked<IContainerRepository>;
+  let dockerClient: Mocked<IDockerClient>;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -22,13 +23,13 @@ describe('GetContainerProcessesUseCase', () => {
         {
           provide: CONTAINER_REPOSITORY,
           useValue: {
-            findByDockerId: jest.fn(),
+            findByDockerId: vi.fn(),
           } satisfies Partial<IContainerRepository>,
         },
         {
           provide: DOCKER_CLIENT,
           useValue: {
-            getContainerProcesses: jest.fn(),
+            getContainerProcesses: vi.fn(),
           } satisfies Partial<IDockerClient>,
         },
       ],

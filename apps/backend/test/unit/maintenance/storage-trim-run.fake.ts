@@ -1,11 +1,12 @@
+import type { Mocked } from 'vitest';
 import type { StorageTrimRun } from '@/maintenance/domain/entities/storage-trim-run.entity';
 import type { IStorageTrimRunRepository } from '@/maintenance/domain/repositories/storage-trim-run.repository';
 
 /** 메모리에 기록하는 공간 반환 기록 저장소 */
-export function trimRunRepository(): jest.Mocked<IStorageTrimRunRepository> {
+export function trimRunRepository(): Mocked<IStorageTrimRunRepository> {
   const runs: StorageTrimRun[] = [];
   return {
-    start: jest.fn(async (input) => {
+    start: vi.fn(async (input) => {
       const run = {
         id: `run-${runs.length + 1}`,
         trigger: input.trigger,
@@ -21,7 +22,7 @@ export function trimRunRepository(): jest.Mocked<IStorageTrimRunRepository> {
       runs.push(run);
       return run;
     }),
-    finish: jest.fn(async (id, input) =>
+    finish: vi.fn(async (id, input) =>
       Object.assign(
         runs.find((run) => run.id === id)!,
         input,
@@ -30,11 +31,11 @@ export function trimRunRepository(): jest.Mocked<IStorageTrimRunRepository> {
         },
       ),
     ),
-    listRecent: jest.fn(async (limit) => [...runs].reverse().slice(0, limit)),
-    findLatestScheduled: jest.fn(
+    listRecent: vi.fn(async (limit) => [...runs].reverse().slice(0, limit)),
+    findLatestScheduled: vi.fn(
       async () =>
         [...runs].reverse().find((run) => run.trigger === 'schedule') ?? null,
     ),
-    failUnfinished: jest.fn(async (_message: string) => 0),
+    failUnfinished: vi.fn(async (_message: string) => 0),
   };
 }

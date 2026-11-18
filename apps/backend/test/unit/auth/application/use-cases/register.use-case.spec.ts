@@ -13,14 +13,14 @@ describe('RegisterUseCase', () => {
   function setup() {
     const pendingRole = { name: ROLES.PENDING_APPROVAL } as any;
     const userRepository = {
-      create: jest.fn((data) => ({ ...data, id: 'user-1' })),
-      save: jest.fn((user) => Promise.resolve(user)),
-      findByEmail: jest.fn().mockResolvedValue(null),
+      create: vi.fn((data) => ({ ...data, id: 'user-1' })),
+      save: vi.fn((user) => Promise.resolve(user)),
+      findByEmail: vi.fn().mockResolvedValue(null),
     };
     const roleRepository = {
-      findByName: jest.fn().mockResolvedValue(pendingRole),
-      create: jest.fn(),
-      save: jest.fn(),
+      findByName: vi.fn().mockResolvedValue(pendingRole),
+      create: vi.fn(),
+      save: vi.fn(),
     };
     const useCase = new RegisterUseCase(
       userRepository as any,

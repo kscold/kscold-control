@@ -4,14 +4,14 @@ import { ListBackupsUseCase } from '@/system/application/use-cases/list-backups.
 
 describe('MongoDB backup use cases', () => {
   const repository = {
-    create: jest.fn(),
-    list: jest.fn(),
+    create: vi.fn(),
+    list: vi.fn(),
   };
   const backupUseCase = new BackupMongodbUseCase(repository);
   const listUseCase = new ListBackupsUseCase(repository);
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   it('유효한 컨테이너의 백업 생성을 포트에 위임한다', async () => {

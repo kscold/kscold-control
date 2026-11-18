@@ -31,14 +31,14 @@ describe('백업 조회·실행 유스케이스', () => {
     sizeBytes: 204800,
   };
 
-  const targetRepository = { findAll: jest.fn() };
+  const targetRepository = { findAll: vi.fn() };
   const runRepository = {
-    findLatestByTargetIds: jest.fn(),
-    findRecent: jest.fn(),
+    findLatestByTargetIds: vi.fn(),
+    findRecent: vi.fn(),
   };
-  const archiveRepository = { list: jest.fn() };
-  const runner = { isRunning: jest.fn(), start: jest.fn() };
-  const targetAccess = { resolveVisibleTargetIds: jest.fn() };
+  const archiveRepository = { list: vi.fn() };
+  const runner = { isRunning: vi.fn(), start: vi.fn() };
+  const targetAccess = { resolveVisibleTargetIds: vi.fn() };
   const admin = { id: 'admin-1', roles: ['admin'], permissions: [] };
   const scopedViewer = {
     id: 'viewer-1',
@@ -47,12 +47,12 @@ describe('백업 조회·실행 유스케이스', () => {
   };
 
   afterAll(() => {
-    jest.restoreAllMocks();
+    vi.restoreAllMocks();
   });
 
   beforeEach(() => {
-    jest.resetAllMocks();
-    jest.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
+    vi.resetAllMocks();
+    vi.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
     targetRepository.findAll.mockResolvedValue([appTarget, pausedTarget]);
     runRepository.findLatestByTargetIds.mockResolvedValue(
       new Map([['target-1', lastRun]]),

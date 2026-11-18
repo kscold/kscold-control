@@ -90,9 +90,9 @@ describe('사용자 세션 끊기', () => {
     const { update, open, alive, sessions, users } = await setup();
     const admin = await open('admin-1');
     const attacker = await open('user-1');
-    jest
-      .spyOn(sessions, 'revokeAllForUser')
-      .mockRejectedValueOnce(new Error('connection refused'));
+    vi.spyOn(sessions, 'revokeAllForUser').mockRejectedValueOnce(
+      new Error('connection refused'),
+    );
 
     await expect(
       update.execute(
@@ -156,7 +156,7 @@ describe('사용자 세션 끊기', () => {
   });
 
   it('세션 끊기 감사 기록의 대상은 끊긴 사용자의 id 다', async () => {
-    const record = jest.fn().mockResolvedValue(undefined);
+    const record = vi.fn().mockResolvedValue(undefined);
     const meta = Reflect.getMetadata(
       AUDIT_KEY,
       RbacController.prototype.revokeUserSessions,

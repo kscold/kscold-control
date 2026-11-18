@@ -15,26 +15,26 @@ describe('BackupRunnerService', () => {
   } as BackupTarget;
   const plainUri = 'mongodb+srv://backup:secret-pass@cluster.example.net/prod';
 
-  const targetRepository = { findByIdWithSecret: jest.fn() };
+  const targetRepository = { findByIdWithSecret: vi.fn() };
   const runRepository = {
-    start: jest.fn(),
-    finish: jest.fn(),
-    failUnfinished: jest.fn(),
+    start: vi.fn(),
+    finish: vi.fn(),
+    failUnfinished: vi.fn(),
   };
-  const archiveRepository = { create: jest.fn(), prune: jest.fn() };
-  const secretService = { open: jest.fn() };
+  const archiveRepository = { create: vi.fn(), prune: vi.fn() };
+  const secretService = { open: vi.fn() };
   let service: BackupRunnerService;
 
   afterAll(() => {
-    jest.restoreAllMocks();
+    vi.restoreAllMocks();
   });
 
   beforeEach(() => {
-    jest.resetAllMocks();
+    vi.resetAllMocks();
     // 실패 경로 테스트가 남기는 로그로 테스트 출력이 지저분해지지 않게 한다.
-    jest.spyOn(Logger.prototype, 'log').mockImplementation(() => undefined);
-    jest.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
-    jest.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined);
+    vi.spyOn(Logger.prototype, 'log').mockImplementation(() => undefined);
+    vi.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
+    vi.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined);
 
     targetRepository.findByIdWithSecret.mockResolvedValue(target);
     secretService.open.mockReturnValue(plainUri);

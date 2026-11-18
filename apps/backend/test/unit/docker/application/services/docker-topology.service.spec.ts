@@ -1,3 +1,4 @@
+import type { Mocked } from 'vitest';
 import { Test, TestingModule } from '@nestjs/testing';
 import { DockerTopologyService } from '@/docker/application/services/docker-topology.service';
 import { ComposeService } from '@/docker/application/services/compose.service';
@@ -17,16 +18,16 @@ import {
 
 describe('DockerTopologyService', () => {
   let service: DockerTopologyService;
-  let layoutRepository: jest.Mocked<ITopologyLayoutRepository>;
-  let listContainers: jest.Mocked<ListContainersUseCase>;
-  let dockerClient: jest.Mocked<IDockerClient>;
-  let nginxRepository: jest.Mocked<Pick<INginxConfigRepository, 'list'>>;
+  let layoutRepository: Mocked<ITopologyLayoutRepository>;
+  let listContainers: Mocked<ListContainersUseCase>;
+  let dockerClient: Mocked<IDockerClient>;
+  let nginxRepository: Mocked<Pick<INginxConfigRepository, 'list'>>;
 
   beforeEach(async () => {
     layoutRepository = {
-      upsertPositions: jest.fn().mockResolvedValue(undefined),
-      findPositionsByUser: jest.fn().mockResolvedValue([]),
-      deletePositionsByUser: jest.fn().mockResolvedValue(3),
+      upsertPositions: vi.fn().mockResolvedValue(undefined),
+      findPositionsByUser: vi.fn().mockResolvedValue([]),
+      deletePositionsByUser: vi.fn().mockResolvedValue(3),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -35,7 +36,7 @@ describe('DockerTopologyService', () => {
         {
           provide: ComposeService,
           useValue: {
-            listServices: jest
+            listServices: vi
               .fn()
               .mockReturnValue(['nginx', 'kscold-infra-db', 'ubuntu-blog']),
           },
@@ -43,7 +44,7 @@ describe('DockerTopologyService', () => {
         {
           provide: ListContainersUseCase,
           useValue: {
-            execute: jest.fn().mockResolvedValue([
+            execute: vi.fn().mockResolvedValue([
               {
                 id: 'infra-nginx',
                 dockerId: 'dock-nginx',
@@ -122,7 +123,7 @@ describe('DockerTopologyService', () => {
         {
           provide: NGINX_CONFIG_REPOSITORY,
           useValue: {
-            list: jest.fn().mockResolvedValue([
+            list: vi.fn().mockResolvedValue([
               {
                 name: 'blog',
                 domain: 'blog.example.com',
@@ -173,7 +174,7 @@ describe('DockerTopologyService', () => {
         {
           provide: DOCKER_CLIENT,
           useValue: {
-            getContainerProcesses: jest
+            getContainerProcesses: vi
               .fn()
               .mockImplementation((dockerId: string) => {
                 if (dockerId === 'dock-db') {

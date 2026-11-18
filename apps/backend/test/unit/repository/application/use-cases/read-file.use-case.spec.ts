@@ -5,9 +5,11 @@ import type { IFileStorage } from '@/repository/domain/repositories/file-storage
 
 function dependencies(content: Buffer, found = true) {
   const projects = {
-    findById: jest.fn().mockResolvedValue(found ? { name: 'sampleproject' } : null),
+    findById: vi
+      .fn()
+      .mockResolvedValue(found ? { name: 'sampleproject' } : null),
   };
-  const files = { readFile: jest.fn().mockResolvedValue(content) };
+  const files = { readFile: vi.fn().mockResolvedValue(content) };
   return {
     projects,
     files,

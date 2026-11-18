@@ -50,9 +50,9 @@ describe('IP 위치 파일 한 줄 해석', () => {
 
 describe('IP 위치 파일을 못 읽을 때', () => {
   beforeEach(() => {
-    jest.spyOn(Logger.prototype, 'warn').mockImplementation(() => {});
+    vi.spyOn(Logger.prototype, 'warn').mockImplementation(() => {});
   });
-  afterEach(() => jest.restoreAllMocks());
+  afterEach(() => vi.restoreAllMocks());
 
   it('경로가 없으면 꺼진 상태다', async () => {
     const reader = new IpGeoReaderImpl(undefined);

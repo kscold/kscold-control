@@ -1,6 +1,12 @@
 import { CodexProcessManagerService } from '@/openai-chat/application/services/codex-process-manager.service';
-import { secretNames, withBackendEnv } from '../../../../support/backend-secrets';
-import { createFakeAgentCli, waitForExit } from '../../../../support/fake-agent-cli';
+import {
+  secretNames,
+  withBackendEnv,
+} from '../../../../support/backend-secrets';
+import {
+  createFakeAgentCli,
+  waitForExit,
+} from '../../../../support/fake-agent-cli';
 
 describe('CodexProcessManagerService child environment', () => {
   const cli = createFakeAgentCli();

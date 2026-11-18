@@ -1,3 +1,4 @@
+import type { Mocked } from 'vitest';
 import { Test, TestingModule } from '@nestjs/testing';
 import { BadRequestException } from '@nestjs/common';
 import { CreateComposeServiceUseCase } from '@/docker/application/use-cases/create-compose-service.use-case';
@@ -15,11 +16,11 @@ import { PortForwardingService } from '@/docker/application/services/port-forwar
 
 describe('CreateComposeServiceUseCase', () => {
   let useCase: CreateComposeServiceUseCase;
-  let containerRepo: jest.Mocked<IContainerRepository>;
-  let dockerClient: jest.Mocked<IDockerClient>;
-  let composeService: jest.Mocked<ComposeService>;
-  let importContainerUseCase: jest.Mocked<ImportContainerUseCase>;
-  let portForwardingService: jest.Mocked<PortForwardingService>;
+  let containerRepo: Mocked<IContainerRepository>;
+  let dockerClient: Mocked<IDockerClient>;
+  let composeService: Mocked<ComposeService>;
+  let importContainerUseCase: Mocked<ImportContainerUseCase>;
+  let portForwardingService: Mocked<PortForwardingService>;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -28,35 +29,35 @@ describe('CreateComposeServiceUseCase', () => {
         {
           provide: CONTAINER_REPOSITORY,
           useValue: {
-            findByName: jest.fn(),
+            findByName: vi.fn(),
           },
         },
         {
           provide: DOCKER_CLIENT,
           useValue: {
-            listContainers: jest.fn(),
+            listContainers: vi.fn(),
           },
         },
         {
           provide: ComposeService,
           useValue: {
-            hasService: jest.fn(),
-            ensurePortsAvailable: jest.fn(),
-            addService: jest.fn(),
-            upService: jest.fn(),
-            rollbackServiceCreation: jest.fn(),
+            hasService: vi.fn(),
+            ensurePortsAvailable: vi.fn(),
+            addService: vi.fn(),
+            upService: vi.fn(),
+            rollbackServiceCreation: vi.fn(),
           },
         },
         {
           provide: ImportContainerUseCase,
           useValue: {
-            execute: jest.fn(),
+            execute: vi.fn(),
           },
         },
         {
           provide: PortForwardingService,
           useValue: {
-            addPortForwardingRules: jest.fn().mockResolvedValue(undefined),
+            addPortForwardingRules: vi.fn().mockResolvedValue(undefined),
           },
         },
       ],

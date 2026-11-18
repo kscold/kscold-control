@@ -18,14 +18,14 @@ describe('AssignRolesUseCase', () => {
     const roles = new Map([operator, readOnly, admin].map((r) => [r.id, r]));
     const useCase = new AssignRolesUseCase(
       {
-        findByIdWithRoles: jest.fn().mockResolvedValue(user),
-        save: jest.fn(async (value) => {
+        findByIdWithRoles: vi.fn().mockResolvedValue(user),
+        save: vi.fn(async (value) => {
           await onSave();
           return value;
         }),
       } as any,
       {
-        findByIds: jest.fn(async (ids: string[]) =>
+        findByIds: vi.fn(async (ids: string[]) =>
           ids.map((id) => roles.get(id)),
         ),
       } as any,

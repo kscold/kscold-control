@@ -15,14 +15,14 @@ const project = {
 function dependencies(found = true) {
   return {
     projects: {
-      findById: jest.fn().mockResolvedValue(found ? project : null),
-      delete: jest.fn().mockResolvedValue(undefined),
+      findById: vi.fn().mockResolvedValue(found ? project : null),
+      delete: vi.fn().mockResolvedValue(undefined),
     },
     files: {
-      removeProject: jest.fn().mockResolvedValue(undefined),
+      removeProject: vi.fn().mockResolvedValue(undefined),
     },
     sessions: {
-      removeByProject: jest.fn().mockResolvedValue(undefined),
+      removeByProject: vi.fn().mockResolvedValue(undefined),
     },
   };
 }

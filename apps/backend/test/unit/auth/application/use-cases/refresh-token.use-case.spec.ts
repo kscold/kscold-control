@@ -29,7 +29,7 @@ describe('RefreshTokenUseCase', () => {
     return { ...harness, session, useCase };
   }
 
-  afterEach(() => jest.useRealTimers());
+  afterEach(() => vi.useRealTimers());
 
   it('같은 세션에 묶인 새 토큰을 같은 권한으로 발급한다', async () => {
     const { useCase, session, jwtService } = await setup();
@@ -53,12 +53,12 @@ describe('RefreshTokenUseCase', () => {
   });
 
   it('연속 갱신해도 세션은 하나이고 절대 만료는 늘지 않는다', async () => {
-    jest.useFakeTimers({ now: new Date('2026-01-01T00:00:00.000Z') });
+    vi.useFakeTimers({ now: new Date('2026-01-01T00:00:00.000Z') });
     const { useCase, session, repository, jwtService } = await setup();
 
-    jest.advanceTimersByTime(DAY);
+    vi.advanceTimersByTime(DAY);
     const first = await useCase.execute({ ...user, sessionId: session.id });
-    jest.advanceTimersByTime(DAY);
+    vi.advanceTimersByTime(DAY);
     const second = await useCase.execute({ ...user, sessionId: session.id });
 
     const firstClaims = jwtService.verify(first.accessToken);

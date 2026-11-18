@@ -15,7 +15,7 @@ describe('DiagnosticJwtGuard', () => {
     }),
     getHandler: () => function uploadBatch() {},
   } as unknown as ExecutionContext;
-  afterEach(() => jest.restoreAllMocks());
+  afterEach(() => vi.restoreAllMocks());
 
   it('preserves authenticated users', () => {
     const user = { id: 'user' };
@@ -27,7 +27,9 @@ describe('DiagnosticJwtGuard', () => {
   it.each(['TokenExpiredError', 'JsonWebTokenError', 'NotBeforeError'])(
     'rejects %s without logging credentials',
     (name) => {
-      const log = jest.spyOn(Logger.prototype, 'warn').mockImplementation();
+      const log = vi
+        .spyOn(Logger.prototype, 'warn')
+        .mockImplementation(() => undefined);
       expect(() =>
         new DiagnosticJwtGuard().handleRequest(null, null, { name }, context),
       ).toThrow(UnauthorizedException);

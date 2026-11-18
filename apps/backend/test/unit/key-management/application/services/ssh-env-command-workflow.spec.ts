@@ -55,37 +55,37 @@ function fixture() {
     }),
   );
   const store = {
-    readLatest: jest.fn(async () => ({
+    readLatest: vi.fn(async () => ({
       version: sha(payload),
       payload,
       createdAt: null,
     })),
-    addVersion: jest.fn(async (_id: string, next: string) => {
+    addVersion: vi.fn(async (_id: string, next: string) => {
       calls.push('write');
       payload = next;
       return { version: sha(payload), createdAt: null };
     }),
   };
   const backups = {
-    create: jest.fn((data) => ({ id: `backup-${rows.length + 1}`, ...data })),
-    save: jest.fn(async (row) => {
+    create: vi.fn((data) => ({ id: `backup-${rows.length + 1}`, ...data })),
+    save: vi.fn(async (row) => {
       calls.push(`save:${row.status}`);
       const index = rows.findIndex((saved) => saved.id === row.id);
       if (index < 0) rows.push({ ...row });
       else rows[index] = { ...row };
       return row;
     }),
-    findRecent: jest.fn(async () => rows.map((row) => ({ ...row }))),
-    findByIdWithPayload: jest.fn(async (id) => {
+    findRecent: vi.fn(async () => rows.map((row) => ({ ...row }))),
+    findByIdWithPayload: vi.fn(async (id) => {
       const row = rows.find((row) => row.id === id);
       return row ? { ...row } : undefined;
     }),
   };
   const deployments = {
-    trigger: jest.fn(async (_input: any) => {
+    trigger: vi.fn(async (_input: any) => {
       calls.push('apply');
     }),
-    findByRequestId: jest.fn(async (_id, requestId) => ({
+    findByRequestId: vi.fn(async (_id, requestId) => ({
       requestId,
       runId: requestId,
       state: 'succeeded',
@@ -97,8 +97,8 @@ function fixture() {
   };
   const service = new KeyManagementService(
     {
-      get: jest.fn(async () => target),
-      list: jest.fn(async () => [target]),
+      get: vi.fn(async () => target),
+      list: vi.fn(async () => [target]),
     } as any,
     new EnvDocumentService(),
     encryption,
@@ -125,7 +125,7 @@ describe('forced command 환경의 암호화 백업·복원', () => {
     async (failure) => {
       const f = fixture();
       if (failure === 'encryption')
-        jest.spyOn(f.encryption, 'encrypt').mockImplementation(() => {
+        vi.spyOn(f.encryption, 'encrypt').mockImplementation(() => {
           throw new Error('synthetic failure');
         });
       else f.backups.save.mockRejectedValueOnce(new Error('synthetic failure'));
@@ -243,7 +243,7 @@ describe('원격 적용 전 UUID 의도 저장과 불명 응답 복구', () => {
     let connected = false;
     let remote: any = null;
     const ssh = {
-      execute: jest.fn(async (_target, command: string) => {
+      execute: vi.fn(async (_target, command: string) => {
         if (command.startsWith('env-v1 apply ')) {
           const [, , requestId, version] = command.split(' ');
           expect(f.rows[0].deploymentRequestId).toBe(requestId);
@@ -264,7 +264,7 @@ describe('원격 적용 전 UUID 의도 저장과 불명 응답 복구', () => {
       }),
     };
     const gateway = new SshEnvCommandGateway(
-      { get: jest.fn(async () => f.target) } as any,
+      { get: vi.fn(async () => f.target) } as any,
       ssh as any,
       new EnvDocumentService(),
     );
@@ -464,7 +464,7 @@ describe('원격 적용 전 UUID 의도 저장과 불명 응답 복구', () => {
 describe('새 provider에도 기존 대상 권한과 감사 적용', () => {
   it('배정되지 않은 대상은 guard에서 거절한다', async () => {
     const access = {
-      assertCanAccess: jest.fn().mockRejectedValue(new ForbiddenException()),
+      assertCanAccess: vi.fn().mockRejectedValue(new ForbiddenException()),
     };
     const guard = new KeyManagementTargetAccessGuard(access as any);
     const request = {

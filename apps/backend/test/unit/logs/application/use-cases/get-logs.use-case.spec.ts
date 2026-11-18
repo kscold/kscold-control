@@ -1,9 +1,9 @@
 import { GetLogsUseCase } from '@/logs/application/use-cases/get-logs.use-case';
 
 describe('GetLogsUseCase', () => {
-  const fileLogReader = { readLogs: jest.fn() };
-  const dockerLogReader = { readContainerLogs: jest.fn() };
-  const blogLogReader = { readBlogLogs: jest.fn() };
+  const fileLogReader = { readLogs: vi.fn() };
+  const dockerLogReader = { readContainerLogs: vi.fn() };
+  const blogLogReader = { readBlogLogs: vi.fn() };
   const useCase = new GetLogsUseCase(
     fileLogReader as any,
     dockerLogReader as any,
@@ -11,7 +11,7 @@ describe('GetLogsUseCase', () => {
   );
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   it('블로그 로그는 전용 읽기 포트에 위임한다', async () => {

@@ -1,3 +1,4 @@
+import type { Mocked } from 'vitest';
 import { Test, TestingModule } from '@nestjs/testing';
 import { RemoveContainerUseCase } from '@/docker/application/use-cases/remove-container.use-case';
 import {
@@ -14,23 +15,23 @@ import { Container } from '@/docker/domain/entities/container.entity';
 
 describe('RemoveContainerUseCase', () => {
   let useCase: RemoveContainerUseCase;
-  let containerRepo: jest.Mocked<IContainerRepository>;
-  let dockerClient: jest.Mocked<IDockerClient>;
-  let portForwardingService: jest.Mocked<PortForwardingService>;
+  let containerRepo: Mocked<IContainerRepository>;
+  let dockerClient: Mocked<IDockerClient>;
+  let portForwardingService: Mocked<PortForwardingService>;
 
   beforeEach(async () => {
     const mockContainerRepo: Partial<IContainerRepository> = {
-      findById: jest.fn(),
-      findByDockerId: jest.fn(),
-      delete: jest.fn(),
+      findById: vi.fn(),
+      findByDockerId: vi.fn(),
+      delete: vi.fn(),
     };
 
     const mockDockerClient: Partial<IDockerClient> = {
-      removeContainer: jest.fn(),
+      removeContainer: vi.fn(),
     };
 
     const mockPortForwardingService: Partial<PortForwardingService> = {
-      removePortForwardingRules: jest.fn(),
+      removePortForwardingRules: vi.fn(),
     };
 
     const module: TestingModule = await Test.createTestingModule({

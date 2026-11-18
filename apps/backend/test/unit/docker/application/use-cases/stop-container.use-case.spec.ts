@@ -1,3 +1,4 @@
+import type { Mocked } from 'vitest';
 import { Test, TestingModule } from '@nestjs/testing';
 import { StopContainerUseCase } from '@/docker/application/use-cases/stop-container.use-case';
 import {
@@ -13,18 +14,18 @@ import { Container } from '@/docker/domain/entities/container.entity';
 
 describe('StopContainerUseCase', () => {
   let useCase: StopContainerUseCase;
-  let containerRepo: jest.Mocked<IContainerRepository>;
-  let dockerClient: jest.Mocked<IDockerClient>;
+  let containerRepo: Mocked<IContainerRepository>;
+  let dockerClient: Mocked<IDockerClient>;
 
   beforeEach(async () => {
     const mockContainerRepo: Partial<IContainerRepository> = {
-      findById: jest.fn(),
-      findByDockerId: jest.fn(),
-      updateStatus: jest.fn(),
+      findById: vi.fn(),
+      findByDockerId: vi.fn(),
+      updateStatus: vi.fn(),
     };
 
     const mockDockerClient: Partial<IDockerClient> = {
-      stopContainer: jest.fn(),
+      stopContainer: vi.fn(),
     };
 
     const module: TestingModule = await Test.createTestingModule({

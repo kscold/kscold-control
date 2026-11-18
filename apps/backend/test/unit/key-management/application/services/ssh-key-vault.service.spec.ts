@@ -16,14 +16,14 @@ describe('SshKeyVaultService', () => {
     privateKeyAuthTag: 'tag',
   };
   const repository = {
-    findAll: jest.fn(),
-    findByName: jest.fn(),
-    findByIdWithSecret: jest.fn(),
-    save: jest.fn(),
-    delete: jest.fn(),
+    findAll: vi.fn(),
+    findByName: vi.fn(),
+    findByIdWithSecret: vi.fn(),
+    save: vi.fn(),
+    delete: vi.fn(),
   };
-  const inspector = { inspect: jest.fn() };
-  const encryption = { encrypt: jest.fn(), decrypt: jest.fn() };
+  const inspector = { inspect: vi.fn() };
+  const encryption = { encrypt: vi.fn(), decrypt: vi.fn() };
   const service = new SshKeyVaultService(
     repository,
     inspector,
@@ -31,7 +31,7 @@ describe('SshKeyVaultService', () => {
   );
 
   beforeEach(() => {
-    jest.resetAllMocks();
+    vi.resetAllMocks();
     inspector.inspect.mockResolvedValue({
       publicKey: entry.publicKey,
       fingerprint: entry.fingerprint,

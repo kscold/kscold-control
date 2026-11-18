@@ -6,8 +6,8 @@ const DAY = 24 * 60 * MINUTE;
 const LOGIN_AT = new Date('2026-01-01T00:00:00.000Z');
 
 describe('SessionVerifier', () => {
-  beforeEach(() => jest.useFakeTimers({ now: LOGIN_AT }));
-  afterEach(() => jest.useRealTimers());
+  beforeEach(() => vi.useFakeTimers({ now: LOGIN_AT }));
+  afterEach(() => vi.useRealTimers());
 
   async function login() {
     const harness = sessionHarness({ mfaRequiredRoles: ['admin'] });
@@ -26,7 +26,7 @@ describe('SessionVerifier', () => {
   }
 
   function at(offsetMs: number) {
-    jest.setSystemTime(LOGIN_AT.getTime() + offsetMs);
+    vi.setSystemTime(LOGIN_AT.getTime() + offsetMs);
   }
 
   it('살아 있는 세션의 토큰을 받아들이고 세션을 돌려준다', async () => {

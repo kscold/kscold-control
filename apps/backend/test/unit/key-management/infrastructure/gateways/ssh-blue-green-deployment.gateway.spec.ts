@@ -31,8 +31,8 @@ const target = {
 } as const;
 
 function fixture() {
-  const targets = { get: jest.fn().mockResolvedValue(target) };
-  const ssh = { execute: jest.fn() };
+  const targets = { get: vi.fn().mockResolvedValue(target) };
+  const ssh = { execute: vi.fn() };
   return {
     ssh,
     gateway: new SshBlueGreenDeploymentGateway(targets as any, ssh as any),

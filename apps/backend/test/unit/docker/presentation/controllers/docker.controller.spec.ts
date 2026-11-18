@@ -3,25 +3,25 @@ import { PERMISSIONS } from '@/common/constants/permissions';
 import { DockerController } from '@/docker/presentation/controllers/docker.controller';
 
 describe('DockerController', () => {
-  const createContainerUseCase = { execute: jest.fn() };
-  const listContainersUseCase = { execute: jest.fn() };
-  const getContainerProcessesUseCase = { execute: jest.fn() };
-  const startContainerUseCase = { execute: jest.fn() };
-  const stopContainerUseCase = { execute: jest.fn() };
-  const removeContainerUseCase = { execute: jest.fn() };
-  const importContainerUseCase = { execute: jest.fn() };
-  const getComposeProvisioningTemplateUseCase = { execute: jest.fn() };
-  const createComposeServiceUseCase = { execute: jest.fn() };
-  const removeComposeServiceUseCase = { execute: jest.fn() };
-  const listComposeServicesUseCase = { execute: jest.fn() };
-  const getTopologySnapshotUseCase = { execute: jest.fn() };
-  const saveTopologyLayoutUseCase = { execute: jest.fn() };
-  const resetTopologyLayoutUseCase = { execute: jest.fn() };
-  const getDockerCleanupCandidatesUseCase = { execute: jest.fn() };
-  const pruneDanglingImagesUseCase = { execute: jest.fn() };
-  const pruneBuildCacheUseCase = { execute: jest.fn() };
-  const pruneExitedContainersUseCase = { execute: jest.fn() };
-  const pruneDanglingVolumesUseCase = { execute: jest.fn() };
+  const createContainerUseCase = { execute: vi.fn() };
+  const listContainersUseCase = { execute: vi.fn() };
+  const getContainerProcessesUseCase = { execute: vi.fn() };
+  const startContainerUseCase = { execute: vi.fn() };
+  const stopContainerUseCase = { execute: vi.fn() };
+  const removeContainerUseCase = { execute: vi.fn() };
+  const importContainerUseCase = { execute: vi.fn() };
+  const getComposeProvisioningTemplateUseCase = { execute: vi.fn() };
+  const createComposeServiceUseCase = { execute: vi.fn() };
+  const removeComposeServiceUseCase = { execute: vi.fn() };
+  const listComposeServicesUseCase = { execute: vi.fn() };
+  const getTopologySnapshotUseCase = { execute: vi.fn() };
+  const saveTopologyLayoutUseCase = { execute: vi.fn() };
+  const resetTopologyLayoutUseCase = { execute: vi.fn() };
+  const getDockerCleanupCandidatesUseCase = { execute: vi.fn() };
+  const pruneDanglingImagesUseCase = { execute: vi.fn() };
+  const pruneBuildCacheUseCase = { execute: vi.fn() };
+  const pruneExitedContainersUseCase = { execute: vi.fn() };
+  const pruneDanglingVolumesUseCase = { execute: vi.fn() };
   const controller = new DockerController(
     createContainerUseCase as any,
     listContainersUseCase as any,
@@ -45,7 +45,7 @@ describe('DockerController', () => {
   );
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   it('토폴로지 배치 되돌리기는 배치 저장과 같은 권한으로 현재 사용자 배치만 지운다', async () => {

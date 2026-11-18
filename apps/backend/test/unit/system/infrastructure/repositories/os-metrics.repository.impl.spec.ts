@@ -1,3 +1,4 @@
+import type { Mock } from 'vitest';
 import { OsMetricsRepositoryImpl } from '@/system/infrastructure/repositories/os-metrics.repository.impl';
 
 describe('OsMetricsRepositoryImpl', () => {
@@ -37,10 +38,10 @@ describe('OsMetricsRepositoryImpl', () => {
     };
 
     (
-      jest.spyOn(
+      vi.spyOn(
         repository as never,
         'getDockerStorageUsage' as never,
-      ) as unknown as jest.Mock
+      ) as unknown as Mock
     ).mockRejectedValue(new Error('docker unavailable'));
 
     const result = await repository.getDiskInfo();

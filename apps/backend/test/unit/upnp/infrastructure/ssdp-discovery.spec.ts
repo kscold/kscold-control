@@ -1,29 +1,30 @@
+import type { Mock } from 'vitest';
 import { EventEmitter } from 'events';
 import * as dgram from 'dgram';
 import { searchSsdp } from '@/upnp/infrastructure/ssdp-discovery';
 
-jest.mock('dgram', () => ({ createSocket: jest.fn() }));
+vi.mock('dgram', () => ({ createSocket: vi.fn() }));
 
 describe('SSDP 소켓 수명', () => {
   let socket: EventEmitter & {
-    bind: jest.Mock;
-    send: jest.Mock;
-    close: jest.Mock;
+    bind: Mock;
+    send: Mock;
+    close: Mock;
   };
   beforeEach(() => {
-    jest.useFakeTimers();
+    vi.useFakeTimers();
     socket = Object.assign(new EventEmitter(), {
-      bind: jest.fn((callback) => callback()),
-      send: jest.fn(),
-      close: jest.fn(),
+      bind: vi.fn((callback) => callback()),
+      send: vi.fn(),
+      close: vi.fn(),
     });
-    jest
-      .mocked(dgram.createSocket)
-      .mockReturnValue(socket as unknown as dgram.Socket);
+    vi.mocked(dgram.createSocket).mockReturnValue(
+      socket as unknown as dgram.Socket,
+    );
   });
   afterEach(() => {
-    jest.useRealTimers();
-    jest.resetAllMocks();
+    vi.useRealTimers();
+    vi.resetAllMocks();
   });
 
   it('응답 성공 시 타이머와 소켓을 한 번만 정리함', async () => {
@@ -37,9 +38,9 @@ describe('SSDP 소켓 수명', () => {
       'message',
       Buffer.from('LOCATION: http://192.0.2.2/root.xml\r\n'),
     );
-    jest.advanceTimersByTime(5000);
+    vi.advanceTimersByTime(5000);
     expect(socket.close).toHaveBeenCalledTimes(1);
-    expect(jest.getTimerCount()).toBe(0);
+    expect(vi.getTimerCount()).toBe(0);
   });
 
   it.each(['error', 'send', 'bind', 'timeout'])(
@@ -54,10 +55,10 @@ describe('SSDP 소켓 수명', () => {
       if (kind === 'error') socket.emit('error', new Error('socket failed'));
       if (kind === 'send')
         socket.send.mock.calls[0][5](new Error('send failed'));
-      if (kind === 'timeout') jest.advanceTimersByTime(4000);
+      if (kind === 'timeout') vi.advanceTimersByTime(4000);
       await assertion;
       expect(socket.close).toHaveBeenCalledTimes(1);
-      expect(jest.getTimerCount()).toBe(0);
+      expect(vi.getTimerCount()).toBe(0);
     },
   );
 });

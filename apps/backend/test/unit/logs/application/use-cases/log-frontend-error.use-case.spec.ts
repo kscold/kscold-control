@@ -7,12 +7,12 @@ import { FrontendErrorRequestDto } from '@/logs/presentation/dto/frontend-error.
 
 describe('브라우저 진단 수집', () => {
   afterEach(() => {
-    jest.restoreAllMocks();
-    jest.useRealTimers();
+    vi.restoreAllMocks();
+    vi.useRealTimers();
   });
 
   it('허용된 원인·단계·상태만 기록하고 원문은 HTTP 로그에서도 제외함', () => {
-    const logger = jest
+    const logger = vi
       .spyOn(Logger.prototype, 'error')
       .mockImplementation(() => {});
     const payload = {
@@ -73,8 +73,8 @@ describe('브라우저 진단 수집', () => {
   });
 
   it('사용자별 분당 20건으로 제한하고 시간이 지나면 회복함', () => {
-    jest.useFakeTimers();
-    const logger = jest
+    vi.useFakeTimers();
+    const logger = vi
       .spyOn(Logger.prototype, 'error')
       .mockImplementation(() => {});
     const useCase = new LogFrontendErrorUseCase();
@@ -82,13 +82,13 @@ describe('브라우저 진단 수집', () => {
       expect(useCase.execute({}, 'user-a')).toBe(true);
     expect(useCase.execute({}, 'user-a')).toBe(false);
     expect(useCase.execute({}, 'user-b')).toBe(true);
-    jest.advanceTimersByTime(60000);
+    vi.advanceTimersByTime(60000);
     expect(useCase.execute({}, 'user-a')).toBe(true);
     expect(logger).toHaveBeenCalledTimes(22);
   });
 
   it('다른 사용자로 메모리 제한을 우회하지 못함', () => {
-    jest.spyOn(Logger.prototype, 'error').mockImplementation(() => {});
+    vi.spyOn(Logger.prototype, 'error').mockImplementation(() => {});
     const useCase = new LogFrontendErrorUseCase();
     for (let i = 0; i < 1000; i++) useCase.execute({}, `user-${i}`);
     expect(useCase.execute({}, 'overflow')).toBe(false);

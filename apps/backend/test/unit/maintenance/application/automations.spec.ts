@@ -19,17 +19,17 @@ function storageGateway(
   trimDockerDisk: () => Promise<string>,
 ): IStorageInspectionGateway {
   return {
-    hostDisk: jest.fn(),
+    hostDisk: vi.fn(),
     dockerVmDiskPath: () => '/home/example/vm/datadisk',
-    dockerVmAllocatedBytes: jest
+    dockerVmAllocatedBytes: vi
       .fn()
       .mockResolvedValueOnce(30 * GiB)
       .mockResolvedValue(25 * GiB),
-    dockerVmUsedBytes: jest.fn(),
-    heldDeletedFiles: jest.fn(),
-    dockerUsage: jest.fn(),
-    folderSize: jest.fn(),
-    trimDockerDisk: jest.fn(trimDockerDisk),
+    dockerVmUsedBytes: vi.fn(),
+    heldDeletedFiles: vi.fn(),
+    dockerUsage: vi.fn(),
+    folderSize: vi.fn(),
+    trimDockerDisk: vi.fn(trimDockerDisk),
   };
 }
 
@@ -48,7 +48,7 @@ describe('공간 반환 기록과 예약', () => {
   const originalTime = process.env.STORAGE_TRIM_TIME;
 
   afterEach(() => {
-    jest.useRealTimers();
+    vi.useRealTimers();
     if (originalTime === undefined) delete process.env.STORAGE_TRIM_TIME;
     else process.env.STORAGE_TRIM_TIME = originalTime;
   });
@@ -82,9 +82,17 @@ describe('공간 반환 기록과 예약', () => {
 
   it('서버를 띄운 직후에는 지나간 예약을 돌리지 않고, 다음 예약 시각에 한 번만 돌린다', async () => {
     delete process.env.STORAGE_TRIM_TIME;
-    jest.useFakeTimers({ doNotFake: ['nextTick', 'setImmediate'] });
+    vi.useFakeTimers({
+      toFake: [
+        'setTimeout',
+        'clearTimeout',
+        'setInterval',
+        'clearInterval',
+        'Date',
+      ],
+    });
     // 서울 시각 2026-10-29 11:00
-    jest.setSystemTime(new Date('2026-10-29T02:00:00.000Z'));
+    vi.setSystemTime(new Date('2026-10-29T02:00:00.000Z'));
     const { trim, runs } = trimUseCase(async () => '');
     const scheduler = new StorageTrimSchedulerService(runs, trim);
 
@@ -94,9 +102,9 @@ describe('공간 반환 기록과 예약', () => {
     );
 
     // 서울 시각 2026-10-30 05:01
-    jest.setSystemTime(new Date('2026-10-29T20:01:00.000Z'));
+    vi.setSystemTime(new Date('2026-10-29T20:01:00.000Z'));
     await expect(scheduler.runIfDue(new Date())).resolves.toBe(true);
-    jest.setSystemTime(new Date('2026-10-29T20:02:00.000Z'));
+    vi.setSystemTime(new Date('2026-10-29T20:02:00.000Z'));
     await expect(scheduler.runIfDue(new Date())).resolves.toBe(false);
     expect((await runs.listRecent(5)).map((run) => run.trigger)).toEqual([
       'schedule',
@@ -121,7 +129,7 @@ describe('공간 반환 기록과 예약', () => {
 describe('자동 작업 현황', () => {
   function worktreeOverview(): GetWorktreeCleanupOverviewUseCase {
     return {
-      execute: jest.fn().mockResolvedValue({
+      execute: vi.fn().mockResolvedValue({
         timeZone: 'Asia/Seoul',
         items: [
           {
@@ -148,7 +156,7 @@ describe('자동 작업 현황', () => {
 
   it('Control 예약 작업, 맥 자동 실행 작업, 컨테이너 안 정리를 한 목록으로 보여준다', async () => {
     const gateway: IAutomationInspectionGateway = {
-      listLaunchdJobs: jest.fn().mockResolvedValue([
+      listLaunchdJobs: vi.fn().mockResolvedValue([
         {
           label: 'com.example.watchdog',
           domain: 'gui',
@@ -167,7 +175,7 @@ describe('자동 작업 현황', () => {
           lastLogLine: '복구 실패',
         },
       ]),
-      inspectReleaseDir: jest.fn().mockResolvedValue({
+      inspectReleaseDir: vi.fn().mockResolvedValue({
         count: 2,
         sizeBytes: 1.7 * GiB,
         lastDeployedAt: new Date('2026-10-29T00:54:42.000Z'),
@@ -239,8 +247,8 @@ describe('자동 작업 현황', () => {
 
   it('맥 작업을 못 읽어도 나머지는 보여주고 이유를 남긴다', async () => {
     const gateway: IAutomationInspectionGateway = {
-      listLaunchdJobs: jest.fn().mockRejectedValue(new Error('launchctl 없음')),
-      inspectReleaseDir: jest.fn(),
+      listLaunchdJobs: vi.fn().mockRejectedValue(new Error('launchctl 없음')),
+      inspectReleaseDir: vi.fn(),
     };
 
     const overview = await new GetAutomationsUseCase(

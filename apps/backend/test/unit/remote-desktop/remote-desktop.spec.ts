@@ -29,7 +29,7 @@ describe('원격 데스크톱 보안 중계', () => {
     sessionId: '',
     sessionAssurance: 'mfa' as const,
   };
-  const users = { findByIdWithRoles: jest.fn() };
+  const users = { findByIdWithRoles: vi.fn() };
   let auth: ReturnType<typeof sessionHarness>;
 
   beforeEach(async () => {
@@ -74,7 +74,7 @@ describe('원격 데스크톱 보안 중계', () => {
       new Promise<void>((resolve) => http.close(() => resolve())),
       new Promise<void>((resolve) => tcp.close(() => resolve())),
     ]);
-    jest.restoreAllMocks();
+    vi.restoreAllMocks();
   });
 
   function connect(ticket: string, origin = 'https://control.example.com') {
@@ -97,8 +97,8 @@ describe('원격 데스크톱 보안 중계', () => {
   }
 
   it('반복 연결 종료와 강제 단절 시 TCP와 세션 타이머를 모두 해제한다', async () => {
-    const intervals = jest.spyOn(global, 'setInterval');
-    const clear = jest.spyOn(global, 'clearInterval');
+    const intervals = vi.spyOn(global, 'setInterval');
+    const clear = vi.spyOn(global, 'clearInterval');
     for (let index = 0; index < 6; index += 1) {
       const { client, target } = await session();
       const closed = once(target, 'close');
@@ -119,7 +119,7 @@ describe('원격 데스크톱 보안 중계', () => {
   });
 
   it('응답 없는 브라우저의 heartbeat 만료 시 양쪽 소켓을 해제한다', async () => {
-    const intervals = jest.spyOn(global, 'setInterval');
+    const intervals = vi.spyOn(global, 'setInterval');
     const { client, target } = await session(false);
     const heartbeat = intervals.mock.calls[1][0];
     expect(typeof heartbeat).toBe('function');
@@ -261,7 +261,7 @@ describe('원격 데스크톱 보안 중계', () => {
     const upgraded = once(http, 'upgrade');
     const client = connect(service.issue(administrator).ticket);
     const error = once(client, 'error');
-    const opened = jest.fn();
+    const opened = vi.fn();
     client.on('open', opened);
     await upgraded;
     service.onModuleDestroy();
@@ -350,7 +350,7 @@ describe('원격 데스크톱 보안 중계', () => {
 
   it('만료된 연결권은 거부한다', async () => {
     const now = Date.now();
-    const clock = jest.spyOn(Date, 'now').mockReturnValue(now - 31_000);
+    const clock = vi.spyOn(Date, 'now').mockReturnValue(now - 31_000);
     const { ticket } = service.issue(administrator);
     clock.mockRestore();
     const client = connect(ticket);
@@ -378,7 +378,7 @@ describe('원격 데스크톱 보안 중계', () => {
   });
 
   it('DB 에서 끊기거나 만료된 세션은 다음 주기 확인에서 닫는다', async () => {
-    const intervals = jest.spyOn(global, 'setInterval');
+    const intervals = vi.spyOn(global, 'setInterval');
     const { client, target } = await session();
     const liveness = intervals.mock.calls[0][0];
     const row = auth.repository.rows.get(administrator.sessionId)!;

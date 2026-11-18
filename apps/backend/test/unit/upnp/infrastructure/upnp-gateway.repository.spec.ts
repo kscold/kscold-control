@@ -1,8 +1,9 @@
+import type { MockInstance } from 'vitest';
 import { UpnpGatewayRepositoryImpl } from '@/upnp/infrastructure/repositories/upnp-gateway.repository.impl';
 import { searchSsdp } from '@/upnp/infrastructure/ssdp-discovery';
 
-jest.mock('@/upnp/infrastructure/ssdp-discovery', () => ({
-  searchSsdp: jest.fn(),
+vi.mock('@/upnp/infrastructure/ssdp-discovery', () => ({
+  searchSsdp: vi.fn(),
 }));
 const gateway = {
   host: '192.0.2.1',
@@ -16,13 +17,13 @@ const end = '<UPnPError><errorCode>713</errorCode></UPnPError>';
 
 describe('UPnP 목록의 완전성', () => {
   let repository: UpnpGatewayRepositoryImpl;
-  let soap: jest.SpyInstance;
+  let soap: MockInstance;
   beforeEach(() => {
     repository = new UpnpGatewayRepositoryImpl();
-    jest.spyOn(repository as any, 'discoverGateway').mockResolvedValue(gateway);
-    soap = jest.spyOn(repository as any, 'soapCall');
+    vi.spyOn(repository as any, 'discoverGateway').mockResolvedValue(gateway);
+    soap = vi.spyOn(repository as any, 'soapCall');
   });
-  afterEach(() => jest.restoreAllMocks());
+  afterEach(() => vi.restoreAllMocks());
 
   it('713만 정상적인 목록 끝으로 처리함', async () => {
     soap.mockResolvedValueOnce(entry).mockResolvedValueOnce(end);
@@ -68,24 +69,21 @@ describe('UPnP 목록의 완전성', () => {
 });
 
 describe('UPnP 탐색 병합', () => {
-  afterEach(() => jest.restoreAllMocks());
+  afterEach(() => vi.restoreAllMocks());
   it('동시 IP·목록 조회가 하나의 탐색을 공유함', async () => {
     const repository = new UpnpGatewayRepositoryImpl();
-    jest.mocked(searchSsdp).mockResolvedValue('http://192.0.2.1/root.xml');
-    jest
-      .spyOn(repository as any, 'httpGet')
-      .mockResolvedValue(
-        `<service><serviceType>${gateway.serviceType}</serviceType><controlURL>/control</controlURL></service>`,
-      );
-    jest
-      .spyOn(repository as any, 'soapCall')
-      .mockImplementation((...args: unknown[]) =>
+    vi.mocked(searchSsdp).mockResolvedValue('http://192.0.2.1/root.xml');
+    vi.spyOn(repository as any, 'httpGet').mockResolvedValue(
+      `<service><serviceType>${gateway.serviceType}</serviceType><controlURL>/control</controlURL></service>`,
+    );
+    vi.spyOn(repository as any, 'soapCall').mockImplementation(
+      (...args: unknown[]) =>
         String(args[3]).endsWith('GetExternalIPAddress')
           ? Promise.resolve(
               '<NewExternalIPAddress>203.0.113.1</NewExternalIPAddress>',
             )
           : Promise.resolve(end),
-      );
+    );
     await Promise.all([repository.getExternalIp(), repository.getMappings()]);
     expect(searchSsdp).toHaveBeenCalledTimes(1);
   });

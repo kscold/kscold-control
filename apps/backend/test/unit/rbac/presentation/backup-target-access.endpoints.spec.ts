@@ -8,9 +8,9 @@ import { SetBackupTargetAccessRequestDto } from '@/rbac/presentation/dto';
 describe('RBAC 백업 대상 열람 범위 엔드포인트', () => {
   const targetId = '11111111-1111-4111-8111-111111111111';
   const backupTargetAccess = {
-    listAccessMatrix: jest.fn(),
-    getUserTargetIds: jest.fn(),
-    replaceUserTargets: jest.fn(),
+    listAccessMatrix: vi.fn(),
+    getUserTargetIds: vi.fn(),
+    replaceUserTargets: vi.fn(),
   };
   // 이 테스트가 다루지 않는 의존성은 비워 둔다.
   const unused = {} as never;
@@ -30,7 +30,7 @@ describe('RBAC 백업 대상 열람 범위 엔드포인트', () => {
   );
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   it('조회와 변경 모두 RBAC 관리 권한을 요구한다', () => {

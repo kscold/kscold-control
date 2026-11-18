@@ -21,17 +21,6 @@ test('실제 플러그인이 검증한 로컬 보완 사본을 사용함', () =>
   const resolved = pluginRequire('deepmerge/package.json');
   assert.equal(resolved.name, '@kscold-control/deepmerge-safe');
   assert.equal(resolved.version, '4.3.1-patched.1');
-  const jestRequire = createRequire(
-    backendRequire.resolve('jest/package.json'),
-  );
-  const coreRequire = createRequire(
-    jestRequire.resolve('@jest/core/package.json'),
-  );
-  const configRequire = createRequire(
-    coreRequire.resolve('jest-config/package.json'),
-  );
-  assert.equal(configRequire('deepmerge/package.json').name, resolved.name);
-  assert.equal(configRequire('deepmerge').all, merge.all);
 });
 
 test('null prototype와 원본/대상의 __proto__ 키가 결과에 권한을 주입하지 못함', () => {

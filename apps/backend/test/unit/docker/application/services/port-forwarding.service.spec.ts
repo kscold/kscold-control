@@ -1,9 +1,10 @@
+import type { Mocked } from 'vitest';
 import { PortForwardingService } from '@/docker/application/services/port-forwarding.service';
 import type { IUpnpGatewayRepository } from '@/upnp/domain/repositories/upnp-gateway.repository';
 
 describe('PortForwardingService', () => {
   let service: PortForwardingService;
-  let gateway: jest.Mocked<IUpnpGatewayRepository>;
+  let gateway: Mocked<IUpnpGatewayRepository>;
   const originalHost = process.env.PUBLIC_HOST;
   afterEach(() => {
     if (originalHost === undefined) delete process.env.PUBLIC_HOST;
@@ -13,10 +14,10 @@ describe('PortForwardingService', () => {
   beforeEach(() => {
     process.env.PUBLIC_HOST = 'router.example.com';
     gateway = {
-      getMappings: jest.fn().mockResolvedValue([]),
-      addMapping: jest.fn().mockResolvedValue(undefined),
-      removeMapping: jest.fn().mockResolvedValue(undefined),
-      getExternalIp: jest.fn().mockResolvedValue('203.0.113.10'),
+      getMappings: vi.fn().mockResolvedValue([]),
+      addMapping: vi.fn().mockResolvedValue(undefined),
+      removeMapping: vi.fn().mockResolvedValue(undefined),
+      getExternalIp: vi.fn().mockResolvedValue('203.0.113.10'),
     };
     service = new PortForwardingService(gateway);
   });
