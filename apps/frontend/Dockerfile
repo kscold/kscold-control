@@ -13,7 +13,7 @@ RUN pnpm install --frozen-lockfile --filter @kscold-control/frontend...
 COPY apps/frontend apps/frontend
 RUN pnpm --filter @kscold-control/frontend build
 
-FROM nginx:alpine
+FROM nginx:1.30.7-alpine@sha256:bef154735288bc38d99fac41ae63730684bcc661503673a04a0f9bc526ba8598
 
 COPY --from=builder /app/apps/frontend/dist /usr/share/nginx/html
 COPY apps/frontend/nginx.conf /etc/nginx/conf.d/default.conf

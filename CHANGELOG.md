@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Nginx 이미지를 보안 수정 버전 1.30.7과 검증한 이미지 digest로 고정함. HTTP/2·resolver·TLS 요청 처리 관련 보안 공지를 반영함.
 - 접속 보안에 공격 지도 탭을 더함. SSH 공격과 Control 로그인 실패 IP 를 세계 지도에 찍고 나라별 시도·IP·차단 비율 순위를 보여 줌. SSH IP 요약과 방화벽 차단 목록에도 국기와 도시를 붙임. `CONTROL_IP_GEO_DB_PATH` 에 DB-IP City Lite 파일을 두어야 켜짐 (docs/attack-map.md).
 - 허용 국가 밖에서 온 SSH 접속을 실패 횟수를 기다리지 않고 바로 막음. 접속만 하면 SSH 만, 공격이 보이면 SSH·사이트 모두 막고, 성공한 로그인은 침입 감사 기록을 남김. SSH 탭에서 허용 국가와 켜고 끄기를 바꾸고 나라별 차단을 한 번에 풂. 기본은 한국만 허용 (docs/attack-map.md).
 
