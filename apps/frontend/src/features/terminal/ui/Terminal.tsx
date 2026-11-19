@@ -79,6 +79,11 @@ export function Terminal({ terminalId, onSwitchToClaude }: TerminalProps) {
       <TerminalHeader
         session={session}
         onClaudeCommand={handleClaudeCommand}
+        onCodexCommand={() => {
+          if (!session.isConnected) return;
+          socket.sendInput('codex');
+          xterm?.focus();
+        }}
         onCloseSession={handleCloseSession}
       />
       <div className="relative flex min-h-0 flex-1">

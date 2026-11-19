@@ -8,7 +8,6 @@ import { TERMINAL_THEME, TERMINAL_FONT } from '../lib/terminal.constants';
 const MOBILE_BREAKPOINT = 768;
 // 모바일에서도 화면 폭에 맞춰 cols 를 정한다. 고정 cols + 가로 스크롤은 줄이 잘려
 // 읽기도 복사하기도 어려웠다. 너무 좁으면 TUI 가 무너지므로 하한만 둔다.
-const MOBILE_MIN_COLS = 40;
 
 interface UseTerminalSetupProps {
   onData: (data: string) => void;
@@ -65,14 +64,9 @@ export function useTerminalSetup({
         fitFrame = null;
         if (unmounted) return;
         try {
-          if (isMobile()) {
-            const proposed = fitAddon.proposeDimensions();
-            const cols = proposed?.cols ?? xterm.cols;
-            const rows = proposed?.rows ?? xterm.rows;
-            xterm.resize(Math.max(cols, MOBILE_MIN_COLS), Math.max(rows, 10));
-          } else {
-            fitAddon.fit();
-          }
+          if (container.clientWidth === 0 || container.clientHeight === 0)
+            return;
+          fitAddon.fit();
         } catch {
           // 컨테이너 측정 전이면 다음 리사이즈에서 재시도
         }

@@ -4,6 +4,7 @@ import type { TerminalSession } from '../model/terminal.types';
 interface TerminalHeaderProps {
   session: TerminalSession;
   onClaudeCommand: () => void;
+  onCodexCommand: () => void;
   onCloseSession: () => void;
 }
 
@@ -13,6 +14,7 @@ interface TerminalHeaderProps {
 export function TerminalHeader({
   session,
   onClaudeCommand,
+  onCodexCommand,
   onCloseSession,
 }: TerminalHeaderProps) {
   const { isConnected } = session;
@@ -20,11 +22,19 @@ export function TerminalHeader({
   return (
     <div className="bg-gray-800 border-b border-gray-700">
       {/* 상태 표시줄 */}
-      <div className="flex items-center justify-between px-3 sm:px-4 py-2 border-b border-gray-700 sm:border-0">
+      <div className="flex flex-wrap items-center justify-between gap-2 px-3 py-2">
         <TerminalStatus session={session} />
 
         {/* 모바일: 버튼을 같은 줄에 표시 */}
-        <div className="flex gap-1.5 sm:hidden">
+        <div className="flex gap-1.5">
+          <button
+            onClick={onCodexCommand}
+            disabled={!isConnected}
+            title="쉘에 codex 명령 입력 · Enter로 실행"
+            className="rounded bg-blue-700 px-2 py-1 text-xs text-white hover:bg-blue-600 disabled:opacity-50"
+          >
+            Codex
+          </button>
           <button
             onClick={onClaudeCommand}
             disabled={!isConnected}
@@ -40,24 +50,6 @@ export function TerminalHeader({
             닫기
           </button>
         </div>
-      </div>
-
-      {/* 데스크톱: 버튼을 별도 줄에 표시 */}
-      <div className="hidden sm:flex items-center justify-end gap-2 px-4 py-2">
-        <button
-          onClick={onClaudeCommand}
-          disabled={!isConnected}
-          className="px-3 py-1.5 text-sm bg-[#D97757] text-white rounded-md hover:bg-[#C86744] disabled:opacity-50 disabled:cursor-not-allowed transition-all font-medium"
-        >
-          Claude 실행
-        </button>
-        <button
-          onClick={onCloseSession}
-          disabled={!isConnected}
-          className="px-3 py-1.5 text-sm bg-red-600 text-white rounded-md hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all font-medium"
-        >
-          세션 닫기
-        </button>
       </div>
     </div>
   );
