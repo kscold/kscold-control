@@ -55,7 +55,8 @@ export function Terminal({ terminalId, onSwitchToClaude }: TerminalProps) {
     if (onSwitchToClaude) {
       onSwitchToClaude();
     } else if (session.isConnected) {
-      socket.sendInput(`${session.claudeLaunchCommand || 'claude'}\r`);
+      socket.sendInput(session.claudeLaunchCommand || 'claude');
+      xterm?.focus();
     }
   };
 

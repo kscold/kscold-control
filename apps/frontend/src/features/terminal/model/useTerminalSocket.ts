@@ -113,7 +113,8 @@ export function useTerminalSocket({
           timestamp: string;
         }>;
       }) => {
-        // 먼저 터미널을 비운다
+        // 과거 출력에 포함된 터미널 질의에 응답을 보내지 않는다.
+        xterm.options.disableStdin = true;
         xterm.clear();
 
         // 히스토리 헤더 출력
@@ -130,9 +131,9 @@ export function useTerminalSocket({
           // 사용자 입력은 이미 터미널 출력에 포함돼 있으므로 따로 표시하지 않는다
         });
 
-        xterm.writeln(
-          `\r\n${TERMINAL_COLORS.cyan}━━━ 현재 세션 ━━━${TERMINAL_COLORS.reset}\r\n`,
-        );
+        xterm.write('\x1b[?1000l\x1b[?1002l\x1b[?1003l\x1b[?1004l\x1b[?1006l', () => {
+          xterm.options.disableStdin = false;
+        });
       },
     );
 

@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { useModalStore } from '@/shared/model';
 import {
   getClaudeSessionStorageKey,
   getTerminalSessionStorageKey,
@@ -20,13 +19,12 @@ export interface Tab {
 
 export function useClaudeTabs() {
   const [tabs, setTabs] = useState<Tab[]>([
-    { id: 'claude-code-1', title: 'Claude Code', type: 'claude-code' },
+    { id: 'terminal-1', title: '터미널', type: 'terminal' },
   ]);
-  const [activeTabId, setActiveTabId] = useState('claude-code-1');
+  const [activeTabId, setActiveTabId] = useState('terminal-1');
   const [tabModes, setTabModes] = useState<
     Record<string, 'terminal' | 'claude'>
   >({});
-  const { showAlert } = useModalStore();
 
   const setTabMode = (tabId: string, mode: 'terminal' | 'claude') =>
     setTabModes((prev) => ({ ...prev, [tabId]: mode }));
@@ -47,11 +45,6 @@ export function useClaudeTabs() {
   };
 
   const closeTab = (id: string) => {
-    if (tabs.length === 1) {
-      showAlert('최소 1개의 탭이 필요합니다');
-      return;
-    }
-
     localStorage.removeItem(getClaudeSessionStorageKey(id));
     localStorage.removeItem(getTerminalSessionStorageKey(id));
     localStorage.removeItem(getOpenAISessionStorageKey(`${id}-api`));
@@ -60,7 +53,7 @@ export function useClaudeTabs() {
     const newTabs = tabs.filter((t) => t.id !== id);
     setTabs(newTabs);
     if (activeTabId === id) {
-      setActiveTabId(newTabs[0].id);
+      setActiveTabId(newTabs[0]?.id ?? '');
     }
   };
 

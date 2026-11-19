@@ -2,7 +2,6 @@ import {
   BotMessageSquare,
   MessageCircle,
   Plus,
-  Sparkles,
   TerminalSquare,
   X,
 } from 'lucide-react';
@@ -52,7 +51,8 @@ export function WorkspaceTabBar({
                 e.stopPropagation();
                 onCloseTab(tab.id);
               }}
-              className="opacity-0 group-hover:opacity-100 hover:bg-gray-700 rounded p-0.5 transition-opacity"
+              aria-label={`${tab.title} 탭 닫기`}
+              className="rounded p-0.5 text-gray-400 hover:bg-gray-700 hover:text-white"
             >
               <X size={14} />
             </button>
@@ -62,14 +62,6 @@ export function WorkspaceTabBar({
 
       {/* 새 탭 생성 버튼 */}
       <div className="flex items-center ml-1 gap-0.5">
-        <button
-          onClick={() => onCreateTab('claude-code')}
-          className="flex items-center gap-1 px-2 py-2 text-xs text-gray-400 hover:text-white hover:bg-gray-800 rounded transition-colors"
-          title="새 Claude Code"
-        >
-          <Sparkles size={14} />
-          <Plus size={12} />
-        </button>
         <button
           onClick={() => onCreateTab('claude-chat')}
           className="flex items-center gap-1 px-2 py-2 text-xs text-gray-400 hover:text-white hover:bg-gray-800 rounded transition-colors"
