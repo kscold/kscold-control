@@ -199,7 +199,8 @@ describe('DockerMongodbArchiveRepository', () => {
       await expect(createRepository().create(target)).rejects.toThrow(
         'mongodump 가 실패했습니다 (exit=1): Failed: error writing data for collection: connection reset',
       );
-    });
+      // 긴 진행 로그를 흉내 내느라 전체 테스트를 함께 돌릴 때 5초를 넘길 수 있다
+    }, 20_000);
 
     it('실패 사유 줄이 없으면 마지막 출력을 그대로 보여준다', async () => {
       process.env.FAKE_DOCKER_MODE = 'unknown-fail';
