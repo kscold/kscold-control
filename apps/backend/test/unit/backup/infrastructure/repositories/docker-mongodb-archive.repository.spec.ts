@@ -6,6 +6,9 @@ import { formatBackupTimestamp } from '@/backup/domain/policies/backup-retention
 import type { BackupDumpRequest } from '@/backup/domain/types/backup.type';
 import { DockerMongodbArchiveRepository } from '@/backup/infrastructure/repositories/docker-mongodb-archive.repository';
 
+// 테스트마다 가짜 docker 프로세스를 띄우므로, 전체 테스트를 함께 돌려 바쁠 때는 5초를 넘길 수 있다
+vi.setConfig({ testTimeout: 20_000 });
+
 /**
  * 실제 docker 대신 쓰는 가짜 실행 파일.
  * 받은 인자와 환경변수를 파일로 남겨 테스트가 확인할 수 있게 하고, 모드에 따라 성공·실패를 흉내 낸다.
@@ -199,8 +202,7 @@ describe('DockerMongodbArchiveRepository', () => {
       await expect(createRepository().create(target)).rejects.toThrow(
         'mongodump 가 실패했습니다 (exit=1): Failed: error writing data for collection: connection reset',
       );
-      // 긴 진행 로그를 흉내 내느라 전체 테스트를 함께 돌릴 때 5초를 넘길 수 있다
-    }, 20_000);
+    });
 
     it('실패 사유 줄이 없으면 마지막 출력을 그대로 보여준다', async () => {
       process.env.FAKE_DOCKER_MODE = 'unknown-fail';
