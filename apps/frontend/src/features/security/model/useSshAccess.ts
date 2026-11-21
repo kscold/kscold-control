@@ -67,7 +67,7 @@ export function useSshAccess(days: number) {
     reload: load,
     terminate: (pid: number) =>
       run(() => securityService.terminateSshSession(pid)),
-    block: (ip: string, reason?: string, scope: SshBlockScope = 'all') =>
+    block: (ip: string, reason?: string, scope: SshBlockScope = 'ssh') =>
       run(() => securityService.blockSshIp(ip, reason, scope)),
     setScope: (ip: string, scope: SshBlockScope) =>
       run(() => securityService.setSshBlockScope(ip, scope)),

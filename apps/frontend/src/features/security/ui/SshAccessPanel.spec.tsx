@@ -176,7 +176,7 @@ it('수동 IP 입력도 영향 범위 확인 후 차단을 요청한다', async 
     source: 'manual',
     blockedAt: null,
     reason: null,
-    scope: 'all',
+    scope: 'ssh',
     geo: null,
   });
   renderPanel();
@@ -193,7 +193,7 @@ it('수동 IP 입력도 영향 범위 확인 후 차단을 요청한다', async 
   expect(dialog).toHaveTextContent('운영 중인 사이트');
   await userEvent.click(within(dialog).getByRole('button', { name: '확인' }));
   await waitFor(() =>
-    expect(block).toHaveBeenCalledWith('203.0.113.12', undefined, 'all'),
+    expect(block).toHaveBeenCalledWith('203.0.113.12', undefined, 'ssh'),
   );
 });
 
