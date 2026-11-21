@@ -49,7 +49,7 @@ const RESULT_CLASS: Record<SshAuditEvent['result'], string> = {
 
 type EventFilter = 'external' | 'success' | 'failure' | 'all';
 
-function blockConfirmation(ip: string, scope: SshBlockScope = 'all'): string {
+function blockConfirmation(ip: string, scope: SshBlockScope = 'ssh'): string {
   return scope === 'ssh'
     ? `${ip}의 SSH 접속을 막을까요?\n운영 중인 사이트 접속은 그대로입니다.`
     : `${ip}를 막을까요?\n맥미니 방화벽에서 SSH 와 운영 중인 사이트 접속을 모두 막습니다.`;
@@ -96,7 +96,7 @@ export function SshAccessPanel() {
   const [filter, setFilter] = useState<EventFilter>('external');
   const [blockIp, setBlockIp] = useState('');
   const [blockReason, setBlockReason] = useState('');
-  const [blockScope, setBlockScope] = useState<SshBlockScope>('all');
+  const [blockScope, setBlockScope] = useState<SshBlockScope>('ssh');
   const [knownIp, setKnownIp] = useState('');
   const [knownLabel, setKnownLabel] = useState('');
   const [editing, setEditing] = useState<{ ip: string; label: string } | null>(
@@ -203,7 +203,7 @@ export function SshAccessPanel() {
             disabled={working !== null}
             onClick={() =>
               confirmAct(blockConfirmation(row.ip), `block:${row.ip}`, () =>
-                ssh.block(row.ip, 'Control 에서 차단'),
+                ssh.block(row.ip, 'Control 에서 차단', 'ssh'),
               )
             }
           >
@@ -563,8 +563,8 @@ export function SshAccessPanel() {
               aria-label="막을 범위"
               className="rounded-lg border border-gray-800 bg-gray-900 px-2 py-2 text-sm text-white focus:border-red-700 focus:outline-none"
             >
-              <option value="all">SSH·사이트 모두</option>
               <option value="ssh">SSH 만</option>
+              <option value="all">SSH·사이트 모두 (통신사 공유 IP 주의)</option>
             </select>
             <button
               type="submit"
