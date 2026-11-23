@@ -11,27 +11,27 @@ import {
 import type { ChildProcess } from 'node:child_process';
 import os from 'node:os';
 import path from 'node:path';
-import { setStartAtLogin } from './runtime/autostart';
+import { setStartAtLogin } from './core/autostart';
 import {
   buildBackendEnv,
   createConfig,
   validateAnswers,
   type InstallAnswers,
-} from './runtime/config';
-import { ConfigStore } from './runtime/config-store';
+} from './core/config';
+import { ConfigStore } from './core/config-store';
 import {
   checkDocker,
   dockerInstallUrl,
   ensureDatabase,
   waitForDatabase,
-} from './runtime/docker';
+} from './core/docker';
 import {
   findFreePort,
   runNodeScript,
   startBackend,
   waitForHealth,
-} from './runtime/backend';
-import { withToolPaths } from './runtime/path-env';
+} from './core/backend';
+import { withToolPaths } from './core/path-env';
 import type { InstallStep } from './wizard/steps';
 
 // docker 명령과 백엔드가 쓰는 도구를 찾을 수 있게 가장 먼저 PATH 를 보강한다.
