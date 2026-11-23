@@ -1,1 +1,1 @@
-export { AuditTimeline } from './AuditTimeline';
+export { AuditFeedView } from './AuditFeedView';

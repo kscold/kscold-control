@@ -9,6 +9,8 @@ export type AuditDomain =
   | 'backup'
   | 'maintenance';
 
+export type AuditEventDomain = Exclude<AuditDomain, 'all'>;
+
 export interface AuditDiffSummary {
   changeCount: number;
   keys: string[];
@@ -17,7 +19,7 @@ export interface AuditDiffSummary {
 
 export interface AuditEvent {
   id: string;
-  domain: Exclude<AuditDomain, 'all'>;
+  domain: AuditEventDomain;
   action: string;
   summary: string;
   actorId: string | null;
@@ -87,4 +89,25 @@ export interface AuditFilterPreset {
   search: string;
   target: string;
   to: string;
+}
+
+/** 감사 화면 보기: 확인할 일 · 사람이 한 일 · 자동으로 된 일 · 전체 */
+export type AuditFeedView = 'attention' | 'human' | 'system' | 'all';
+
+export type AuditFeedPeriod = 'today' | 'week' | 'month' | 'all';
+
+export interface AuditFeedItem {
+  event: AuditEvent;
+  kind: 'human' | 'system';
+  attention: boolean;
+  /** 짧은 간격으로 반복돼 한 줄로 묶인 기록 수 */
+  count: number;
+  /** 묶음에서 가장 오래된 기록 시각 */
+  firstAt: string;
+}
+
+export interface AuditFeed {
+  items: AuditFeedItem[];
+  counts: Record<AuditFeedView, number>;
+  hasMore: boolean;
 }

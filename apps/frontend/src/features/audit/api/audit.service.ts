@@ -3,6 +3,8 @@ import type {
   AuditExportPayload,
   AuditDomain,
   AuditEvent,
+  AuditFeed,
+  AuditFeedView,
   AuditSummary,
 } from '../model/audit.types';
 import { api } from '@/shared/api/client';
@@ -69,6 +71,17 @@ class AuditService extends BaseApiService {
       `${this.basePath}/events${suffix}`,
     );
     return response.data.items ?? [];
+  }
+
+  async getFeed(
+    params: AuditQueryParams & { view: AuditFeedView },
+  ): Promise<AuditFeed> {
+    const query = this.buildQuery(params);
+    query.set('view', params.view);
+    const response = await api.get<AuditFeed>(
+      `${this.basePath}/feed?${query.toString()}`,
+    );
+    return response.data;
   }
 
   async getSummary(params?: AuditQueryParams): Promise<AuditSummary> {
