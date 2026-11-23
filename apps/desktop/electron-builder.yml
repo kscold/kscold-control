@@ -2,6 +2,11 @@ appId: io.github.kscold.control
 productName: kscold-control
 # 실행 파일 이름은 패키지 이름(@kscold-control/desktop)이 아니라 파일 경로에 안전한 이름을 쓴다.
 executableName: kscold-control
+# deb 패키지 이름도 패키지 이름(@kscold-control/desktop) 대신 쓴다.
+extraMetadata:
+  name: kscold-control
+  desktopName: kscold-control.desktop
+artifactName: ${productName}-${version}-${arch}.${ext}
 copyright: kscold-control contributors
 directories:
   output: release
