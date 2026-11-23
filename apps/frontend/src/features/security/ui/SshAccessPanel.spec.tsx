@@ -9,6 +9,11 @@ import { SshAccessPanel } from './SshAccessPanel';
 
 function overview(): SshAccessOverview {
   return {
+    setup: {
+      supported: true,
+      auditCommand: 'sudo bash /x/setup-ssh-audit.sh',
+      guardCommand: 'sudo bash /x/setup-ssh-guard.sh',
+    },
     recorder: {
       logPath: '/x/ssh-audit.log',
       exists: true,
@@ -352,4 +357,19 @@ it('설정 파일을 읽지 못하면 까닭을 보여 주고 켜기로 다시 �
   ).toBeInTheDocument();
   await userEvent.click(screen.getByRole('button', { name: '켜기' }));
   await waitFor(() => expect(update).toHaveBeenCalledWith({ enabled: true }));
+});
+
+it('macOS 가 아닌 서버에서는 설치 명령 대신 지원하지 않는다고 알려 준다', async () => {
+  signIn([PERMISSIONS.SECURITY_READ, PERMISSIONS.SECURITY_MANAGE]);
+  const data = overview();
+  vi.spyOn(securityService, 'getSshAccess').mockResolvedValue({
+    ...data,
+    setup: { supported: false, auditCommand: null, guardCommand: null },
+  });
+  renderPanel();
+
+  expect(
+    await screen.findByText(/macOS 서버\(pf·launchd\)에서만 켤 수 있습니다/),
+  ).toBeInTheDocument();
+  expect(screen.queryByText(/setup-ssh-guard\.sh/)).not.toBeInTheDocument();
 });

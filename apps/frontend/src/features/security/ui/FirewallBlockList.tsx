@@ -19,7 +19,7 @@ const BLOCK_SCOPE_LABEL: Record<
 };
 
 /**
- * 맥미니 방화벽(ssh-guard) 차단 목록 — SSH 접속 탭과 웹 IP 차단 탭이 같이 씀
+ * 이 서버 방화벽(ssh-guard) 차단 목록 — SSH 접속 탭과 웹 IP 차단 탭이 같이 씀
  * 찾기·쪽 나누기·범위 바꾸기·해제를 한곳에서 처리함
  */
 export function FirewallBlockList({
@@ -112,7 +112,7 @@ export function FirewallBlockList({
                       confirm(
                         next === 'ssh'
                           ? `${b.ip} 를 SSH 만 막도록 바꿀까요?\n운영 중인 사이트에는 다시 들어올 수 있습니다.`
-                          : `${b.ip} 를 사이트까지 막을까요?\nSSH 와 맥미니에서 운영 중인 사이트 접속을 모두 막습니다.`,
+                          : `${b.ip} 를 사이트까지 막을까요?\nSSH 와 이 서버에서 운영 중인 사이트 접속을 모두 막습니다.`,
                         `scope:${b.ip}`,
                         () => onScope(b.ip, next),
                       );

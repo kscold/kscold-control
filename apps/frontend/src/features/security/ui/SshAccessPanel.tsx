@@ -23,17 +23,15 @@ import { usePermissions } from '@/shared/model';
 import { PERMISSIONS } from '@/shared/config/permissions';
 import { useSshAccess } from '../model/useSshAccess';
 import type {
+  SshAccessOverview,
   SshAuditEvent,
   SshBlockScope,
   SshIpScope,
   SshIpSummary,
 } from '../model/security.types';
 
-const SETUP_GUARD = 'sudo bash ~/server-watchdog/setup-ssh-guard.sh';
-const SETUP_AUDIT = 'sudo bash ~/server-watchdog/setup-ssh-audit.sh';
-
 const SCOPE_LABEL: Record<SshIpScope, { label: string; className: string }> = {
-  local: { label: '맥미니', className: 'border-gray-700 text-gray-400' },
+  local: { label: '이 서버', className: 'border-gray-700 text-gray-400' },
   lan: { label: '내부망', className: 'border-gray-700 text-gray-400' },
   tailscale: { label: 'Tailscale', className: 'border-sky-800 text-sky-300' },
   external: { label: '외부', className: 'border-amber-800 text-amber-300' },
@@ -53,7 +51,7 @@ type EventFilter = 'external' | 'success' | 'failure' | 'all';
 function blockConfirmation(ip: string, scope: SshBlockScope = 'ssh'): string {
   return scope === 'ssh'
     ? `${ip}의 SSH 접속을 막을까요?\n운영 중인 사이트 접속은 그대로입니다.`
-    : `${ip}를 막을까요?\n맥미니 방화벽에서 SSH 와 운영 중인 사이트 접속을 모두 막습니다.`;
+    : `${ip}를 막을까요?\n이 서버 방화벽에서 SSH 와 운영 중인 사이트 접속을 모두 막습니다.`;
 }
 
 function ScopeBadge({ scope }: { scope: SshIpScope }) {
@@ -262,26 +260,13 @@ export function SshAccessPanel() {
       </div>
 
       {(!data.recorder.exists || !guardOk) && (
-        <div className="rounded-lg border border-amber-900/50 bg-amber-950/30 px-4 py-3 text-sm text-amber-200">
-          {!data.recorder.exists && (
-            <p>
-              접속 기록기가 꺼져 있습니다. 맥미니 터미널에서 한 번 실행하세요:{' '}
-              <code className="break-all font-mono text-amber-100">
-                {SETUP_AUDIT}
-              </code>
-            </p>
-          )}
-          {!guardOk && (
-            <p>
-              {guard.installed
-                ? '차단기 상태 파일이 2분 넘게 갱신되지 않았습니다. 다시 켜려면: '
-                : '차단기가 아직 설치되지 않아 차단 목록이 방화벽에 반영되지 않습니다. 맥미니 터미널에서 한 번 실행하세요: '}
-              <code className="break-all font-mono text-amber-100">
-                {SETUP_GUARD}
-              </code>
-            </p>
-          )}
-        </div>
+        <SshHostSetupNotice
+          setup={data.setup}
+          recorderMissing={!data.recorder.exists}
+          guardProblem={
+            guardOk ? null : guard.installed ? 'stopped' : 'missing'
+          }
+        />
       )}
 
       {/* 내 IP — 자주 보는 정보라 위에 둠 */}
@@ -580,8 +565,8 @@ export function SshAccessPanel() {
           자동 차단: 외부에서 root·없는 계정으로 시도하면 바로, 그 밖의 계정은
           1시간에 3번 실패하면 막습니다(최근 7일 기록). 자동으로 풀지 않습니다.
           성공한 적 있는 IP·내 IP·내부망·Tailscale 은 막지 않습니다. 기본은 SSH
-          와 맥미니에서 운영 중인 사이트를 모두 막고, IP 마다 SSH 만 막도록 바꿀
-          수 있습니다. 허용 국가 밖 차단은 위 설정을 따르며 성공한 로그인도
+          와 이 서버에서 운영 중인 사이트를 모두 막고, IP 마다 SSH 만 막도록
+          바꿀 수 있습니다. 허용 국가 밖 차단은 위 설정을 따르며 성공한 로그인도
           막습니다.
         </p>
         <FirewallBlockList
@@ -772,5 +757,52 @@ function UnknownBadge() {
     <span className="inline-flex shrink-0 items-center gap-0.5 rounded-full border border-red-800 bg-red-950/40 px-2 py-0.5 text-[10px] text-red-300">
       <Star size={10} /> 처음 보는 IP
     </span>
+  );
+}
+
+/** 접속 기록기·차단기가 꺼져 있을 때 이 서버에서 할 수 있는 일만 안내한다. */
+function SshHostSetupNotice({
+  setup,
+  recorderMissing,
+  guardProblem,
+}: {
+  setup: SshAccessOverview['setup'];
+  recorderMissing: boolean;
+  guardProblem: 'stopped' | 'missing' | null;
+}) {
+  if (setup && !setup.supported) {
+    return (
+      <div className="rounded-lg border border-gray-800 bg-gray-900/60 px-4 py-3 text-sm text-gray-400">
+        SSH 접속 기록과 방화벽 차단기는 macOS 서버(pf·launchd)에서만 켤 수
+        있습니다. 로그인 실패 차단과 웹 IP 차단은 그대로 동작합니다.
+      </div>
+    );
+  }
+  const command = (value: string | null | undefined) =>
+    value ? (
+      <code className="break-all font-mono text-amber-100">{value}</code>
+    ) : (
+      <span className="text-amber-100">
+        설치 스크립트가 이 서버의 SSH 기록 폴더에 없습니다. 운영자가 설치
+        스크립트를 둔 뒤 다시 확인해 주세요.
+      </span>
+    );
+  return (
+    <div className="space-y-1 rounded-lg border border-amber-900/50 bg-amber-950/30 px-4 py-3 text-sm text-amber-200">
+      {recorderMissing && (
+        <p>
+          접속 기록기가 꺼져 있습니다. 이 서버 터미널에서 한 번 실행하세요:{' '}
+          {command(setup?.auditCommand)}
+        </p>
+      )}
+      {guardProblem && (
+        <p>
+          {guardProblem === 'stopped'
+            ? '차단기 상태 파일이 2분 넘게 갱신되지 않았습니다. 다시 켜려면: '
+            : '차단기가 아직 설치되지 않아 차단 목록이 방화벽에 반영되지 않습니다. 이 서버 터미널에서 한 번 실행하세요: '}
+          {command(setup?.guardCommand)}
+        </p>
+      )}
+    </div>
   );
 }

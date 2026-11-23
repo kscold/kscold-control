@@ -30,7 +30,7 @@ import { SshCountryGuardService } from '../../application/services/ssh-country-g
 import type { CountryGuardSettings } from '../../domain/policies/country-guard.policy';
 
 /**
- * 맥미니 SSH 접속 기록·열린 세션·차단
+ * 이 서버 SSH 접속 기록·열린 세션·차단
  * 보기는 security:read, 끊기·차단·내 IP 변경은 security:manage + 감사 기록
  */
 @Controller('security/ssh')

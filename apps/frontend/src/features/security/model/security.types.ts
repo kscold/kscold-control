@@ -113,6 +113,12 @@ export interface SshCountryGuard {
 
 export interface SshAccessOverview {
   recorder: { logPath: string; exists: boolean; updatedAt: string | null };
+  /** 설치 스크립트가 이 서버에 있을 때만 명령이 온다 */
+  setup?: {
+    supported: boolean;
+    auditCommand: string | null;
+    guardCommand: string | null;
+  };
   guard: {
     installed: boolean;
     running: boolean;

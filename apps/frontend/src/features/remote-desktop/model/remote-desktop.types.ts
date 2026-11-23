@@ -14,7 +14,7 @@ export interface Target {
 
 export const LOCAL_TARGET: Target = {
   id: 'local',
-  name: '맥미니',
+  name: '이 컴퓨터',
   port: 5900,
   hasCredentials: false,
   host: null,
