@@ -61,6 +61,8 @@ module.exports = {
           process.env.KEY_MANAGEMENT_SSH_IDENTITY_DIR,
         ...definedEnvironment([
           'TERMINAL_SHELL',
+          'NGINX_CONTAINER',
+          'CONTROL_DATA_DIR',
           'REMOTE_DESKTOP_ENABLED',
           'REMOTE_DESKTOP_ORIGIN',
           'REMOTE_DESKTOP_PORT',

@@ -1,8 +1,9 @@
+import { controlDataPath } from '../utils/control-data-dir.util';
 import * as winston from 'winston';
 import DailyRotateFile from 'winston-daily-rotate-file';
 import { join } from 'path';
 
-const logDir = join(__dirname, '../../../logs');
+const logDir = controlDataPath('logs') ?? join(__dirname, '../../../logs');
 
 // 로그 포맷 정의
 const logFormat = winston.format.combine(

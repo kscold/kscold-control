@@ -89,10 +89,22 @@ kscold-control/
 | PostgreSQL | 14            |
 | Docker     | 24 (optional) |
 
+### One-click install (macOS · Windows · Linux)
+
+설치 프로그램(`.dmg` · `.exe` · `.AppImage`/`.deb`)을 받아 실행하면 처음 한 번 설치 마법사가 뜹니다.
+
+1. Docker 확인 — 없거나 꺼져 있으면 설치 안내를 열어 줍니다(Docker Desktop, 리눅스는 Docker Engine).
+2. 관리자 계정 — 이메일과 비밀번호(12자 이상). 처음 로그인하면 OTP 등록을 안내합니다.
+3. 데이터 폴더·포트·로그인 시 자동 실행, 선택으로 AI 키.
+4. 설치 — PostgreSQL 컨테이너(`kscold-control-db`, 이 컴퓨터에서만 열림)를 만들고, DB 구조를 만들고, 서버를 켠 뒤 브라우저로 엽니다.
+
+비밀 키(JWT·OTP·키 관리 암호화)는 자동으로 만들어 앱 데이터 폴더의 설정 파일(본인만 읽기)에 둡니다. 앱은 메뉴 막대·작업 표시줄에 남아 서버를 계속 돌리고, 메뉴에서 열기·다시 시작·로그 폴더·자동 실행을 고를 수 있습니다. 설치본은 nginx 연동을 끄고(`NGINX_CONTAINER` 빈 값) 기록·로그를 데이터 폴더(`CONTROL_DATA_DIR`)에만 씁니다.
+
+설치 프로그램 만들기: GitHub Actions 의 **Desktop installer** 를 수동 실행하거나 `v*` 태그를 올리면 세 운영체제용 파일이 결과물로 올라옵니다. 로컬에서는 저장소 루트에서 `pnpm build` 후 `apps/desktop` 에서 `pnpm dist` 를 실행합니다(그 운영체제용만 만들어집니다).
+
 ### Manual development setup
 
-원클릭 설치는 아직 검증 중입니다. 아래는 PostgreSQL과 개발 도구가 준비된 환경의 수동 절차입니다.
-Automated cross-platform installation is still being validated; the steps below are manual.
+아래는 PostgreSQL과 개발 도구가 준비된 환경의 수동 절차입니다. 빈 데이터베이스는 `pnpm migrate:database` 가 기본 테이블부터 만듭니다.
 
 ```bash
 git clone https://github.com/kscold/kscold-control.git

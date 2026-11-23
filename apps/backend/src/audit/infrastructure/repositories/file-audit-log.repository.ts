@@ -1,3 +1,4 @@
+import { controlDataFile } from '../../../common/utils/control-data-dir.util';
 import { Injectable, Logger } from '@nestjs/common';
 import * as fs from 'fs/promises';
 import * as path from 'path';
@@ -28,6 +29,8 @@ function normalizeDate(value?: string) {
 }
 
 function resolveAuditLogPath() {
+  const dataPath = controlDataFile('audit-log.jsonl');
+  if (dataPath) return dataPath;
   const currentRoot = process.cwd();
   const backendRoot = currentRoot.endsWith(path.join('apps', 'backend'))
     ? currentRoot

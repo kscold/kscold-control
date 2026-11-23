@@ -1,10 +1,24 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { exec } from 'child_process';
+import { execFile } from 'child_process';
 import { promisify } from 'util';
 import type { INginxRuntimeRepository } from '../../domain/repositories/nginx-runtime.repository.interface';
 
-const execAsync = promisify(exec);
-const NGINX_CONTAINER = 'kscold-nginx';
+const execFileAsync = promisify(execFile);
+
+/**
+ * 관리할 nginx 컨테이너 이름. 비워 두면 nginx 연동을 끈다
+ * (설치 프로그램으로 깐 Control 처럼 다른 사람의 nginx 가 없는 환경).
+ */
+export function resolveNginxContainer(
+  env: NodeJS.ProcessEnv = process.env,
+): string | null {
+  const configured = env.NGINX_CONTAINER;
+  if (configured === undefined) return 'kscold-nginx';
+  return configured.trim() || null;
+}
+
+const DISABLED_OUTPUT =
+  'nginx 연동이 꺼져 있습니다(NGINX_CONTAINER 가 비어 있음).';
 // docker 가 멈춰 있어도 차단 반영 요청이 끝없이 쌓이지 않게 한다.
 const EXEC_TIMEOUT_MS = 15_000;
 
@@ -12,13 +26,22 @@ const EXEC_TIMEOUT_MS = 15_000;
 export class ShellNginxRuntimeRepository implements INginxRuntimeRepository {
   private readonly logger = new Logger(ShellNginxRuntimeRepository.name);
 
+  private async execInNginx(args: string[]) {
+    const container = resolveNginxContainer();
+    if (!container) return null;
+    // 셸을 거치지 않고 인자로 넘겨 윈도우에서도 같게 동작한다. nginx 는 결과를 stderr 로 쓴다.
+    const { stdout, stderr } = await execFileAsync(
+      'docker',
+      ['exec', container, 'nginx', ...args],
+      { timeout: EXEC_TIMEOUT_MS },
+    );
+    return stdout + stderr;
+  }
+
   async testConfig(): Promise<{ success: boolean; output: string }> {
     try {
-      const { stdout, stderr } = await execAsync(
-        `docker exec ${NGINX_CONTAINER} nginx -t 2>&1`,
-        { timeout: EXEC_TIMEOUT_MS },
-      );
-      const output = stdout + stderr;
+      const output = await this.execInNginx(['-t']);
+      if (output === null) return { success: false, output: DISABLED_OUTPUT };
       return { success: true, output };
     } catch (error) {
       return { success: false, output: error.message };
@@ -27,21 +50,23 @@ export class ShellNginxRuntimeRepository implements INginxRuntimeRepository {
 
   async reload(): Promise<{ success: boolean; output: string }> {
     try {
-      const { stdout, stderr } = await execAsync(
-        `docker exec ${NGINX_CONTAINER} nginx -s reload 2>&1`,
-        { timeout: EXEC_TIMEOUT_MS },
-      );
-      return { success: true, output: stdout + stderr };
+      const output = await this.execInNginx(['-s', 'reload']);
+      if (output === null) return { success: false, output: DISABLED_OUTPUT };
+      return { success: true, output };
     } catch (error) {
       return { success: false, output: error.message };
     }
   }
 
   async stop(): Promise<void> {
-    await execAsync(`docker stop ${NGINX_CONTAINER}`, { timeout: 15000 });
+    const container = resolveNginxContainer();
+    if (!container) throw new Error(DISABLED_OUTPUT);
+    await execFileAsync('docker', ['stop', container], { timeout: 15000 });
   }
 
   async start(): Promise<void> {
-    await execAsync(`docker start ${NGINX_CONTAINER}`, { timeout: 15000 });
+    const container = resolveNginxContainer();
+    if (!container) throw new Error(DISABLED_OUTPUT);
+    await execFileAsync('docker', ['start', container], { timeout: 15000 });
   }
 }

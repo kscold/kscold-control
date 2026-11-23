@@ -1,7 +1,12 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import { controlDataPath } from '../../../common/utils/control-data-dir.util';
 
 export function resolveDockerProjectRoot(startDir: string): string {
+  // 설치본은 앱 폴더에 쓸 수 없으므로 Control 데이터 폴더를 compose 작업 폴더로 쓴다.
+  const dataRoot = controlDataPath('compose');
+  if (dataRoot) return dataRoot;
+
   let currentDir = startDir;
 
   /*

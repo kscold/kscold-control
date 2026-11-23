@@ -1,0 +1,35 @@
+appId: io.github.kscold.control
+productName: kscold-control
+copyright: kscold-control contributors
+directories:
+  output: release
+  buildResources: build
+files:
+  - dist/**
+  - package.json
+extraResources:
+  - from: bundle/control
+    to: control
+    filter:
+      - '**/*'
+asar: true
+mac:
+  target:
+    - dmg
+  category: public.app-category.developer-tools
+  # 서명 인증서가 없으면 서명 없이 만든다(배포용은 CI 에서 인증서로 서명).
+  identity: null
+win:
+  target:
+    - nsis
+nsis:
+  # 다음 버튼 없이 한 번에 깐다. 설정은 앱이 처음 켜질 때 마법사로 받는다.
+  oneClick: true
+  perMachine: false
+  runAfterFinish: true
+linux:
+  target:
+    - AppImage
+    - deb
+  category: Development
+  maintainer: kscold-control contributors

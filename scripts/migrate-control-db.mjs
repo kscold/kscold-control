@@ -6,7 +6,10 @@ import { Client } from 'pg';
 import { isMigrationCompatible } from './lib/migration-compatibility.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const migrationsDirectory = path.join(root, 'apps/backend/migrations');
+// 설치본은 이 스크립트를 apps/backend/scripts 아래에 두므로 마이그레이션 위치를 따로 받는다.
+const migrationsDirectory =
+  process.env.CONTROL_MIGRATIONS_DIR ||
+  path.join(root, 'apps/backend/migrations');
 const connectionString = process.env.DATABASE_URL;
 
 if (!connectionString) {

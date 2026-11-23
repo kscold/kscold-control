@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:"
+    />
+    <title>kscold-control 설치</title>
+    <link rel="stylesheet" href="wizard.css" />
+  </head>
+  <body>
+    <main>
+      <div class="progress" aria-hidden="true">
+        <span id="progress-bar"></span>
+      </div>
+
+      <section data-step="check" class="step">
+        <p class="eyebrow">1 / 4</p>
+        <h1>먼저 Docker 를 확인할게요</h1>
+        <p class="lead">
+          Control 은 Docker 로 데이터베이스를 띄우고 컨테이너를 관리해요.
+        </p>
+        <div id="docker-card" class="card">확인하는 중…</div>
+        <footer>
+          <button id="docker-install" class="secondary" hidden>
+            Docker 설치 안내 열기
+          </button>
+          <button id="docker-recheck" class="secondary" hidden>
+            다시 확인
+          </button>
+          <button id="to-account" class="primary" disabled>다음</button>
+        </footer>
+      </section>
+
+      <section data-step="account" class="step" hidden>
+        <p class="eyebrow">2 / 4</p>
+        <h1>관리자 계정을 만들어요</h1>
+        <p class="lead">
+          처음 로그인할 때 이 계정을 써요. 로그인하면 OTP 등록을 안내해요.
+        </p>
+        <label
+          >이메일<input
+            id="admin-email"
+            type="email"
+            autocomplete="username"
+            placeholder="me@example.com"
+        /></label>
+        <label
+          >비밀번호 (12자 이상)<input
+            id="admin-password"
+            type="password"
+            autocomplete="new-password"
+        /></label>
+        <label
+          >비밀번호 확인<input
+            id="admin-password-confirm"
+            type="password"
+            autocomplete="new-password"
+        /></label>
+        <p id="account-error" class="error" role="alert"></p>
+        <footer>
+          <button class="secondary" data-back="check">이전</button>
+          <button id="to-settings" class="primary">다음</button>
+        </footer>
+      </section>
+
+      <section data-step="settings" class="step" hidden>
+        <p class="eyebrow">3 / 4</p>
+        <h1>어디에 둘지 정해요</h1>
+        <p class="lead">기본값 그대로 두어도 괜찮아요.</p>
+        <label
+          >데이터 폴더
+          <span class="row"
+            ><input id="data-dir" type="text" /><button
+              id="choose-dir"
+              class="secondary small"
+            >
+              고르기
+            </button></span
+          >
+        </label>
+        <label
+          >접속 포트<input id="port" type="number" min="1024" max="65535"
+        /></label>
+        <label class="toggle"
+          ><input id="start-at-login" type="checkbox" checked />컴퓨터를 켜면
+          자동으로 실행</label
+        >
+        <details>
+          <summary>AI 키 넣기 (선택)</summary>
+          <label
+            >Anthropic API 키<input
+              id="anthropic-key"
+              type="password"
+              placeholder="비워 두면 claude login 을 써요"
+          /></label>
+          <label>OpenAI API 키<input id="openai-key" type="password" /></label>
+        </details>
+        <p id="settings-error" class="error" role="alert"></p>
+        <footer>
+          <button class="secondary" data-back="account">이전</button>
+          <button id="install" class="primary">설치하기</button>
+        </footer>
+      </section>
+
+      <section data-step="installing" class="step" hidden>
+        <p class="eyebrow">4 / 4</p>
+        <h1 id="installing-title">설치하고 있어요</h1>
+        <p class="lead">
+          처음에는 데이터베이스 이미지를 받느라 몇 분 걸릴 수 있어요.
+        </p>
+        <ol id="install-steps" class="checklist">
+          <li data-item="docker">Docker 연결</li>
+          <li data-item="database">데이터베이스 준비</li>
+          <li data-item="migrate">데이터베이스 구조 만들기</li>
+          <li data-item="server">Control 서버 켜기</li>
+        </ol>
+        <p id="install-error" class="error" role="alert"></p>
+        <footer>
+          <button id="install-retry" class="secondary" hidden>
+            설정으로 돌아가기
+          </button>
+        </footer>
+      </section>
+
+      <section data-step="done" class="step" hidden>
+        <div class="done-mark" aria-hidden="true">✓</div>
+        <h1>설치를 마쳤어요</h1>
+        <p class="lead">
+          Control 은 이제 메뉴 막대(작업 표시줄)에서 계속 돌아요. 브라우저에서
+          <strong id="done-url"></strong> 로 열 수 있어요.
+        </p>
+        <footer>
+          <button id="finish" class="primary">Control 열기</button>
+        </footer>
+      </section>
+    </main>
+    <script src="wizard.js"></script>
+  </body>
+</html>

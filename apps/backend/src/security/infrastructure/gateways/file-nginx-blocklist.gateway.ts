@@ -1,3 +1,4 @@
+import { controlDataPath } from '../../../common/utils/control-data-dir.util';
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import * as fs from 'fs/promises';
 import * as path from 'path';
@@ -7,10 +8,9 @@ import {
   type INginxRuntimeRepository,
 } from '../../../nginx/domain/repositories/nginx-runtime.repository.interface';
 
-const NGINX_CONF_DIR = path.resolve(
-  __dirname,
-  '../../../../../../nginx/conf.d',
-);
+const NGINX_CONF_DIR =
+  controlDataPath('nginx', 'conf.d') ??
+  path.resolve(__dirname, '../../../../../../nginx/conf.d');
 const BLOCKLIST_FILE = path.join(NGINX_CONF_DIR, 'ip-blocklist.conf');
 
 @Injectable()

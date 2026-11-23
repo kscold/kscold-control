@@ -1,3 +1,4 @@
+import { controlDataPath } from '../../../common/utils/control-data-dir.util';
 import { Injectable, Logger } from '@nestjs/common';
 import * as fs from 'fs';
 import { join } from 'path';
@@ -53,7 +54,9 @@ export class FileLogReaderRepository implements ILogReader {
    */
   private findBackendLog(filename: 'out.log' | 'error.log'): string {
     const cwd = process.cwd();
+    const dataLogs = controlDataPath('logs');
     const candidates = [
+      ...(dataLogs ? [join(dataLogs, filename)] : []),
       join(cwd, 'logs', filename),
       join(cwd, 'apps/backend/logs', filename),
     ];

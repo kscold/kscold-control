@@ -3,5 +3,6 @@ packages:
   - 'packages/*'
 onlyBuiltDependencies:
   - bcrypt
+  - electron
   - esbuild
   - node-pty
