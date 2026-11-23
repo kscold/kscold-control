@@ -8,3 +8,4 @@ export * from './safe-path.util';
 export * from './shell-quote.util';
 export * from './read-last-lines.util';
 export * from './control-data-dir.util';
+export * from './nginx-container.util';

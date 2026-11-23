@@ -189,7 +189,7 @@ describe('DockerController', () => {
 
     await controller.pruneExitedContainers();
 
-    expect(pruneExitedContainersUseCase.execute).toHaveBeenCalledWith(true);
+    expect(pruneExitedContainersUseCase.execute).toHaveBeenCalledWith(true, []);
   });
 
   it('dangling 볼륨 정리는 명시된 dryRun 값을 전달한다', async () => {

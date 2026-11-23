@@ -211,7 +211,10 @@ export class DockerController {
   @Post('cleanup/containers/prune-exited')
   @RequirePermissions(PERMISSIONS.DOCKER_DELETE)
   async pruneExitedContainers(@Body() body?: DockerCleanupRequestDto) {
-    return this.pruneExitedContainersUseCase.execute(body?.dryRun ?? true);
+    return this.pruneExitedContainersUseCase.execute(
+      body?.dryRun ?? true,
+      body?.ids ?? [],
+    );
   }
 
   @Post('cleanup/volumes/prune-dangling')

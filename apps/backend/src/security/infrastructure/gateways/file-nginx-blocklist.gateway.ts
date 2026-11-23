@@ -2,6 +2,7 @@ import { controlDataPath } from '../../../common/utils/control-data-dir.util';
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import * as fs from 'fs/promises';
 import * as path from 'path';
+import { resolveNginxContainer } from '../../../common/utils/nginx-container.util';
 import type { INginxBlocklistWriter } from '../../domain/gateways/nginx-blocklist.gateway.interface';
 import {
   NGINX_RUNTIME_REPOSITORY,
@@ -30,6 +31,14 @@ export class FileNginxBlocklistGateway implements INginxBlocklistWriter {
     const temp = `${BLOCKLIST_FILE}.${process.pid}.tmp`;
     await fs.writeFile(temp, content, 'utf-8');
     await fs.rename(temp, BLOCKLIST_FILE);
+
+    // nginx 연동을 끈 설치(NGINX_CONTAINER 빈 값)는 파일만 갱신하고 오류로 남기지 않는다.
+    if (!resolveNginxContainer()) {
+      this.logger.log(
+        `nginx 연동이 꺼져 있어 차단 목록 파일만 갱신했습니다: ${ips.length}개`,
+      );
+      return { reloaded: false, output: 'nginx 연동 꺼짐' };
+    }
 
     const test = await this.runtime.testConfig();
     if (!test.success) {

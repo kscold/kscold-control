@@ -36,7 +36,7 @@ describe('DockerCleanupService', () => {
             getUsageSummary: vi.fn(),
             getDetailedUsage: vi.fn(),
             pruneDanglingImages: vi.fn(),
-            pruneExitedContainers: vi.fn(),
+            removeContainers: vi.fn(),
             pruneDanglingVolumes: vi.fn(),
             pruneBuildCache: vi.fn(),
           },
@@ -164,5 +164,28 @@ describe('DockerCleanupService', () => {
     expect(result.dryRun).toBe(false);
     expect(result.removedCount).toBeGreaterThan(0);
     expect(result.reclaimedBytes).toBeGreaterThan(0);
+  });
+
+  it('꺼진 컨테이너는 고르지 않으면 지우지 않는다', async () => {
+    await expect(service.pruneExitedContainers(false)).rejects.toThrow(
+      '지울 컨테이너를 하나 이상 골라 주세요',
+    );
+    expect(dockerCleanupGateway.removeContainers).not.toHaveBeenCalled();
+  });
+
+  it('고른 꺼진 컨테이너만 지운다', async () => {
+    dockerCleanupGateway.removeContainers.mockResolvedValue('cont-exited\n');
+    const result = await service.pruneExitedContainers(false, ['cont-exited']);
+    expect(dockerCleanupGateway.removeContainers).toHaveBeenCalledWith([
+      'cont-exited',
+    ]);
+    expect(result.removedCount).toBe(1);
+  });
+
+  it('꺼진 목록에 없는 컨테이너는 지우지 않는다', async () => {
+    await expect(
+      service.pruneExitedContainers(false, ['running-container']),
+    ).rejects.toThrow('꺼진 컨테이너 목록에 없어');
+    expect(dockerCleanupGateway.removeContainers).not.toHaveBeenCalled();
   });
 });

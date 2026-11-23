@@ -157,8 +157,9 @@ export function DockerCleanupSection({
         />
         <DockerCleanupCategoryCard
           title="종료된 컨테이너"
-          description="이미 종료되어 재시작되지 않는 컨테이너입니다. 실행 중인 서비스는 포함되지 않습니다."
+          description="꺼져 있는 컨테이너입니다. 일부러 꺼 둔 서비스일 수 있으니 지울 것만 골라 주세요. 볼륨은 남습니다."
           category={candidates.containers}
+          selectable
           actionKey="containers"
           result={results.containers}
           loading={runningAction === 'containers'}

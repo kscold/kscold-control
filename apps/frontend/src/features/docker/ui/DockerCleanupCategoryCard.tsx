@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Eye, PlayCircle } from 'lucide-react';
 import { formatBytes } from '@/shared/lib';
 import type {
@@ -15,7 +16,12 @@ interface DockerCleanupCategoryCardProps {
   result?: DockerCleanupResult;
   loading?: boolean;
   onPreview?: (key: DockerCleanupActionKey) => void;
-  onExecute?: (key: DockerCleanupActionKey) => void;
+  onExecute?: (
+    key: DockerCleanupActionKey,
+    selected?: { id: string; label: string }[],
+  ) => void;
+  /** 한꺼번에 지우지 않고 하나씩 골라 지우는 분류(종료된 컨테이너) */
+  selectable?: boolean;
 }
 
 export function DockerCleanupCategoryCard({
@@ -27,9 +33,21 @@ export function DockerCleanupCategoryCard({
   loading,
   onPreview,
   onExecute,
+  selectable = false,
 }: DockerCleanupCategoryCardProps) {
   const isReadOnly = !actionKey;
-  const previewItems = category.items.slice(0, 4);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  // 고를 수 있는 분류는 모든 항목을 보여 줘야 무엇을 지우는지 알 수 있다.
+  const previewItems = selectable ? category.items : category.items.slice(0, 4);
+  const selected = category.items.filter((item) =>
+    selectedIds.includes(item.id),
+  );
+  const toggle = (id: string) =>
+    setSelectedIds((current) =>
+      current.includes(id)
+        ? current.filter((value) => value !== id)
+        : [...current, id],
+    );
 
   return (
     <div className="min-h-[372px] rounded-2xl border border-gray-800 bg-gray-950/60 p-4 sm:p-5">
@@ -78,9 +96,26 @@ export function DockerCleanupCategoryCard({
 
       <ul className="mt-4 space-y-2">
         {previewItems.length ? (
-          previewItems.map((item) => (
-            <DockerCleanupItemRow key={item.id} item={item} />
-          ))
+          previewItems.map((item) =>
+            selectable && !isReadOnly ? (
+              <li key={item.id}>
+                <label className="flex cursor-pointer items-center gap-3">
+                  <input
+                    type="checkbox"
+                    aria-label={`${item.label} 고르기`}
+                    checked={selectedIds.includes(item.id)}
+                    onChange={() => toggle(item.id)}
+                    className="h-4 w-4 shrink-0 accent-amber-500"
+                  />
+                  <ul className="min-w-0 flex-1">
+                    <DockerCleanupItemRow item={item} />
+                  </ul>
+                </label>
+              </li>
+            ) : (
+              <DockerCleanupItemRow key={item.id} item={item} />
+            ),
+          )
         ) : (
           <li className="rounded-lg border border-dashed border-gray-800 px-3 py-4 text-sm text-gray-500">
             현재 후보가 없습니다.
@@ -107,12 +142,28 @@ export function DockerCleanupCategoryCard({
           </button>
           <button
             type="button"
-            disabled={loading || !actionKey || category.items.length === 0}
-            onClick={() => actionKey && onExecute?.(actionKey)}
+            disabled={
+              loading ||
+              !actionKey ||
+              !onExecute ||
+              (selectable ? selected.length === 0 : category.items.length === 0)
+            }
+            onClick={() => {
+              if (!actionKey) return;
+              if (!selectable) {
+                onExecute?.(actionKey);
+                return;
+              }
+              onExecute?.(
+                actionKey,
+                selected.map((item) => ({ id: item.id, label: item.label })),
+              );
+              setSelectedIds([]);
+            }}
             className="inline-flex items-center gap-2 rounded-lg bg-amber-500 px-3 py-2 text-sm font-medium text-gray-950 transition hover:bg-amber-400 disabled:opacity-50"
           >
             <PlayCircle size={16} />
-            안전 정리 실행
+            {selectable ? `고른 ${selected.length}개 지우기` : '안전 정리 실행'}
           </button>
         </div>
       ) : null}

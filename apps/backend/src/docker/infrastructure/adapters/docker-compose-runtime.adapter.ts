@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { execFile } from 'node:child_process';
+import { resolveControlDataDir } from '../../../common/utils/control-data-dir.util';
 import * as fs from 'node:fs';
 import { promisify } from 'node:util';
 import type { IComposeRuntimeGateway } from '../../domain/gateways/compose-runtime.gateway.interface';
@@ -19,7 +20,9 @@ export class DockerComposeRuntimeAdapter implements IComposeRuntimeGateway {
   private readonly composeFilePath = resolveComposeFilePath(this.projectRoot);
 
   readCompose(): ComposeDocument {
-    this.assertConfigured();
+    // 아직 compose 로 만든 서비스가 없는 새 설치는 빈 목록으로 본다.
+    // 파일이 없다고 컨테이너 목록·토폴로지까지 실패하면 Docker 화면 전체가 쓸 수 없게 된다.
+    if (!fs.existsSync(this.composeFilePath)) return { services: {} };
     const content = fs.readFileSync(this.composeFilePath, 'utf8');
     const compose = yaml.load(content) ?? {};
 
@@ -35,7 +38,9 @@ export class DockerComposeRuntimeAdapter implements IComposeRuntimeGateway {
   }
 
   writeCompose(compose: ComposeDocument): void {
-    this.assertConfigured();
+    // Control 데이터 폴더(설치본)는 Control 전용이라 첫 서비스를 만들 때 compose 파일을 새로 만든다.
+    // 저장소에서 실행할 때는 엉뚱한 위치에 쓰지 않도록 기존처럼 파일이 있어야 한다.
+    if (!resolveControlDataDir()) this.assertConfigured();
     const content = yaml.dump(compose, {
       indent: 2,
       lineWidth: 120,
