@@ -14,7 +14,7 @@ import {
   type Target,
   type TargetForm,
   type TargetFormErrors,
-} from './target-model';
+} from '../model/remote-desktop.types';
 
 export type TargetDialogMode =
   | { kind: 'create' }

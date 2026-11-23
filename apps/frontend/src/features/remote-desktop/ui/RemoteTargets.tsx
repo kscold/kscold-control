@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { KeyRound, MoreHorizontal, Plus, Power } from 'lucide-react';
-import { addressOf, protocolOf, type Target } from './target-model';
-import { wakeLabel, type WakeState } from './useRemoteTargets';
+import { addressOf, protocolOf, type Target } from '../model/remote-desktop.types';
+import { wakeLabel, type WakeState } from '../model/useRemoteTargets';
 
 export function OnlinePill({ online }: { online: boolean | undefined }) {
   const label = online === undefined ? '확인 중' : online ? '켜짐' : '꺼짐';

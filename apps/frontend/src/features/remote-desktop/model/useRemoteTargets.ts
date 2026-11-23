@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { api } from '@/shared/api';
-import { LOCAL_TARGET, type Target } from './target-model';
+import { LOCAL_TARGET, type Target } from './remote-desktop.types';
 
 // 켜지는 데 보통 1분 안팎이라 5초 간격으로 2분까지 확인함.
 const WAKE_POLL_MS = 5_000;

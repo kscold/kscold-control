@@ -9,7 +9,7 @@ import {
   waitFor,
 } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import RemoteDesktopPage from './index';
+import RemoteDesktopPage from './RemoteDesktopPage';
 import {
   debounce,
   fitScale,
@@ -17,7 +17,7 @@ import {
   keysymForKey,
   remoteSizeFor,
   toRemotePoint,
-} from './display-fit';
+} from '@/features/remote-desktop';
 
 const fixture = vi.hoisted(() => ({
   auth: {
@@ -35,7 +35,7 @@ const fixture = vi.hoisted(() => ({
   options: undefined as unknown,
   openRdp: vi.fn(),
 }));
-vi.mock('./rdp-client', () => ({ openRdp: fixture.openRdp }));
+vi.mock('@/features/remote-desktop/lib/rdp-client', () => ({ openRdp: fixture.openRdp }));
 vi.mock('@/shared/model/auth.store', () => ({
   useAuthStore: () => fixture.auth,
 }));

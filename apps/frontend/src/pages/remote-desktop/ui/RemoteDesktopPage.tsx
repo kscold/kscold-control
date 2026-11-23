@@ -19,18 +19,19 @@ import { API_URL } from '@/shared/config';
 import { ROLES } from '@/shared/config/roles';
 import { useAuthStore } from '@/shared/model/auth.store';
 import { Dialog, dialogButtonClass } from '@/shared/ui';
-import { OnlinePill, RemoteTargets } from './RemoteTargets';
-import { TargetDialog, type TargetDialogMode } from './TargetDialog';
+import { OnlinePill, RemoteTargets } from '@/features/remote-desktop';
+import { TargetDialog, type TargetDialogMode } from '@/features/remote-desktop';
 import {
   LOCAL_TARGET,
   addressOf,
   needsCredentials,
   protocolOf,
   type Target,
-} from './target-model';
-import { useRemoteTargets, wakeLabel } from './useRemoteTargets';
-import { keysymForChar, keysymForKey } from './display-fit';
-import type { TouchMode } from './rdp-client';
+} from '@/features/remote-desktop';
+import { useRemoteTargets, wakeLabel } from '@/features/remote-desktop';
+import { keysymForChar, keysymForKey } from '@/features/remote-desktop';
+import type { TouchMode } from '@/features/remote-desktop';
+import { loadRdpClient } from '@/features/remote-desktop';
 import './remote-desktop.css';
 
 // VNC(noVNC)와 RDP(guacamole) 연결이 화면에 내주는 공통 동작
@@ -201,7 +202,7 @@ export default function RemoteDesktopPage() {
       );
       if (generation.current !== attempt || !screen.current) return;
       if (data.protocol === 'rdp') {
-        const { openRdp } = await import('./rdp-client');
+        const { openRdp } = await loadRdpClient();
         if (generation.current !== attempt || !screen.current) return;
         const guac = new URL(
           `${API_URL}/api/remote-desktop/guac`,
