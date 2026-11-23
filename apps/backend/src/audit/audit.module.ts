@@ -2,6 +2,7 @@ import { Global, Module } from '@nestjs/common';
 import { AuditLogService } from './application/services/audit-log.service';
 import {
   ExportAuditEventsUseCase,
+  GetAuditFeedUseCase,
   ListAuditEventsUseCase,
   SummarizeAuditEventsUseCase,
 } from './application/use-cases';
@@ -17,6 +18,7 @@ import { FileAuditLogRepository } from './infrastructure/repositories/file-audit
     ListAuditEventsUseCase,
     SummarizeAuditEventsUseCase,
     ExportAuditEventsUseCase,
+    GetAuditFeedUseCase,
     {
       provide: AUDIT_LOG_REPOSITORY,
       useClass: FileAuditLogRepository,

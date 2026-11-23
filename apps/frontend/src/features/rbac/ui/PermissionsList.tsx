@@ -58,8 +58,8 @@ const PERMISSION_GROUPS = [
   {
     id: 'system',
     title: '시스템 운영',
-    description: '로그, Nginx, 네트워크와 운영 감사',
-    routes: ['시스템 로그', 'Nginx 설정', '네트워크', '운영 감사'],
+    description: '로그, Nginx, 네트워크와 운영 기록',
+    routes: ['시스템 로그', 'Nginx 설정', '네트워크', '운영 기록'],
     icon: ServerCog,
     accent: 'border-emerald-500/30 bg-emerald-500/5 text-emerald-300',
     permissions: [PERMISSIONS.SYSTEM_READ, PERMISSIONS.SYSTEM_WRITE],

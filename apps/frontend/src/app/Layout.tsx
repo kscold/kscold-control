@@ -109,7 +109,7 @@ const NAV_ITEMS = [
   },
   {
     to: '/audit',
-    label: '운영 감사',
+    label: '운영 기록',
     icon: History,
     permission: PERMISSIONS.SYSTEM_READ,
   },

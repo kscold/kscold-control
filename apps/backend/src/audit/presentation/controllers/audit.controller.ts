@@ -5,6 +5,7 @@ import { RequirePermissions } from '../../../common/decorators/permissions.decor
 import { PERMISSIONS } from '../../../common/constants/permissions';
 import {
   ExportAuditEventsUseCase,
+  GetAuditFeedUseCase,
   ListAuditEventsUseCase,
   SummarizeAuditEventsUseCase,
 } from '../../application/use-cases';
@@ -17,7 +18,31 @@ export class AuditController {
     private readonly listAuditEvents: ListAuditEventsUseCase,
     private readonly summarizeAuditEvents: SummarizeAuditEventsUseCase,
     private readonly exportAuditEvents: ExportAuditEventsUseCase,
+    private readonly getAuditFeed: GetAuditFeedUseCase,
   ) {}
+
+  /** 감사 화면 목록: 확인할 일·사람·자동 보기와 반복 묶음 */
+  @Get('feed')
+  @RequirePermissions(PERMISSIONS.SYSTEM_READ)
+  async getFeed(
+    @Query('view') view?: string,
+    @Query('domain') domain?: AuditDomain | 'all',
+    @Query('search') search?: string,
+    @Query('from') from?: string,
+    @Query('to') to?: string,
+    @Query('limit') limitRaw?: string,
+  ) {
+    const limit = parseInt(limitRaw ?? '', 10);
+    const views = ['attention', 'human', 'system', 'all'] as const;
+    return this.getAuditFeed.execute({
+      view: views.find((value) => value === view) ?? 'all',
+      domain: domain ?? 'all',
+      search,
+      from,
+      to,
+      limit: Number.isFinite(limit) ? limit : undefined,
+    });
+  }
 
   @Get('events')
   @RequirePermissions(PERMISSIONS.SYSTEM_READ)

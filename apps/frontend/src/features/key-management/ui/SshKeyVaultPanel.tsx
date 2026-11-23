@@ -72,7 +72,7 @@ export function SshKeyVaultPanel() {
             SSH 키 보관함
           </h2>
           <p className="mt-1 text-xs leading-5 text-slate-500">
-            개인 키는 암호화해 저장합니다. 내려받으면 운영 감사에 기록됩니다.
+            개인 키는 암호화해 저장합니다. 내려받으면 운영 기록에 기록됩니다.
           </p>
         </div>
         <button
