@@ -1,6 +1,11 @@
 import { useState, type FormEvent, type ReactNode } from 'react';
 import { KeyRound } from 'lucide-react';
-import { Dialog, dialogButtonClass, dialogInputClass } from '@/shared/ui';
+import {
+  Dialog,
+  FormError,
+  dialogButtonClass,
+  dialogInputClass,
+} from '@/shared/ui';
 import { keyManagementService } from '../api/key-management.service';
 import {
   EMPTY_TARGET_FORM as EMPTY,
@@ -329,14 +334,7 @@ export function TargetFormDialog({
           </div>
         ) : null}
 
-        {error ? (
-          <p
-            role="alert"
-            className="rounded-lg border border-red-900/60 bg-red-950/30 px-3 py-2 text-sm text-red-200"
-          >
-            {error}
-          </p>
-        ) : null}
+        <FormError message={error} />
       </div>
     </Dialog>
   );

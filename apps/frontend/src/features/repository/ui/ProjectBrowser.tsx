@@ -270,6 +270,7 @@ export function ProjectBrowser({ project, onUploaded }: ProjectBrowserProps) {
                 tree={tree}
                 selectedPath={selectedPath}
                 onSelect={handleSelectFile}
+                onStartUpload={() => setTab('upload')}
               />
             )}
           </div>

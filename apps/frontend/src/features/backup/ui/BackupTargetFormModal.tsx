@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Eye, EyeOff } from 'lucide-react';
-import { Dialog, dialogButtonClass } from '@/shared/ui';
+import { Dialog, FormError, dialogButtonClass } from '@/shared/ui';
 import {
   BACKUP_TARGET_DEFAULTS,
   BACKUP_TARGET_NAME_PATTERN,
@@ -369,14 +369,7 @@ export function BackupTargetFormModal({
           </div>
         </div>
 
-        {error && (
-          <div
-            role="alert"
-            className="rounded-lg border border-red-900/50 bg-red-950/30 px-3 py-2 text-sm text-red-300"
-          >
-            {error}
-          </div>
-        )}
+        <FormError message={error} />
       </div>
     </Dialog>
   );
