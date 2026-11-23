@@ -3,7 +3,7 @@ import type { Session } from '../../domain/entities/session.entity';
 import type { Message } from '../../domain/entities/message.entity';
 import type { ISessionRepository } from '../../domain/repositories/session.repository.interface';
 import type { IMessageRepository } from '../../domain/repositories/message.repository.interface';
-import type { ISessionManager } from '../../domain/ports/session-manager.port';
+import type { ISessionManager } from '../../domain/gateways/session-manager.gateway.interface';
 import { SESSION_REPOSITORY } from '../../domain/repositories/session.repository.interface';
 import { MESSAGE_REPOSITORY } from '../../domain/repositories/message.repository.interface';
 

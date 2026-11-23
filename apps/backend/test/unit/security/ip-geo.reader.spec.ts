@@ -4,9 +4,9 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { CityResponse } from 'mmdb-lib';
 import {
-  IpGeoReaderImpl,
+  MmdbIpGeoGateway,
   toIpGeo,
-} from '@/security/infrastructure/readers/ip-geo.reader.impl';
+} from '@/security/infrastructure/gateways/mmdb-ip-geo.gateway';
 
 const record = (value: unknown) => value as CityResponse;
 
@@ -55,7 +55,7 @@ describe('IP 위치 파일을 못 읽을 때', () => {
   afterEach(() => vi.restoreAllMocks());
 
   it('경로가 없으면 꺼진 상태다', async () => {
-    const reader = new IpGeoReaderImpl(undefined);
+    const reader = new MmdbIpGeoGateway(undefined);
     await reader.load();
     expect(reader.status()).toEqual({ state: 'off' });
     expect(reader.lookup('203.0.113.1')).toBeNull();
@@ -67,7 +67,7 @@ describe('IP 위치 파일을 못 읽을 때', () => {
     writeFileSync(broken, 'not a database');
     try {
       for (const path of [join(folder, 'missing.mmdb'), broken]) {
-        const reader = new IpGeoReaderImpl(path);
+        const reader = new MmdbIpGeoGateway(path);
         expect(reader.status()).toEqual({ state: 'loading' });
         await expect(reader.load()).resolves.toBeUndefined();
         expect(reader.status()).toEqual({ state: 'unavailable' });

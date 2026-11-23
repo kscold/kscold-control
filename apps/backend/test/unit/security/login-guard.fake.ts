@@ -16,9 +16,9 @@ import type {
 import type {
   CreateIpBanInput,
   IIpBanRepository,
-} from '@/security/domain/repositories/ip-ban.repository';
-import type { ILoginAttemptRepository } from '@/security/domain/repositories/login-attempt.repository';
-import type { INginxBlocklistWriter } from '@/security/domain/repositories/nginx-blocklist.writer';
+} from '@/security/domain/repositories/ip-ban.repository.interface';
+import type { ILoginAttemptRepository } from '@/security/domain/repositories/login-attempt.repository.interface';
+import type { INginxBlocklistWriter } from '@/security/domain/gateways/nginx-blocklist.gateway.interface';
 import { fakeIpGeo } from './ip-geo.fake';
 
 /** SQL 저장소와 같은 조건으로 기록을 고른다. */

@@ -21,7 +21,7 @@ import {
 import {
   BACKUP_TARGET_REPOSITORY,
   type IBackupTargetRepository,
-} from '../../domain/repositories/backup-target.repository';
+} from '../../domain/repositories/backup-target.repository.interface';
 import { BackupTargetSecretService } from '../services/backup-target-secret.service';
 import { assertValidMongodbUri } from '../utils/backup-target-input';
 

@@ -3,7 +3,7 @@ import {
   FILE_STORAGE,
   IFileStorage,
   ProjectVersion,
-} from '../../domain/repositories/file-storage.interface';
+} from '../../domain/gateways/file-storage.gateway.interface';
 import {
   IProjectRepository,
   PROJECT_REPOSITORY,

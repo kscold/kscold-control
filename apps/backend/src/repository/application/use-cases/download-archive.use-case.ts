@@ -7,7 +7,7 @@ import {
 import {
   FILE_STORAGE,
   IFileStorage,
-} from '../../domain/repositories/file-storage.interface';
+} from '../../domain/gateways/file-storage.gateway.interface';
 
 export interface ArchiveResult {
   filename: string;

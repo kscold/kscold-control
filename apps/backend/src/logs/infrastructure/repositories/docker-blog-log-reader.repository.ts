@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
-import type { IBlogLogReader } from '../../domain/repositories/log-reader.repository';
+import type { IBlogLogReader } from '../../domain/repositories/log-reader.repository.interface';
 import type { BlogLogType } from '../../domain/types/log.type';
 
 const execFileAsync = promisify(execFile);

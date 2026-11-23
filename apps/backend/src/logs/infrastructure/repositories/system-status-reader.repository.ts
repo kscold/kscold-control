@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { exec } from 'child_process';
 import { promisify } from 'util';
-import { ISystemStatusReader } from '../../domain/repositories/log-reader.repository';
+import { ISystemStatusReader } from '../../domain/repositories/log-reader.repository.interface';
 import { NginxStatus, SystemInfo } from '../../domain/types/log.type';
 
 const execAsync = promisify(exec);

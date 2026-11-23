@@ -2,14 +2,14 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { LessThan, Repository } from 'typeorm';
 import { LoginAttempt } from '../../domain/entities/login-attempt.entity';
-import type { ILoginAttemptRepository } from '../../domain/repositories/login-attempt.repository';
+import type { ILoginAttemptRepository } from '../../domain/repositories/login-attempt.repository.interface';
 import type {
   LoginAttemptRecord,
   LoginOrigin,
 } from '../../domain/login-guard/login-block.policy';
 
 @Injectable()
-export class LoginAttemptRepositoryImpl implements ILoginAttemptRepository {
+export class TypeOrmLoginAttemptRepository implements ILoginAttemptRepository {
   constructor(
     @InjectRepository(LoginAttempt)
     private readonly repo: Repository<LoginAttempt>,

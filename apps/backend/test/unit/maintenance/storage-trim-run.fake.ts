@@ -1,6 +1,6 @@
 import type { Mocked } from 'vitest';
 import type { StorageTrimRun } from '@/maintenance/domain/entities/storage-trim-run.entity';
-import type { IStorageTrimRunRepository } from '@/maintenance/domain/repositories/storage-trim-run.repository';
+import type { IStorageTrimRunRepository } from '@/maintenance/domain/repositories/storage-trim-run.repository.interface';
 
 /** 메모리에 기록하는 공간 반환 기록 저장소 */
 export function trimRunRepository(): Mocked<IStorageTrimRunRepository> {

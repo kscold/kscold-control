@@ -9,7 +9,7 @@ import { UpnpQueryError } from '../../domain/errors/upnp-query.error';
 import {
   type IUpnpGatewayRepository,
   UPNP_GATEWAY_REPOSITORY,
-} from '../../domain/repositories/upnp-gateway.repository';
+} from '../../domain/repositories/upnp-gateway.repository.interface';
 import type { PortMapping } from '../../domain/types/port-mapping.type';
 
 /** UPnP 포트 매핑 목록 조회 유스케이스임. */

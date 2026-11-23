@@ -3,7 +3,7 @@ import * as os from 'os';
 import { exec } from 'child_process';
 import { promisify } from 'util';
 
-import type { IOsMetricsRepository } from '../../domain/repositories/os-metrics.repository';
+import type { IOsMetricsRepository } from '../../domain/repositories/os-metrics.repository.interface';
 import type {
   CpuStats,
   DiskBreakdown,
@@ -17,8 +17,8 @@ import { resolveDockerHost } from '../../../common/utils/docker-host.util';
 const execAsync = promisify(exec);
 
 @Injectable()
-export class OsMetricsRepositoryImpl implements IOsMetricsRepository {
-  private readonly logger = new Logger(OsMetricsRepositoryImpl.name);
+export class ShellOsMetricsRepository implements IOsMetricsRepository {
+  private readonly logger = new Logger(ShellOsMetricsRepository.name);
   private readonly STATS_CACHE_TTL = 3 * 1000; // 3초
   private readonly DISK_CACHE_TTL = 60 * 1000; // 1분
 

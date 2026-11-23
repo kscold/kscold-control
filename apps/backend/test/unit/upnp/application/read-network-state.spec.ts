@@ -2,7 +2,7 @@ import { Logger, ServiceUnavailableException } from '@nestjs/common';
 import { GetExternalIpUseCase } from '@/upnp/application/use-cases/get-external-ip.use-case';
 import { ListPortMappingsUseCase } from '@/upnp/application/use-cases/list-port-mappings.use-case';
 import { UpnpQueryError } from '@/upnp/domain/errors/upnp-query.error';
-import type { IUpnpGatewayRepository } from '@/upnp/domain/repositories/upnp-gateway.repository';
+import type { IUpnpGatewayRepository } from '@/upnp/domain/repositories/upnp-gateway.repository.interface';
 
 describe('UPnP 조회 실패 응답', () => {
   const gateway = {

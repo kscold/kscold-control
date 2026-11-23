@@ -26,11 +26,11 @@ import {
 import {
   IP_BAN_REPOSITORY,
   type IIpBanRepository,
-} from '../../domain/repositories/ip-ban.repository';
+} from '../../domain/repositories/ip-ban.repository.interface';
 import {
   LOGIN_ATTEMPT_REPOSITORY,
   type ILoginAttemptRepository,
-} from '../../domain/repositories/login-attempt.repository';
+} from '../../domain/repositories/login-attempt.repository.interface';
 import { classifySshIp } from '../../domain/ssh-audit/ssh-audit.model';
 import { CreateIpBanUseCase } from '../use-cases/create-ip-ban.use-case';
 import { IpAllowlistService } from './ip-allowlist.service';

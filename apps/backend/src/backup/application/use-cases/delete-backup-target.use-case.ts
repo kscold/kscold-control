@@ -8,7 +8,7 @@ import type { BackupTarget } from '../../domain/entities/backup-target.entity';
 import {
   BACKUP_TARGET_REPOSITORY,
   type IBackupTargetRepository,
-} from '../../domain/repositories/backup-target.repository';
+} from '../../domain/repositories/backup-target.repository.interface';
 import { BackupRunnerService } from '../services/backup-runner.service';
 
 /**

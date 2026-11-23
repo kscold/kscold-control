@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { SecretEncryptionService } from '../../../common/crypto/secret-encryption.service';
 import type { BackupTarget } from '../../domain/entities/backup-target.entity';
 import { backupTargetAssociatedData } from '../../domain/policies/backup-target.policy';
-import type { SealedBackupUri } from '../../domain/repositories/backup-target.repository';
+import type { SealedBackupUri } from '../../domain/repositories/backup-target.repository.interface';
 
 /** 백업 대상의 접속 URI 를 저장용으로 암호화하고, 덤프 직전에만 복호화한다. */
 @Injectable()

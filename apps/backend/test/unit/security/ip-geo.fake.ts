@@ -2,7 +2,7 @@ import type {
   IIpGeoReader,
   IpGeo,
   IpGeoStatus,
-} from '@/security/domain/repositories/ip-geo.reader';
+} from '@/security/domain/gateways/ip-geo.gateway.interface';
 
 /** 표에 적은 IP 만 찾는 위치 조회기. 표를 안 주면 꺼진 상태다. */
 export function fakeIpGeo(table?: Record<string, IpGeo>): IIpGeoReader {

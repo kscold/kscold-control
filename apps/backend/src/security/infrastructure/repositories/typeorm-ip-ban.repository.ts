@@ -5,10 +5,10 @@ import { IpBan } from '../../domain/entities/ip-ban.entity';
 import type {
   CreateIpBanInput,
   IIpBanRepository,
-} from '../../domain/repositories/ip-ban.repository';
+} from '../../domain/repositories/ip-ban.repository.interface';
 
 @Injectable()
-export class IpBanRepositoryImpl implements IIpBanRepository {
+export class TypeOrmIpBanRepository implements IIpBanRepository {
   constructor(
     @InjectRepository(IpBan)
     private readonly repo: Repository<IpBan>,

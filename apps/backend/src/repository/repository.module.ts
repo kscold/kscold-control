@@ -3,7 +3,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { Project } from './domain/entities/project.entity';
 import { PROJECT_REPOSITORY } from './domain/repositories/project.repository.interface';
-import { FILE_STORAGE } from './domain/repositories/file-storage.interface';
+import { FILE_STORAGE } from './domain/gateways/file-storage.gateway.interface';
 import { UPLOAD_SESSION_REPOSITORY } from './domain/repositories/upload-session.repository.interface';
 
 import {

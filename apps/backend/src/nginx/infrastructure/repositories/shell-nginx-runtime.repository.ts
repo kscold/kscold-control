@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { exec } from 'child_process';
 import { promisify } from 'util';
-import type { INginxRuntimeRepository } from '../../domain/repositories/nginx-runtime.repository';
+import type { INginxRuntimeRepository } from '../../domain/repositories/nginx-runtime.repository.interface';
 
 const execAsync = promisify(exec);
 const NGINX_CONTAINER = 'kscold-nginx';
@@ -9,8 +9,8 @@ const NGINX_CONTAINER = 'kscold-nginx';
 const EXEC_TIMEOUT_MS = 15_000;
 
 @Injectable()
-export class NginxRuntimeRepositoryImpl implements INginxRuntimeRepository {
-  private readonly logger = new Logger(NginxRuntimeRepositoryImpl.name);
+export class ShellNginxRuntimeRepository implements INginxRuntimeRepository {
+  private readonly logger = new Logger(ShellNginxRuntimeRepository.name);
 
   async testConfig(): Promise<{ success: boolean; output: string }> {
     try {

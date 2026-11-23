@@ -6,7 +6,7 @@ import type {
   CreateBackupTargetInput,
   IBackupTargetRepository,
   UpdateBackupTargetInput,
-} from '../../domain/repositories/backup-target.repository';
+} from '../../domain/repositories/backup-target.repository.interface';
 
 @Injectable()
 export class TypeOrmBackupTargetRepository implements IBackupTargetRepository {

@@ -4,7 +4,7 @@ import { searchSsdp } from '../ssdp-discovery';
 import { requestGateway } from '../gateway-http';
 import { UpnpQueryError } from '../../domain/errors/upnp-query.error';
 
-import type { IUpnpGatewayRepository } from '../../domain/repositories/upnp-gateway.repository';
+import type { IUpnpGatewayRepository } from '../../domain/repositories/upnp-gateway.repository.interface';
 import type {
   PortMapping,
   PortMappingDraft,
@@ -12,8 +12,8 @@ import type {
 } from '../../domain/types/port-mapping.type';
 
 @Injectable()
-export class UpnpGatewayRepositoryImpl implements IUpnpGatewayRepository {
-  private readonly logger = new Logger(UpnpGatewayRepositoryImpl.name);
+export class TcpUpnpGatewayRepository implements IUpnpGatewayRepository {
+  private readonly logger = new Logger(TcpUpnpGatewayRepository.name);
   private gatewayCache: GatewayInfo | null = null;
   private gatewayCacheTime = 0;
   private discovery: Promise<GatewayInfo> | null = null;

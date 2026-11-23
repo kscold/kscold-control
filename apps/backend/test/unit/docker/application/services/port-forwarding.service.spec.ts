@@ -1,6 +1,6 @@
 import type { Mocked } from 'vitest';
 import { PortForwardingService } from '@/docker/application/services/port-forwarding.service';
-import type { IUpnpGatewayRepository } from '@/upnp/domain/repositories/upnp-gateway.repository';
+import type { IUpnpGatewayRepository } from '@/upnp/domain/repositories/upnp-gateway.repository.interface';
 
 describe('PortForwardingService', () => {
   let service: PortForwardingService;

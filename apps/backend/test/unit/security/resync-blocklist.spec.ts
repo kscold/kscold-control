@@ -4,7 +4,7 @@ import {
   BATCHED_RESYNC_DELAY_MS,
   ResyncBlocklistUseCase,
 } from '@/security/application/use-cases/resync-blocklist.use-case';
-import type { INginxBlocklistWriter } from '@/security/domain/repositories/nginx-blocklist.writer';
+import type { INginxBlocklistWriter } from '@/security/domain/gateways/nginx-blocklist.gateway.interface';
 import { InMemoryIpBanRepository } from './login-guard.fake';
 
 /** nginx 에 반영하려던 목록을 남기고, release 를 부를 때까지 반영을 붙잡아 둘 수 있다. */

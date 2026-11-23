@@ -11,16 +11,16 @@ import type { BackupTarget } from '../../domain/entities/backup-target.entity';
 import {
   BACKUP_ARCHIVE_REPOSITORY,
   type IBackupArchiveRepository,
-} from '../../domain/repositories/backup-archive.repository';
+} from '../../domain/repositories/backup-archive.repository.interface';
 import {
   BACKUP_RUN_REPOSITORY,
   type FinishBackupRunInput,
   type IBackupRunRepository,
-} from '../../domain/repositories/backup-run.repository';
+} from '../../domain/repositories/backup-run.repository.interface';
 import {
   BACKUP_TARGET_REPOSITORY,
   type IBackupTargetRepository,
-} from '../../domain/repositories/backup-target.repository';
+} from '../../domain/repositories/backup-target.repository.interface';
 import type {
   BackupActor,
   BackupTrigger,

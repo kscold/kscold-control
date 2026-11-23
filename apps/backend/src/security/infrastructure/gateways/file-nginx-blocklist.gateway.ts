@@ -1,11 +1,11 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import * as fs from 'fs/promises';
 import * as path from 'path';
-import type { INginxBlocklistWriter } from '../../domain/repositories/nginx-blocklist.writer';
+import type { INginxBlocklistWriter } from '../../domain/gateways/nginx-blocklist.gateway.interface';
 import {
   NGINX_RUNTIME_REPOSITORY,
   type INginxRuntimeRepository,
-} from '../../../nginx/domain/repositories/nginx-runtime.repository';
+} from '../../../nginx/domain/repositories/nginx-runtime.repository.interface';
 
 const NGINX_CONF_DIR = path.resolve(
   __dirname,
@@ -14,8 +14,8 @@ const NGINX_CONF_DIR = path.resolve(
 const BLOCKLIST_FILE = path.join(NGINX_CONF_DIR, 'ip-blocklist.conf');
 
 @Injectable()
-export class NginxBlocklistWriterImpl implements INginxBlocklistWriter {
-  private readonly logger = new Logger(NginxBlocklistWriterImpl.name);
+export class FileNginxBlocklistGateway implements INginxBlocklistWriter {
+  private readonly logger = new Logger(FileNginxBlocklistGateway.name);
 
   constructor(
     @Inject(NGINX_RUNTIME_REPOSITORY)

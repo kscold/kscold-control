@@ -7,7 +7,7 @@ import {
   SshAccessService,
   formatLocal,
 } from '@/security/application/services/ssh-access.service';
-import type { IIpGeoReader } from '@/security/domain/repositories/ip-geo.reader';
+import type { IIpGeoReader } from '@/security/domain/gateways/ip-geo.gateway.interface';
 import {
   InMemoryIpBanRepository,
   InMemoryLoginAttemptRepository,

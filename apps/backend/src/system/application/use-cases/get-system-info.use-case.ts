@@ -3,7 +3,7 @@ import { Inject, Injectable } from '@nestjs/common';
 import {
   OS_METRICS_REPOSITORY,
   type IOsMetricsRepository,
-} from '../../domain/repositories/os-metrics.repository';
+} from '../../domain/repositories/os-metrics.repository.interface';
 import type { SystemInfo } from '../../domain/types/system-info.type';
 
 /** 시스템 정보(CPU/메모리/디스크/플랫폼) 조회 */

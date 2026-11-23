@@ -2,7 +2,7 @@ import { Inject, Injectable } from '@nestjs/common';
 import {
   PM2_LOG_READER,
   type IPm2LogReader,
-} from '../../domain/repositories/log-reader.repository';
+} from '../../domain/repositories/log-reader.repository.interface';
 import type { Pm2LogResult } from '../../domain/types/log.type';
 
 /** PM2 로그 조회 (GET /logs/pm2) */

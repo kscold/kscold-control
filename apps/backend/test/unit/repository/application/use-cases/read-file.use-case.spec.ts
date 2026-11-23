@@ -1,7 +1,7 @@
 import { NotFoundException } from '@nestjs/common';
 import { ReadFileUseCase } from '@/repository/application/use-cases/read-file.use-case';
 import type { IProjectRepository } from '@/repository/domain/repositories/project.repository.interface';
-import type { IFileStorage } from '@/repository/domain/repositories/file-storage.interface';
+import type { IFileStorage } from '@/repository/domain/gateways/file-storage.gateway.interface';
 
 function dependencies(content: Buffer, found = true) {
   const projects = {

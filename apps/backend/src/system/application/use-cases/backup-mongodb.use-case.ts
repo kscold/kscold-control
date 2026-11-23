@@ -2,7 +2,7 @@ import { Inject, Injectable } from '@nestjs/common';
 import {
   MONGODB_BACKUP_REPOSITORY,
   type IMongodbBackupRepository,
-} from '../../domain/repositories/mongodb-backup.repository';
+} from '../../domain/repositories/mongodb-backup.repository.interface';
 import { assertValidBackupContainerName } from '../utils/backup-container-name';
 
 /** 지정 컨테이너의 MongoDB(sample-blog) 백업 수행 */

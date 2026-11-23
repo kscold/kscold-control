@@ -6,7 +6,7 @@ import {
   ProjectVersion,
   RepositoryFileInspection,
   StagedUploadInspection,
-} from '../../domain/repositories/file-storage.interface';
+} from '../../domain/gateways/file-storage.gateway.interface';
 import { RECEIPT_DIR, LocalStorageLayout } from './local-storage-layout';
 import { LocalVersionStore } from './local-version-store';
 

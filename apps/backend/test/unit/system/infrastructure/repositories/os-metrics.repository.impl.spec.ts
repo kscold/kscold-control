@@ -1,9 +1,9 @@
 import type { Mock } from 'vitest';
-import { OsMetricsRepositoryImpl } from '@/system/infrastructure/repositories/os-metrics.repository.impl';
+import { ShellOsMetricsRepository } from '@/system/infrastructure/repositories/shell-os-metrics.repository';
 
-describe('OsMetricsRepositoryImpl', () => {
+describe('ShellOsMetricsRepository', () => {
   it('디스크 수집 실패 시 마지막 성공값을 stale 상태로 반환한다', async () => {
-    const repository = new OsMetricsRepositoryImpl();
+    const repository = new ShellOsMetricsRepository();
     const now = Date.now();
 
     (repository as any).diskCache = {

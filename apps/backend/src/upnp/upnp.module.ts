@@ -6,8 +6,8 @@ import {
   RemovePortMappingUseCase,
   GetExternalIpUseCase,
 } from './application/use-cases';
-import { UpnpGatewayRepositoryImpl } from './infrastructure/repositories/upnp-gateway.repository.impl';
-import { UPNP_GATEWAY_REPOSITORY } from './domain/repositories/upnp-gateway.repository';
+import { TcpUpnpGatewayRepository } from './infrastructure/repositories/tcp-upnp-gateway.repository';
+import { UPNP_GATEWAY_REPOSITORY } from './domain/repositories/upnp-gateway.repository.interface';
 
 @Module({
   controllers: [UpnpController],
@@ -18,7 +18,7 @@ import { UPNP_GATEWAY_REPOSITORY } from './domain/repositories/upnp-gateway.repo
     GetExternalIpUseCase,
     {
       provide: UPNP_GATEWAY_REPOSITORY,
-      useClass: UpnpGatewayRepositoryImpl,
+      useClass: TcpUpnpGatewayRepository,
     },
   ],
   exports: [UPNP_GATEWAY_REPOSITORY],

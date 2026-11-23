@@ -27,7 +27,7 @@ import {
   externalGeo,
   type IIpGeoReader,
   type IpGeo,
-} from '../../domain/repositories/ip-geo.reader';
+} from '../../domain/gateways/ip-geo.gateway.interface';
 import {
   parseIpRange,
   rangeContains,

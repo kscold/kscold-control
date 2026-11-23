@@ -2,7 +2,7 @@ import { Inject, Injectable } from '@nestjs/common';
 import {
   SYSTEM_STATUS_READER,
   type ISystemStatusReader,
-} from '../../domain/repositories/log-reader.repository';
+} from '../../domain/repositories/log-reader.repository.interface';
 import type { SystemInfo } from '../../domain/types/log.type';
 
 /** 시스템 정보 조회 (GET /logs/system) */

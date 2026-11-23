@@ -6,7 +6,7 @@ import type {
   FinishStorageTrimRunInput,
   IStorageTrimRunRepository,
   StartStorageTrimRunInput,
-} from '../../domain/repositories/storage-trim-run.repository';
+} from '../../domain/repositories/storage-trim-run.repository.interface';
 
 @Injectable()
 export class TypeOrmStorageTrimRunRepository implements IStorageTrimRunRepository {

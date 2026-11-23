@@ -6,7 +6,7 @@ import type {
   FinishWorktreeCleanupRunInput,
   IWorktreeCleanupRunRepository,
   StartWorktreeCleanupRunInput,
-} from '../../domain/repositories/worktree-cleanup-run.repository';
+} from '../../domain/repositories/worktree-cleanup-run.repository.interface';
 
 @Injectable()
 export class TypeOrmWorktreeCleanupRunRepository implements IWorktreeCleanupRunRepository {

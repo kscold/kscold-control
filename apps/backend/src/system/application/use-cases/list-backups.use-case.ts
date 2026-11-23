@@ -3,7 +3,7 @@ import {
   MONGODB_BACKUP_REPOSITORY,
   type IMongodbBackupRepository,
   type MongodbBackupEntry,
-} from '../../domain/repositories/mongodb-backup.repository';
+} from '../../domain/repositories/mongodb-backup.repository.interface';
 import { assertValidBackupContainerName } from '../utils/backup-container-name';
 
 /** 지정 컨테이너의 MongoDB 백업 목록 조회 */

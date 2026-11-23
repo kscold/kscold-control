@@ -4,7 +4,7 @@ import { isScheduledBackupDue } from '../../domain/policies/backup-schedule.poli
 import {
   BACKUP_TARGET_REPOSITORY,
   type IBackupTargetRepository,
-} from '../../domain/repositories/backup-target.repository';
+} from '../../domain/repositories/backup-target.repository.interface';
 import { BackupRunnerService } from './backup-runner.service';
 
 /**

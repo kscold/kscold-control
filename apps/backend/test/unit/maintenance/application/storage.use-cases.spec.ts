@@ -5,7 +5,7 @@ import {
   storageFolders,
   TrimDockerDiskUseCase,
 } from '@/maintenance/application/use-cases';
-import type { IStorageInspectionGateway } from '@/maintenance/domain/repositories/storage-inspection.gateway';
+import type { IStorageInspectionGateway } from '@/maintenance/domain/gateways/storage-inspection.gateway.interface';
 import { trimRunRepository } from '../storage-trim-run.fake';
 
 const GiB = 1024 ** 3;

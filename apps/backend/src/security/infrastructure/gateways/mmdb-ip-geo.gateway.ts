@@ -5,11 +5,11 @@ import type {
   IIpGeoReader,
   IpGeo,
   IpGeoStatus,
-} from '../../domain/repositories/ip-geo.reader';
+} from '../../domain/gateways/ip-geo.gateway.interface';
 
 /** 빈 값이면 공격 지도를 끈다 */
-export function ipGeoReaderFromEnv(): IpGeoReaderImpl {
-  return new IpGeoReaderImpl(
+export function ipGeoReaderFromEnv(): MmdbIpGeoGateway {
+  return new MmdbIpGeoGateway(
     process.env.CONTROL_IP_GEO_DB_PATH?.trim() || undefined,
   );
 }
@@ -37,7 +37,7 @@ export function toIpGeo(record: CityResponse | null | undefined): IpGeo | null {
  * 경로가 없거나 파일을 못 읽으면 지도만 꺼지고 Control 기동과 다른 화면에는 영향이 없다.
  * 파일(약 130MB)을 통째로 메모리에 올린다.
  */
-export class IpGeoReaderImpl implements IIpGeoReader, OnModuleInit {
+export class MmdbIpGeoGateway implements IIpGeoReader, OnModuleInit {
   private readonly logger = new Logger('IpGeo');
   private reader: Reader<CityResponse> | null = null;
   private current: IpGeoStatus;

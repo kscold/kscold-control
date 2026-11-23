@@ -3,7 +3,7 @@ import { exec } from 'child_process';
 import { promisify } from 'util';
 import * as fs from 'fs';
 import { join } from 'path';
-import { ILogReader } from '../../domain/repositories/log-reader.repository';
+import { ILogReader } from '../../domain/repositories/log-reader.repository.interface';
 
 const execAsync = promisify(exec);
 

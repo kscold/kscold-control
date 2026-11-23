@@ -15,7 +15,7 @@ import {
   IP_GEO_READER,
   externalGeo,
   type IIpGeoReader,
-} from '../../domain/repositories/ip-geo.reader';
+} from '../../domain/gateways/ip-geo.gateway.interface';
 import {
   DEFAULT_COUNTRY_GUARD_SETTINGS,
   countryBlockReason,

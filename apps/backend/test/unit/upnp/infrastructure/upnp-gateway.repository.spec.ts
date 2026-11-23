@@ -1,5 +1,5 @@
 import type { MockInstance } from 'vitest';
-import { UpnpGatewayRepositoryImpl } from '@/upnp/infrastructure/repositories/upnp-gateway.repository.impl';
+import { TcpUpnpGatewayRepository } from '@/upnp/infrastructure/repositories/tcp-upnp-gateway.repository';
 import { searchSsdp } from '@/upnp/infrastructure/ssdp-discovery';
 
 vi.mock('@/upnp/infrastructure/ssdp-discovery', () => ({
@@ -16,10 +16,10 @@ const entry =
 const end = '<UPnPError><errorCode>713</errorCode></UPnPError>';
 
 describe('UPnP 목록의 완전성', () => {
-  let repository: UpnpGatewayRepositoryImpl;
+  let repository: TcpUpnpGatewayRepository;
   let soap: MockInstance;
   beforeEach(() => {
-    repository = new UpnpGatewayRepositoryImpl();
+    repository = new TcpUpnpGatewayRepository();
     vi.spyOn(repository as any, 'discoverGateway').mockResolvedValue(gateway);
     soap = vi.spyOn(repository as any, 'soapCall');
   });
@@ -71,7 +71,7 @@ describe('UPnP 목록의 완전성', () => {
 describe('UPnP 탐색 병합', () => {
   afterEach(() => vi.restoreAllMocks());
   it('동시 IP·목록 조회가 하나의 탐색을 공유함', async () => {
-    const repository = new UpnpGatewayRepositoryImpl();
+    const repository = new TcpUpnpGatewayRepository();
     vi.mocked(searchSsdp).mockResolvedValue('http://192.0.2.1/root.xml');
     vi.spyOn(repository as any, 'httpGet').mockResolvedValue(
       `<service><serviceType>${gateway.serviceType}</serviceType><controlURL>/control</controlURL></service>`,

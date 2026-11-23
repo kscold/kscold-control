@@ -2,11 +2,11 @@ import { Inject, Injectable, Logger, OnModuleDestroy } from '@nestjs/common';
 import {
   IP_BAN_REPOSITORY,
   type IIpBanRepository,
-} from '../../domain/repositories/ip-ban.repository';
+} from '../../domain/repositories/ip-ban.repository.interface';
 import {
   NGINX_BLOCKLIST_WRITER,
   type INginxBlocklistWriter,
-} from '../../domain/repositories/nginx-blocklist.writer';
+} from '../../domain/gateways/nginx-blocklist.gateway.interface';
 
 export interface ResyncResult {
   reloaded: boolean;

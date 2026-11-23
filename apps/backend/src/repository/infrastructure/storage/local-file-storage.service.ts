@@ -20,7 +20,7 @@ import {
   StagedUploadInspection,
   UploadContentOffsetError,
   UploadContentTooLargeError,
-} from '../../domain/repositories/file-storage.interface';
+} from '../../domain/gateways/file-storage.gateway.interface';
 import { isReservedRepositoryPath } from '../../domain/policies/repository-path.policy';
 import {
   BACKUP_DIR,

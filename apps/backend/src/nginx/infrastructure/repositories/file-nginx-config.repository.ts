@@ -1,7 +1,7 @@
 import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import * as fs from 'fs';
 import * as path from 'path';
-import type { INginxConfigRepository } from '../../domain/repositories/nginx-config.repository';
+import type { INginxConfigRepository } from '../../domain/repositories/nginx-config.repository.interface';
 import type {
   NginxSite,
   NginxSiteConfiguration,
@@ -14,8 +14,8 @@ const NGINX_CONF_DIR = path.resolve(
 );
 
 @Injectable()
-export class NginxConfigRepositoryImpl implements INginxConfigRepository {
-  private readonly logger = new Logger(NginxConfigRepositoryImpl.name);
+export class FileNginxConfigRepository implements INginxConfigRepository {
+  private readonly logger = new Logger(FileNginxConfigRepository.name);
 
   constructor() {
     if (!fs.existsSync(NGINX_CONF_DIR)) {

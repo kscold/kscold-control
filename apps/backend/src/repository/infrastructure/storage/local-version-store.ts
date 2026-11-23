@@ -5,7 +5,7 @@ import * as path from 'path';
 import { Readable } from 'stream';
 import { spawn } from 'child_process';
 import { hasControlCharacter } from '../../../common/utils';
-import { ProjectVersion } from '../../domain/repositories/file-storage.interface';
+import { ProjectVersion } from '../../domain/gateways/file-storage.gateway.interface';
 import { isReservedRepositoryPath } from '../../domain/policies/repository-path.policy';
 import {
   LEGACY_VERSIONS_DIR,

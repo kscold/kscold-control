@@ -9,7 +9,7 @@ import type {
   IWorktreeWorkspaceGateway,
   RemoveWorktreeRequest,
   WorktreeScanResult,
-} from '../../domain/repositories/worktree-workspace.gateway';
+} from '../../domain/gateways/worktree-workspace.gateway.interface';
 import type {
   RemovedWorktree,
   WorktreeInspection,
