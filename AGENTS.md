@@ -30,3 +30,4 @@
 - 기능은 브랜치 → PR → main 머지로 진행합니다.
 - 커밋 메시지는 한국어 `feat|fix|refactor(범위): …함` 제목, 빈 줄, `- ` 목록 본문입니다.
 - 코드 주석은 한국어로 씁니다.
+- 새 파일·폴더 위치와 이름은 `docs/architecture.md` 를 따릅니다. `pnpm check:architecture` 가 검사합니다.

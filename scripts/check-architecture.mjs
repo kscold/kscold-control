@@ -73,6 +73,13 @@ function checkFrontendBoundaries() {
   }
 }
 
+const BACKEND_LAYERS = [
+  'application',
+  'domain',
+  'infrastructure',
+  'presentation',
+];
+
 function checkBackendBoundaries() {
   const root = path.join(repoRoot, 'apps/backend/src');
 
@@ -80,7 +87,10 @@ function checkBackendBoundaries() {
     const relativePath = path
       .relative(root, filePath)
       .replaceAll(path.sep, '/');
-    const [, layer] = relativePath.split('/');
+    // auth/mfa 처럼 모듈 안에 하위 모듈이 있어도 첫 계층 폴더를 찾아 검사한다.
+    const layer = relativePath
+      .split('/')
+      .find((segment) => BACKEND_LAYERS.includes(segment));
     const contents = read(filePath);
 
     if (
@@ -297,8 +307,77 @@ function checkDependencyEscapeHatches() {
   }
 }
 
+// 이름 규칙: docs/architecture.md 의 "파일 이름 규칙" 과 같은 내용이다.
+function checkNamingConventions() {
+  const backendRoot = path.join(repoRoot, 'apps/backend/src');
+  for (const filePath of sourceFiles(backendRoot)) {
+    const relativePath = path
+      .relative(backendRoot, filePath)
+      .replaceAll(path.sep, '/');
+    const segments = relativePath.split('/');
+    const fileName = segments.at(-1);
+    if (fileName === 'index.ts') continue;
+
+    if (fileName.endsWith('.impl.ts')) {
+      report(
+        'backend implementation uses .impl suffix',
+        filePath,
+        '기술 접두어 이름을 쓴다',
+      );
+    }
+    if (/[A-Z]/.test(fileName)) {
+      report('backend file name is not kebab-case', filePath);
+    }
+    if (
+      relativePath.includes('/domain/repositories/') &&
+      !fileName.endsWith('.repository.interface.ts')
+    ) {
+      report(
+        'backend domain repository port name',
+        filePath,
+        '*.repository.interface.ts',
+      );
+    }
+    if (
+      relativePath.includes('/domain/gateways/') &&
+      !fileName.endsWith('.gateway.interface.ts')
+    ) {
+      report(
+        'backend domain gateway port name',
+        filePath,
+        '*.gateway.interface.ts',
+      );
+    }
+    // 모듈 폴더 바로 아래에는 *.module.ts 만 둔다(common 은 계층이 없는 공용 폴더).
+    const isModuleRootFile =
+      segments[0] !== 'common' &&
+      !segments.some((segment) => BACKEND_LAYERS.includes(segment)) &&
+      segments.length > 1;
+    if (isModuleRootFile && !fileName.endsWith('.module.ts')) {
+      report('backend file outside layer folder', filePath);
+    }
+  }
+
+  const frontendRoot = path.join(repoRoot, 'apps/frontend/src');
+  for (const filePath of sourceFiles(frontendRoot)) {
+    const fileName = path.basename(filePath);
+    if (fileName === 'types.ts') {
+      report('frontend bare types.ts', filePath, '<slice>.types.ts');
+    }
+    const segment = path.basename(path.dirname(filePath));
+    if (
+      segment === 'lib' &&
+      /^[a-z]+[A-Z]/.test(fileName) &&
+      !fileName.startsWith('use')
+    ) {
+      report('frontend lib file name is not kebab-case', filePath);
+    }
+  }
+}
+
 checkFrontendBoundaries();
 checkBackendBoundaries();
+checkNamingConventions();
 checkDtoPlacement();
 checkDockerBoundaries();
 checkBackendTestLayout();
