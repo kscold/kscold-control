@@ -17,6 +17,9 @@ interface ReleaseManifest {
   artifacts: Record<string, string>;
 }
 
+
+// 빌드 결과 dist/release/presentation/controllers 에서 dist 로 올라간다. 파일을 옮기면 이 깊이도 맞춘다.
+const DIST_ROOT = join(__dirname, '..', '..', '..');
 @Controller('health')
 export class ReleaseController {
   private readonly startedAt = Date.now();
@@ -35,7 +38,7 @@ export class ReleaseController {
   }
 
   private readRelease() {
-    const manifestPath = join(__dirname, '..', 'release-manifest.json');
+    const manifestPath = join(DIST_ROOT, 'release-manifest.json');
     if (!existsSync(manifestPath)) {
       return {
         version: 'development',
@@ -51,7 +54,7 @@ export class ReleaseController {
       const manifest = JSON.parse(
         readFileSync(manifestPath, 'utf8'),
       ) as ReleaseManifest;
-      const root = join(__dirname, '..', '..', '..', '..');
+      const root = join(DIST_ROOT, '..', '..', '..');
       const frontendDist = resolveFrontendDistPath();
       const actualPaths = [
         ...this.listFiles(join(root, 'apps', 'backend', 'dist')).map(
