@@ -50,4 +50,4 @@ API: 설정과 나라별 차단 수는 `GET /api/security/ssh` 의 `countryGuard
 node scripts/build-world-map.mjs
 ```
 
-결과는 `apps/frontend/src/features/security/lib/worldMap.generated.ts` 이고 손으로 고치지 않는다. 지도 탭을 열 때만 내려받는다.
+결과는 `apps/frontend/src/features/security/lib/world-map.generated.ts` 이고 손으로 고치지 않는다. 지도 탭을 열 때만 내려받는다.

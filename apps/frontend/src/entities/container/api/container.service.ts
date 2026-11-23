@@ -3,7 +3,7 @@ import { BaseApiService } from '@/shared/api/base.service';
 import { Container, ComposeProvisioningTemplate } from '../model/container.types';
 import {
   CreateContainerRequest,
-} from './container-api.types';
+} from '../model/container-api.types';
 import type {
   DockerCleanupCandidates,
   DockerCleanupResult,

@@ -11,7 +11,7 @@ import {
 import type { GetWorktreeCleanupOverviewUseCase } from '@/maintenance/application/use-cases/get-worktree-cleanup-overview.use-case';
 import type { IAutomationInspectionGateway } from '@/maintenance/domain/gateways/automation-inspection.gateway.interface';
 import type { IStorageInspectionGateway } from '@/maintenance/domain/gateways/storage-inspection.gateway.interface';
-import { trimRunRepository } from '../storage-trim-run.fake';
+import { trimRunRepository } from '../fakes/storage-trim-run.fake';
 
 const GiB = 1024 ** 3;
 

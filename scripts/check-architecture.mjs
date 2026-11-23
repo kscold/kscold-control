@@ -358,18 +358,32 @@ function checkNamingConventions() {
     }
   }
 
+  // 백엔드 시험도 같은 이름 규칙을 따르고, 가짜 구현은 fakes 폴더에만 둔다.
+  const backendTestRoot = path.join(repoRoot, 'apps/backend/test/unit');
+  for (const filePath of sourceFiles(backendTestRoot)) {
+    const fileName = path.basename(filePath);
+    if (/\.impl\./.test(fileName) || /[A-Z]/.test(fileName)) {
+      report('backend test file name', filePath, 'kebab-case, .impl 없이');
+    }
+    if (
+      fileName.endsWith('.fake.ts') &&
+      path.basename(path.dirname(filePath)) !== 'fakes'
+    ) {
+      report('backend fake outside fakes folder', filePath);
+    }
+  }
+
   const frontendRoot = path.join(repoRoot, 'apps/frontend/src');
   for (const filePath of sourceFiles(frontendRoot)) {
     const fileName = path.basename(filePath);
     if (fileName === 'types.ts') {
       report('frontend bare types.ts', filePath, '<slice>.types.ts');
     }
-    const segment = path.basename(path.dirname(filePath));
-    if (
-      segment === 'lib' &&
-      /^[a-z]+[A-Z]/.test(fileName) &&
-      !fileName.startsWith('use')
-    ) {
+    // lib 아래(하위 폴더 포함) 순수 함수 파일은 kebab-case 만 쓴다.
+    const relativePath = path
+      .relative(frontendRoot, filePath)
+      .replaceAll(path.sep, '/');
+    if (/\/lib\//.test(`/${relativePath}`) && /[A-Z_]/.test(fileName)) {
       report('frontend lib file name is not kebab-case', filePath);
     }
   }

@@ -469,7 +469,7 @@ is a login failure: login blocking counts it with wrong passwords, so 5 from
 one IP ban that IP and 10 on one account lock it from that origin for 15
 minutes. The password re-check before enrollment and the OTP check before new
 recovery codes count the same way. The `MfaAttemptGuard` seam
-(`apps/backend/src/auth/mfa/domain/mfa-attempt-guard.ts`) is bound to
+(`apps/backend/src/auth/mfa/domain/policies/mfa-attempt-guard.policy.ts`) is bound to
 `LoginGuardService`; `scripts/unlock-login.mjs` clears these failures too.
 
 Giving an account a role in `CONTROL_MFA_REQUIRED_ROLES` signs out its sessions

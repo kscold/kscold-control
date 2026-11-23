@@ -11,7 +11,7 @@ import {
   ImpersonationResponse,
   KeyManagementAccessMatrix,
   KeyManagementTargetAssignment,
-} from './user-api.types';
+} from '../model/user-api.types';
 
 /**
  * RBAC 관련 API 호출을 한곳에 모아둔 서비스

@@ -19,19 +19,23 @@ import { API_URL } from '@/shared/config';
 import { ROLES } from '@/shared/config/roles';
 import { useAuthStore } from '@/shared/model/auth.store';
 import { Dialog, dialogButtonClass } from '@/shared/ui';
-import { OnlinePill, RemoteTargets } from '@/features/remote-desktop';
-import { TargetDialog, type TargetDialogMode } from '@/features/remote-desktop';
 import {
   LOCAL_TARGET,
+  OnlinePill,
+  RemoteTargets,
+  TargetDialog,
   addressOf,
+  keysymForChar,
+  keysymForKey,
+  loadRdpClient,
   needsCredentials,
   protocolOf,
+  useRemoteTargets,
+  wakeLabel,
   type Target,
+  type TargetDialogMode,
+  type TouchMode,
 } from '@/features/remote-desktop';
-import { useRemoteTargets, wakeLabel } from '@/features/remote-desktop';
-import { keysymForChar, keysymForKey } from '@/features/remote-desktop';
-import type { TouchMode } from '@/features/remote-desktop';
-import { loadRdpClient } from '@/features/remote-desktop';
 import './remote-desktop.css';
 
 // VNC(noVNC)와 RDP(guacamole) 연결이 화면에 내주는 공통 동작
