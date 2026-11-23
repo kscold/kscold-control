@@ -2,21 +2,21 @@ import { HttpException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { LoginUseCase } from '@/auth/application/use-cases/login.use-case';
 import { randomBytes } from 'node:crypto';
-import { MfaConfig } from '@/auth/mfa/application/mfa-config';
-import { RECOVERY_CODE_COUNT } from '@/auth/mfa/domain/recovery-codes';
+import { MfaConfig } from '@/auth/mfa/application/config/mfa.config';
+import { RECOVERY_CODE_COUNT } from '@/auth/mfa/domain/policies/recovery-codes.policy';
 import {
   decodeBase32,
   encodeBase32,
   matchTotp,
   totpCode,
   totpStep,
-} from '@/auth/mfa/domain/totp';
+} from '@/auth/mfa/domain/policies/totp.policy';
 import { Logger } from '@nestjs/common';
 import {
   MFA_CHALLENGES_PER_USER,
   MFA_CHALLENGES_TOTAL,
   MfaChallengeStore,
-} from '@/auth/mfa/application/mfa-challenge.store';
+} from '@/auth/mfa/application/services/mfa-challenge.store';
 import { browser } from './auth-session.fake';
 import { PASSWORD, account, closeMfaHarnesses, mfaHarness } from './mfa.fake';
 

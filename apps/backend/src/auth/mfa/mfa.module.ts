@@ -4,13 +4,13 @@ import { RbacModule } from '../../rbac/rbac.module';
 import { LoginGuardService } from '../../security/application/services/login-guard.service';
 import { SecurityModule } from '../../security/security.module';
 import { AuthSessionModule } from '../auth-session.module';
-import { MfaChallengeStore } from './application/mfa-challenge.store';
-import { MfaService } from './application/mfa.service';
-import { MFA_ATTEMPT_GUARD } from './domain/mfa-attempt-guard';
-import { UserMfa } from './domain/user-mfa.entity';
-import { USER_MFA_REPOSITORY } from './domain/user-mfa.repository.interface';
-import { TypeOrmUserMfaRepository } from './infrastructure/typeorm-user-mfa.repository';
-import { MfaController } from './presentation/mfa.controller';
+import { MfaChallengeStore } from './application/services/mfa-challenge.store';
+import { MfaService } from './application/services/mfa.service';
+import { MFA_ATTEMPT_GUARD } from './domain/policies/mfa-attempt-guard.policy';
+import { UserMfa } from './domain/entities/user-mfa.entity';
+import { USER_MFA_REPOSITORY } from './domain/repositories/user-mfa.repository.interface';
+import { TypeOrmUserMfaRepository } from './infrastructure/repositories/typeorm-user-mfa.repository';
+import { MfaController } from './presentation/controllers/mfa.controller';
 
 @Module({
   imports: [

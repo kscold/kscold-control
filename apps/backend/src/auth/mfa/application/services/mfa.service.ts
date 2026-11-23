@@ -5,40 +5,40 @@ import {
   Injectable,
   Logger,
 } from '@nestjs/common';
-import { AuditLogService } from '../../../audit/application/services/audit-log.service';
-import { PasswordHasher } from '../../../common/utils/password-hasher.util';
-import type { User } from '../../../rbac/domain/entities/user.entity';
+import { AuditLogService } from '../../../../audit/application/services/audit-log.service';
+import { PasswordHasher } from '../../../../common/utils/password-hasher.util';
+import type { User } from '../../../../rbac/domain/entities/user.entity';
 import {
   type IUserRepository,
   USER_REPOSITORY,
-} from '../../../rbac/domain/repositories/user.repository.interface';
+} from '../../../../rbac/domain/repositories/user.repository.interface';
 import type {
   AuthenticatedLogin,
   LoginResult,
   MfaChallengeToken,
   MfaEnrollmentSetup,
-} from '../../application/dto/login-result';
+} from '../../../application/dto/login-result';
 import {
   AuthSessionService,
   type SessionClient,
-} from '../../application/services/auth-session.service';
+} from '../../../application/services/auth-session.service';
 import {
   MFA_ATTEMPT_GUARD,
   type MfaAttemptGuard,
   type MfaClient,
-} from '../domain/mfa-attempt-guard';
+} from '../../domain/policies/mfa-attempt-guard.policy';
 import {
   generateRecoveryCodes,
   normalizeRecoveryCode,
-} from '../domain/recovery-codes';
-import { generateTotpSecret, matchTotp, otpauthUri } from '../domain/totp';
-import type { UserMfa } from '../domain/user-mfa.entity';
+} from '../../domain/policies/recovery-codes.policy';
+import { generateTotpSecret, matchTotp, otpauthUri } from '../../domain/policies/totp.policy';
+import type { UserMfa } from '../../domain/entities/user-mfa.entity';
 import {
   type IUserMfaRepository,
   USER_MFA_REPOSITORY,
-} from '../domain/user-mfa.repository.interface';
+} from '../../domain/repositories/user-mfa.repository.interface';
 import { type MfaChallenge, MfaChallengeStore } from './mfa-challenge.store';
-import { MfaConfig } from './mfa-config';
+import { MfaConfig } from '../config/mfa.config';
 
 export type MfaMethod = 'totp' | 'recovery';
 

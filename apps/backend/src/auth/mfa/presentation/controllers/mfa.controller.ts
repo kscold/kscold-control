@@ -10,15 +10,15 @@ import {
 } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import type { Request } from 'express';
-import type { JwtRequest } from '../../../common/types/jwt-request.type';
-import { sessionClient } from '../../presentation/session-client';
+import type { JwtRequest } from '../../../../common/types/jwt-request.type';
+import { sessionClient } from '../../../presentation/session-client';
 import {
   CompleteMfaEnrollmentDto,
   MfaCodeDto,
   StartMfaEnrollmentDto,
   VerifyMfaDto,
-} from '../application/dto/mfa.dto';
-import { MfaService } from '../application/mfa.service';
+} from '../../application/dto/mfa.dto';
+import { MfaService } from '../../application/services/mfa.service';
 
 function roleNames(roles: JwtRequest['user']['roles']): string[] {
   return roles.map((role) => (typeof role === 'string' ? role : role.name));

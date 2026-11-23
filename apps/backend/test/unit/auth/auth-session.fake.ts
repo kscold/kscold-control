@@ -1,6 +1,6 @@
 import { JwtService } from '@nestjs/jwt';
 import { randomBytes } from 'node:crypto';
-import { MfaConfig } from '@/auth/mfa/application/mfa-config';
+import { MfaConfig } from '@/auth/mfa/application/config/mfa.config';
 import { AuthSessionService } from '@/auth/application/services/auth-session.service';
 import { SessionConnectionRegistry } from '@/auth/application/services/session-connection-registry.service';
 import { SessionVerifier } from '@/auth/application/services/session-verifier.service';

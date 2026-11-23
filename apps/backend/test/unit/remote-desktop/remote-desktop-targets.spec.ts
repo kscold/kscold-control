@@ -1,7 +1,7 @@
 import { Test } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
 import { DataSource } from 'typeorm';
-import { RemoteDesktopTargetsService } from '../../../src/remote-desktop/remote-desktop-targets.service';
+import { RemoteDesktopTargetsService } from '../../../src/remote-desktop/application/services/remote-desktop-targets.service';
 import { SecretEncryptionService } from '../../../src/common/crypto/secret-encryption.service';
 import { sanitizeHttpRequestBody } from '../../../src/common/utils/http-log-sanitizer.util';
 

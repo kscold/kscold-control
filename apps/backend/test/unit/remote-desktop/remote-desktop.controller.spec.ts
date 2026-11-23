@@ -1,7 +1,7 @@
 import { ForbiddenException } from '@nestjs/common';
-import { RemoteDesktopController } from '../../../src/remote-desktop/remote-desktop.controller';
-import type { RemoteDesktopService } from '../../../src/remote-desktop/remote-desktop.service';
-import type { RemoteDesktopTargetsService } from '../../../src/remote-desktop/remote-desktop-targets.service';
+import { RemoteDesktopController } from '../../../src/remote-desktop/presentation/controllers/remote-desktop.controller';
+import type { RemoteDesktopService } from '../../../src/remote-desktop/application/services/remote-desktop.service';
+import type { RemoteDesktopTargetsService } from '../../../src/remote-desktop/application/services/remote-desktop-targets.service';
 import type { JwtRequest } from '../../../src/common/types/jwt-request.type';
 
 describe('원격 대상 깨우기·상태 권한', () => {

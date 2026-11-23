@@ -45,7 +45,7 @@ import { WorktreeCleanupTarget } from './maintenance/domain/entities/worktree-cl
 import { WorktreeCleanupRun } from './maintenance/domain/entities/worktree-cleanup-run.entity';
 import { StorageTrimRun } from './maintenance/domain/entities/storage-trim-run.entity';
 import { AuthSession } from './auth/domain/entities/auth-session.entity';
-import { UserMfa } from './auth/mfa/domain/user-mfa.entity';
+import { UserMfa } from './auth/mfa/domain/entities/user-mfa.entity';
 
 import { HttpLoggerMiddleware } from './common/middleware/http-logger.middleware';
 import {

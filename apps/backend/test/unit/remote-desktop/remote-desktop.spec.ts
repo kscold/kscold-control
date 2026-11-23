@@ -9,7 +9,7 @@ import { WebSocket } from 'ws';
 import {
   RemoteDesktopService,
   canControlDesktop,
-} from '../../../src/remote-desktop/remote-desktop.service';
+} from '../../../src/remote-desktop/application/services/remote-desktop.service';
 import { USER_REPOSITORY } from '../../../src/rbac/domain/repositories/user.repository.interface';
 import { SessionVerifier } from '../../../src/auth/application/services/session-verifier.service';
 import { SessionConnectionRegistry } from '../../../src/auth/application/services/session-connection-registry.service';

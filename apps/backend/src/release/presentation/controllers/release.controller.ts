@@ -2,7 +2,7 @@ import { Controller, Get } from '@nestjs/common';
 import { createHash } from 'crypto';
 import { existsSync, readFileSync, readdirSync } from 'fs';
 import { join, relative } from 'path';
-import { resolveFrontendDistPath } from '../common/utils/frontend-dist-path.util';
+import { resolveFrontendDistPath } from '../../../common/utils/frontend-dist-path.util';
 
 // scripts/lib/frontend-release.mjs 가 남기는 이번 빌드 원본 자산 목록
 const FRONTEND_ASSET_LIST = '.control-frontend-assets.json';

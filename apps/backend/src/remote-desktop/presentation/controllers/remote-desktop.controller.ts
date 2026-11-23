@@ -12,14 +12,14 @@ import {
   ForbiddenException,
 } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
-import type { JwtRequest } from '../common/types/jwt-request.type';
+import type { JwtRequest } from '../../../common/types/jwt-request.type';
 import {
   RemoteDesktopService,
   canControlDesktop,
-} from './remote-desktop.service';
-import { RemoteDesktopTargetsService } from './remote-desktop-targets.service';
-import { SaveDesktopTargetDto } from './presentation/dto/save-desktop-target.dto';
-import { Audit } from '../common/decorators/audit.decorator';
+} from '../../application/services/remote-desktop.service';
+import { RemoteDesktopTargetsService } from '../../application/services/remote-desktop-targets.service';
+import { SaveDesktopTargetDto } from '../../application/dto/save-desktop-target.dto';
+import { Audit } from '../../../common/decorators/audit.decorator';
 
 @Controller('remote-desktop')
 @UseGuards(AuthGuard('jwt'))

@@ -1,9 +1,9 @@
 import * as bcrypt from 'bcrypt';
-import { MfaChallengeStore } from '@/auth/mfa/application/mfa-challenge.store';
-import { MfaService } from '@/auth/mfa/application/mfa.service';
+import { MfaChallengeStore } from '@/auth/mfa/application/services/mfa-challenge.store';
+import { MfaService } from '@/auth/mfa/application/services/mfa.service';
 import type { LoginAttemptReason } from '@/security/domain/login-guard/login-block.policy';
-import type { UserMfa } from '@/auth/mfa/domain/user-mfa.entity';
-import type { IUserMfaRepository } from '@/auth/mfa/domain/user-mfa.repository.interface';
+import type { UserMfa } from '@/auth/mfa/domain/entities/user-mfa.entity';
+import type { IUserMfaRepository } from '@/auth/mfa/domain/repositories/user-mfa.repository.interface';
 import { loginGuardHarness } from '../security/login-guard.fake';
 import { sessionHarness } from './auth-session.fake';
 

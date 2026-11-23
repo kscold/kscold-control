@@ -8,16 +8,16 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { DataSource } from 'typeorm';
-import type { SaveDesktopTargetDto } from './presentation/dto/save-desktop-target.dto';
+import type { SaveDesktopTargetDto } from '../dto/save-desktop-target.dto';
 import { randomUUID } from 'node:crypto';
-import { SecretEncryptionService } from '../common/crypto/secret-encryption.service';
+import { SecretEncryptionService } from '../../../common/crypto/secret-encryption.service';
 import {
   defaultBroadcast,
   isPrivateIPv4,
   normalizeMac,
   probeTcp,
   sendMagicPacket,
-} from './remote-desktop-network';
+} from '../../infrastructure/gateways/remote-desktop-network';
 
 interface TargetRow {
   id: string;

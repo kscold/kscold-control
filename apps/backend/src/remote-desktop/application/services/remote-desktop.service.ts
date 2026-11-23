@@ -18,11 +18,11 @@ import { WebSocketServer, WebSocket, createWebSocketStream } from 'ws';
 import {
   USER_REPOSITORY,
   IUserRepository,
-} from '../rbac/domain/repositories/user.repository.interface';
-import type { JwtPayload } from '../common/types/jwt-request.type';
-import { isGlobalAdministrator } from '../common/utils/role-access.util';
-import { SessionVerifier } from '../auth/application/services/session-verifier.service';
-import { SessionConnectionRegistry } from '../auth/application/services/session-connection-registry.service';
+} from '../../../rbac/domain/repositories/user.repository.interface';
+import type { JwtPayload } from '../../../common/types/jwt-request.type';
+import { isGlobalAdministrator } from '../../../common/utils/role-access.util';
+import { SessionVerifier } from '../../../auth/application/services/session-verifier.service';
+import { SessionConnectionRegistry } from '../../../auth/application/services/session-connection-registry.service';
 import type {
   DesktopConnection,
   DesktopProtocol,
@@ -31,7 +31,7 @@ import {
   encodeInstruction,
   InstructionReader,
   rdpHandshake,
-} from './guacamole';
+} from '../../infrastructure/gateways/guacamole-protocol';
 
 const PATHS: Record<DesktopProtocol, string> = {
   vnc: '/api/remote-desktop/socket',

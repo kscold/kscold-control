@@ -1,8 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { UserMfa } from '../domain/user-mfa.entity';
-import type { IUserMfaRepository } from '../domain/user-mfa.repository.interface';
+import { UserMfa } from '../../domain/entities/user-mfa.entity';
+import type { IUserMfaRepository } from '../../domain/repositories/user-mfa.repository.interface';
 
 @Injectable()
 export class TypeOrmUserMfaRepository implements IUserMfaRepository {

@@ -1,4 +1,4 @@
-import type { UserMfa } from './user-mfa.entity';
+import type { UserMfa } from '../entities/user-mfa.entity';
 
 export const USER_MFA_REPOSITORY = Symbol('USER_MFA_REPOSITORY');
 

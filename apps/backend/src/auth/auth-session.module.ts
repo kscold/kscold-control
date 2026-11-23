@@ -8,7 +8,7 @@ import { SessionVerifier } from './application/services/session-verifier.service
 import { AuthSession } from './domain/entities/auth-session.entity';
 import { AUTH_SESSION_REPOSITORY } from './domain/repositories/auth-session.repository.interface';
 import { TypeOrmAuthSessionRepository } from './infrastructure/repositories/typeorm-auth-session.repository';
-import { MfaConfig } from './mfa/application/mfa-config';
+import { MfaConfig } from './mfa/application/config/mfa.config';
 import { User } from '../rbac/domain/entities/user.entity';
 import { USER_REPOSITORY } from '../rbac/domain/repositories/user.repository.interface';
 import { TypeOrmUserRepository } from '../rbac/infrastructure/repositories/typeorm-user.repository';

@@ -1,5 +1,5 @@
 import { IsIn, IsNotEmpty, IsString, MaxLength } from 'class-validator';
-import type { MfaMethod } from '../mfa.service';
+import type { MfaMethod } from '../services/mfa.service';
 
 export class MfaCodeDto {
   @IsString()
