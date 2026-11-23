@@ -1,3 +1,4 @@
+import { useRef } from 'react';
 import { useAuthStore } from '@/shared/model';
 import { useModalStore } from '@/shared/model';
 import { useTerminalSession } from '../model/useTerminalSession';
@@ -6,16 +7,19 @@ import { useTerminalSocket } from '../model/useTerminalSocket';
 import { getTerminalSessionStorageKey } from '../lib/terminal.constants';
 import { TerminalCopySheet } from './TerminalCopySheet';
 import { TerminalHeader } from './TerminalHeader';
+import { TerminalKeyBar } from './TerminalKeyBar';
 
 interface TerminalProps {
   terminalId: string;
-  onSwitchToClaude?: () => void;
+  launch?: 'codex' | 'claude';
+  onLaunch?: (agent: 'codex' | 'claude') => void;
 }
 
 /**
  * XTerm.js와 Socket.io로 동작하는 메인 터미널 컴포넌트
  */
-export function Terminal({ terminalId, onSwitchToClaude }: TerminalProps) {
+export function Terminal({ terminalId, launch, onLaunch }: TerminalProps) {
+  const launched = useRef(false);
   const { token } = useAuthStore();
   const { showConfirm } = useModalStore();
   const storageKey = getTerminalSessionStorageKey(terminalId);
@@ -38,11 +42,21 @@ export function Terminal({ terminalId, onSwitchToClaude }: TerminalProps) {
   });
 
   // Socket.io 연결
-  const socket = useTerminalSocket({
+  const socket: ReturnType<typeof useTerminalSocket> = useTerminalSocket({
     token,
     xterm,
     savedSessionId: getSavedSessionId(),
-    onSessionReady: handleSessionReady,
+    onSessionReady: (data) => {
+      const reconnected = handleSessionReady(data);
+      if (launch && !reconnected && !launched.current) {
+        launched.current = true;
+        socket.sendInput(
+          `${launch === 'claude' ? data.claudeLaunchCommand || 'claude' : 'codex'}\r`,
+        );
+        xterm?.focus();
+      }
+      return reconnected;
+    },
     onConnected: () => setConnected(true),
     onDisconnected: () => setConnected(false),
     onCommandCount: updateCommandCount,
@@ -52,8 +66,8 @@ export function Terminal({ terminalId, onSwitchToClaude }: TerminalProps) {
    * claude 명령어를 실행한다
    */
   const handleClaudeCommand = () => {
-    if (onSwitchToClaude) {
-      onSwitchToClaude();
+    if (onLaunch) {
+      onLaunch('claude');
     } else if (session.isConnected) {
       socket.sendInput(session.claudeLaunchCommand || 'claude');
       xterm?.focus();
@@ -81,6 +95,10 @@ export function Terminal({ terminalId, onSwitchToClaude }: TerminalProps) {
         session={session}
         onClaudeCommand={handleClaudeCommand}
         onCodexCommand={() => {
+          if (onLaunch) {
+            onLaunch('codex');
+            return;
+          }
           if (!session.isConnected) return;
           socket.sendInput('codex');
           xterm?.focus();
@@ -94,6 +112,13 @@ export function Terminal({ terminalId, onSwitchToClaude }: TerminalProps) {
         />
         <TerminalCopySheet xterm={xterm} />
       </div>
+      <TerminalKeyBar
+        disabled={!session.isConnected}
+        onKey={(sequence) => {
+          socket.sendInput(sequence);
+          xterm?.focus();
+        }}
+      />
     </div>
   );
 }

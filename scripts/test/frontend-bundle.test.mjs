@@ -167,9 +167,8 @@ test(
       page.getByRole('heading', { name: '소스 저장소', exact: true }),
     ).toBeVisible();
     await page.goto(`${baseURL}/terminal`);
-    await expect(
-      page.getByRole('heading', { name: 'Claude Code Workspace', exact: true }),
-    ).toBeVisible();
+    // 작업 공간은 일반 터미널 탭으로 열리고 Codex·Claude 는 버튼으로 새 탭에서 실행한다.
+    await expect(page.getByRole('button', { name: 'Codex 실행' })).toBeVisible();
     await expect(page.locator('.xterm-screen')).toBeVisible();
     await expect(page.locator('.xterm-helper-textarea')).toHaveCount(1);
     await expect
@@ -183,6 +182,8 @@ test(
 
     await page.setViewportSize({ width: 390, height: 844 });
     await expect(page.locator('.xterm-screen')).toBeVisible();
+    // 휴대폰 폭에서는 키보드에 없는 특수 키 줄이 보인다.
+    await expect(page.getByRole('toolbar', { name: '특수 키' })).toBeVisible();
     await expect
       .poll(async () =>
         page.evaluate(
