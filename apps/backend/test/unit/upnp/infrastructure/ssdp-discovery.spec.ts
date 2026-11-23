@@ -1,7 +1,7 @@
 import type { Mock } from 'vitest';
 import { EventEmitter } from 'events';
 import * as dgram from 'dgram';
-import { searchSsdp } from '@/upnp/infrastructure/ssdp-discovery';
+import { searchSsdp } from '@/upnp/infrastructure/gateways/ssdp-discovery.gateway';
 
 vi.mock('dgram', () => ({ createSocket: vi.fn() }));
 

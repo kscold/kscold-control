@@ -1,6 +1,6 @@
 import { createServer, type Server, type ServerResponse } from 'http';
 import type { AddressInfo } from 'net';
-import { requestGateway } from '@/upnp/infrastructure/gateway-http';
+import { requestGateway } from '@/upnp/infrastructure/gateways/upnp-http.gateway';
 
 describe('UPnP HTTP 자원 제한', () => {
   let server: Server;

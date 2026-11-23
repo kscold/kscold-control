@@ -4,7 +4,7 @@ import {
   parseSshAuditLine,
   parseSshSessionCommand,
   summarizeSshAudit,
-} from '@/security/domain/ssh-audit/ssh-audit.model';
+} from '@/security/domain/models/ssh-audit.model';
 
 const line = (...cols: string[]) => cols.join('\t');
 

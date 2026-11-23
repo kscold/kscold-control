@@ -11,7 +11,7 @@ import {
 import { AuthGuard } from '@nestjs/passport';
 import type { Request } from 'express';
 import type { JwtRequest } from '../../../../common/types/jwt-request.type';
-import { sessionClient } from '../../../presentation/session-client';
+import { sessionClient } from '../../../presentation/mappers/session-client.mapper';
 import {
   CompleteMfaEnrollmentDto,
   MfaCodeDto,

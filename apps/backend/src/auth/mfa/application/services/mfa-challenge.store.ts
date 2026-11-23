@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { randomBytes } from 'node:crypto';
-import type { MfaChallengeToken } from '../../../application/dto/login-result';
+import type { MfaChallengeToken } from '../../../application/dto/login-result.dto';
 
 export const MFA_CHALLENGE_TTL_MS = 5 * 60 * 1000;
 export const MFA_CHALLENGE_MAX_FAILURES = 5;

@@ -28,9 +28,9 @@ import {
   LocalStorageLayout,
   RECEIPT_DIR,
   STAGING_DIR,
-} from './local-storage-layout';
-import { LocalUploadPublisher } from './local-upload-publisher';
-import { LocalVersionStore } from './local-version-store';
+} from './local-storage-layout.util';
+import { LocalUploadPublisher } from './local-upload-publisher.gateway';
+import { LocalVersionStore } from './local-version-store.gateway';
 
 @Injectable()
 export class LocalFileStorageService implements IFileStorage, OnModuleInit {

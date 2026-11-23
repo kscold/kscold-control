@@ -7,8 +7,8 @@ import {
   RepositoryFileInspection,
   StagedUploadInspection,
 } from '../../domain/gateways/file-storage.gateway.interface';
-import { RECEIPT_DIR, LocalStorageLayout } from './local-storage-layout';
-import { LocalVersionStore } from './local-version-store';
+import { RECEIPT_DIR, LocalStorageLayout } from './local-storage-layout.util';
+import { LocalVersionStore } from './local-version-store.gateway';
 
 type PublishReceiptState = 'prepared' | 'live_backed_up' | 'published';
 

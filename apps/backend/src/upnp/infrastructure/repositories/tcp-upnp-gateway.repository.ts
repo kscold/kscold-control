@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { isIP } from 'net';
-import { searchSsdp } from '../ssdp-discovery';
-import { requestGateway } from '../gateway-http';
+import { searchSsdp } from '../gateways/ssdp-discovery.gateway';
+import { requestGateway } from '../gateways/upnp-http.gateway';
 import { UpnpQueryError } from '../../domain/errors/upnp-query.error';
 
 import type { IUpnpGatewayRepository } from '../../domain/repositories/upnp-gateway.repository.interface';

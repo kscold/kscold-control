@@ -12,7 +12,7 @@ import type { IpBan } from '@/security/domain/entities/ip-ban.entity';
 import type {
   LoginAttemptRecord,
   LoginOrigin,
-} from '@/security/domain/login-guard/login-block.policy';
+} from '@/security/domain/policies/login-block.policy';
 import type {
   CreateIpBanInput,
   IIpBanRepository,

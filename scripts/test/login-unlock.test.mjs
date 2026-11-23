@@ -3,7 +3,7 @@ import { randomBytes } from 'node:crypto';
 import { BlockList } from 'node:net';
 import { join } from 'node:path';
 import test from 'node:test';
-import * as backendPolicy from '../../apps/backend/src/security/domain/login-guard/login-block.policy.ts';
+import * as backendPolicy from '../../apps/backend/src/security/domain/policies/login-block.policy.ts';
 import * as backendClientIp from '../../apps/backend/src/common/utils/client-ip.util.ts';
 import {
   auditLogPath,

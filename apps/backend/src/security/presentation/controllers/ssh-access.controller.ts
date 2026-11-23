@@ -27,7 +27,7 @@ import {
   SshKnownLabelDto,
 } from '../../application/dto/ssh-access.dto';
 import { SshCountryGuardService } from '../../application/services/ssh-country-guard.service';
-import type { CountryGuardSettings } from '../../domain/ssh-audit/country-guard.policy';
+import type { CountryGuardSettings } from '../../domain/policies/country-guard.policy';
 
 /**
  * 맥미니 SSH 접속 기록·열린 세션·차단

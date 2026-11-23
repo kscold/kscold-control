@@ -14,7 +14,7 @@ import {
   normalizeLoginAccount,
   type LoginAttemptRecord,
   type LoginSubject,
-} from '@/security/domain/login-guard/login-block.policy';
+} from '@/security/domain/policies/login-block.policy';
 import { mfaHarness } from '../auth/mfa.fake';
 import { loginGuardHarness } from './login-guard.fake';
 

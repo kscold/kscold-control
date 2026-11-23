@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import type { IDockerCleanupGateway } from '../../domain/gateways/docker-cleanup.gateway.interface';
-import { resolveDockerHost } from '../lib/docker-host';
+import { resolveDockerHost } from '../../../common/utils/docker-host.util';
 
 const execFileAsync = promisify(execFile);
 

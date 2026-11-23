@@ -17,7 +17,7 @@ import type {
   LoginResult,
   MfaChallengeToken,
   MfaEnrollmentSetup,
-} from '../../../application/dto/login-result';
+} from '../../../application/dto/login-result.dto';
 import {
   AuthSessionService,
   type SessionClient,

@@ -1,4 +1,4 @@
-import { classifySshIp } from '../ssh-audit/ssh-audit.model';
+import { classifySshIp } from '../models/ssh-audit.model';
 
 export const IP_GEO_READER = Symbol('IP_GEO_READER');
 

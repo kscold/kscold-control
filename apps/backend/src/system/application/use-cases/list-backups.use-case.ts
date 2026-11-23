@@ -4,7 +4,7 @@ import {
   type IMongodbBackupRepository,
   type MongodbBackupEntry,
 } from '../../domain/repositories/mongodb-backup.repository.interface';
-import { assertValidBackupContainerName } from '../utils/backup-container-name';
+import { assertValidBackupContainerName } from '../utils/backup-container-name.util';
 
 /** 지정 컨테이너의 MongoDB 백업 목록 조회 */
 @Injectable()

@@ -6,7 +6,7 @@ import type { ILoginAttemptRepository } from '../../domain/repositories/login-at
 import type {
   LoginAttemptRecord,
   LoginOrigin,
-} from '../../domain/login-guard/login-block.policy';
+} from '../../domain/policies/login-block.policy';
 
 @Injectable()
 export class TypeOrmLoginAttemptRepository implements ILoginAttemptRepository {

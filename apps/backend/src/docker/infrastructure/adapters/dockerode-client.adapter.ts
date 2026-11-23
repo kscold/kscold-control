@@ -16,12 +16,12 @@ import {
   DockerOperationException,
 } from '../../../common/exceptions';
 import { ResourceConfig } from '../../domain/value-objects/resource-config.vo';
-import { resolveDockerConnectionOptions } from '../lib/docker-host';
+import { resolveDockerConnectionOptions } from '../../../common/utils/docker-host.util';
 import {
   getBlogSupervisorServices,
   parseSupervisorStatus,
   READ_MANAGED_PROCESSES,
-} from '../lib/supervisor-processes';
+} from '../lib/supervisor-processes.util';
 
 /**
  * Dockerode를 Docker 게이트웨이 계약으로 변환하는 인프라 어댑터임.

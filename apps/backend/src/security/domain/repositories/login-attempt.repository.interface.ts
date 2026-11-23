@@ -1,7 +1,7 @@
 import type {
   LoginAttemptRecord,
   LoginOrigin,
-} from '../login-guard/login-block.policy';
+} from '../policies/login-block.policy';
 
 export const LOGIN_ATTEMPT_REPOSITORY = Symbol('LOGIN_ATTEMPT_REPOSITORY');
 

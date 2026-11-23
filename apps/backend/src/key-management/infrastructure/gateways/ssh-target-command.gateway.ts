@@ -7,7 +7,7 @@ import type {
   KeyManagementTarget,
   SshConnectionConfig,
 } from '../../domain/types/key-management-target.type';
-import { runProcess } from './process-runner';
+import { runProcess } from './process-runner.gateway';
 
 interface SshCommandOptions {
   input?: string;

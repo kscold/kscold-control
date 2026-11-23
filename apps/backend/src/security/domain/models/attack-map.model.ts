@@ -2,7 +2,7 @@
  * 공격 지도 — SSH 기록과 Control 로그인 실패를 IP 별로 합치고 나라별로 묶는다 (순수 함수)
  */
 import type { IpGeo } from '../gateways/ip-geo.gateway.interface';
-import { classifySshIp, type SshIpSummary } from '../ssh-audit/ssh-audit.model';
+import { classifySshIp, type SshIpSummary } from './ssh-audit.model';
 
 /** Control 웹 로그인에서 IP 하나가 실패하거나 거절당한 횟수 */
 export interface WebLoginFailures {

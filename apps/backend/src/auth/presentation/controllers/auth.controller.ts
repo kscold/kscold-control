@@ -26,7 +26,7 @@ import type { JwtRequest } from '../../../common/types/jwt-request.type';
 import { Audit } from '../../../common/decorators/audit.decorator';
 import { AllowDuringImpersonation } from '../../../common/decorators/allow-during-impersonation.decorator';
 import { AuthSessionService } from '../../application/services/auth-session.service';
-import { sessionClient } from '../session-client';
+import { sessionClient } from '../mappers/session-client.mapper';
 
 @Controller('auth')
 export class AuthController {

@@ -7,7 +7,7 @@ import {
 } from '../../domain/gateways/deployment.gateway.interface';
 import { KeyManagementTargetService } from '../../application/services/key-management-target.service';
 import type { GithubActionsDeploymentConfig } from '../../domain/types/key-management-target.type';
-import { runProcess } from './process-runner';
+import { runProcess } from './process-runner.gateway';
 
 interface GithubRunRecord {
   databaseId?: number;

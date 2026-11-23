@@ -10,7 +10,7 @@ import { isReservedRepositoryPath } from '../../domain/policies/repository-path.
 import {
   LEGACY_VERSIONS_DIR,
   LocalStorageLayout,
-} from './local-storage-layout';
+} from './local-storage-layout.util';
 
 export class LocalVersionStore {
   constructor(

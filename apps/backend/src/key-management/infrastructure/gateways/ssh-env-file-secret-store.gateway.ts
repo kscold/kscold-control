@@ -18,7 +18,7 @@ import { KeyManagementTargetService } from '../../application/services/key-manag
 import {
   shellQuote,
   SshTargetCommandService,
-} from './ssh-target-command.service';
+} from './ssh-target-command.gateway';
 
 @Injectable()
 export class SshEnvFileSecretStoreGateway implements ISecretStoreGateway {

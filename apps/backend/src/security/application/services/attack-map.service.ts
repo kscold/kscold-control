@@ -3,8 +3,8 @@ import {
   buildAttackMap,
   type AttackCountry,
   type AttackPoint,
-} from '../../domain/attack-map/attack-map.model';
-import { parseIpRange, rangeContains } from '../../domain/ip-range';
+} from '../../domain/models/attack-map.model';
+import { parseIpRange, rangeContains } from '../../domain/value-objects/ip-range.vo';
 import {
   IP_BAN_REPOSITORY,
   type IIpBanRepository,

@@ -21,7 +21,7 @@ import {
   type SshAuditSummary,
   type SshIpScope,
   type SshIpSummary,
-} from '../../domain/ssh-audit/ssh-audit.model';
+} from '../../domain/models/ssh-audit.model';
 import {
   IP_GEO_READER,
   externalGeo,
@@ -34,7 +34,7 @@ import {
   rangesOverlap,
   type IpFamily,
   type IpRange,
-} from '../../domain/ip-range';
+} from '../../domain/value-objects/ip-range.vo';
 import { IpAllowlistService } from './ip-allowlist.service';
 
 const execFileAsync = promisify(execFile);

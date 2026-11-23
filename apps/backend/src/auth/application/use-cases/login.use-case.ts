@@ -11,7 +11,7 @@ import {
   type LoginClient,
 } from '../../../security/application/services/login-guard.service';
 import { LoginDto } from '../dto';
-import type { LoginResult } from '../dto/login-result';
+import type { LoginResult } from '../dto/login-result.dto';
 import { MfaService } from '../../mfa/application/services/mfa.service';
 import {
   AuthSessionService,

@@ -19,7 +19,7 @@ import {
   type UpdateBackupTargetInput,
 } from '../../domain/repositories/backup-target.repository.interface';
 import { BackupTargetSecretService } from '../services/backup-target-secret.service';
-import { assertValidMongodbUri } from '../utils/backup-target-input';
+import { assertValidMongodbUri } from '../utils/backup-target-input.util';
 
 export interface UpdateBackupTargetParams {
   description?: string;

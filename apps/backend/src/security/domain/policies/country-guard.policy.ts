@@ -1,5 +1,5 @@
-import { ISO_COUNTRY_CODES } from './iso-country-codes';
-import { classifySshIp, type SshAuditEvent } from './ssh-audit.model';
+import { ISO_COUNTRY_CODES } from '../constants/iso-country-codes.constant';
+import { classifySshIp, type SshAuditEvent } from '../models/ssh-audit.model';
 
 /** 허용 국가 밖 SSH 차단 설정. 저장된 값이 없으면 한국만 허용하고 켠다. */
 export interface CountryGuardSettings {

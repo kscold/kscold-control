@@ -1,7 +1,7 @@
 import type { Request } from 'express';
-import { clientAddress } from '../../common/utils/client-ip.util';
-import type { LoginClient } from '../../security/application/services/login-guard.service';
-import type { SessionClient } from '../application/services/auth-session.service';
+import { clientAddress } from '../../../common/utils/client-ip.util';
+import type { LoginClient } from '../../../security/application/services/login-guard.service';
+import type { SessionClient } from '../../application/services/auth-session.service';
 
 export function sessionClient(req: Request): SessionClient & LoginClient {
   const { ip, verified } = clientAddress(req);

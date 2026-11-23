@@ -1,8 +1,8 @@
 import type { MockInstance } from 'vitest';
 import { TcpUpnpGatewayRepository } from '@/upnp/infrastructure/repositories/tcp-upnp-gateway.repository';
-import { searchSsdp } from '@/upnp/infrastructure/ssdp-discovery';
+import { searchSsdp } from '@/upnp/infrastructure/gateways/ssdp-discovery.gateway';
 
-vi.mock('@/upnp/infrastructure/ssdp-discovery', () => ({
+vi.mock('@/upnp/infrastructure/gateways/ssdp-discovery.gateway', () => ({
   searchSsdp: vi.fn(),
 }));
 const gateway = {
