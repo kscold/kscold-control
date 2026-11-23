@@ -2,3 +2,4 @@ export * from './update-environment.dto';
 export * from './patch-environment-key.dto';
 export * from './restore-secret-backup.dto';
 export * from './create-ssh-key.dto';
+export * from './create-key-management-target.dto';

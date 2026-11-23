@@ -1,4 +1,6 @@
 import {
+  BadRequestException,
+  ConflictException,
   Inject,
   Injectable,
   NotFoundException,
@@ -57,8 +59,48 @@ export class KeyManagementTargetService {
     return this.validateAndMap(target);
   }
 
+  /** 새 대상을 등록한다. 기존 대상과 같은 규칙으로 검사하고, 틀린 곳을 문장으로 알려 준다. */
+  async create(input: KeyManagementTarget): Promise<KeyManagementTarget> {
+    if (!TARGET_ID.test(input.id)) {
+      throw new BadRequestException(
+        'ID 는 영문 소문자·숫자·- 로 2~80자여야 합니다.',
+      );
+    }
+    if (await this.repository.exists(input.id)) {
+      throw new ConflictException(`이미 있는 대상 ID 입니다: ${input.id}`);
+    }
+    try {
+      this.assertValid(input);
+    } catch (error) {
+      throw new BadRequestException((error as Error).message);
+    }
+    const target = { ...input, enabled: true };
+    await this.repository.create(target);
+    return this.validateAndMap(target);
+  }
+
+  async disable(targetId: string): Promise<void> {
+    if (
+      !TARGET_ID.test(targetId) ||
+      !(await this.repository.disable(targetId))
+    ) {
+      throw new NotFoundException('켜져 있는 키 관리 대상이 아닙니다.');
+    }
+  }
+
   private validateAndMap(input: KeyManagementTarget): KeyManagementTarget {
     try {
+      this.assertValid(input);
+    } catch {
+      throw new ServiceUnavailableException(
+        `키 관리 대상 ${input.id} 설정이 올바르지 않습니다.`,
+      );
+    }
+    return this.toTarget(input);
+  }
+
+  private assertValid(input: KeyManagementTarget): void {
+    {
       if (
         !TARGET_ID.test(input.id) ||
         !input.displayName ||
@@ -73,7 +115,9 @@ export class KeyManagementTargetService {
         new Set(input.requiredKeys).size !== input.requiredKeys.length ||
         !input.requiredKeys.every((key) => ENV_KEY.test(key))
       ) {
-        throw new Error('invalid target metadata');
+        throw new Error(
+          'ID·이름·설명·환경·파일 이름·인스턴스·위치와 필수 키(영문 대문자·숫자·_, 1~256개, 중복 없음)를 확인해 주세요.',
+        );
       }
 
       if (input.provider === 'gcp-secret-manager') {
@@ -86,7 +130,7 @@ export class KeyManagementTargetService {
           input.requiredKeys,
         );
       } else {
-        throw new Error('invalid secret provider');
+        throw new Error('지원하지 않는 비밀값 저장 방식입니다.');
       }
 
       if (input.deploymentProvider === 'github-actions') {
@@ -104,9 +148,9 @@ export class KeyManagementTargetService {
           config.protocol !== 'env-v1' ||
           Object.keys(config).some((key) => key !== 'protocol')
         )
-          throw new Error('invalid command deployment config');
+          throw new Error('명령형 배포 설정이 올바르지 않습니다.');
       } else {
-        throw new Error('invalid deployment provider');
+        throw new Error('지원하지 않는 배포 방식입니다.');
       }
 
       if (
@@ -117,14 +161,14 @@ export class KeyManagementTargetService {
         (input.provider === 'ssh-env-command' &&
           input.deploymentProvider !== 'ssh-env-command')
       ) {
-        throw new Error('invalid provider pairing');
+        throw new Error(
+          '비밀값 저장 방식과 배포 방식의 짝이 맞지 않습니다(GCP↔GitHub Actions, SSH 파일↔SSH 블루그린, SSH 명령↔SSH 명령).',
+        );
       }
-    } catch {
-      throw new ServiceUnavailableException(
-        `키 관리 대상 ${input.id} 설정이 올바르지 않습니다.`,
-      );
     }
+  }
 
+  private toTarget(input: KeyManagementTarget): KeyManagementTarget {
     return {
       id: input.id,
       displayName: input.displayName,
@@ -152,14 +196,16 @@ export class KeyManagementTargetService {
         config.serviceAccount,
       )
     ) {
-      throw new Error('invalid GCP config');
+      throw new Error(
+        'GCP 프로젝트 ID·비밀 이름·서비스 계정(…@….iam.gserviceaccount.com)을 확인해 주세요.',
+      );
     }
   }
 
   private assertSshConfig(config: SshSecretStoreConfig): void {
     this.assertConnection(config);
     if (!SAFE_PATH.test(config.envPath))
-      throw new Error('invalid SSH env path');
+      throw new Error('원격 .env 경로는 /로 시작하는 전체 경로여야 합니다.');
   }
 
   private assertConnection(config: SshConnectionConfig): void {
@@ -172,7 +218,9 @@ export class KeyManagementTargetService {
       !SAFE_USERNAME.test(config.username) ||
       !SAFE_CREDENTIAL_REF.test(config.credentialRef)
     ) {
-      throw new Error('invalid SSH config');
+      throw new Error(
+        'SSH 호스트·포트·사용자·키 이름(영문 소문자·숫자·-)을 확인해 주세요.',
+      );
     }
   }
 
@@ -184,6 +232,23 @@ export class KeyManagementTargetService {
     // ['*'] 는 예약 키를 뺀 모든 키를 관리한다는 뜻 (서버도 같은 규칙으로 다시 검사)
     const anyKey =
       Array.isArray(config.allowedKeys) && acceptsAnyEnvKey(config.allowedKeys);
+    const reservedRequired = anyKey
+      ? requiredKeys.filter((key) => isReservedEnvKey(key))
+      : [];
+    if (reservedRequired.length > 0) {
+      throw new Error(
+        `모든 키(*)를 관리하는 대상은 배포 도구가 정하는 예약 키를 필수 키로 둘 수 없습니다: ${reservedRequired.join(', ')}`,
+      );
+    }
+    const missingAllowed =
+      !anyKey && Array.isArray(config.allowedKeys)
+        ? requiredKeys.filter((key) => !config.allowedKeys.includes(key))
+        : [];
+    if (missingAllowed.length > 0) {
+      throw new Error(
+        `필수 키가 관리할 키 목록에 없습니다: ${missingAllowed.join(', ')}`,
+      );
+    }
     if (
       config.protocol !== 'env-v1' ||
       !Array.isArray(config.allowedKeys) ||
@@ -213,7 +278,9 @@ export class KeyManagementTargetService {
           ].includes(key),
       )
     )
-      throw new Error('invalid command config');
+      throw new Error(
+        '허용 키 목록을 확인해 주세요. 필수 키는 모두 허용 키에 있어야 하고 PATH 같은 위험한 키는 쓸 수 없습니다.',
+      );
   }
 
   private assertGithubConfig(config: GithubActionsDeploymentConfig): void {
@@ -223,7 +290,9 @@ export class KeyManagementTargetService {
       !SAFE_WORKFLOW.test(config.workflow) ||
       !SAFE_REF.test(config.ref)
     ) {
-      throw new Error('invalid GitHub config');
+      throw new Error(
+        'GitHub 저장소(owner/name)·워크플로 파일(.yml)·브랜치를 확인해 주세요.',
+      );
     }
   }
 
@@ -236,7 +305,9 @@ export class KeyManagementTargetService {
       !/^[A-Za-z0-9._-]{1,120}$/.test(config.script) ||
       !SAFE_PATH.test(config.statusDirectory)
     ) {
-      throw new Error('invalid SSH deployment config');
+      throw new Error(
+        '배포 작업 폴더·스크립트 이름·상태 폴더를 확인해 주세요.',
+      );
     }
   }
 }

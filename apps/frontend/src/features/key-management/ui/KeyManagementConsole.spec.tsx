@@ -7,6 +7,7 @@ const mocks = vi.hoisted(() => ({
   useKeyManagement: vi.fn(),
   showAlert: vi.fn(),
   showConfirm: vi.fn(),
+  canManageTargets: false,
 }));
 
 vi.mock('../model/useKeyManagement', () => ({
@@ -17,6 +18,10 @@ vi.mock('@/shared/model', () => ({
   useModalStore: () => ({
     showAlert: mocks.showAlert,
     showConfirm: mocks.showConfirm,
+  }),
+  usePermissions: () => ({
+    hasPermission: () => mocks.canManageTargets,
+    checkPermission: vi.fn(),
   }),
 }));
 
@@ -209,5 +214,49 @@ describe('KeyManagementConsole multi-target view', () => {
     expect(
       screen.getByRole('button', { name: /60초 동안 공개/ }),
     ).toBeEnabled();
+  });
+});
+
+describe('KeyManagementConsole 빈 상태', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.canManageTargets = false;
+  });
+
+  function emptyState(error: string | null = null) {
+    return { ...hookState(projectalpha), targets: [], target: null, error };
+  }
+
+  it('대상이 하나도 없으면 오류 대신 추가 안내를 보여 준다', () => {
+    mocks.canManageTargets = true;
+    mocks.useKeyManagement.mockReturnValue(emptyState());
+    render(<KeyManagementConsole />);
+
+    expect(
+      screen.getByText('아직 등록한 운영 키 대상이 없어요'),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: '대상 추가' }),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/불러오지 못했습니다/)).not.toBeInTheDocument();
+  });
+
+  it('권한 관리자가 아니면 추가 버튼 대신 요청 안내를 보여 준다', () => {
+    mocks.useKeyManagement.mockReturnValue(emptyState());
+    render(<KeyManagementConsole />);
+
+    expect(
+      screen.queryByRole('button', { name: '대상 추가' }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByText(/권한 관리자에게 요청/)).toBeInTheDocument();
+  });
+
+  it('실제로 불러오지 못했을 때만 오류를 보여 준다', () => {
+    mocks.useKeyManagement.mockReturnValue(emptyState('서버 응답 없음'));
+    render(<KeyManagementConsole />);
+
+    expect(
+      screen.getByText(/운영 키 대상을 불러오지 못했습니다/),
+    ).toBeInTheDocument();
   });
 });

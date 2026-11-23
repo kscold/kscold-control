@@ -22,7 +22,43 @@ function toSafeError(error: unknown, fallback: string): Error {
     : new Error(fallback);
 }
 
+export interface CreateKeyManagementTargetInput {
+  id: string;
+  displayName: string;
+  description: string;
+  environment: string;
+  provider: KeyManagementTarget['provider'];
+  deploymentProvider: KeyManagementTarget['deploymentProvider'];
+  envFileName: string;
+  instanceName: string;
+  location: string;
+  requiredKeys: string[];
+  secretConfig: Record<string, unknown>;
+  deploymentConfig: Record<string, unknown>;
+  sortOrder: number;
+}
+
 class KeyManagementService {
+  async createTarget(input: CreateKeyManagementTargetInput) {
+    try {
+      const { data } = await api.post<{ id: string; displayName: string }>(
+        '/key-management/targets',
+        input,
+      );
+      return data;
+    } catch (error) {
+      throw toSafeError(error, '운영 키 대상을 등록하지 못했습니다.');
+    }
+  }
+
+  async disableTarget(targetId: string) {
+    try {
+      await api.post(`/key-management/targets/${targetId}/disable`);
+    } catch (error) {
+      throw toSafeError(error, '운영 키 대상을 끄지 못했습니다.');
+    }
+  }
+
   async getTargets(): Promise<KeyManagementTarget[]> {
     try {
       const { data } = await api.get<KeyManagementTarget[]>(
