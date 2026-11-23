@@ -14,17 +14,29 @@ interface FileTreeViewProps {
   tree: FileTreeNode | null;
   selectedPath: string | null;
   onSelect: (path: string) => void;
+  /** 비었을 때 업로드로 바로 보내는 버튼 */
+  onStartUpload?: () => void;
 }
 
 export function FileTreeView({
   tree,
   selectedPath,
   onSelect,
+  onStartUpload,
 }: FileTreeViewProps) {
   if (!tree || !tree.children || tree.children.length === 0) {
     return (
       <div className="px-4 py-8 text-center text-xs text-gray-500">
-        파일이 없습니다
+        <p>아직 올린 파일이 없습니다</p>
+        {onStartUpload ? (
+          <button
+            type="button"
+            onClick={onStartUpload}
+            className="mt-3 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-500"
+          >
+            폴더 올리기
+          </button>
+        ) : null}
       </div>
     );
   }
