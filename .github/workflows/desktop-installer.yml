@@ -1,0 +1,62 @@
+name: Desktop installer
+
+# 설치 프로그램은 운영체제마다 그 운영체제에서 만들어야 네이티브 모듈(node-pty·bcrypt)이 맞는다.
+# 비용을 아끼려고 수동 실행과 버전 태그에서만 돈다.
+on:
+  workflow_dispatch:
+  push:
+    tags: ['v*']
+
+jobs:
+  build:
+    name: Build (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-latest
+            target: --mac dmg
+          - os: windows-latest
+            target: --win nsis
+          - os: ubuntu-latest
+            target: --linux AppImage deb
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build backend and frontend
+        run: pnpm --filter @kscold-control/backend --filter @kscold-control/frontend build
+
+      - name: Test desktop runtime
+        run: pnpm --filter @kscold-control/desktop test
+
+      - name: Build installer
+        working-directory: apps/desktop
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+        run: |
+          pnpm build
+          pnpm bundle:control
+          npx electron-builder --config electron-builder.yml ${{ matrix.target }} --publish never
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: kscold-control-${{ matrix.os }}
+          path: |
+            apps/desktop/release/*.dmg
+            apps/desktop/release/*.exe
+            apps/desktop/release/*.AppImage
+            apps/desktop/release/*.deb
+          if-no-files-found: error

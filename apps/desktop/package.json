@@ -1,0 +1,22 @@
+{
+  "name": "@kscold-control/desktop",
+  "version": "1.6.0",
+  "private": true,
+  "description": "kscold-control 을 한 번에 설치하고 백그라운드에서 실행하는 데스크톱 앱",
+  "main": "dist/main.js",
+  "scripts": {
+    "build": "tsc -p tsconfig.json && node scripts/copy-wizard.mjs",
+    "start": "pnpm build && electron .",
+    "test": "vitest run",
+    "bundle:control": "node scripts/prepare-control-bundle.mjs",
+    "dist": "pnpm build && pnpm bundle:control && electron-builder --config electron-builder.yml"
+  },
+  "devDependencies": {
+    "@electron/rebuild": "4.2.1",
+    "@types/node": "^20.11.16",
+    "electron": "45.2.3",
+    "electron-builder": "26.18.0",
+    "typescript": "^5.3.3",
+    "vitest": "^4.1.12"
+  }
+}
