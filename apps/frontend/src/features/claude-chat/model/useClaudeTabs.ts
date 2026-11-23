@@ -6,15 +6,13 @@ import {
 } from '@/shared/lib';
 
 export type TabType =
-  | 'terminal'
-  | 'claude-chat'
-  | 'claude-code'
-  | 'openai-chat';
+  'terminal' | 'claude-chat' | 'claude-code' | 'openai-chat';
 
 export interface Tab {
   id: string;
   title: string;
   type: TabType;
+  launch?: 'codex' | 'claude';
 }
 
 export function useClaudeTabs() {
@@ -29,8 +27,8 @@ export function useClaudeTabs() {
   const setTabMode = (tabId: string, mode: 'terminal' | 'claude') =>
     setTabModes((prev) => ({ ...prev, [tabId]: mode }));
 
-  const createTab = (type: TabType) => {
-    const newId = `${type}-${Date.now()}`;
+  const createTab = (type: TabType, launch?: Tab['launch']) => {
+    const newId = `${type}-${crypto.randomUUID()}`;
     const count = tabs.filter((t) => t.type === type).length + 1;
     const title =
       type === 'claude-code'
@@ -40,7 +38,16 @@ export function useClaudeTabs() {
           : type === 'openai-chat'
             ? `OpenAI ${count}`
             : `Terminal ${count}`;
-    setTabs((prev) => [...prev, { id: newId, title, type }]);
+    setTabs((prev) => [
+      ...prev,
+      {
+        id: newId,
+        title:
+          launch === 'codex' ? 'Codex' : launch === 'claude' ? 'Claude' : title,
+        type,
+        launch,
+      },
+    ]);
     setActiveTabId(newId);
   };
 

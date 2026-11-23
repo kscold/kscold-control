@@ -30,16 +30,22 @@
   font-family: 'D2Coding';
   font-style: normal;
   font-weight: 400;
-  src: url('https://cdn.jsdelivr.net/gh/Joungkyun/font-d2coding/D2Coding.woff2') format('woff2'),
-       url('https://cdn.jsdelivr.net/gh/Joungkyun/font-d2coding/D2Coding.woff') format('woff');
+  src:
+    url('https://cdn.jsdelivr.net/gh/Joungkyun/font-d2coding/D2Coding.woff2')
+      format('woff2'),
+    url('https://cdn.jsdelivr.net/gh/Joungkyun/font-d2coding/D2Coding.woff')
+      format('woff');
   font-display: swap;
 }
 @font-face {
   font-family: 'D2Coding';
   font-style: normal;
   font-weight: 700;
-  src: url('https://cdn.jsdelivr.net/gh/Joungkyun/font-d2coding/D2CodingBold.woff2') format('woff2'),
-       url('https://cdn.jsdelivr.net/gh/Joungkyun/font-d2coding/D2CodingBold.woff') format('woff');
+  src:
+    url('https://cdn.jsdelivr.net/gh/Joungkyun/font-d2coding/D2CodingBold.woff2')
+      format('woff2'),
+    url('https://cdn.jsdelivr.net/gh/Joungkyun/font-d2coding/D2CodingBold.woff')
+      format('woff');
   font-display: swap;
 }
 
@@ -58,6 +64,20 @@
 
   body {
     @apply bg-slate-900 text-slate-200 antialiased;
+  }
+
+  /* iOS Safari 는 16px 보다 작은 입력칸을 누르면 화면을 확대하고 되돌리지 않는다.
+     손가락으로 쓰는 기기에서는 입력칸 글자를 16px 이상으로 둔다(터미널 숨은 입력칸 포함). */
+  @media (pointer: coarse) {
+    input,
+    textarea,
+    select {
+      font-size: max(16px, 1em);
+    }
+
+    .xterm .xterm-helper-textarea {
+      font-size: 16px !important;
+    }
   }
 
   /* 모바일 브라우저 주소창이 접혔다 펴져도 화면 높이를 정확히 따라가도록 dvh 를 쓴다 */

@@ -131,9 +131,12 @@ export function useTerminalSocket({
           // 사용자 입력은 이미 터미널 출력에 포함돼 있으므로 따로 표시하지 않는다
         });
 
-        xterm.write('\x1b[?1000l\x1b[?1002l\x1b[?1003l\x1b[?1004l\x1b[?1006l', () => {
-          xterm.options.disableStdin = false;
-        });
+        xterm.write(
+          '\x1b[?1000l\x1b[?1002l\x1b[?1003l\x1b[?1004l\x1b[?1006l',
+          () => {
+            xterm.options.disableStdin = false;
+          },
+        );
       },
     );
 

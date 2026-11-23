@@ -1,3 +1,4 @@
+import { Asterisk, Code2 } from 'lucide-react';
 import { TerminalStatus } from './TerminalStatus';
 import type { TerminalSession } from '../model/terminal.types';
 
@@ -30,17 +31,20 @@ export function TerminalHeader({
           <button
             onClick={onCodexCommand}
             disabled={!isConnected}
-            title="쉘에 codex 명령 입력 · Enter로 실행"
-            className="rounded bg-blue-700 px-2 py-1 text-xs text-white hover:bg-blue-600 disabled:opacity-50"
+            title="Codex 실행"
+            aria-label="Codex 실행"
+            className="rounded-md border border-sky-400/30 p-1.5 text-sky-300 hover:bg-sky-400/15 disabled:opacity-50"
           >
-            Codex
+            <Code2 size={17} aria-hidden="true" />
           </button>
           <button
             onClick={onClaudeCommand}
             disabled={!isConnected}
-            className="px-2 py-1 text-xs bg-[#D97757] text-white rounded hover:bg-[#C86744] disabled:opacity-50 transition-all font-medium"
+            title="Claude 실행"
+            aria-label="Claude 실행"
+            className="rounded-md border border-orange-400/30 p-1.5 text-orange-300 hover:bg-orange-400/15 disabled:opacity-50"
           >
-            Claude
+            <Asterisk size={17} aria-hidden="true" />
           </button>
           <button
             onClick={onCloseSession}
