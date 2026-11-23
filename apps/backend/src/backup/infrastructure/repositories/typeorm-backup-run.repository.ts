@@ -7,7 +7,7 @@ import type {
   FinishBackupRunInput,
   IBackupRunRepository,
   StartBackupRunInput,
-} from '../../domain/repositories/backup-run.repository';
+} from '../../domain/repositories/backup-run.repository.interface';
 
 @Injectable()
 export class TypeOrmBackupRunRepository implements IBackupRunRepository {

@@ -15,9 +15,9 @@ import {
 } from './application/use-cases';
 import { BackupRun } from './domain/entities/backup-run.entity';
 import { BackupTarget } from './domain/entities/backup-target.entity';
-import { BACKUP_ARCHIVE_REPOSITORY } from './domain/repositories/backup-archive.repository';
-import { BACKUP_RUN_REPOSITORY } from './domain/repositories/backup-run.repository';
-import { BACKUP_TARGET_REPOSITORY } from './domain/repositories/backup-target.repository';
+import { BACKUP_ARCHIVE_REPOSITORY } from './domain/repositories/backup-archive.repository.interface';
+import { BACKUP_RUN_REPOSITORY } from './domain/repositories/backup-run.repository.interface';
+import { BACKUP_TARGET_REPOSITORY } from './domain/repositories/backup-target.repository.interface';
 import { DockerMongodbArchiveRepository } from './infrastructure/repositories/docker-mongodb-archive.repository';
 import { TypeOrmBackupRunRepository } from './infrastructure/repositories/typeorm-backup-run.repository';
 import { TypeOrmBackupTargetRepository } from './infrastructure/repositories/typeorm-backup-target.repository';

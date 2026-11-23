@@ -2,7 +2,7 @@ import { ForbiddenException } from '@nestjs/common';
 import { StartImpersonationUseCase } from '@/auth/application/use-cases/start-impersonation.use-case';
 import { IMPERSONATION_TTL_SECONDS } from '@/common/constants/impersonation';
 import { ROLES } from '@/common/constants/roles';
-import { browser, sessionHarness } from '../../auth-session.fake';
+import { browser, sessionHarness } from '../../fakes/auth-session.fake';
 
 describe('StartImpersonationUseCase', () => {
   const target = {

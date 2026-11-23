@@ -7,7 +7,7 @@ import type {
   IMongodbBackupRepository,
   MongodbBackupEntry,
   MongodbBackupResult,
-} from '../../domain/repositories/mongodb-backup.repository';
+} from '../../domain/repositories/mongodb-backup.repository.interface';
 import { getMongodbBackupRoot } from '../../../common/utils';
 import { resolveDockerHost } from '../../../common/utils/docker-host.util';
 

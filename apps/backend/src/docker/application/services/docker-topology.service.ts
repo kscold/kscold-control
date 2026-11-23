@@ -9,7 +9,7 @@ import type { NginxSite } from '../../../nginx/domain/types/nginx-site.type';
 import {
   NGINX_CONFIG_REPOSITORY,
   type INginxConfigRepository,
-} from '../../../nginx/domain/repositories/nginx-config.repository';
+} from '../../../nginx/domain/repositories/nginx-config.repository.interface';
 import { ListContainersUseCase } from '../use-cases/list-containers.use-case';
 import type { ContainerResponseDto } from '../dto';
 import {

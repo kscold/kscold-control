@@ -23,7 +23,7 @@ import type {
 } from '../../domain/types/key-management-target.type';
 import { KeyManagementTargetService } from '../../application/services/key-management-target.service';
 import { EnvDocumentService } from '../../application/services/env-document.service';
-import { SshTargetCommandService } from './ssh-target-command.service';
+import { SshTargetCommandService } from './ssh-target-command.gateway';
 import { isAllowedEnvCommandKey } from '../../domain/policies/env-command-key.policy';
 
 const SHA = /^[a-f0-9]{64}$/;

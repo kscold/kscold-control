@@ -3,22 +3,22 @@ import {
   buildAttackMap,
   type AttackCountry,
   type AttackPoint,
-} from '../../domain/attack-map/attack-map.model';
-import { parseIpRange, rangeContains } from '../../domain/ip-range';
+} from '../../domain/models/attack-map.model';
+import { parseIpRange, rangeContains } from '../../domain/value-objects/ip-range.vo';
 import {
   IP_BAN_REPOSITORY,
   type IIpBanRepository,
-} from '../../domain/repositories/ip-ban.repository';
+} from '../../domain/repositories/ip-ban.repository.interface';
 import {
   IP_GEO_READER,
   externalGeo,
   type IIpGeoReader,
   type IpGeoStatus,
-} from '../../domain/repositories/ip-geo.reader';
+} from '../../domain/gateways/ip-geo.gateway.interface';
 import {
   LOGIN_ATTEMPT_REPOSITORY,
   type ILoginAttemptRepository,
-} from '../../domain/repositories/login-attempt.repository';
+} from '../../domain/repositories/login-attempt.repository.interface';
 import { SshAccessService, formatLocal, sinceDate } from './ssh-access.service';
 
 export type AttackMapView =

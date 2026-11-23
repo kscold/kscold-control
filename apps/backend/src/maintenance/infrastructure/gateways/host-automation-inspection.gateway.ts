@@ -9,7 +9,7 @@ import {
   lastMeaningfulLine,
   parseLaunchctlPrint,
 } from '../../domain/policies/automation.policy';
-import type { IAutomationInspectionGateway } from '../../domain/repositories/automation-inspection.gateway';
+import type { IAutomationInspectionGateway } from '../../domain/gateways/automation-inspection.gateway.interface';
 import type {
   LaunchdJobInfo,
   LaunchdSchedule,

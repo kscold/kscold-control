@@ -1,7 +1,8 @@
 import { useState, type ReactNode } from 'react';
 import { HardDrive, Loader2, RefreshCw, RotateCcw } from 'lucide-react';
 import { PERMISSIONS } from '@/shared/config/permissions';
-import { formatShortDateTime, usePermissions } from '@/shared/lib';
+import { formatShortDateTime } from '@/shared/lib';
+import { usePermissions } from '@/shared/model';
 import { useModalStore } from '@/shared/model';
 import { storageService } from '../api/storage.service';
 import { formatSize } from '../lib/format';

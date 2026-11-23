@@ -8,7 +8,7 @@ import {
 import {
   STORAGE_TRIM_RUN_REPOSITORY,
   type IStorageTrimRunRepository,
-} from '../../domain/repositories/storage-trim-run.repository';
+} from '../../domain/repositories/storage-trim-run.repository.interface';
 import { TrimDockerDiskUseCase } from '../use-cases/trim-docker-disk.use-case';
 
 /** 기본 예약 시각 — 작업 폴더 정리(04:30)가 끝난 뒤 */

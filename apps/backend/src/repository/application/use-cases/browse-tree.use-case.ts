@@ -7,7 +7,7 @@ import {
   FILE_STORAGE,
   FileTreeNode,
   IFileStorage,
-} from '../../domain/repositories/file-storage.interface';
+} from '../../domain/gateways/file-storage.gateway.interface';
 
 @Injectable()
 export class BrowseTreeUseCase {

@@ -13,7 +13,7 @@ import {
   IFileStorage,
   UploadContentOffsetError,
   UploadContentTooLargeError,
-} from '../../domain/repositories/file-storage.interface';
+} from '../../domain/gateways/file-storage.gateway.interface';
 import { REPOSITORY_UPLOAD_LIMITS } from '../../domain/policies/upload-limits.policy';
 import {
   IProjectRepository,

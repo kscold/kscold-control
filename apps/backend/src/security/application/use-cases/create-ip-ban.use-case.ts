@@ -2,7 +2,7 @@ import { BadRequestException, Inject, Injectable } from '@nestjs/common';
 import {
   IP_BAN_REPOSITORY,
   type IIpBanRepository,
-} from '../../domain/repositories/ip-ban.repository';
+} from '../../domain/repositories/ip-ban.repository.interface';
 import { IpAllowlistService } from '../services/ip-allowlist.service';
 import { ResyncBlocklistUseCase } from './resync-blocklist.use-case';
 import type { IpBan, IpBanSource } from '../../domain/entities/ip-ban.entity';

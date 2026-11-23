@@ -6,7 +6,7 @@ import { Session } from './domain/entities/session.entity';
 import { Message } from './domain/entities/message.entity';
 import { SESSION_REPOSITORY } from './domain/repositories/session.repository.interface';
 import { MESSAGE_REPOSITORY } from './domain/repositories/message.repository.interface';
-import { SESSION_MANAGER } from './domain/ports/session-manager.port';
+import { SESSION_MANAGER } from './domain/gateways/session-manager.gateway.interface';
 
 // Infrastructure 계층
 import { TypeOrmSessionRepository } from './infrastructure/repositories/typeorm-session.repository';

@@ -4,7 +4,7 @@ import { isDailyScheduleDue } from '../../../common/scheduling/daily-schedule.po
 import {
   WORKTREE_CLEANUP_TARGET_REPOSITORY,
   type IWorktreeCleanupTargetRepository,
-} from '../../domain/repositories/worktree-cleanup-target.repository';
+} from '../../domain/repositories/worktree-cleanup-target.repository.interface';
 import { WorktreeCleanupRunnerService } from './worktree-cleanup-runner.service';
 
 /**

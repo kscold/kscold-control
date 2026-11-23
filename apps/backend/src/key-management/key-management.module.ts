@@ -25,7 +25,7 @@ import { RoutingSecretStoreGateway } from './infrastructure/gateways/routing-sec
 import { SshBlueGreenDeploymentGateway } from './infrastructure/gateways/ssh-blue-green-deployment.gateway';
 import { SshEnvFileSecretStoreGateway } from './infrastructure/gateways/ssh-env-file-secret-store.gateway';
 import { SshEnvCommandGateway } from './infrastructure/gateways/ssh-env-command.gateway';
-import { SshTargetCommandService } from './infrastructure/gateways/ssh-target-command.service';
+import { SshTargetCommandService } from './infrastructure/gateways/ssh-target-command.gateway';
 import { TypeOrmSecretBackupRepository } from './infrastructure/repositories/typeorm-secret-backup.repository';
 import { TypeOrmKeyManagementTargetRepository } from './infrastructure/repositories/typeorm-key-management-target.repository';
 import { KeyManagementController } from './presentation/controllers/key-management.controller';

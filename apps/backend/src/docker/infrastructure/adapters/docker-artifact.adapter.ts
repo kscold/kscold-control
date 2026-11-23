@@ -4,7 +4,7 @@ import * as path from 'node:path';
 import { isPathInsideRoot } from '../../../common/utils';
 import type { IDockerArtifactGateway } from '../../domain/gateways/docker-artifact.gateway.interface';
 import type { DockerCleanupCandidateItem } from '../../domain/types/docker-cleanup.type';
-import { resolveDockerProjectRoot } from '../lib/docker-project-root';
+import { resolveDockerProjectRoot } from '../lib/docker-project-root.util';
 
 @Injectable()
 export class DockerArtifactAdapter implements IDockerArtifactGateway {

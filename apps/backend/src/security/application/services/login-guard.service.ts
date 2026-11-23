@@ -9,7 +9,7 @@ import { Cron, CronExpression } from '@nestjs/schedule';
 import { isIP } from 'node:net';
 import { AuditLogService } from '../../../audit/application/services/audit-log.service';
 import { configuredProxyTrust } from '../../../common/utils/client-ip.util';
-import { parseIpRange, rangeContains } from '../../domain/ip-range';
+import { parseIpRange, rangeContains } from '../../domain/value-objects/ip-range.vo';
 import {
   LOGIN_BLOCK_POLICY,
   decideLoginBlock,
@@ -22,16 +22,16 @@ import {
   type LoginAttemptResult,
   type LoginOrigin,
   type LoginSubject,
-} from '../../domain/login-guard/login-block.policy';
+} from '../../domain/policies/login-block.policy';
 import {
   IP_BAN_REPOSITORY,
   type IIpBanRepository,
-} from '../../domain/repositories/ip-ban.repository';
+} from '../../domain/repositories/ip-ban.repository.interface';
 import {
   LOGIN_ATTEMPT_REPOSITORY,
   type ILoginAttemptRepository,
-} from '../../domain/repositories/login-attempt.repository';
-import { classifySshIp } from '../../domain/ssh-audit/ssh-audit.model';
+} from '../../domain/repositories/login-attempt.repository.interface';
+import { classifySshIp } from '../../domain/models/ssh-audit.model';
 import { CreateIpBanUseCase } from '../use-cases/create-ip-ban.use-case';
 import { IpAllowlistService } from './ip-allowlist.service';
 import { SshAccessService } from './ssh-access.service';

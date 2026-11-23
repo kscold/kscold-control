@@ -4,7 +4,7 @@ import path from 'node:path';
 import {
   STORAGE_INSPECTION_GATEWAY,
   type IStorageInspectionGateway,
-} from '../../domain/repositories/storage-inspection.gateway';
+} from '../../domain/gateways/storage-inspection.gateway.interface';
 import type {
   StorageFolderDefinition,
   StorageOverview,

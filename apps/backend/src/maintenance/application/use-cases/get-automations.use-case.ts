@@ -7,11 +7,11 @@ import {
 import {
   AUTOMATION_INSPECTION_GATEWAY,
   type IAutomationInspectionGateway,
-} from '../../domain/repositories/automation-inspection.gateway';
+} from '../../domain/gateways/automation-inspection.gateway.interface';
 import {
   STORAGE_TRIM_RUN_REPOSITORY,
   type IStorageTrimRunRepository,
-} from '../../domain/repositories/storage-trim-run.repository';
+} from '../../domain/repositories/storage-trim-run.repository.interface';
 import type { StorageTrimRun } from '../../domain/entities/storage-trim-run.entity';
 import type {
   AutomationHealth,

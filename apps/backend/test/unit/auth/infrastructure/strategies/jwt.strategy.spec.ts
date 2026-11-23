@@ -1,6 +1,6 @@
 import { UnauthorizedException } from '@nestjs/common';
 import { JwtStrategy } from '@/auth/infrastructure/strategies/jwt.strategy';
-import { browser, sessionHarness } from '../../auth-session.fake';
+import { browser, sessionHarness } from '../../fakes/auth-session.fake';
 
 describe('JwtStrategy', () => {
   const user = {

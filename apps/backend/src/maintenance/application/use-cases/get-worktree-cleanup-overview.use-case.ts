@@ -8,11 +8,11 @@ import type { WorktreeCleanupTarget } from '../../domain/entities/worktree-clean
 import {
   WORKTREE_CLEANUP_RUN_REPOSITORY,
   type IWorktreeCleanupRunRepository,
-} from '../../domain/repositories/worktree-cleanup-run.repository';
+} from '../../domain/repositories/worktree-cleanup-run.repository.interface';
 import {
   WORKTREE_CLEANUP_TARGET_REPOSITORY,
   type IWorktreeCleanupTargetRepository,
-} from '../../domain/repositories/worktree-cleanup-target.repository';
+} from '../../domain/repositories/worktree-cleanup-target.repository.interface';
 import { WorktreeCleanupRunnerService } from '../services/worktree-cleanup-runner.service';
 
 export interface WorktreeCleanupTargetStatus {

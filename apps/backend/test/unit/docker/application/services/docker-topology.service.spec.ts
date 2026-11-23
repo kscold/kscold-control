@@ -6,7 +6,7 @@ import { ListContainersUseCase } from '@/docker/application/use-cases';
 import {
   NGINX_CONFIG_REPOSITORY,
   type INginxConfigRepository,
-} from '@/nginx/domain/repositories/nginx-config.repository';
+} from '@/nginx/domain/repositories/nginx-config.repository.interface';
 import {
   DOCKER_CLIENT,
   type IDockerClient,

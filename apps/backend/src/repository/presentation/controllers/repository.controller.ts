@@ -47,7 +47,7 @@ import { CreateProjectDto } from '../../application/dto/create-project.dto';
 import { REPOSITORY_UPLOAD_LIMITS } from '../../domain/policies/upload-limits.policy';
 import type { UploadFile } from '../../application/use-cases/upload-files.use-case';
 import { CreateUploadSessionRequestDto } from '../dto';
-import { uploadSessionResponse } from '../dto/upload-session-response';
+import { uploadSessionResponse } from '../dto/upload-session-response.dto';
 
 interface MulterFile {
   fieldname: string;

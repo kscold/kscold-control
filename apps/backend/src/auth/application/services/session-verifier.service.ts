@@ -14,7 +14,7 @@ import {
   type IUserRepository,
   USER_REPOSITORY,
 } from '../../../rbac/domain/repositories/user.repository.interface';
-import { MfaConfig } from '../../mfa/application/mfa-config';
+import { MfaConfig } from '../../mfa/application/config/mfa.config';
 
 /** uuid 칸에 형식이 다른 값을 넘기면 DB 가 500 을 내므로 조회 전에 거른다. */
 const SESSION_ID_PATTERN =

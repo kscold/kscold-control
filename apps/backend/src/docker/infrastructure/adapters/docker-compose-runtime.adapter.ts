@@ -4,11 +4,11 @@ import * as fs from 'node:fs';
 import { promisify } from 'node:util';
 import type { IComposeRuntimeGateway } from '../../domain/gateways/compose-runtime.gateway.interface';
 import type { ComposeDocument } from '../../domain/types/compose.type';
-import { resolveDockerHost } from '../lib/docker-host';
+import { resolveDockerHost } from '../../../common/utils/docker-host.util';
 import {
   resolveComposeFilePath,
   resolveDockerProjectRoot,
-} from '../lib/docker-project-root';
+} from '../lib/docker-project-root.util';
 
 const execFileAsync = promisify(execFile);
 const yaml = require('js-yaml');

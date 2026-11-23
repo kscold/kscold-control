@@ -1,1 +1,1 @@
-export * from './backup.service';
+export * from './mongodb-backup.service';

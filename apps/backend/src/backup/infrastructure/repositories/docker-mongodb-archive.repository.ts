@@ -9,7 +9,7 @@ import {
   selectExpiredBackups,
 } from '../../domain/policies/backup-retention.policy';
 import { isValidBackupTargetName } from '../../domain/policies/backup-target.policy';
-import type { IBackupArchiveRepository } from '../../domain/repositories/backup-archive.repository';
+import type { IBackupArchiveRepository } from '../../domain/repositories/backup-archive.repository.interface';
 import type {
   BackupArchive,
   BackupArchiveResult,

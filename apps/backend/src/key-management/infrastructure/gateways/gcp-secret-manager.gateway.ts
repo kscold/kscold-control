@@ -11,7 +11,7 @@ import {
 } from '../../domain/gateways/secret-store.gateway.interface';
 import { KeyManagementTargetService } from '../../application/services/key-management-target.service';
 import type { GcpSecretStoreConfig } from '../../domain/types/key-management-target.type';
-import { runProcess } from './process-runner';
+import { runProcess } from './process-runner.gateway';
 
 interface GcloudVersionDescription {
   name?: string;

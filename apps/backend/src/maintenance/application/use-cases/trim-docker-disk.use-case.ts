@@ -3,11 +3,11 @@ import { parseFstrimBytes } from '../../domain/policies/storage.policy';
 import {
   STORAGE_INSPECTION_GATEWAY,
   type IStorageInspectionGateway,
-} from '../../domain/repositories/storage-inspection.gateway';
+} from '../../domain/gateways/storage-inspection.gateway.interface';
 import {
   STORAGE_TRIM_RUN_REPOSITORY,
   type IStorageTrimRunRepository,
-} from '../../domain/repositories/storage-trim-run.repository';
+} from '../../domain/repositories/storage-trim-run.repository.interface';
 import type { StorageTrimTrigger } from '../../domain/types/automation.type';
 import type { DockerDiskTrimResult } from '../../domain/types/storage.type';
 import { GetStorageOverviewUseCase } from './get-storage-overview.use-case';

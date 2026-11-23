@@ -8,7 +8,7 @@ import {
 import {
   IP_BAN_REPOSITORY,
   type IIpBanRepository,
-} from '../../domain/repositories/ip-ban.repository';
+} from '../../domain/repositories/ip-ban.repository.interface';
 import { ResyncBlocklistUseCase } from '../use-cases/resync-blocklist.use-case';
 
 const EXPIRE_SWEEP_INTERVAL_MS = 5 * 60 * 1000;

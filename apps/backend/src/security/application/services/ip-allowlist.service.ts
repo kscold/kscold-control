@@ -5,7 +5,7 @@ import {
   rangesOverlap,
   type IpFamily,
   type IpRange,
-} from '../../domain/ip-range';
+} from '../../domain/value-objects/ip-range.vo';
 
 const PRIVATE_RANGES = [
   '127.0.0.0/8',

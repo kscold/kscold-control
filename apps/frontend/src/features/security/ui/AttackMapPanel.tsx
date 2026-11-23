@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Loader2, MapPinOff, RefreshCw, X } from 'lucide-react';
-import { smallButton, usePaged } from '../model/paging';
+import { smallButton, usePaged } from '../lib/paging';
 import { useAttackMap } from '../model/useAttackMap';
 import type { AttackCountry, AttackPoint } from '../model/security.types';
-import { blockedPercent, dotRadius, projectToMap } from '../lib/attackMap';
+import { blockedPercent, dotRadius, projectToMap } from '../lib/attack-map';
 import { flagEmoji } from '../lib/flag';
-import { WORLD_COUNTRIES, WORLD_MAP } from '../lib/worldMap.generated';
+import { WORLD_COUNTRIES, WORLD_MAP } from '../lib/world-map.generated';
 import { GeoLabel } from './GeoLabel';
 import { Pager } from './Pager';
 

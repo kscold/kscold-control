@@ -1,5 +1,5 @@
 import { RefreshCw } from 'lucide-react';
-import { usePermissions } from '@/shared/lib/use-permissions';
+import { usePermissions } from '@/shared/model';
 import { PERMISSIONS } from '@/shared/config/permissions';
 import { useDockerCleanupActions } from '../model';
 import { DockerCleanupCategoryCard } from './DockerCleanupCategoryCard';

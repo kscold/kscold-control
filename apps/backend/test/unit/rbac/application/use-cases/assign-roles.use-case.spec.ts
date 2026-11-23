@@ -1,5 +1,5 @@
 import { AssignRolesUseCase } from '@/rbac/application/use-cases/assign-roles.use-case';
-import { browser, sessionHarness } from '../../../auth/auth-session.fake';
+import { browser, sessionHarness } from '../../../auth/fakes/auth-session.fake';
 
 describe('AssignRolesUseCase', () => {
   const operator = { id: 'role-operator', name: 'operator', permissions: [] };

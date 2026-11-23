@@ -11,7 +11,7 @@ import { AssignRolesDto } from '../dto/assign-roles.dto';
 import { UserResponseDto } from '../dto/user-response.dto';
 import { ROLES } from '../../../common/constants/roles';
 import { AuthSessionService } from '../../../auth/application/services/auth-session.service';
-import { MfaConfig } from '../../../auth/mfa/application/mfa-config';
+import { MfaConfig } from '../../../auth/mfa/application/config/mfa.config';
 
 /**
  * Assign Roles Use Case

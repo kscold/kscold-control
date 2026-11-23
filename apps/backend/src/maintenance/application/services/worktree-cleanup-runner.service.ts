@@ -13,15 +13,15 @@ import {
   WORKTREE_CLEANUP_RUN_REPOSITORY,
   type FinishWorktreeCleanupRunInput,
   type IWorktreeCleanupRunRepository,
-} from '../../domain/repositories/worktree-cleanup-run.repository';
+} from '../../domain/repositories/worktree-cleanup-run.repository.interface';
 import {
   WORKTREE_CLEANUP_TARGET_REPOSITORY,
   type IWorktreeCleanupTargetRepository,
-} from '../../domain/repositories/worktree-cleanup-target.repository';
+} from '../../domain/repositories/worktree-cleanup-target.repository.interface';
 import {
   WORKTREE_WORKSPACE_GATEWAY,
   type IWorktreeWorkspaceGateway,
-} from '../../domain/repositories/worktree-workspace.gateway';
+} from '../../domain/gateways/worktree-workspace.gateway.interface';
 import type {
   RemovedWorktree,
   WorktreeCleanupActor,

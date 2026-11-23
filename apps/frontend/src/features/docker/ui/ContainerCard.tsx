@@ -1,10 +1,10 @@
 import { Play, Square, Trash2, Download, Globe, Database } from 'lucide-react';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { usePermissions } from '@/shared/lib/use-permissions';
+import { usePermissions } from '@/shared/model';
 import { PERMISSIONS } from '@/shared/config/permissions';
 import type { Container } from '@/entities/container';
-import { backupService } from '../api/backup.service';
+import { backupService } from '../api/mongodb-backup.service';
 
 const MONGO_CONTAINERS = ['ubuntu-blog', 'ubuntu-projectepsilon'];
 

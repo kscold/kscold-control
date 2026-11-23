@@ -10,12 +10,12 @@ import { promises as fs } from 'node:fs';
 import { join } from 'node:path';
 import { AuditLogService } from '../../../audit/application/services/audit-log.service';
 import type { CreateAuditEventInput } from '../../../audit/domain/types/audit-event.type';
-import { parseIpRange, rangeContains } from '../../domain/ip-range';
+import { parseIpRange, rangeContains } from '../../domain/value-objects/ip-range.vo';
 import {
   IP_GEO_READER,
   externalGeo,
   type IIpGeoReader,
-} from '../../domain/repositories/ip-geo.reader';
+} from '../../domain/gateways/ip-geo.gateway.interface';
 import {
   DEFAULT_COUNTRY_GUARD_SETTINGS,
   countryBlockReason,
@@ -25,8 +25,8 @@ import {
   type CountryBlockAction,
   type CountryGuardSettings,
   type ExistingBlock,
-} from '../../domain/ssh-audit/country-guard.policy';
-import type { SshAuditEvent } from '../../domain/ssh-audit/ssh-audit.model';
+} from '../../domain/policies/country-guard.policy';
+import type { SshAuditEvent } from '../../domain/models/ssh-audit.model';
 import { IpAllowlistService } from './ip-allowlist.service';
 import {
   SshAccessService,

@@ -8,7 +8,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { promisify } from 'util';
 import { shellQuote } from '../../../common/utils';
-import { IDockerLogReader } from '../../domain/repositories/log-reader.repository';
+import { IDockerLogReader } from '../../domain/repositories/log-reader.repository.interface';
 import {
   DockerContainerSummary,
   DockerContainerRole,

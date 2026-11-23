@@ -11,7 +11,7 @@ import {
   toDockerUsageSnapshot,
   type DockerSystemDfJson,
 } from '../../domain/policies/storage.policy';
-import type { IStorageInspectionGateway } from '../../domain/repositories/storage-inspection.gateway';
+import type { IStorageInspectionGateway } from '../../domain/gateways/storage-inspection.gateway.interface';
 import type {
   DiskUsage,
   DockerUsageSnapshot,

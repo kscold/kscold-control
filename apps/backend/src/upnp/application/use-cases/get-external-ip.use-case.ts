@@ -9,7 +9,7 @@ import { UpnpQueryError } from '../../domain/errors/upnp-query.error';
 import {
   type IUpnpGatewayRepository,
   UPNP_GATEWAY_REPOSITORY,
-} from '../../domain/repositories/upnp-gateway.repository';
+} from '../../domain/repositories/upnp-gateway.repository.interface';
 
 /** UPnP를 통한 외부 IP 조회 유스케이스임. */
 @Injectable()

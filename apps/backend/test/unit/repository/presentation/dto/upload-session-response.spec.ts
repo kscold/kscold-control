@@ -1,4 +1,4 @@
-import { uploadSessionResponse } from '@/repository/presentation/dto/upload-session-response';
+import { uploadSessionResponse } from '@/repository/presentation/dto/upload-session-response.dto';
 import type { RepositoryUploadSession } from '@/repository/domain/types/upload-session.type';
 
 describe('uploadSessionResponse', () => {

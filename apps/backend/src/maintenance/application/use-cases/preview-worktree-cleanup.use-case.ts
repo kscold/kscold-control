@@ -2,7 +2,7 @@ import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import {
   WORKTREE_CLEANUP_TARGET_REPOSITORY,
   type IWorktreeCleanupTargetRepository,
-} from '../../domain/repositories/worktree-cleanup-target.repository';
+} from '../../domain/repositories/worktree-cleanup-target.repository.interface';
 import {
   WorktreeCleanupRunnerService,
   type WorktreeCleanupPlan,

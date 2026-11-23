@@ -1,8 +1,8 @@
 import { Module } from '@nestjs/common';
-import { NGINX_CONFIG_REPOSITORY } from './domain/repositories/nginx-config.repository';
-import { NGINX_RUNTIME_REPOSITORY } from './domain/repositories/nginx-runtime.repository';
-import { NginxConfigRepositoryImpl } from './infrastructure/repositories/nginx-config.repository.impl';
-import { NginxRuntimeRepositoryImpl } from './infrastructure/repositories/nginx-runtime.repository.impl';
+import { NGINX_CONFIG_REPOSITORY } from './domain/repositories/nginx-config.repository.interface';
+import { NGINX_RUNTIME_REPOSITORY } from './domain/repositories/nginx-runtime.repository.interface';
+import { FileNginxConfigRepository } from './infrastructure/repositories/file-nginx-config.repository';
+import { ShellNginxRuntimeRepository } from './infrastructure/repositories/shell-nginx-runtime.repository';
 
 /**
  * Nginx 런타임 포트만 제공하는 경계 모듈입니다.
@@ -10,8 +10,8 @@ import { NginxRuntimeRepositoryImpl } from './infrastructure/repositories/nginx-
  */
 @Module({
   providers: [
-    { provide: NGINX_CONFIG_REPOSITORY, useClass: NginxConfigRepositoryImpl },
-    { provide: NGINX_RUNTIME_REPOSITORY, useClass: NginxRuntimeRepositoryImpl },
+    { provide: NGINX_CONFIG_REPOSITORY, useClass: FileNginxConfigRepository },
+    { provide: NGINX_RUNTIME_REPOSITORY, useClass: ShellNginxRuntimeRepository },
   ],
   exports: [NGINX_CONFIG_REPOSITORY, NGINX_RUNTIME_REPOSITORY],
 })

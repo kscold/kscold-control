@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { SshBlock, SshBlockScope } from '../model/security.types';
-import { smallButton, usePaged } from '../model/paging';
+import { smallButton, usePaged } from '../lib/paging';
 import { Pager } from './Pager';
 import { GeoLabel } from './GeoLabel';
 

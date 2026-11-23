@@ -16,7 +16,7 @@ import {
 import { SessionConnectionRegistry } from './session-connection-registry.service';
 import { PermissionExtractor } from '../../../common/utils/permission-extractor.util';
 import type { User } from '../../../rbac/domain/entities/user.entity';
-import type { AuthenticatedLogin } from '../dto/login-result';
+import type { AuthenticatedLogin } from '../dto/login-result.dto';
 
 export interface SessionClient {
   ip: string | null;

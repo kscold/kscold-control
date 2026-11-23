@@ -2,7 +2,7 @@ import { Inject, Injectable } from '@nestjs/common';
 import {
   DOCKER_LOG_READER,
   type IDockerLogReader,
-} from '../../domain/repositories/log-reader.repository';
+} from '../../domain/repositories/log-reader.repository.interface';
 import type { DockerLogArchiveSource } from '../../domain/types/log.type';
 
 /** Docker 아카이브(로테이션) 로그 소스 목록 조회 (GET /logs/docker/archive/sources) */

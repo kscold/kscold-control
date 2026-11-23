@@ -7,7 +7,7 @@ import type { BackupRun } from '../../domain/entities/backup-run.entity';
 import {
   BACKUP_RUN_REPOSITORY,
   type IBackupRunRepository,
-} from '../../domain/repositories/backup-run.repository';
+} from '../../domain/repositories/backup-run.repository.interface';
 
 /** 조회 건수를 지정하지 않았을 때의 기본값 */
 export const DEFAULT_BACKUP_RUN_LIMIT = 30;

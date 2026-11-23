@@ -1,5 +1,5 @@
 import { UnauthorizedException } from '@nestjs/common';
-import { browser, sessionHarness } from './auth-session.fake';
+import { browser, sessionHarness } from './fakes/auth-session.fake';
 
 const MINUTE = 60 * 1000;
 const DAY = 24 * 60 * MINUTE;

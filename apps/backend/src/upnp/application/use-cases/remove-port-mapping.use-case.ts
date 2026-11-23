@@ -3,7 +3,7 @@ import { Inject, Injectable, Logger } from '@nestjs/common';
 import {
   type IUpnpGatewayRepository,
   UPNP_GATEWAY_REPOSITORY,
-} from '../../domain/repositories/upnp-gateway.repository';
+} from '../../domain/repositories/upnp-gateway.repository.interface';
 
 /** UPnP 포트 매핑 삭제 유스케이스임. */
 @Injectable()

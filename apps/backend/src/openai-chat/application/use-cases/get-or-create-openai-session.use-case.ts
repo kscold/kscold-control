@@ -1,6 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { SESSION_MANAGER } from '../../../terminal/domain/ports/session-manager.port';
-import type { ISessionManager } from '../../../terminal/domain/ports/session-manager.port';
+import { SESSION_MANAGER } from '../../../terminal/domain/gateways/session-manager.gateway.interface';
+import type { ISessionManager } from '../../../terminal/domain/gateways/session-manager.gateway.interface';
 
 /** OpenAI 챗 접속 시 기존 세션 재사용 또는 신규 세션 생성 */
 @Injectable()

@@ -3,7 +3,7 @@ import type {
   LoginAttemptReason,
   LoginAttemptResult,
   LoginOrigin,
-} from '../login-guard/login-block.policy';
+} from '../policies/login-block.policy';
 
 /** 로그인 시도 한 번. 성공·실패·거절을 모두 남기고 30일 뒤 지운다. */
 @Entity('login_attempts')

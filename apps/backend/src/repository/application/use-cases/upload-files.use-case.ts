@@ -8,7 +8,7 @@ import {
 import {
   FILE_STORAGE,
   IFileStorage,
-} from '../../domain/repositories/file-storage.interface';
+} from '../../domain/gateways/file-storage.gateway.interface';
 import {
   IProjectRepository,
   PROJECT_REPOSITORY,

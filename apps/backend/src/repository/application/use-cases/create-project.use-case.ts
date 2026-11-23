@@ -6,7 +6,7 @@ import {
 import {
   FILE_STORAGE,
   IFileStorage,
-} from '../../domain/repositories/file-storage.interface';
+} from '../../domain/gateways/file-storage.gateway.interface';
 import { Project } from '../../domain/entities/project.entity';
 import { CreateProjectDto } from '../dto/create-project.dto';
 

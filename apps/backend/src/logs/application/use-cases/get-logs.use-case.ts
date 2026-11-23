@@ -6,7 +6,7 @@ import {
   type IBlogLogReader,
   type ILogReader,
   type IDockerLogReader,
-} from '../../domain/repositories/log-reader.repository';
+} from '../../domain/repositories/log-reader.repository.interface';
 import type {
   LogType,
   DockerLogReadOptions,

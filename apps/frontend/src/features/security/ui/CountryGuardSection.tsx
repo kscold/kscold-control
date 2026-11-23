@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Globe2, Loader2, Plus, X } from 'lucide-react';
 import type { SshCountryGuard } from '../model/security.types';
-import { smallButton } from '../model/paging';
+import { smallButton } from '../lib/paging';
 
 type Patch = Partial<Pick<SshCountryGuard, 'enabled' | 'allowedCountries'>>;
 

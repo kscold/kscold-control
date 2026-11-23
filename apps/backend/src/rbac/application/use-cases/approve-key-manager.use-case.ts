@@ -15,7 +15,7 @@ import {
 } from '../../domain/repositories/user.repository.interface';
 import { UserResponseDto } from '../dto/user-response.dto';
 import { AuthSessionService } from '../../../auth/application/services/auth-session.service';
-import { MfaConfig } from '../../../auth/mfa/application/mfa-config';
+import { MfaConfig } from '../../../auth/mfa/application/config/mfa.config';
 
 /** 승인 대기 사용자를 대시보드 조회가 가능한 운영 키 관리자 역할로 전환한다. */
 @Injectable()

@@ -4,7 +4,7 @@ import path from 'node:path';
 import {
   resolveComposeFilePath,
   resolveDockerProjectRoot,
-} from '@/docker/infrastructure/lib/docker-project-root';
+} from '@/docker/infrastructure/lib/docker-project-root.util';
 
 describe('로컬 전용 Compose 설정', () => {
   let root: string;

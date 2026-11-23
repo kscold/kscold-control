@@ -1,6 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { SESSION_MANAGER } from '../../../terminal/domain/ports/session-manager.port';
-import type { ISessionManager } from '../../../terminal/domain/ports/session-manager.port';
+import { SESSION_MANAGER } from '../../../terminal/domain/gateways/session-manager.gateway.interface';
+import type { ISessionManager } from '../../../terminal/domain/gateways/session-manager.gateway.interface';
 
 /** Claude 챗 세션의 메시지 히스토리 조회 */
 @Injectable()

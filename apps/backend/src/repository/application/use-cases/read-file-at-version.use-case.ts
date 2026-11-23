@@ -11,7 +11,7 @@ import {
 import {
   FILE_STORAGE,
   IFileStorage,
-} from '../../domain/repositories/file-storage.interface';
+} from '../../domain/gateways/file-storage.gateway.interface';
 import type { FileContentResult } from './read-file.use-case';
 import { assertSafeRepositoryPath } from '../utils/repository-path.util';
 

@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import type { KeyManagementTarget } from '../model/types';
+import type { KeyManagementTarget } from '../model/key-management.types';
 import { KeyManagementConsole } from './KeyManagementConsole';
 
 const mocks = vi.hoisted(() => ({

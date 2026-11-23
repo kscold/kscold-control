@@ -18,11 +18,11 @@ import {
   WORKTREE_CLEANUP_TARGET_REPOSITORY,
   type IWorktreeCleanupTargetRepository,
   type UpdateWorktreeCleanupTargetInput,
-} from '../../domain/repositories/worktree-cleanup-target.repository';
+} from '../../domain/repositories/worktree-cleanup-target.repository.interface';
 import {
   WORKTREE_WORKSPACE_GATEWAY,
   type IWorktreeWorkspaceGateway,
-} from '../../domain/repositories/worktree-workspace.gateway';
+} from '../../domain/gateways/worktree-workspace.gateway.interface';
 import { WorktreeCleanupRunnerService } from '../services/worktree-cleanup-runner.service';
 
 /** 정리 시각을 지정하지 않은 대상의 기본값. 백업(03:30·03:40)과 SSL 갱신(04:10) 뒤로 잡았다. */

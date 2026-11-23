@@ -1,5 +1,5 @@
 import { ChevronLeft, ChevronRight } from 'lucide-react';
-import { smallButton } from '../model/paging';
+import { smallButton } from '../lib/paging';
 
 export function Pager({
   page,

@@ -2,7 +2,7 @@ import { Inject, Injectable, Logger } from '@nestjs/common';
 import {
   type IUpnpGatewayRepository,
   UPNP_GATEWAY_REPOSITORY,
-} from '../../../upnp/domain/repositories/upnp-gateway.repository';
+} from '../../../upnp/domain/repositories/upnp-gateway.repository.interface';
 
 /**
  * 컨테이너 외부 접속에 필요한 UPnP 포트 매핑 관리함.

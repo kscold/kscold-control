@@ -3,7 +3,7 @@ import type { WorktreeCleanupRun } from '../../domain/entities/worktree-cleanup-
 import {
   WORKTREE_CLEANUP_RUN_REPOSITORY,
   type IWorktreeCleanupRunRepository,
-} from '../../domain/repositories/worktree-cleanup-run.repository';
+} from '../../domain/repositories/worktree-cleanup-run.repository.interface';
 import type { WorktreeCleanupActor } from '../../domain/types/worktree.type';
 import { WorktreeCleanupRunnerService } from '../services/worktree-cleanup-runner.service';
 
