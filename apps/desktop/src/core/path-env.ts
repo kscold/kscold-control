@@ -16,7 +16,7 @@ export function withToolPaths(
       ? [
           '/opt/homebrew/bin',
           '/usr/local/bin',
-          path.join(home, '.docker', 'bin'),
+          path.posix.join(home, '.docker', 'bin'),
           '/Applications/Docker.app/Contents/Resources/bin',
         ]
       : platform === 'win32'

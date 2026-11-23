@@ -1,5 +1,7 @@
 appId: io.github.kscold.control
 productName: kscold-control
+# 실행 파일 이름은 패키지 이름(@kscold-control/desktop)이 아니라 파일 경로에 안전한 이름을 쓴다.
+executableName: kscold-control
 copyright: kscold-control contributors
 directories:
   output: release
