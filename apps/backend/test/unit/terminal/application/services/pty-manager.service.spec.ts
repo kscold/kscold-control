@@ -21,6 +21,8 @@ describe('PtyManagerService shell environment', () => {
     CLAUDE_WORKING_DIR: home,
     CLAUDE_CODE_BIN: claude.binary,
     CLAUDECODE: '1',
+    // 리눅스 CI 에도 zsh 가 없을 수 있어 zsh 초기화 경로를 직접 고른다.
+    TERMINAL_SHELL: '/bin/zsh',
   });
 
   it('starts the web terminal shell without any backend secret', () => {

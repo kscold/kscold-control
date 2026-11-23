@@ -57,7 +57,7 @@ export function buildAttackMap(input: {
     if (lastAt > point.lastAt) point.lastAt = lastAt;
     return point;
   };
-  // 내 IP 와 맥미니·내부망·Tailscale 은 공격이 아니므로 뺀다
+  // 내 IP 와 이 서버·내부망·Tailscale 은 공격이 아니므로 뺀다
   const isAttacker = (ip: string) =>
     classifySshIp(ip) === 'external' && !input.knownIps.has(ip);
 

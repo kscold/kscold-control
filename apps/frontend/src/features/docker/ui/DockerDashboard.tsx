@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { formatBytes } from '@/shared/lib';
 import { usePermissions } from '@/shared/model';
 import { PERMISSIONS } from '@/shared/config/permissions';
 import {
@@ -57,8 +58,8 @@ export function DockerDashboard() {
     external: containers.filter((c) => !c.isManaged).length,
   };
 
-  const showSkeleton =
-    (loading && containers.length === 0) || (cleanupLoading && !candidates);
+  // 정리 후보 계산(docker system df -v)은 몇 초 걸리므로 컨테이너 목록을 기다리게 하지 않는다.
+  const showSkeleton = loading && containers.length === 0;
 
   if (showSkeleton) {
     return <DockerDashboardSkeleton />;
@@ -77,16 +78,6 @@ export function DockerDashboard() {
         </div>
       ) : null}
 
-      <DockerCleanupSection
-        onRefreshContainers={reload}
-        candidates={candidates}
-        loading={cleanupLoading}
-        error={cleanupError}
-        onReload={() => {
-          void reloadCleanup();
-        }}
-      />
-
       <DockerContainerFilters
         filter={filter}
         stats={stats}
@@ -100,6 +91,31 @@ export function DockerDashboard() {
         onDelete={deleteContainer}
         onImport={importContainer}
       />
+
+      {/* 정리는 가끔 하는 일이라 컨테이너 목록 아래에 접어 둔다. */}
+      <details className="group mt-8 rounded-2xl border border-gray-800 bg-gray-950/40">
+        <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-sm text-gray-300 hover:text-white">
+          <span className="font-medium">디스크 정리 후보</span>
+          <span className="text-xs text-gray-500">
+            {cleanupLoading && !candidates
+              ? '계산 중…'
+              : candidates
+                ? `예상 절감 ${formatBytes(candidates.summary.reclaimableBytes)}`
+                : '열어서 확인'}
+          </span>
+        </summary>
+        <div className="border-t border-gray-800 p-4">
+          <DockerCleanupSection
+            onRefreshContainers={reload}
+            candidates={candidates}
+            loading={cleanupLoading}
+            error={cleanupError}
+            onReload={() => {
+              void reloadCleanup();
+            }}
+          />
+        </div>
+      </details>
 
       <CreateContainerModal
         show={showModal}

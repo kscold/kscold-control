@@ -80,7 +80,7 @@ export default function RemoteDesktopPage() {
     'idle' | 'connecting' | 'credentials' | 'connected'
   >('idle');
   const [message, setMessage] = useState(
-    '연결하면 맥미니의 실제 화면이 공유됩니다.',
+    '연결하면 이 컴퓨터의 실제 화면이 공유됩니다.',
   );
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');

@@ -208,7 +208,7 @@ export default function AttackMapPanel() {
       </section>
 
       <p className="text-[11px] text-gray-500">
-        SSH 는 맥미니 접속 기록, 웹 로그인은 Control 로그인 실패·거절
+        SSH 는 이 서버 접속 기록, 웹 로그인은 Control 로그인 실패·거절
         기록입니다. 내 IP·내부망·Tailscale 은 빼고 셉니다.{' '}
         <a
           href="https://db-ip.com"

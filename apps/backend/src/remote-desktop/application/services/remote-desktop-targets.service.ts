@@ -56,7 +56,7 @@ export class RemoteDesktopTargetsService {
   private local() {
     return {
       id: 'local',
-      name: '맥미니',
+      name: '이 컴퓨터',
       port: Number(this.config.get<string>('REMOTE_DESKTOP_PORT') || '5900'),
       hasCredentials: false,
       host: null,

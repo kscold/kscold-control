@@ -17,10 +17,12 @@ import {
   ServerCog,
   ShieldCheck,
 } from 'lucide-react';
-import { useModalStore } from '@/shared/model';
+import { useModalStore, usePermissions } from '@/shared/model';
+import { PERMISSIONS } from '@/shared/config/permissions';
 import type { BackupStatus, SecretBackup } from '../model/key-management.types';
 import { useKeyManagement } from '../model/useKeyManagement';
 import { SshKeyVaultPanel } from './SshKeyVaultPanel';
+import { TargetFormDialog } from './TargetFormDialog';
 import { API_URL } from '@/shared/config';
 
 const STATUS: Record<BackupStatus, { label: string; className: string }> = {
@@ -177,6 +179,23 @@ export function KeyManagementConsole() {
   } = useKeyManagement();
   const { showAlert, showConfirm } = useModalStore();
   const [showApi, setShowApi] = useState(false);
+  const [showTargetForm, setShowTargetForm] = useState(false);
+  const { hasPermission } = usePermissions();
+  // 대상 등록은 권한 관리자(rbac:manage)이면서 키를 쓸 수 있는 사람만 한다.
+  const canManageTargets =
+    hasPermission(PERMISSIONS.RBAC_MANAGE) &&
+    hasPermission(PERMISSIONS.SECRETS_WRITE);
+  const targetForm = (
+    <TargetFormDialog
+      open={showTargetForm}
+      onClose={() => setShowTargetForm(false)}
+      onCreated={(targetId) => {
+        setShowTargetForm(false);
+        showAlert(`${targetId} 대상을 추가했습니다.`, '운영 키 대상');
+        void load();
+      }}
+    />
+  );
 
   const hasChanges = Boolean(revealed && editorValue !== revealed.envFile);
 
@@ -232,6 +251,36 @@ export function KeyManagementConsole() {
   }
 
   if (!target) {
+    // 대상이 아직 없는 것과 불러오지 못한 것을 구분해 보여 준다.
+    if (!error && targets.length === 0) {
+      return (
+        <div className="flex h-full items-center justify-center bg-[#071018] p-6">
+          <div className="max-w-md rounded-2xl border border-slate-800 bg-slate-900/60 p-6 text-center">
+            <p className="text-base font-semibold text-white">
+              아직 등록한 운영 키 대상이 없어요
+            </p>
+            <p className="mt-2 text-sm leading-6 text-slate-400">
+              서비스의 .env 를 안전하게 보고 바꾸려면 먼저 대상(서버나 GCP
+              비밀)을 추가해 주세요.
+            </p>
+            {canManageTargets ? (
+              <button
+                type="button"
+                onClick={() => setShowTargetForm(true)}
+                className="mt-5 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-500"
+              >
+                대상 추가
+              </button>
+            ) : (
+              <p className="mt-4 text-xs text-slate-500">
+                대상 추가는 권한 관리자에게 요청해 주세요.
+              </p>
+            )}
+          </div>
+          {targetForm}
+        </div>
+      );
+    }
     return (
       <div className="flex h-full items-center justify-center bg-[#071018] p-6">
         <div className="max-w-md rounded-2xl border border-red-900/60 bg-red-950/20 p-6 text-red-200">
@@ -327,8 +376,19 @@ curl -X PUT '${apiOrigin}/api/key-management/targets/${target.id}/environment' \
               <Database size={17} className="text-sky-300" />
               <h2 className="font-semibold text-white">운영 대상</h2>
             </div>
-            <span className="font-mono text-[11px] text-slate-500">
-              PostgreSQL registry · {targets.length} targets
+            <span className="flex items-center gap-3">
+              <span className="font-mono text-[11px] text-slate-500">
+                PostgreSQL registry · {targets.length} targets
+              </span>
+              {canManageTargets ? (
+                <button
+                  type="button"
+                  onClick={() => setShowTargetForm(true)}
+                  className="rounded-md border border-slate-700 px-2 py-1 text-xs text-slate-200 hover:border-slate-500"
+                >
+                  대상 추가
+                </button>
+              ) : null}
             </span>
           </div>
           <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
@@ -611,6 +671,7 @@ curl -X PUT '${apiOrigin}/api/key-management/targets/${target.id}/environment' \
 
         <SshKeyVaultPanel />
       </div>
+      {targetForm}
     </div>
   );
 }

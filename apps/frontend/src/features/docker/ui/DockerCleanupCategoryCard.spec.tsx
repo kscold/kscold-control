@@ -56,4 +56,34 @@ describe('DockerCleanupCategoryCard', () => {
       screen.queryByRole('button', { name: '예상 절감량 보기' }),
     ).not.toBeInTheDocument();
   });
+
+  it('꺼진 컨테이너는 고른 것만 지우도록 넘긴다', async () => {
+    const user = userEvent.setup();
+    const onExecute = vi.fn();
+    render(
+      <DockerCleanupCategoryCard
+        title="종료된 컨테이너"
+        description="설명"
+        actionKey="containers"
+        selectable
+        category={{
+          items: [
+            { id: 'c1', label: 'old-job', size: 10 },
+            { id: 'c2', label: 'congbang', size: 20 },
+          ],
+          totalBytes: 30,
+          reclaimableBytes: 30,
+        }}
+        onExecute={onExecute}
+      />,
+    );
+
+    const run = screen.getByRole('button', { name: '고른 0개 지우기' });
+    expect(run).toBeDisabled();
+    await user.click(screen.getByRole('checkbox', { name: 'old-job 고르기' }));
+    await user.click(screen.getByRole('button', { name: '고른 1개 지우기' }));
+    expect(onExecute).toHaveBeenCalledWith('containers', [
+      { id: 'c1', label: 'old-job' },
+    ]);
+  });
 });

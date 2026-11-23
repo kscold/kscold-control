@@ -5,10 +5,7 @@ import { formatBytes } from '@/shared/lib';
 import type { DockerCleanupResult } from '@/entities/container';
 
 export type DockerCleanupActionKey =
-  | 'images'
-  | 'containers'
-  | 'volumes'
-  | 'buildCache';
+  'images' | 'containers' | 'volumes' | 'buildCache';
 
 const ACTION_LABEL: Record<DockerCleanupActionKey, string> = {
   images: 'dangling 이미지 정리',
@@ -28,8 +25,8 @@ export function useDockerCleanupActions(onSuccess?: () => void) {
   const actionMap = useMemo(
     () => ({
       images: (dryRun: boolean) => dockerService.pruneDanglingImages(dryRun),
-      containers: (dryRun: boolean) =>
-        dockerService.pruneExitedContainers(dryRun),
+      containers: (dryRun: boolean, ids: string[] = []) =>
+        dockerService.pruneExitedContainers(dryRun, ids),
       volumes: (dryRun: boolean) => dockerService.pruneDanglingVolumes(dryRun),
       buildCache: (dryRun: boolean) => dockerService.pruneBuildCache(dryRun),
     }),
@@ -39,10 +36,11 @@ export function useDockerCleanupActions(onSuccess?: () => void) {
   const executeAction = async (
     key: DockerCleanupActionKey,
     dryRun: boolean,
+    ids: string[] = [],
   ) => {
     try {
       setRunningAction(key);
-      const result = await actionMap[key](dryRun);
+      const result = await actionMap[key](dryRun, ids);
       setResults((prev) => ({ ...prev, [key]: result }));
       if (dryRun) {
         showAlert(
@@ -70,11 +68,23 @@ export function useDockerCleanupActions(onSuccess?: () => void) {
   const previewAction = (key: DockerCleanupActionKey) =>
     executeAction(key, true);
 
-  const confirmAndRunAction = (key: DockerCleanupActionKey) => {
+  const confirmAndRunAction = (
+    key: DockerCleanupActionKey,
+    selected: { id: string; label: string }[] = [],
+  ) => {
+    // 컨테이너는 일부러 꺼 둔 것도 있어 고른 것의 이름을 하나하나 보여 주고 지운다.
+    const message =
+      key === 'containers'
+        ? `아래 컨테이너 ${selected.length}개를 지울까요? 볼륨은 남습니다.\n${selected.map((item) => `· ${item.label}`).join('\n')}`
+        : `${ACTION_LABEL[key]}을(를) 실행할까요?\n실행 전에 예상 절감 용량을 먼저 확인하는 것을 권장합니다.`;
     showConfirm(
-      `${ACTION_LABEL[key]}을(를) 실행할까요?\n실행 전에 예상 절감 용량을 먼저 확인하는 것을 권장합니다.`,
+      message,
       () => {
-        void executeAction(key, false);
+        void executeAction(
+          key,
+          false,
+          selected.map((item) => item.id),
+        );
       },
       '안전 정리 실행',
     );

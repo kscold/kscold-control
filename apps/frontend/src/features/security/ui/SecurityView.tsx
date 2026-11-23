@@ -111,7 +111,7 @@ export function SecurityView() {
           </h1>
           <p className="mt-1 text-sm text-gray-500">
             {tab === 'ssh'
-              ? '맥미니 SSH 접속 기록 · 열린 세션 · 공격 IP 차단'
+              ? '이 서버 SSH 접속 기록 · 열린 세션 · 공격 IP 차단'
               : tab === 'map'
                 ? '공격 IP 가 어느 나라·도시에서 오는지'
                 : `사이트 접속 차단 — 방화벽 ${firewallAll.length}건 · nginx ${active.length}건`}
@@ -206,7 +206,7 @@ export function SecurityView() {
                 </div>
                 <p className="mb-3 text-xs text-gray-500">
                   SSH 공격으로 자동 차단했거나 SSH 접속 탭에서 막은 IP 입니다.
-                  맥미니 방화벽에서 막아 nginx 에 닿기 전에 모든 사이트 접속이
+                  이 서버 방화벽에서 막아 nginx 에 닿기 전에 모든 사이트 접속이
                   끊깁니다. SSH 접속 탭과 같은 목록이라 여기서 바꾸면 그쪽에도
                   바로 반영됩니다.
                   {firewallSshOnly > 0 &&

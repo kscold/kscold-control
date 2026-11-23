@@ -74,7 +74,7 @@ export interface SshSession {
   known: boolean;
 }
 
-/** 차단 범위 — all: 맥미니의 모든 접속(SSH·운영 사이트), ssh: SSH(22)만 */
+/** 차단 범위 — all: 이 서버의 모든 접속(SSH·운영 사이트), ssh: SSH(22)만 */
 export type SshBlockScope = 'all' | 'ssh';
 
 export interface SshBlock {
@@ -113,8 +113,17 @@ export interface SshGuardStatus {
   sshOnlyCount: number | null;
 }
 
+/** 접속 기록기·차단기 설치 안내. 설치 스크립트가 이 서버에 있을 때만 명령을 준다. */
+export interface SshHostSetup {
+  /** pf·launchd 를 쓰므로 macOS 서버에서만 켤 수 있다 */
+  supported: boolean;
+  auditCommand: string | null;
+  guardCommand: string | null;
+}
+
 export interface SshAccessOverview {
   recorder: { logPath: string; exists: boolean; updatedAt: string | null };
+  setup: SshHostSetup;
   guard: SshGuardStatus;
   summary: Omit<SshAuditSummary, 'ips'> & {
     ips: Array<SshIpSummary & { geo: IpGeo | null }>;
@@ -130,7 +139,7 @@ export interface SshAccessOverview {
 /**
  * SSH 접속 기록·열린 세션·차단 목록
  *
- * 맥미니의 root 데몬 둘이 쓰는 파일을 읽고, 사람이 바꾸는 목록만 씁니다.
+ * 이 서버의 root 데몬 둘이 쓰는 파일을 읽고, 사람이 바꾸는 목록만 씁니다.
  * - com.kscold.ssh-audit: ssh-audit.log 에 접속 기록
  * - com.kscold.ssh-guard: ssh-block-*.txt 를 읽어 pf 표에 올림 (Control 은 pf 를 직접 만지지 않음)
  *   ssh-block-scope.tsv 에 IP<TAB>ssh 로 적은 IP 는 SSH 만, 나머지는 모든 접속을 막음
@@ -291,6 +300,7 @@ export class SshAccessService {
     const summary = summarizeSshAudit(events, known, since);
 
     return {
+      setup: await this.readHostSetup(),
       recorder: {
         logPath,
         exists: !!logStat,
@@ -420,7 +430,7 @@ export class SshAccessService {
       this.allowlist.isProtected(value, null).protected
     ) {
       throw new BadRequestException(
-        '맥미니·내부망·Tailscale·허용 목록 주소는 막을 수 없습니다',
+        '이 서버·내부망·Tailscale·허용 목록 주소는 막을 수 없습니다',
       );
     }
     const known = (await this.readKnownIps()).find((knownIp) =>
@@ -634,6 +644,21 @@ export class SshAccessService {
       .sort((a, b) => (b.blockedAt ?? '').localeCompare(a.blockedAt ?? ''));
   }
 
+  private async readHostSetup(): Promise<SshHostSetup> {
+    const command = async (name: string) => {
+      const script = this.file(name);
+      return fs
+        .access(script)
+        .then(() => `sudo bash ${script}`)
+        .catch(() => null);
+    };
+    return {
+      supported: process.platform === 'darwin',
+      auditCommand: await command('setup-ssh-audit.sh'),
+      guardCommand: await command('setup-ssh-guard.sh'),
+    };
+  }
+
   private async readGuardStatus(): Promise<SshGuardStatus> {
     const installed = await fs
       .access('/Library/LaunchDaemons/com.kscold.ssh-guard.plist')
@@ -780,7 +805,7 @@ export class SshAccessService {
     for (const line of stdout.split('\n')) {
       if (line.startsWith('p')) pid = Number(line.slice(1));
       else if (line.startsWith('n') && pid && !map.has(pid)) {
-        // 맥미니의 22번으로 들어온 연결만 (세션이 연 다른 연결 제외)
+        // 이 서버의 22번으로 들어온 연결만 (세션이 연 다른 연결 제외)
         if (!/:22->/.test(line)) continue;
         const ep = parseRemoteEndpoint(line.slice(1));
         if (ep) map.set(pid, ep);
@@ -873,7 +898,7 @@ function sinceOf(days: number): string {
   return formatLocal(sinceDate(days));
 }
 
-/** 기록 파일과 같은 맥미니 로컬 시각 형식 (YYYY-MM-DD HH:MM:SS) */
+/** 기록 파일과 같은 이 서버 로컬 시각 형식 (YYYY-MM-DD HH:MM:SS) */
 export function formatLocal(d: Date): string {
   const p = (n: number) => String(n).padStart(2, '0');
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(

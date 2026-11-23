@@ -3,6 +3,12 @@
   "version": "1.6.0",
   "private": true,
   "description": "kscold-control 을 한 번에 설치하고 백그라운드에서 실행하는 데스크톱 앱",
+  "homepage": "https://github.com/kscold/kscold-control",
+  "author": {
+    "name": "kscold-control contributors",
+    "email": "kscold-control@users.noreply.github.com"
+  },
+  "license": "MIT",
   "main": "dist/main.js",
   "scripts": {
     "build": "tsc -p tsconfig.json && node scripts/copy-wizard.mjs",

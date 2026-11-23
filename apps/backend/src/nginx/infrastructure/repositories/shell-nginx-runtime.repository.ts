@@ -3,19 +3,11 @@ import { execFile } from 'child_process';
 import { promisify } from 'util';
 import type { INginxRuntimeRepository } from '../../domain/repositories/nginx-runtime.repository.interface';
 
-const execFileAsync = promisify(execFile);
+import { resolveNginxContainer } from '../../../common/utils/nginx-container.util';
 
-/**
- * 관리할 nginx 컨테이너 이름. 비워 두면 nginx 연동을 끈다
- * (설치 프로그램으로 깐 Control 처럼 다른 사람의 nginx 가 없는 환경).
- */
-export function resolveNginxContainer(
-  env: NodeJS.ProcessEnv = process.env,
-): string | null {
-  const configured = env.NGINX_CONTAINER;
-  if (configured === undefined) return 'kscold-nginx';
-  return configured.trim() || null;
-}
+export { resolveNginxContainer };
+
+const execFileAsync = promisify(execFile);
 
 const DISABLED_OUTPUT =
   'nginx 연동이 꺼져 있습니다(NGINX_CONTAINER 가 비어 있음).';

@@ -15,7 +15,7 @@ export const SSH_AUDIT_RESULTS = [
 
 export type SshAuditResult = (typeof SSH_AUDIT_RESULTS)[number];
 
-/** 접속 IP 출처 구분 — 맥미니 자신, 집 내부망, Tailscale, 외부 */
+/** 접속 IP 출처 구분 — 서버 자신, 내부망, Tailscale, 외부 */
 export type SshIpScope = 'local' | 'lan' | 'tailscale' | 'external' | 'unknown';
 
 export interface SshAuditEvent {

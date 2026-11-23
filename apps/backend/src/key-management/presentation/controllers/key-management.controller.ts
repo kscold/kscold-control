@@ -19,11 +19,14 @@ import { RequirePermissions } from '../../../common/decorators/permissions.decor
 import { PermissionsGuard } from '../../../common/guards/permissions.guard';
 import type { JwtRequest } from '../../../common/types/jwt-request.type';
 import {
+  CreateKeyManagementTargetDto,
   PatchEnvironmentKeyDto,
   RestoreSecretBackupDto,
   UpdateEnvironmentDto,
 } from '../../application/dto';
 import { KeyManagementService } from '../../application/services/key-management.service';
+import type { KeyManagementTarget } from '../../domain/types/key-management-target.type';
+import { KeyManagementTargetService } from '../../application/services/key-management-target.service';
 import { KeyManagementTargetAccessGuard } from '../guards/key-management-target-access.guard';
 import { KeyManagementTargetAccessService } from '../../../rbac/application/services/key-management-target-access.service';
 
@@ -41,7 +44,49 @@ export class KeyManagementController {
   constructor(
     private readonly keyManagement: KeyManagementService,
     private readonly targetAccess: KeyManagementTargetAccessService,
+    private readonly targets: KeyManagementTargetService,
   ) {}
+
+  /** 새 운영 키 대상 등록. 권한 관리자만 할 수 있다. */
+  @Post('targets')
+  @RequirePermissions(PERMISSIONS.RBAC_MANAGE, PERMISSIONS.SECRETS_WRITE)
+  @Audit({
+    domain: 'secrets',
+    action: 'target.create',
+    summary: (ctx) =>
+      `운영 키 대상 ${(ctx.body as CreateKeyManagementTargetDto).id} 를 등록했습니다.`,
+    targetType: 'secret-target',
+    targetId: (ctx) => (ctx.body as CreateKeyManagementTargetDto).id,
+    metadata: (ctx) => {
+      const body = ctx.body as CreateKeyManagementTargetDto;
+      return {
+        provider: body.provider,
+        deploymentProvider: body.deploymentProvider,
+      };
+    },
+  })
+  async createTarget(@Body() body: CreateKeyManagementTargetDto) {
+    const created = await this.targets.create({
+      ...body,
+      enabled: true,
+    } as never);
+    return { id: created.id, displayName: created.displayName };
+  }
+
+  /** 대상 끄기. 백업 기록이 남아 있어 지우지 않고 목록에서만 뺀다. */
+  @Post('targets/:targetId/disable')
+  @RequirePermissions(PERMISSIONS.RBAC_MANAGE, PERMISSIONS.SECRETS_WRITE)
+  @Audit({
+    domain: 'secrets',
+    action: 'target.disable',
+    summary: (ctx) => `운영 키 대상 ${ctx.params.targetId} 를 껐습니다.`,
+    targetType: 'secret-target',
+    targetId: (ctx) => ctx.params.targetId,
+  })
+  async disableTarget(@Param('targetId') targetId: string) {
+    await this.targets.disable(targetId);
+    return { ok: true };
+  }
 
   @Get('targets')
   @RequirePermissions(PERMISSIONS.SECRETS_READ)

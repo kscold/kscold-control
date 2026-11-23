@@ -9,7 +9,8 @@ export interface IDockerCleanupGateway {
   getUsageSummary(): Promise<string>;
   getDetailedUsage(): Promise<string>;
   pruneDanglingImages(): Promise<string>;
-  pruneExitedContainers(): Promise<string>;
+  /** 고른 컨테이너만 지움. 볼륨은 남김. */
+  removeContainers(ids: string[]): Promise<string>;
   pruneDanglingVolumes(): Promise<string>;
   pruneBuildCache(): Promise<string>;
 }

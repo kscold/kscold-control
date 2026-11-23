@@ -1,9 +1,10 @@
 import { api } from '@/shared/api/client';
 import { BaseApiService } from '@/shared/api/base.service';
-import { Container, ComposeProvisioningTemplate } from '../model/container.types';
 import {
-  CreateContainerRequest,
-} from '../model/container-api.types';
+  Container,
+  ComposeProvisioningTemplate,
+} from '../model/container.types';
+import { CreateContainerRequest } from '../model/container-api.types';
 import type {
   DockerCleanupCandidates,
   DockerCleanupResult,
@@ -221,8 +222,11 @@ export class DockerService extends BaseApiService {
 
   async pruneExitedContainers(
     dryRun: boolean = true,
+    ids: string[] = [],
   ): Promise<DockerCleanupResult> {
-    return this.runCleanupAction('/cleanup/containers/prune-exited', dryRun);
+    return this.runCleanupAction('/cleanup/containers/prune-exited', dryRun, {
+      ids,
+    });
   }
 
   async pruneDanglingVolumes(
@@ -234,11 +238,12 @@ export class DockerService extends BaseApiService {
   private async runCleanupAction(
     path: string,
     dryRun: boolean,
+    extra: Record<string, unknown> = {},
   ): Promise<DockerCleanupResult> {
     try {
       const { data } = await api.post<DockerCleanupResult>(
         `${this.basePath}${path}`,
-        { dryRun },
+        { dryRun, ...extra },
       );
       return data;
     } catch (error) {

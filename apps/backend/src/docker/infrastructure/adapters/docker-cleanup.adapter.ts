@@ -20,8 +20,9 @@ export class DockerCleanupAdapter implements IDockerCleanupGateway {
     return this.run(['image', 'prune', '-f']);
   }
 
-  async pruneExitedContainers(): Promise<string> {
-    return this.run(['container', 'prune', '-f']);
+  async removeContainers(ids: string[]): Promise<string> {
+    // container prune 은 일부러 꺼 둔 컨테이너까지 모두 지우므로 고른 것만 지운다(-v 없이 볼륨 유지).
+    return this.run(['container', 'rm', ...ids]);
   }
 
   async pruneDanglingVolumes(): Promise<string> {

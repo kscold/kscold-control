@@ -6,7 +6,7 @@ import { DockerCleanupService } from '../services/docker-cleanup.service';
 export class PruneExitedContainersUseCase {
   constructor(private readonly dockerCleanup: DockerCleanupService) {}
 
-  execute(dryRun = true) {
-    return this.dockerCleanup.pruneExitedContainers(dryRun);
+  execute(dryRun = true, ids: string[] = []) {
+    return this.dockerCleanup.pruneExitedContainers(dryRun, ids);
   }
 }

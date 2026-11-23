@@ -38,12 +38,12 @@ describe('저장된 원격 접속 대상', () => {
     encryption = module.get(SecretEncryptionService);
   });
 
-  it('등록된 대상이 없으면 기본 맥미니를 제공한다', async () => {
+  it('등록된 대상이 없으면 기본 이 컴퓨터를 제공한다', async () => {
     query.mockResolvedValue([]);
     expect(await service.list()).toEqual([
       {
         id: 'local',
-        name: '맥미니',
+        name: '이 컴퓨터',
         port: 5900,
         hasCredentials: false,
         host: null,

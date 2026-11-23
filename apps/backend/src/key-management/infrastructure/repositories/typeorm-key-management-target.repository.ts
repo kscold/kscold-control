@@ -26,6 +26,24 @@ export class TypeOrmKeyManagementTargetRepository implements IKeyManagementTarge
       .getOne();
   }
 
+  async exists(id: string): Promise<boolean> {
+    return (await this.repository.count({ where: { id } })) > 0;
+  }
+
+  async create(
+    target: Omit<KeyManagementTargetEntity, 'createdAt' | 'updatedAt'>,
+  ): Promise<void> {
+    await this.repository.insert(target);
+  }
+
+  async disable(id: string): Promise<boolean> {
+    const result = await this.repository.update(
+      { id, enabled: true },
+      { enabled: false },
+    );
+    return (result.affected ?? 0) > 0;
+  }
+
   private baseQuery() {
     return this.repository
       .createQueryBuilder('target')

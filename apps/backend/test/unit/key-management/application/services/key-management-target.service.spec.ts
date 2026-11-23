@@ -64,6 +64,13 @@ describe('KeyManagementTargetService', () => {
         .mockImplementation(async (id: string) =>
           rows.find((row) => row.id === id),
         ),
+      exists: vi
+        .fn()
+        .mockImplementation(async (id: string) =>
+          rows.some((row) => row.id === id),
+        ),
+      create: vi.fn().mockResolvedValue(undefined),
+      disable: vi.fn().mockResolvedValue(true),
     };
     return {
       repository,
@@ -118,5 +125,63 @@ describe('KeyManagementTargetService', () => {
     await expect(service.list()).rejects.toBeInstanceOf(
       ServiceUnavailableException,
     );
+  });
+
+  describe('대상 등록', () => {
+    const newTarget = {
+      ...projectbetaTarget,
+      id: 'projectgamma-production',
+      requiredKeys: ['NODE_ENV'],
+    };
+
+    it('규칙에 맞는 새 대상을 켜진 상태로 저장한다', async () => {
+      const { service, repository } = fixture();
+      const created = await service.create(newTarget as never);
+      expect(repository.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          id: 'projectgamma-production',
+          enabled: true,
+        }),
+      );
+      expect(created.id).toBe('projectgamma-production');
+    });
+
+    it('이미 있는 ID 는 충돌로 거절한다', async () => {
+      const { service, repository } = fixture();
+      await expect(
+        service.create({ ...newTarget, id: 'projectbeta-production' } as never),
+      ).rejects.toThrow('이미 있는 대상 ID');
+      expect(repository.create).not.toHaveBeenCalled();
+    });
+
+    it('틀린 설정은 어디가 틀렸는지 문장으로 알려 준다', async () => {
+      const { service, repository } = fixture();
+      await expect(
+        service.create({
+          ...newTarget,
+          secretConfig: { ...newTarget.secretConfig, envPath: 'relative/.env' },
+        } as never),
+      ).rejects.toThrow('원격 .env 경로는 /로 시작하는 전체 경로');
+      expect(repository.create).not.toHaveBeenCalled();
+    });
+
+    it('저장 방식과 배포 방식의 짝이 맞지 않으면 거절한다', async () => {
+      const { service } = fixture();
+      await expect(
+        service.create({
+          ...newTarget,
+          deploymentProvider: 'github-actions',
+          deploymentConfig: projectalphaTarget.deploymentConfig,
+        } as never),
+      ).rejects.toThrow('짝이 맞지 않습니다');
+    });
+
+    it('끈 대상이 없으면 찾을 수 없다고 알린다', async () => {
+      const { service, repository } = fixture();
+      repository.disable.mockResolvedValueOnce(false);
+      await expect(service.disable('projectgamma-production')).rejects.toThrow(
+        NotFoundException,
+      );
+    });
   });
 });

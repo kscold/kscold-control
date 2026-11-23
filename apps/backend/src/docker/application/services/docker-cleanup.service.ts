@@ -1,4 +1,9 @@
-import { Inject, Injectable, Logger } from '@nestjs/common';
+import {
+  BadRequestException,
+  Inject,
+  Injectable,
+  Logger,
+} from '@nestjs/common';
 import { ComposeService } from './compose.service';
 import type {
   DockerCleanupCandidateItem,
@@ -148,13 +153,31 @@ export class DockerCleanupService {
 
   async pruneExitedContainers(
     dryRun: boolean = true,
+    selectedIds: string[] = [],
   ): Promise<DockerCleanupResult> {
-    const candidates = (await this.getCandidates()).containers.items;
+    const exited = (await this.getCandidates()).containers.items;
+    // 일부러 꺼 둔 컨테이너도 있으므로 지울 때는 사람이 고른 것만, 지금도 꺼져 있는 것만 지운다.
+    const candidates = selectedIds.length
+      ? exited.filter((item) => selectedIds.includes(item.id))
+      : exited;
     if (dryRun) {
       return this.createDryRunResult(candidates);
     }
+    if (selectedIds.length === 0) {
+      throw new BadRequestException('지울 컨테이너를 하나 이상 골라 주세요.');
+    }
+    const missing = selectedIds.filter(
+      (id) => !exited.some((item) => item.id === id),
+    );
+    if (missing.length > 0) {
+      throw new BadRequestException(
+        `꺼진 컨테이너 목록에 없어 지우지 않았습니다: ${missing.join(', ')}`,
+      );
+    }
 
-    const output = await this.dockerCleanupGateway.pruneExitedContainers();
+    const output = await this.dockerCleanupGateway.removeContainers(
+      candidates.map((item) => item.id),
+    );
     return this.createExecResult(candidates, output);
   }
 
