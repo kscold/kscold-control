@@ -9,6 +9,8 @@ import { execFile } from 'child_process';
 import { promisify } from 'util';
 import * as fs from 'fs';
 import * as path from 'path';
+import { X509Certificate } from 'crypto';
+import { isNewlyIssuedCert } from '../../domain/policies/cert-issuance.policy';
 import type { CertInfo } from '../../domain/types/nginx-site.type';
 import type { INginxRuntimeRepository } from '../../domain/repositories/nginx-runtime.repository.interface';
 import { NGINX_RUNTIME_REPOSITORY } from '../../domain/repositories/nginx-runtime.repository.interface';
@@ -241,6 +243,8 @@ export class CertService {
       domain,
     ];
 
+    const startedAt = Date.now();
+    const previousFingerprint = this.readCertFingerprint(domain);
     try {
       const { stdout, stderr } = await execFileAsync('docker', args, {
         timeout: 120000,
@@ -257,12 +261,22 @@ export class CertService {
       const output = error.stdout + error.stderr || error.message;
       this.logger.error(`Certbot failed: ${output}`);
 
+      // certbot 이 경고와 함께 끝나도 새 인증서가 실제로 만들어졌을 때만 성공으로 본다.
+      // 예전 인증서가 남아 있으면 복사는 되므로 복사 성공만으로 판단하지 않는다.
       try {
         await this.copyCertFromCertbot(domain);
+        if (!this.isNewlyIssued(domain, startedAt, previousFingerprint)) {
+          return {
+            success: false,
+            output:
+              output +
+              '\n(새 인증서가 발급되지 않았습니다. 기존 인증서를 그대로 둡니다.)',
+          };
+        }
         await this.runtimeRepo.reload();
         return {
           success: true,
-          output: output + '\n(Certificates were issued despite warnings)',
+          output: output + '\n(경고가 있었지만 새 인증서가 발급되었습니다.)',
         };
       } catch {
         return { success: false, output };
@@ -300,17 +314,28 @@ export class CertService {
       const output = stdout + stderr;
 
       const certs = await this.listCerts();
+      const failedDomains: string[] = [];
       for (const cert of certs) {
         if (cert.exists) {
           try {
             await this.copyCertFromCertbot(cert.domain);
-          } catch {
-            // 일부 인증서 복사 실패가 전체 갱신 결과를 막지 않게 계속 진행함.
+          } catch (error) {
+            // 한 도메인이 실패해도 나머지는 계속 반영하고, 실패한 도메인은 결과에 남긴다.
+            failedDomains.push(cert.domain);
+            this.logger.error(
+              `인증서 복사 실패 ${cert.domain}: ${String(error)}`,
+            );
           }
         }
       }
 
       await this.runtimeRepo.reload();
+      if (failedDomains.length > 0) {
+        return {
+          success: false,
+          output: `${output}\n반영하지 못한 도메인: ${failedDomains.join(', ')}`,
+        };
+      }
       return { success: true, output };
     } catch (error: any) {
       return { success: false, output: error.message };
@@ -383,6 +408,33 @@ export class CertService {
         output: error.stdout + error.stderr || error.message,
       };
     }
+  }
+
+  /** 서비스 ssl 디렉터리 인증서를 읽음. 없거나 읽을 수 없으면 null. */
+  private readCert(domain: string): X509Certificate | null {
+    try {
+      return new X509Certificate(
+        fs.readFileSync(path.join(SSL_DIR, domain, 'fullchain.pem')),
+      );
+    } catch {
+      return null;
+    }
+  }
+
+  private readCertFingerprint(domain: string): string | null {
+    return this.readCert(domain)?.fingerprint256 ?? null;
+  }
+
+  private isNewlyIssued(
+    domain: string,
+    startedAt: number,
+    previousFingerprint: string | null,
+  ): boolean {
+    return isNewlyIssuedCert(
+      this.readCert(domain),
+      previousFingerprint,
+      startedAt,
+    );
   }
 
   /** certbot이 발급한 인증서를 서비스 ssl 디렉터리 구조로 복사함. */

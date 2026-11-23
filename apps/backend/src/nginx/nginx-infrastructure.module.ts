@@ -11,7 +11,10 @@ import { ShellNginxRuntimeRepository } from './infrastructure/repositories/shell
 @Module({
   providers: [
     { provide: NGINX_CONFIG_REPOSITORY, useClass: FileNginxConfigRepository },
-    { provide: NGINX_RUNTIME_REPOSITORY, useClass: ShellNginxRuntimeRepository },
+    {
+      provide: NGINX_RUNTIME_REPOSITORY,
+      useClass: ShellNginxRuntimeRepository,
+    },
   ],
   exports: [NGINX_CONFIG_REPOSITORY, NGINX_RUNTIME_REPOSITORY],
 })

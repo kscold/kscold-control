@@ -204,8 +204,9 @@ export class NginxController {
     targetType: 'site',
     targetId: (ctx) => ctx.params.name,
     metadata: (ctx) => {
-      const before = (ctx.extra as { before?: ReturnType<typeof toSiteSnapshot> })
-        .before;
+      const before = (
+        ctx.extra as { before?: ReturnType<typeof toSiteSnapshot> }
+      ).before;
       const { enabled } = ctx.response as { enabled: boolean };
       return {
         before: before ?? null,
