@@ -1,4 +1,4 @@
-import { WORLD_MAP } from './worldMap.generated';
+import { WORLD_MAP } from './world-map.generated';
 
 /** 위도·경도를 지도 좌표로. 지도 자료를 만든 것과 같은 등장방형 투영이다. */
 export function projectToMap(lat: number, lon: number): [number, number] {

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { dockerService } from '@/entities/container';
 import { PERMISSIONS } from '@/shared/config/permissions';
-import { usePermissions } from '@/shared/lib';
+import { usePermissions } from '@/shared/model';
 import { useModalStore } from '@/shared/model';
 import { TopologyCanvas } from './TopologyCanvas';
 import { TopologyLegend } from './TopologyLegend';

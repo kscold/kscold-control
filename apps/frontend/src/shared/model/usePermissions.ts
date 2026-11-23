@@ -1,5 +1,5 @@
-import { useAuthStore } from '../model/auth.store';
-import { useModalStore } from '../model/modal.store';
+import { useAuthStore } from './auth.store';
+import { useModalStore } from './modal.store';
 
 export function usePermissions() {
   const { user } = useAuthStore();

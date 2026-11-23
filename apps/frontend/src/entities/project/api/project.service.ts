@@ -16,7 +16,7 @@ import type {
   FinalizeUploadSessionResult,
   ProjectVersion,
   RepositoryUploadLimits,
-} from '../model/types';
+} from '../model/project.types';
 
 const REPOSITORY_UPLOAD_INTEGRITY_ERROR_CODE =
   'REPOSITORY_UPLOAD_INTEGRITY_MISMATCH';

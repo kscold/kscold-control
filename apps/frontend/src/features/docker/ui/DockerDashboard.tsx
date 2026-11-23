@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { usePermissions } from '@/shared/lib/use-permissions';
+import { usePermissions } from '@/shared/model';
 import { PERMISSIONS } from '@/shared/config/permissions';
 import {
   useContainers,

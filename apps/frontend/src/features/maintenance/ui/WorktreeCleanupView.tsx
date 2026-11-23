@@ -10,7 +10,8 @@ import {
   Trash2,
 } from 'lucide-react';
 import { PERMISSIONS } from '@/shared/config/permissions';
-import { formatShortDateTime, usePermissions } from '@/shared/lib';
+import { formatShortDateTime } from '@/shared/lib';
+import { usePermissions } from '@/shared/model';
 import { useModalStore } from '@/shared/model';
 import { worktreeCleanupService } from '../api/worktree-cleanup.service';
 import { formatSize } from '../lib/format';

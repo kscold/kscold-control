@@ -1,6 +1,6 @@
 import { api } from '@/shared/api/client';
 import { BaseApiService } from '@/shared/api/base.service';
-import { User, Role, Permission } from '../model/types';
+import { User, Role, Permission } from '../model/user.types';
 import {
   CreateUserRequest,
   UpdateUserRequest,
@@ -11,7 +11,7 @@ import {
   ImpersonationResponse,
   KeyManagementAccessMatrix,
   KeyManagementTargetAssignment,
-} from './types';
+} from './user-api.types';
 
 /**
  * RBAC 관련 API 호출을 한곳에 모아둔 서비스

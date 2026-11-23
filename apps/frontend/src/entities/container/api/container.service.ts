@@ -1,9 +1,9 @@
 import { api } from '@/shared/api/client';
 import { BaseApiService } from '@/shared/api/base.service';
-import { Container, ComposeProvisioningTemplate } from '../model/types';
+import { Container, ComposeProvisioningTemplate } from '../model/container.types';
 import {
   CreateContainerRequest,
-} from './types';
+} from './container-api.types';
 import type {
   DockerCleanupCandidates,
   DockerCleanupResult,

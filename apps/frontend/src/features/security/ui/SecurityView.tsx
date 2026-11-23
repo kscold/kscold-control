@@ -4,7 +4,7 @@ import { SshAccessPanel } from './SshAccessPanel';
 import { useIpBans } from '../model/useIpBans';
 import { useFirewallBlocks } from '../model/useFirewallBlocks';
 import { useModalStore } from '@/shared/model/modal.store';
-import { usePermissions } from '@/shared/lib';
+import { usePermissions } from '@/shared/model';
 import { PERMISSIONS } from '@/shared/config/permissions';
 import { FirewallBlockList } from './FirewallBlockList';
 import { BanList } from './BanList';

@@ -15,10 +15,11 @@ import {
 import { useModalStore } from '@/shared/model/modal.store';
 import { FirewallBlockList } from './FirewallBlockList';
 import { CountryGuardSection } from './CountryGuardSection';
-import { smallButton, usePaged } from '../model/paging';
+import { smallButton, usePaged } from '../lib/paging';
 import { Pager } from './Pager';
 import { GeoLabel } from './GeoLabel';
-import { usePermissions, formatShortDateTime } from '@/shared/lib';
+import { formatShortDateTime } from '@/shared/lib';
+import { usePermissions } from '@/shared/model';
 import { PERMISSIONS } from '@/shared/config/permissions';
 import { useSshAccess } from '../model/useSshAccess';
 import type {

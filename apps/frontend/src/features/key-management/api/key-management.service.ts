@@ -5,7 +5,7 @@ import type {
   KeyManagementTarget,
   RevealedEnvironment,
   SecretBackup,
-} from '../model/types';
+} from '../model/key-management.types';
 
 function toSafeError(error: unknown, fallback: string): Error {
   if (error instanceof AxiosError) {

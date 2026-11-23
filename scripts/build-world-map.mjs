@@ -16,7 +16,7 @@ const SOURCE_SHA256 =
   '6866c877d39cba9c357620878839b336d569f8c662d3cfab4cb1dbe2d39c977f';
 const OUT = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
-  '../apps/frontend/src/features/security/lib/worldMap.generated.ts',
+  '../apps/frontend/src/features/security/lib/world-map.generated.ts',
 );
 
 // 남극을 뺀 등장방형 투영. 화면에서 IP 위치를 찍을 때도 같은 값을 쓴다.

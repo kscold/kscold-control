@@ -1,6 +1,6 @@
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { keyManagementService } from '../api/key-management.service';
-import type { KeyManagementTarget } from './types';
+import type { KeyManagementTarget } from './key-management.types';
 import { useKeyManagement } from './useKeyManagement';
 
 const projectalpha: KeyManagementTarget = {

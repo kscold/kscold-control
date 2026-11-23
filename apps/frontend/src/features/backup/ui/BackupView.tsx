@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { DatabaseBackup, Loader2, Plus, RefreshCw } from 'lucide-react';
 import { PERMISSIONS } from '@/shared/config/permissions';
-import { formatBytes, usePermissions } from '@/shared/lib';
+import { formatBytes } from '@/shared/lib';
+import { usePermissions } from '@/shared/model';
 import { useModalStore } from '@/shared/model';
 import { useBackupManagement } from '../model/useBackupManagement';
 import type {

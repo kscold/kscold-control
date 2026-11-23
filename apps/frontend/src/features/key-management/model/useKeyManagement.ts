@@ -4,7 +4,7 @@ import type {
   KeyManagementTarget,
   RevealedEnvironment,
   SecretBackup,
-} from './types';
+} from './key-management.types';
 
 export function useKeyManagement() {
   const [targets, setTargets] = useState<KeyManagementTarget[]>([]);

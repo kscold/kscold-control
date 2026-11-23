@@ -18,7 +18,7 @@ import {
   ShieldCheck,
 } from 'lucide-react';
 import { useModalStore } from '@/shared/model';
-import type { BackupStatus, SecretBackup } from '../model/types';
+import type { BackupStatus, SecretBackup } from '../model/key-management.types';
 import { useKeyManagement } from '../model/useKeyManagement';
 import { SshKeyVaultPanel } from './SshKeyVaultPanel';
 import { API_URL } from '@/shared/config';
