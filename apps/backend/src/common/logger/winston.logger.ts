@@ -1,9 +1,11 @@
+import { controlDataPath } from '../utils/control-data-dir.util';
 import * as winston from 'winston';
 import DailyRotateFile = require('winston-daily-rotate-file');
 import { join } from 'path';
 
 // 로그 디렉토리 경로
-const logDir = join(process.cwd(), 'apps', 'backend', 'logs');
+const logDir =
+  controlDataPath('logs') ?? join(process.cwd(), 'apps', 'backend', 'logs');
 
 // 로그 포맷 정의
 const logFormat = winston.format.combine(
