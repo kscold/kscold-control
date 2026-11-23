@@ -30,6 +30,11 @@ export function resolveDockerHost(): string {
     if (existsSync(desktopSocket)) return `unix://${desktopSocket}`;
   }
 
+  // Docker Desktop for Windows 는 이름 있는 파이프로 엔진을 연다.
+  if (platform() === 'win32') {
+    return 'npipe:////./pipe/docker_engine';
+  }
+
   return 'unix:///var/run/docker.sock';
 }
 
@@ -45,6 +50,16 @@ export function resolveDockerConnectionOptions(): DockerConnectionOptions {
 
   if (dockerHost.startsWith('unix://')) {
     return { socketPath: dockerHost.slice('unix://'.length) };
+  }
+
+  // npipe:////./pipe/docker_engine → \\.\pipe\docker_engine (Dockerode 는 socketPath 로 받음)
+  if (dockerHost.startsWith('npipe://')) {
+    return {
+      socketPath: dockerHost
+        .slice('npipe://'.length)
+        .replace(/^\/\//, '\\\\')
+        .replaceAll('/', '\\'),
+    };
   }
 
   const url = new URL(dockerHost.replace(/^tcp:/, 'http:'));

@@ -60,6 +60,7 @@ module.exports = {
         KEY_MANAGEMENT_SSH_IDENTITY_DIR:
           process.env.KEY_MANAGEMENT_SSH_IDENTITY_DIR,
         ...definedEnvironment([
+          'TERMINAL_SHELL',
           'REMOTE_DESKTOP_ENABLED',
           'REMOTE_DESKTOP_ORIGIN',
           'REMOTE_DESKTOP_PORT',

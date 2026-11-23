@@ -8,7 +8,7 @@ const repoRoot = path.resolve(
   '..',
 );
 const backendRoot = path.join(repoRoot, 'apps/backend/src');
-const platformEnvironmentKeys = new Set(['HOME', 'PATH', 'USER']);
+const platformEnvironmentKeys = new Set(['HOME', 'PATH', 'SHELL', 'USER']);
 const violations = [];
 
 function sourceFiles(directory) {

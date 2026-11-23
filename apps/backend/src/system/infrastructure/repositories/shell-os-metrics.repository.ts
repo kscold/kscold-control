@@ -1,6 +1,9 @@
 import { Injectable, Logger } from '@nestjs/common';
 import * as os from 'os';
-import { exec } from 'child_process';
+import { exec, execFile } from 'child_process';
+import { existsSync } from 'fs';
+import { statfs } from 'fs/promises';
+import * as path from 'path';
 import { promisify } from 'util';
 
 import type { IOsMetricsRepository } from '../../domain/repositories/os-metrics.repository.interface';
@@ -15,6 +18,7 @@ import { parseDockerSystemDfOutput } from '../../../common/utils/docker-disk-usa
 import { resolveDockerHost } from '../../../common/utils/docker-host.util';
 
 const execAsync = promisify(exec);
+const execFileAsync = promisify(execFile);
 
 @Injectable()
 export class ShellOsMetricsRepository implements IOsMetricsRepository {
@@ -81,28 +85,29 @@ export class ShellOsMetricsRepository implements IOsMetricsRepository {
       const home = os.homedir();
       const dockerUsagePromise = this.getDockerStorageUsage(home);
 
-      const [dfResult, appsResult, dockerUsage] = await Promise.all([
-        execAsync('df -k /'),
-        execAsync(`du -sk /Applications 2>/dev/null || echo "0\t-"`),
+      // df 대신 statfs 로 읽어 윈도우(시스템 드라이브)·리눅스·macOS 에서 같은 값을 쓴다.
+      // /Applications 크기는 macOS 에만 있는 개념이라 그때만 잰다.
+      const rootPath = os.platform() === 'win32' ? path.parse(home).root : '/';
+      const [rootStats, appsBytes, dockerUsage] = await Promise.all([
+        statfs(rootPath),
+        os.platform() === 'darwin'
+          ? this.measureDirectorySize('/Applications')
+          : Promise.resolve(0),
         dockerUsagePromise,
       ]);
 
-      const lines = dfResult.stdout.trim().split('\n');
-      if (lines.length >= 2) {
-        const parts = lines[1].split(/\s+/);
-        const totalKB = parseInt(parts[1]) || 0;
-        const availableKB = parseInt(parts[3]) || 0;
-        const realUsedKB = totalKB - availableKB;
+      {
+        const total = rootStats.blocks * rootStats.bsize;
+        const available = rootStats.bavail * rootStats.bsize;
+        const realUsed = total - available;
 
         diskInfo = {
-          total: totalKB * 1024,
-          used: realUsedKB * 1024,
-          available: availableKB * 1024,
-          usedPercent: totalKB > 0 ? (realUsedKB / totalKB) * 100 : 0,
+          total,
+          used: realUsed,
+          available,
+          usedPercent: total > 0 ? (realUsed / total) * 100 : 0,
         };
 
-        const appsKB = parseInt(appsResult.stdout.trim().split(/\s+/)[0]) || 0;
-        const appsBytes = appsKB * 1024;
         const dockerBytes = Math.min(
           dockerUsage.storagePathSize || dockerUsage.total,
           Math.max(0, diskInfo.used - appsBytes),
@@ -219,6 +224,8 @@ export class ShellOsMetricsRepository implements IOsMetricsRepository {
     let availableMem: number;
 
     try {
+      // vm_stat 은 macOS 에만 있다. 다른 운영체제는 아래 os.freemem 값으로 계산한다.
+      if (os.platform() !== 'darwin') throw new Error('vm_stat 없음');
       const { stdout } = await execAsync('vm_stat');
       const pageSize = 16384;
       const parse = (key: string) => {
@@ -245,6 +252,22 @@ export class ShellOsMetricsRepository implements IOsMetricsRepository {
     };
   }
 
+  /** du 로 폴더 크기를 잼. 폴더가 없으면 0, 재지 못하면 원인을 남기고 0. */
+  private async measureDirectorySize(directory: string): Promise<number> {
+    if (!existsSync(directory)) return 0;
+    try {
+      const { stdout } = await execFileAsync('du', ['-sk', directory]);
+      return (parseInt(stdout.trim().split(/\s+/)[0], 10) || 0) * 1024;
+    } catch (error) {
+      // 조회 실패를 0으로 돌려주면 디스크 사용량이 실제보다 적게 보인다.
+      // 값은 0으로 두되 원인은 남겨 과소 표시를 알아챌 수 있게 한다.
+      this.logger.warn(
+        `디스크 사용량 조회 실패: ${directory} — ${(error as Error).message}`,
+      );
+      return 0;
+    }
+  }
+
   private createEmptyDockerUsage(): DockerStorageUsage {
     return {
       total: 0,
@@ -269,8 +292,10 @@ export class ShellOsMetricsRepository implements IOsMetricsRepository {
     const dockerHost = resolveDockerHost();
 
     try {
-      const { stdout } = await execAsync(
-        "docker system df --format '{{json .}}'",
+      // 셸 따옴표를 거치지 않도록 인자로 넘긴다(윈도우 cmd 는 작은따옴표를 모른다).
+      const { stdout } = await execFileAsync(
+        'docker',
+        ['system', 'df', '--format', '{{json .}}'],
         { env: { ...process.env, DOCKER_HOST: dockerHost } },
       );
       Object.assign(dockerUsage, parseDockerSystemDfOutput(stdout));
@@ -280,33 +305,28 @@ export class ShellOsMetricsRepository implements IOsMetricsRepository {
       );
     }
 
-    const candidates = [
-      { label: 'Colima VM', path: `${home}/.colima` },
-      {
-        label: 'Docker Desktop',
-        path: `${home}/Library/Containers/com.docker.docker`,
-      },
-    ];
+    // Colima·Docker Desktop 의 디스크 이미지 위치는 macOS 기준이다. 다른 운영체제는 docker system df 값만 쓴다.
+    const candidates =
+      os.platform() === 'darwin'
+        ? [
+            { label: 'Colima VM', path: path.join(home, '.colima') },
+            {
+              label: 'Docker Desktop',
+              path: path.join(
+                home,
+                'Library',
+                'Containers',
+                'com.docker.docker',
+              ),
+            },
+          ]
+        : [];
 
     const sizes = await Promise.all(
-      candidates.map(async (candidate) => {
-        try {
-          const { stdout } = await execAsync(
-            `du -sk "${candidate.path}" 2>/dev/null || echo "0\t-"`,
-          );
-          return {
-            ...candidate,
-            size: (parseInt(stdout.trim().split(/\s+/)[0], 10) || 0) * 1024,
-          };
-        } catch (error) {
-          // 조회 실패를 0으로 돌려주면 디스크 사용량이 실제보다 적게 보인다.
-          // 값은 0으로 두되 원인은 남겨 과소 표시를 알아챌 수 있게 한다.
-          this.logger.warn(
-            `디스크 사용량 조회 실패: ${candidate.path} — ${(error as Error).message}`,
-          );
-          return { ...candidate, size: 0 };
-        }
-      }),
+      candidates.map(async (candidate) => ({
+        ...candidate,
+        size: await this.measureDirectorySize(candidate.path),
+      })),
     );
 
     const storage = sizes.sort((left, right) => right.size - left.size)[0];
