@@ -1,7 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import * as pty from 'node-pty';
+import { resolveTerminalShell } from '../../domain/policies/terminal-shell.policy';
 import { IPtyManager } from '../../domain/gateways/pty-manager.gateway.interface';
 import {
   childProcessEnv,
@@ -23,8 +24,17 @@ export class PtyManagerService implements IPtyManager {
   // sessionId -> PTY process mapping
   private readonly processes = new Map<string, pty.IPty>();
 
+  private resolveShell() {
+    return resolveTerminalShell({
+      platform: process.platform,
+      override: process.env.TERMINAL_SHELL,
+      loginShell: process.env.SHELL,
+      exists: existsSync,
+    });
+  }
+
   getShellPath(): string {
-    return '/bin/zsh';
+    return this.resolveShell().path;
   }
 
   getWorkingDirectory(): string {
@@ -107,14 +117,19 @@ export class PtyManagerService implements IPtyManager {
 
     const homeDir = getHomeDirectory();
     const workingDir = this.getWorkingDirectory();
-    const shellPath = this.getShellPath();
+    const terminalShell = this.resolveShell();
+    const shellPath = terminalShell.path;
     const claudeBinaryPath = this.getClaudeBinaryPath();
-    const zdotdir = this.ensureZshBootstrapDirectory(
-      homeDir,
-      workingDir,
-      claudeBinaryPath,
-    );
-    const shell = pty.spawn(shellPath, ['-l'], {
+    // zsh 만 ZDOTDIR 로 claude 함수를 심는다. 다른 셸은 PATH·CLAUDE_CODE_BIN 으로 충분하다.
+    const zdotdir =
+      terminalShell.kind === 'zsh'
+        ? this.ensureZshBootstrapDirectory(
+            homeDir,
+            workingDir,
+            claudeBinaryPath,
+          )
+        : undefined;
+    const shell = pty.spawn(shellPath, terminalShell.args, {
       name: 'xterm-256color',
       cols: 100,
       rows: 30,

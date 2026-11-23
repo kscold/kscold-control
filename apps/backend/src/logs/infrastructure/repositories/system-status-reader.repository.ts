@@ -1,3 +1,4 @@
+import * as os from 'node:os';
 import { Injectable, Logger } from '@nestjs/common';
 import { exec } from 'child_process';
 import { promisify } from 'util';
@@ -35,14 +36,13 @@ export class SystemStatusReaderRepository implements ISystemStatusReader {
 
   async getSystemInfo(): Promise<SystemInfo | null> {
     try {
-      const { stdout: hostname } = await execAsync('hostname');
-      const { stdout: uptime } = await execAsync('uptime');
-      const { stdout: memory } = await execAsync('vm_stat | head -5');
-
+      // hostname·uptime·vm_stat 명령 대신 Node os 를 써서 윈도우·리눅스에서도 같은 값을 준다.
+      const gib = (bytes: number) => (bytes / 1024 ** 3).toFixed(1);
+      const uptimeHours = Math.floor(os.uptime() / 3600);
       return {
-        hostname: hostname.trim(),
-        uptime: uptime.trim(),
-        memory: memory.trim(),
+        hostname: os.hostname(),
+        uptime: `${Math.floor(uptimeHours / 24)}일 ${uptimeHours % 24}시간`,
+        memory: `사용 ${gib(os.totalmem() - os.freemem())}GiB / 전체 ${gib(os.totalmem())}GiB`,
       };
     } catch (error) {
       this.logger.error('Failed to get system info:', error.message);

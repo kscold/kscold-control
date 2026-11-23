@@ -1,18 +1,15 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { exec } from 'child_process';
-import { promisify } from 'util';
 import * as fs from 'fs';
 import { join } from 'path';
+import { readLastLines } from '../../../common/utils/read-last-lines.util';
 import { ILogReader } from '../../domain/repositories/log-reader.repository.interface';
-
-const execAsync = promisify(exec);
 
 @Injectable()
 export class FileLogReaderRepository implements ILogReader {
   private readonly logger = new Logger(FileLogReaderRepository.name);
 
   /**
-   * 파일 로그 읽기 (tail 명령어 사용)
+   * 파일 로그 읽기 (파일 끝에서 직접 읽어 운영체제와 관계없이 동작)
    * @param lines 읽을 줄 수
    * @param logType 로그 타입 (backend, nginx-access, nginx-error)
    */
@@ -25,8 +22,7 @@ export class FileLogReaderRepository implements ILogReader {
         return [`Log file not found: ${logPath}`];
       }
 
-      const { stdout } = await execAsync(`tail -n ${lines} "${logPath}"`);
-      return stdout.split('\n').filter((line) => line.trim());
+      return await readLastLines(logPath, lines);
     } catch (error) {
       this.logger.error(`Failed to read logs (${logType}):`, error.message);
       return [`Error reading logs: ${error.message}`];
