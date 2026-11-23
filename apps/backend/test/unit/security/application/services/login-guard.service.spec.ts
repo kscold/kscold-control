@@ -15,8 +15,8 @@ import {
   type LoginAttemptRecord,
   type LoginSubject,
 } from '@/security/domain/policies/login-block.policy';
-import { mfaHarness } from '../auth/mfa.fake';
-import { loginGuardHarness } from './login-guard.fake';
+import { mfaHarness } from '../../../auth/fakes/mfa.fake';
+import { loginGuardHarness } from '../../fakes/login-guard.fake';
 
 const MINUTE = 60_000;
 const T0 = new Date('2026-11-11T03:00:00.000Z').getTime();

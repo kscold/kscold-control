@@ -3,7 +3,7 @@ import {
   InstructionReader,
   rdpConnectValues,
   rdpHandshake,
-} from '../../../src/remote-desktop/infrastructure/gateways/guacamole-protocol';
+} from '../../../../../src/remote-desktop/infrastructure/gateways/guacamole-protocol';
 
 describe('Guacamole 명령 형식', () => {
   it('길이.값 을 쉼표로 잇고 세미콜론으로 끝낸다', () => {

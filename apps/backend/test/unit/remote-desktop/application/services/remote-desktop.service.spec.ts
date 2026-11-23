@@ -9,11 +9,11 @@ import { WebSocket } from 'ws';
 import {
   RemoteDesktopService,
   canControlDesktop,
-} from '../../../src/remote-desktop/application/services/remote-desktop.service';
-import { USER_REPOSITORY } from '../../../src/rbac/domain/repositories/user.repository.interface';
-import { SessionVerifier } from '../../../src/auth/application/services/session-verifier.service';
-import { SessionConnectionRegistry } from '../../../src/auth/application/services/session-connection-registry.service';
-import { browser, sessionHarness } from '../auth/auth-session.fake';
+} from '../../../../../src/remote-desktop/application/services/remote-desktop.service';
+import { USER_REPOSITORY } from '../../../../../src/rbac/domain/repositories/user.repository.interface';
+import { SessionVerifier } from '../../../../../src/auth/application/services/session-verifier.service';
+import { SessionConnectionRegistry } from '../../../../../src/auth/application/services/session-connection-registry.service';
+import { browser, sessionHarness } from '../../../auth/fakes/auth-session.fake';
 
 describe('원격 데스크톱 보안 중계', () => {
   let http: Server;

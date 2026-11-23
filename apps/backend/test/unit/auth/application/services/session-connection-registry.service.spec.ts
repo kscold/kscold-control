@@ -4,7 +4,7 @@ import { once } from 'node:events';
 import { Server } from 'socket.io';
 import { io, type Socket as ClientSocket } from 'socket.io-client';
 import { SESSION_RECHECK_INTERVAL_MS } from '@/auth/application/services/session-connection-registry.service';
-import { browser, sessionHarness } from './auth-session.fake';
+import { browser, sessionHarness } from '../../fakes/auth-session.fake';
 
 const MINUTE = 60 * 1000;
 const DAY = 24 * 60 * MINUTE;

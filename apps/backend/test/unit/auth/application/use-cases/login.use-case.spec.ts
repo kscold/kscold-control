@@ -3,8 +3,8 @@ import * as bcrypt from 'bcrypt';
 import type { LoginResult } from '@/auth/application/dto/login-result.dto';
 import { LoginUseCase } from '@/auth/application/use-cases/login.use-case';
 import { PasswordHasher } from '@/common/utils/password-hasher.util';
-import { browser } from '../../auth-session.fake';
-import { closeMfaHarnesses, mfaHarness } from '../../mfa.fake';
+import { browser } from '../../fakes/auth-session.fake';
+import { closeMfaHarnesses, mfaHarness } from '../../fakes/mfa.fake';
 
 describe('LoginUseCase', () => {
   afterEach(closeMfaHarnesses);

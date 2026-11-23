@@ -1,6 +1,6 @@
 import { ApproveKeyManagerUseCase } from '@/rbac/application/use-cases/approve-key-manager.use-case';
 import { ROLES } from '@/common/constants/roles';
-import { sessionHarness } from '../../auth/auth-session.fake';
+import { sessionHarness } from '../../../auth/fakes/auth-session.fake';
 
 describe('ApproveKeyManagerUseCase', () => {
   it('승인 시 키 관리자 역할만 남기고 터미널을 0회로 차단한다', async () => {

@@ -13,7 +13,7 @@ import type {
   IIpGeoReader,
   IpGeoStatus,
 } from '@/security/domain/gateways/ip-geo.gateway.interface';
-import { fakeIpGeo, geo } from './ip-geo.fake';
+import { fakeIpGeo, geo } from '../../fakes/ip-geo.fake';
 
 const asRoot = process.getuid?.() === 0;
 

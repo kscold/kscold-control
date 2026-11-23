@@ -6,7 +6,7 @@ import {
   isPrivateIPv4,
   magicPacket,
   normalizeMac,
-} from '../../../src/remote-desktop/infrastructure/gateways/remote-desktop-network';
+} from '../../../../../src/remote-desktop/infrastructure/gateways/remote-desktop-network';
 
 describe('원격 대상 망 규칙', () => {
   it('사설 IPv4 세 대역만 허용한다', () => {

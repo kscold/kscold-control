@@ -1,7 +1,7 @@
 import { ForbiddenException, UnauthorizedException } from '@nestjs/common';
 import { RefreshTokenUseCase } from '@/auth/application/use-cases/refresh-token.use-case';
 import type { User } from '@/rbac/domain/entities/user.entity';
-import { browser, sessionHarness } from '../../auth-session.fake';
+import { browser, sessionHarness } from '../../fakes/auth-session.fake';
 
 const DAY = 24 * 60 * 60 * 1000;
 

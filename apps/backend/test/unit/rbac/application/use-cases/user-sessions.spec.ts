@@ -16,7 +16,7 @@ import {
   UpdateUserUseCase,
 } from '@/rbac/application/use-cases';
 import { RbacController } from '@/rbac/presentation/controllers/rbac.controller';
-import { browser, sessionHarness } from '../../../auth/auth-session.fake';
+import { browser, sessionHarness } from '../../../auth/fakes/auth-session.fake';
 
 function userRepository(...users: Array<Pick<User, 'id' | 'email'>>) {
   const rows = new Map(

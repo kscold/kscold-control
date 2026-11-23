@@ -17,8 +17,8 @@ import {
   MFA_CHALLENGES_TOTAL,
   MfaChallengeStore,
 } from '@/auth/mfa/application/services/mfa-challenge.store';
-import { browser } from './auth-session.fake';
-import { PASSWORD, account, closeMfaHarnesses, mfaHarness } from './mfa.fake';
+import { browser } from '../fakes/auth-session.fake';
+import { PASSWORD, account, closeMfaHarnesses, mfaHarness } from '../fakes/mfa.fake';
 
 const LOGIN_AT = new Date('2026-03-01T09:00:10.000Z');
 const STEP_MS = 30 * 1000;

@@ -11,8 +11,8 @@ import type { IIpGeoReader } from '@/security/domain/gateways/ip-geo.gateway.int
 import {
   InMemoryIpBanRepository,
   InMemoryLoginAttemptRepository,
-} from './login-guard.fake';
-import { fakeIpGeo, geo } from './ip-geo.fake';
+} from '../../fakes/login-guard.fake';
+import { fakeIpGeo, geo } from '../../fakes/ip-geo.fake';
 
 describe('AttackMapService', () => {
   let dir: string;

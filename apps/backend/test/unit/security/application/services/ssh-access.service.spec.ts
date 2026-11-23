@@ -7,7 +7,7 @@ import {
   SshAccessService,
   formatLocal,
 } from '@/security/application/services/ssh-access.service';
-import { fakeIpGeo, geo } from './ip-geo.fake';
+import { fakeIpGeo, geo } from '../../fakes/ip-geo.fake';
 
 describe('SshAccessService', () => {
   let dir: string;

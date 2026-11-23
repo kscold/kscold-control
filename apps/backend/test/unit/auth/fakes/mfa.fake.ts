@@ -4,7 +4,7 @@ import { MfaService } from '@/auth/mfa/application/services/mfa.service';
 import type { LoginAttemptReason } from '@/security/domain/policies/login-block.policy';
 import type { UserMfa } from '@/auth/mfa/domain/entities/user-mfa.entity';
 import type { IUserMfaRepository } from '@/auth/mfa/domain/repositories/user-mfa.repository.interface';
-import { loginGuardHarness } from '../security/login-guard.fake';
+import { loginGuardHarness } from '../../security/fakes/login-guard.fake';
 import { sessionHarness } from './auth-session.fake';
 
 export class InMemoryUserMfaRepository implements IUserMfaRepository {
