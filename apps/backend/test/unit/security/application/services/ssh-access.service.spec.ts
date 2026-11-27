@@ -1,7 +1,11 @@
 import { promises as fs } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { BadRequestException, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  NotFoundException,
+  ServiceUnavailableException,
+} from '@nestjs/common';
 import { IpAllowlistService } from '@/security/application/services/ip-allowlist.service';
 import { SshAccessService } from '@/security/application/services/ssh-access.service';
 import { formatLocal } from '@/security/domain/models/ssh-audit.model';
@@ -24,6 +28,24 @@ describe('SshAccessService', () => {
 
   const read = (name: string) =>
     fs.readFile(join(dir, name), 'utf8').catch(() => '');
+
+  it('설치 전에는 빈 기록을 반환한다', async () => {
+    const overview = await service.overview(7);
+    expect(overview.recorder.exists).toBe(false);
+    expect(overview.events).toEqual([]);
+  });
+
+  it('기록 경로가 일반 파일이 아니면 조회 실패로 알린다', async () => {
+    await fs.mkdir(join(dir, 'ssh-audit.log'));
+
+    await expect(service.overview(7)).rejects.toBeInstanceOf(
+      ServiceUnavailableException,
+    );
+    await expect(service.ipActivity(7)).rejects.toBeInstanceOf(
+      ServiceUnavailableException,
+    );
+    await expect(service.recentEvents(7)).resolves.toEqual([]);
+  });
 
   it('기록·차단 목록을 읽어 최신 순으로 돌려준다', async () => {
     const now = formatLocal(new Date());

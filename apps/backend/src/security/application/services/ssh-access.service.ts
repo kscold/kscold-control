@@ -4,6 +4,7 @@ import {
   Injectable,
   Logger,
   NotFoundException,
+  ServiceUnavailableException,
 } from '@nestjs/common';
 import { execFile } from 'node:child_process';
 import { promises as fs } from 'node:fs';
@@ -272,7 +273,7 @@ export class SshAccessService {
   }> {
     const since = sinceOf(days);
     const [events, knownIps, blocks] = await Promise.all([
-      this.readEvents(since),
+      this.readEvents(since, 'report-error'),
       this.readKnownIps(),
       this.readBlocks(),
     ]);
@@ -290,7 +291,7 @@ export class SshAccessService {
 
     const [events, logStat, knownIps, blocks, guard, procs] = await Promise.all(
       [
-        this.readEvents(since),
+        this.readEvents(since, 'report-error'),
         fs.stat(logPath).catch(() => null),
         this.readKnownEntries(),
         this.readBlocks(),
@@ -498,12 +499,17 @@ export class SshAccessService {
 
   // ---- 읽기 ----
 
-  private async readEvents(since: string): Promise<SshAuditEvent[]> {
-    const current = await this.tail(this.file(AUDIT_LOG));
+  private async readEvents(
+    since: string,
+    onReadError: 'report-error' | 'log-only' = 'log-only',
+  ): Promise<SshAuditEvent[]> {
+    const current = await this.tail(this.file(AUDIT_LOG), onReadError);
     const first = current.find((l) => l.trim());
     // 지금 파일이 기간 시작보다 늦게 시작하면 넘겨 둔 .1 도 읽음
     const needOld = !first || first.slice(0, 19) > since;
-    const old = needOld ? await this.tail(this.file(`${AUDIT_LOG}.1`)) : [];
+    const old = needOld
+      ? await this.tail(this.file(`${AUDIT_LOG}.1`), onReadError)
+      : [];
     const events: SshAuditEvent[] = [];
     for (const line of [...old, ...current]) {
       const e = parseSshAuditLine(line);
@@ -512,7 +518,10 @@ export class SshAccessService {
     return events;
   }
 
-  private async tail(path: string): Promise<string[]> {
+  private async tail(
+    path: string,
+    onReadError: 'report-error' | 'log-only',
+  ): Promise<string[]> {
     let handle: fs.FileHandle | null = null;
     try {
       handle = await fs.open(path, 'r');
@@ -527,6 +536,11 @@ export class SshAccessService {
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
         this.logger.warn(`SSH 기록 읽기 실패 ${path}: ${String(error)}`);
+        if (onReadError === 'report-error') {
+          throw new ServiceUnavailableException(
+            'SSH 접속 기록을 읽을 수 없습니다',
+          );
+        }
       }
       return [];
     } finally {
