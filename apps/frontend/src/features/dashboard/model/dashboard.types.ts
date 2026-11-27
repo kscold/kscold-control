@@ -50,3 +50,11 @@ export interface LiveStats {
   memory: { total: number; used: number; free: number; usedPercent: number };
   uptime: number;
 }
+
+/** 밖에서 서버로 들어오는 길 하나의 상태 (백엔드 RemoteAccessPath) */
+export interface RemoteAccessPath {
+  id: 'tailscale' | 'orca-relay' | 'ssh-guard';
+  label: string;
+  state: 'ok' | 'down' | 'unknown';
+  detail: string | null;
+}

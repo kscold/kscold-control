@@ -26,7 +26,9 @@ export function MetricCard({
     >
       <div className="flex min-w-0 items-center gap-1.5 sm:gap-3 mb-2">
         <div className="flex-shrink-0">{icon}</div>
-        <span className="min-w-0 truncate text-gray-400 text-xs sm:text-sm">{label}</span>
+        <span className="min-w-0 truncate text-gray-400 text-xs sm:text-sm">
+          {label}
+        </span>
       </div>
       <div className="min-h-[48px]">{value}</div>
       {progress ? (

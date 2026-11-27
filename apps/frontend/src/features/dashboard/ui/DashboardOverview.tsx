@@ -7,6 +7,7 @@ import { formatUptime } from '@/shared/lib';
 import { DashboardOverviewSkeleton } from './DashboardOverviewSkeleton';
 import { SystemStatsCard } from './SystemStatsCard';
 import { QuickActions } from './QuickActions';
+import { RemoteAccessCard } from './RemoteAccessCard';
 
 export function DashboardOverview() {
   const { systemInfo, loadSystemInfo, loading, error, lastLoadedAt } =
@@ -67,6 +68,9 @@ export function DashboardOverview() {
           {error}
         </div>
       ) : null}
+
+      {/* 해외에서 폰으로 볼 때 가장 먼저 확인할 것: 들어오는 길이 살아 있는지 */}
+      <RemoteAccessCard />
 
       {/* 통계 카드 */}
       <SystemStatsCard

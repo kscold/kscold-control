@@ -2,6 +2,7 @@ import { api } from '@/shared/api/client';
 import type {
   DashboardContainerSummary,
   LiveStats,
+  RemoteAccessPath,
   SystemInfo,
 } from '../model/dashboard.types';
 
@@ -13,6 +14,13 @@ export const dashboardService = {
 
   async getSystemInfo(): Promise<SystemInfo> {
     const { data } = await api.get<SystemInfo>('/system/dashboard/info');
+    return data;
+  },
+
+  async getRemoteAccess(): Promise<RemoteAccessPath[]> {
+    const { data } = await api.get<RemoteAccessPath[]>(
+      '/system/dashboard/remote-access',
+    );
     return data;
   },
 
