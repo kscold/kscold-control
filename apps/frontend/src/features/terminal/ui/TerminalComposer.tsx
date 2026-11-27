@@ -133,6 +133,7 @@ export function TerminalComposer({
         </button>
         <textarea
           ref={inputRef}
+          data-terminal-composer
           value={text}
           rows={1}
           disabled={disabled}
