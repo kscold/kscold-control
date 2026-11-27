@@ -2,9 +2,9 @@ import type { Mocked } from 'vitest';
 import { ConflictException } from '@nestjs/common';
 import {
   GetStorageOverviewUseCase,
-  storageFolders,
   TrimDockerDiskUseCase,
 } from '@/maintenance/application/use-cases';
+import { storageFolders } from '@/maintenance/application/config/storage-folders.config';
 import type { IStorageInspectionGateway } from '@/maintenance/domain/gateways/storage-inspection.gateway.interface';
 import { trimRunRepository } from '../fakes/storage-trim-run.fake';
 
