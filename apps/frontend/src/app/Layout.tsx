@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { NavLink, Outlet, useNavigate } from 'react-router-dom';
+import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import {
   Container,
   DatabaseBackup,
@@ -13,7 +13,7 @@ import {
   KeyRound,
   LayoutDashboard,
   LogOut,
-  Menu,
+  MoreHorizontal,
   Network,
   Shield,
   ShieldAlert,
@@ -21,7 +21,6 @@ import {
   Monitor,
   Undo2,
   UserRound,
-  X,
 } from 'lucide-react';
 import { PERMISSIONS } from '@/shared/config/permissions';
 import { useAuthStore } from '@/shared/model';
@@ -121,9 +120,20 @@ const NAV_ITEMS = [
   },
 ] as const;
 
+/** 휴대폰 아래 탭에 바로 두는 화면. 나머지는 '더보기' 시트로 연다. */
+const MOBILE_TABS = ['/', '/terminal', '/docker', '/security'] as const;
+
+const MOBILE_TAB_LABEL: Record<string, string> = {
+  '/': '홈',
+  '/terminal': '터미널',
+  '/docker': 'Docker',
+  '/security': '보안',
+};
+
 export function Layout() {
   const { user, logout, impersonation, endImpersonation } = useAuthStore();
   const navigate = useNavigate();
+  const { pathname } = useLocation();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [remainingSeconds, setRemainingSeconds] = useState(0);
   const permissions = new Set(user?.permissions ?? []);
@@ -135,6 +145,25 @@ export function Layout() {
         )
       : permissions.has(item.permission),
   );
+
+  const mobileTabs = visibleItems.filter((item) =>
+    (MOBILE_TABS as readonly string[]).includes(item.to),
+  );
+  const moreItems = visibleItems.filter(
+    (item) => !(MOBILE_TABS as readonly string[]).includes(item.to),
+  );
+  const current = visibleItems.find((item) =>
+    item.to === '/' ? pathname === '/' : pathname.startsWith(item.to),
+  );
+  const currentLabel =
+    current?.label ??
+    (pathname.startsWith('/account') ? '내 계정' : 'kscold-control');
+  const inMoreMenu = moreItems.some((item) => pathname.startsWith(item.to));
+
+  // 다른 화면으로 가면 더보기 시트를 닫는다
+  useEffect(() => {
+    setIsMobileMenuOpen(false);
+  }, [pathname]);
 
   useEffect(() => {
     if (!impersonation) {
@@ -192,41 +221,20 @@ export function Layout() {
 
   return (
     <div className="flex h-dvh">
-      <div className="fixed left-0 right-0 top-0 z-50 flex items-center justify-between border-b border-gray-800 bg-gray-900 px-4 py-3 md:hidden">
-        <div>
-          <h1 className="text-lg font-bold text-white">kscold-control</h1>
-          <p className="text-xs text-gray-500">{user?.email}</p>
-        </div>
-        <button
-          type="button"
-          onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-          className="p-2 text-gray-400 hover:text-white"
-          aria-label="메뉴 열기"
-        >
-          {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
-        </button>
-      </div>
+      {/* 휴대폰: 위에는 지금 화면 이름만, 이동은 엄지가 닿는 아래 탭으로 한다 */}
+      <header className="fixed inset-x-0 top-0 z-30 flex h-12 items-center border-b border-gray-800 bg-gray-900/95 px-4 pt-[env(safe-area-inset-top)] backdrop-blur md:hidden">
+        <h1 className="truncate text-base font-semibold text-white">
+          {currentLabel}
+        </h1>
+      </header>
 
-      {isMobileMenuOpen && (
-        <button
-          type="button"
-          className="fixed inset-0 z-40 bg-black/50 md:hidden"
-          onClick={() => setIsMobileMenuOpen(false)}
-          aria-label="메뉴 닫기"
-        />
-      )}
-
-      <aside
-        className={`${
-          isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
-        } fixed z-40 flex h-dvh w-60 flex-col border-r border-gray-800 bg-gray-900 transition-transform duration-300 ease-in-out md:relative md:translate-x-0`}
-      >
+      <aside className="relative hidden h-dvh w-60 flex-col border-r border-gray-800 bg-gray-900 md:flex">
         <div className="hidden border-b border-gray-800 p-4 md:block">
           <h1 className="text-lg font-bold text-white">kscold-control</h1>
           <p className="mt-1 truncate text-xs text-gray-500">{user?.email}</p>
         </div>
 
-        <nav className="mt-16 flex-1 space-y-1 overflow-auto p-3 md:mt-0">
+        <nav className="flex-1 space-y-1 overflow-auto p-3">
           {navLinks}
           {visibleItems.length === 0 && (
             <div className="rounded-lg border border-amber-900/50 bg-amber-950/20 p-3 text-xs leading-5 text-amber-200">
@@ -265,7 +273,7 @@ export function Layout() {
         </div>
       </aside>
 
-      <main className="flex min-w-0 flex-1 flex-col overflow-hidden bg-gray-950 pt-16 md:pt-0">
+      <main className="flex min-w-0 flex-1 flex-col overflow-hidden bg-gray-950 pb-[calc(3.5rem+env(safe-area-inset-bottom))] pt-12 md:pb-0 md:pt-0">
         {impersonation && (
           <div
             role="status"
@@ -298,6 +306,108 @@ export function Layout() {
           <Outlet />
         </div>
       </main>
+
+      <nav
+        aria-label="주요 화면"
+        className="fixed inset-x-0 bottom-0 z-30 grid border-t border-gray-800 bg-gray-900/95 pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden"
+        style={{
+          gridTemplateColumns: `repeat(${mobileTabs.length + 1}, minmax(0, 1fr))`,
+        }}
+      >
+        {mobileTabs.map((item) => {
+          const Icon = item.icon;
+          return (
+            <NavLink
+              key={item.to}
+              to={item.to}
+              end={'end' in item ? item.end : undefined}
+              onClick={() => setIsMobileMenuOpen(false)}
+              className={({ isActive }) =>
+                `flex h-14 flex-col items-center justify-center gap-0.5 text-[11px] ${
+                  isActive ? 'text-blue-400' : 'text-gray-400 active:text-white'
+                }`
+              }
+            >
+              <Icon size={22} />
+              {MOBILE_TAB_LABEL[item.to] ?? item.label}
+            </NavLink>
+          );
+        })}
+        <button
+          type="button"
+          onClick={() => setIsMobileMenuOpen((open) => !open)}
+          aria-expanded={isMobileMenuOpen}
+          className={`flex h-14 flex-col items-center justify-center gap-0.5 text-[11px] ${
+            isMobileMenuOpen || inMoreMenu ? 'text-blue-400' : 'text-gray-400'
+          }`}
+        >
+          <MoreHorizontal size={22} />
+          더보기
+        </button>
+      </nav>
+
+      {isMobileMenuOpen && (
+        <div className="md:hidden">
+          <button
+            type="button"
+            className="fixed inset-0 z-40 bg-black/50"
+            onClick={() => setIsMobileMenuOpen(false)}
+            aria-label="더보기 닫기"
+          />
+          <div
+            role="dialog"
+            aria-label="더보기"
+            className="animate-sheet-in fixed inset-x-0 bottom-0 z-50 max-h-[80dvh] overflow-auto rounded-t-2xl border-t border-gray-800 bg-gray-900 px-4 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-3"
+          >
+            <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-gray-700" />
+            <p className="mb-3 truncate text-xs text-gray-500">{user?.email}</p>
+            <div className="grid grid-cols-3 gap-2">
+              {moreItems.map((item) => {
+                const Icon = item.icon;
+                return (
+                  <NavLink
+                    key={item.to}
+                    to={item.to}
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className={({ isActive }) =>
+                      `flex flex-col items-center gap-1.5 rounded-xl px-1 py-3 text-center text-xs ${
+                        isActive
+                          ? 'bg-blue-600 text-white'
+                          : 'bg-gray-800/70 text-gray-300 active:bg-gray-700'
+                      }`
+                    }
+                  >
+                    <Icon size={22} />
+                    <span className="leading-tight">{item.label}</span>
+                  </NavLink>
+                );
+              })}
+            </div>
+            <div className="mt-4 grid grid-cols-2 gap-2">
+              {!impersonation && (
+                <NavLink
+                  to="/account"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="flex items-center justify-center gap-2 rounded-xl bg-gray-800/70 py-3 text-sm text-gray-300"
+                >
+                  <UserRound size={18} />내 계정
+                </NavLink>
+              )}
+              <button
+                type="button"
+                onClick={() => {
+                  logout();
+                  setIsMobileMenuOpen(false);
+                }}
+                className="flex items-center justify-center gap-2 rounded-xl bg-gray-800/70 py-3 text-sm text-gray-300"
+              >
+                <LogOut size={18} />
+                로그아웃
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
