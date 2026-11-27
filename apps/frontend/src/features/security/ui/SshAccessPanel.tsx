@@ -1,3 +1,4 @@
+import { CurrentIpBanner } from './CurrentIpBanner';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import {
   Ban,
@@ -216,6 +217,19 @@ export function SshAccessPanel() {
 
   return (
     <div className="space-y-6">
+      <CurrentIpBanner
+        data={data}
+        canManage={canManage}
+        onAddKnown={(ip) =>
+          showConfirm(
+            `${ip} 를 내 IP 로 등록할까요? 자동 차단 대상에서 빠집니다.`,
+            () => void ssh.addKnown(ip, '휴대폰에서 등록'),
+          )
+        }
+        onUnblock={(ip) =>
+          showConfirm(`${ip} 차단을 풀까요?`, () => void ssh.unblock(ip))
+        }
+      />
       {ssh.error && (
         <p
           role="alert"

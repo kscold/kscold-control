@@ -217,7 +217,9 @@ it('관리자는 추가한 SSH 허용 규칙을 다시 읽고 보호 규칙을 �
     revision: 'initial',
   });
   await userEvent.click(
-    await screen.findByRole('button', { name: 'operator@198.51.100.0/24 삭제' }),
+    await screen.findByRole('button', {
+      name: 'operator@198.51.100.0/24 삭제',
+    }),
   );
   expect(edit).toHaveBeenCalledTimes(1);
   const confirm = await screen.findByRole('alertdialog');
