@@ -22,6 +22,7 @@ import {
   ListContainersUseCase,
   GetContainerProcessesUseCase,
   GetContainerLogsUseCase,
+  RestartContainerUseCase,
   StartContainerUseCase,
   StopContainerUseCase,
   RemoveContainerUseCase,
@@ -79,6 +80,7 @@ export class DockerController {
     private readonly pruneExitedContainersUseCase: PruneExitedContainersUseCase,
     private readonly pruneDanglingVolumesUseCase: PruneDanglingVolumesUseCase,
     private readonly getContainerLogsUseCase: GetContainerLogsUseCase,
+    private readonly restartContainerUseCase: RestartContainerUseCase,
   ) {}
 
   /**
@@ -152,6 +154,26 @@ export class DockerController {
       tail,
       getContainerOwnerScope(req),
     );
+  }
+
+  @Post('containers/:dockerId/restart')
+  @RequirePermissions(PERMISSIONS.DOCKER_UPDATE)
+  @Audit({
+    domain: 'docker',
+    action: 'container.restart',
+    summary: (ctx) => `컨테이너 ${ctx.params.dockerId}를 재시작했습니다.`,
+    targetType: 'container',
+    targetId: (ctx) => ctx.params.dockerId,
+  })
+  async restartContainer(
+    @Param('dockerId') dockerId: string,
+    @Request() req: JwtRequest,
+  ) {
+    await this.restartContainerUseCase.execute(
+      dockerId,
+      getContainerOwnerScope(req),
+    );
+    return { restarted: true };
   }
 
   @Get('topology/snapshot')

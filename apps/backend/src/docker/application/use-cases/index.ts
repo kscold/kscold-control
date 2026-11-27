@@ -18,3 +18,4 @@ export * from './prune-build-cache.use-case';
 export * from './prune-exited-containers.use-case';
 export * from './prune-dangling-volumes.use-case';
 export * from './get-container-logs.use-case';
+export * from './restart-container.use-case';

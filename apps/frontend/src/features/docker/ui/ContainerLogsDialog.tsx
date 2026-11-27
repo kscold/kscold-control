@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { RefreshCw, ScrollText } from 'lucide-react';
 import { Dialog, dialogButtonClass } from '@/shared/ui';
-import { containerLogsService } from '../api/container-logs.service';
+import { containerOpsService } from '../api/container-ops.service';
 
 const LINE_OPTIONS = [100, 300, 1000] as const;
 
@@ -29,7 +29,7 @@ export function ContainerLogsDialog({
     setLoading(true);
     setError(null);
     try {
-      setText(await containerLogsService.getLogs(dockerId, lines));
+      setText(await containerOpsService.getLogs(dockerId, lines));
     } catch (e) {
       setError(e instanceof Error ? e.message : '로그를 불러오지 못했습니다.');
     } finally {

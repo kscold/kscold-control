@@ -43,6 +43,7 @@ describe('DockerController', () => {
     pruneExitedContainersUseCase as any,
     pruneDanglingVolumesUseCase as any,
     { execute: vi.fn() } as any,
+    { execute: vi.fn() } as any,
   );
 
   beforeEach(() => {
