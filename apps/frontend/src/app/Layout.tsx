@@ -7,6 +7,7 @@ import {
   FolderGit2,
   GitBranch,
   Globe,
+  Activity,
   HardDrive,
   History,
   Eye,
@@ -33,6 +34,12 @@ const NAV_ITEMS = [
     label: '대시보드',
     icon: LayoutDashboard,
     permission: PERMISSIONS.DASHBOARD_READ,
+  },
+  {
+    to: '/uptime',
+    label: '서비스 감시',
+    icon: Activity,
+    permission: PERMISSIONS.SYSTEM_READ,
   },
   {
     to: '/remote-desktop',

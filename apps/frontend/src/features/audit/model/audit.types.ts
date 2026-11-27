@@ -7,7 +7,8 @@ export type AuditDomain =
   | 'security'
   | 'secrets'
   | 'backup'
-  | 'maintenance';
+  | 'maintenance'
+  | 'uptime';
 
 export type AuditEventDomain = Exclude<AuditDomain, 'all'>;
 
@@ -57,6 +58,7 @@ export interface AuditSummary {
     secrets: number;
     backup: number;
     maintenance: number;
+    uptime?: number;
   };
   topActors: AuditActorSummary[];
   topTargets: AuditTargetSummary[];

@@ -94,6 +94,7 @@ module.exports = {
           'TAILSCALE_BIN',
           'TAILSCALE_SOCKET',
           'ORCA_APP_PROCESS',
+          'UPTIME_DISCORD_WEBHOOK_URL',
           'SSH_ALLOW_USERS_CONFIG',
           'SSH_ALLOW_USERS_HELPER',
           'SSH_ALLOW_USERS_PROTECTED_RULE',

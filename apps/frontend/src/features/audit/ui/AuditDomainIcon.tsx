@@ -1,4 +1,5 @@
 import {
+  Activity,
   Box,
   DatabaseBackup,
   FolderGit2,
@@ -20,6 +21,7 @@ const ICON: Record<AuditEventDomain, { icon: LucideIcon; tone: string }> = {
   repository: { icon: FolderGit2, tone: 'bg-emerald-500/15 text-emerald-300' },
   backup: { icon: DatabaseBackup, tone: 'bg-indigo-500/15 text-indigo-300' },
   maintenance: { icon: Wrench, tone: 'bg-gray-500/15 text-gray-300' },
+  uptime: { icon: Activity, tone: 'bg-emerald-500/15 text-emerald-300' },
 };
 
 /** 분류마다 같은 모양·색을 쓰는 동그란 아이콘 */
