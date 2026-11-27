@@ -1,6 +1,9 @@
+/** parentName 은 블로그 본체 컨테이너 이름(BLOG_CONTAINER). 없으면 묶지 않는다 */
 export function classifyTopologyCompanion(
   containerName: string,
+  parentName: string | null,
 ): { parentName: string; order: number } | null {
+  if (!parentName) return null;
   const normalizedName = containerName.toLowerCase();
   if (
     !normalizedName.includes('vault-agent') &&
@@ -12,7 +15,7 @@ export function classifyTopologyCompanion(
   }
 
   return {
-    parentName: 'ubuntu-blog',
+    parentName,
     order: normalizedName.includes('agent') ? 0 : 1,
   };
 }

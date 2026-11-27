@@ -30,6 +30,8 @@ export interface Container {
   isComposeManaged: boolean;
   /** docker compose 로 띄운 컨테이너의 스택(project) 이름 */
   composeProject?: string | null;
+  /** 서버 설정(MONGO_BACKUP_CONTAINERS)에 든 컨테이너면 true */
+  mongoBackup?: boolean;
 }
 
 export interface ComposeProvisioningTemplate {

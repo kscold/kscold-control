@@ -95,6 +95,8 @@ module.exports = {
           'TAILSCALE_SOCKET',
           'ORCA_APP_PROCESS',
           'UPTIME_DISCORD_WEBHOOK_URL',
+          'BLOG_CONTAINER',
+          'MONGO_BACKUP_CONTAINERS',
           'SSH_ALLOW_USERS_CONFIG',
           'SSH_ALLOW_USERS_HELPER',
           'SSH_ALLOW_USERS_PROTECTED_RULE',

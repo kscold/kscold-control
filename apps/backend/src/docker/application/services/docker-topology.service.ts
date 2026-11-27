@@ -1,3 +1,4 @@
+import { blogContainerName } from '../../../common/utils/ops-container-config.util';
 import { Inject, Injectable } from '@nestjs/common';
 import { ComposeService } from './compose.service';
 import { classifyTopologyCompanion } from '../../domain/policies/topology-companion.policy';
@@ -613,7 +614,10 @@ export class DockerTopologyService {
     const companionEntries = appContainers
       .filter((container) => !usedContainerIds.has(container.id))
       .map((container) => {
-        const companion = classifyTopologyCompanion(container.name);
+        const companion = classifyTopologyCompanion(
+          container.name,
+          blogContainerName(),
+        );
         return companion ? { container, ...companion } : null;
       })
       .filter(

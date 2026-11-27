@@ -85,6 +85,8 @@ export class ContainerResponseDto {
   /** 컨테이너를 만든 compose 프로젝트. compose 밖에서 띄웠으면 null */
   @Expose()
   composeProject?: string | null;
+  /** MONGO_BACKUP_CONTAINERS 에 든 컨테이너면 카드에 MongoDB 백업 버튼을 보인다 */
+  mongoBackup?: boolean;
 
   /** 관리 대상 엔티티를 응답 구조로 변환함. */
   static fromEntity(
