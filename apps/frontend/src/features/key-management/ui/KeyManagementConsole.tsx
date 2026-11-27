@@ -313,17 +313,17 @@ curl -X PUT '${apiOrigin}/api/key-management/targets/${target.id}/environment' \
   return (
     <div className="h-full overflow-auto bg-[#071018] text-slate-100">
       <div className="mx-auto max-w-[1540px] p-4 sm:p-6 lg:p-8">
-        <header className="relative overflow-hidden rounded-[28px] border border-amber-400/20 bg-[radial-gradient(circle_at_top_right,rgba(245,158,11,0.16),transparent_35%),linear-gradient(135deg,#0d1822,#081019)] p-6 shadow-2xl shadow-black/30 sm:p-8">
+        <header className="relative overflow-hidden rounded-[28px] border border-amber-400/20 bg-[radial-gradient(circle_at_top_right,rgba(245,158,11,0.16),transparent_35%),linear-gradient(135deg,#0d1822,#081019)] p-4 shadow-2xl shadow-black/30 sm:p-8">
           <div className="absolute -right-20 -top-24 h-64 w-64 rounded-full border border-amber-300/10" />
           <div className="relative flex flex-col justify-between gap-6 lg:flex-row lg:items-end">
             <div>
-              <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-amber-300/20 bg-amber-300/10 px-3 py-1 text-xs font-semibold tracking-[0.18em] text-amber-200">
+              <div className="mb-4 hidden items-center gap-2 rounded-full border border-amber-300/20 bg-amber-300/10 px-3 py-1 text-xs font-semibold tracking-[0.18em] text-amber-200 sm:inline-flex">
                 <ShieldCheck size={14} /> MULTI-TARGET PRODUCTION VAULT
               </div>
-              <h1 className="text-2xl font-bold tracking-tight text-white sm:text-4xl">
+              <h1 className="text-xl font-bold tracking-tight text-white sm:text-4xl">
                 {target.displayName} 환경 변수 운영실
               </h1>
-              <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-400">
+              <p className="mt-3 hidden max-w-2xl text-sm leading-6 text-slate-400 sm:block">
                 {target.description || '운영 환경 변수 대상'} · 수정 전 암호화
                 백업부터 반영, 배포 상태 추적, 복원까지 하나의 원장으로
                 처리합니다.
