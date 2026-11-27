@@ -3,6 +3,8 @@ import { NginxController } from './presentation/controllers/nginx.controller';
 import { NginxSiteService } from './application/services/nginx-site.service';
 import { CertService } from './application/services/cert.service';
 import { DnsService } from './application/services/dns.service';
+import { DNS_LOOKUP_GATEWAY } from './domain/gateways/dns-lookup.gateway.interface';
+import { NodeDnsLookupGateway } from './infrastructure/gateways/node-dns-lookup.gateway';
 import {
   ListNginxSitesUseCase,
   CreateNginxSiteUseCase,
@@ -32,6 +34,7 @@ import { NginxInfrastructureModule } from './nginx-infrastructure.module';
     NginxSiteService,
     CertService,
     DnsService,
+    { provide: DNS_LOOKUP_GATEWAY, useClass: NodeDnsLookupGateway },
     // Use-cases (컨트롤러 엔드포인트 1:1)
     ListNginxSitesUseCase,
     CreateNginxSiteUseCase,

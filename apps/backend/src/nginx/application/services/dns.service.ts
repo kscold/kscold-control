@@ -1,21 +1,21 @@
-import { Injectable, Logger } from '@nestjs/common';
-import { exec } from 'child_process';
-import { promisify } from 'util';
-import * as dns from 'dns';
+import { Inject, Injectable } from '@nestjs/common';
+import {
+  DNS_LOOKUP_GATEWAY,
+  type IDnsLookupGateway,
+} from '../../domain/gateways/dns-lookup.gateway.interface';
 import type {
   DnsRecord,
   DnsCheckResult,
 } from '../../domain/types/nginx-site.type';
 
-const execAsync = promisify(exec);
-const dnsResolve4 = promisify(dns.resolve4);
-const dnsResolveCname = promisify(dns.resolveCname);
-
 @Injectable()
 export class DnsService {
-  private readonly logger = new Logger(DnsService.name);
   private cachedPublicIp: string | null = null;
   private ipCacheTime = 0;
+
+  constructor(
+    @Inject(DNS_LOOKUP_GATEWAY) private readonly lookup: IDnsLookupGateway,
+  ) {}
 
   /** 서버의 공인 IP 주소 조회함. */
   async getPublicIp(): Promise<string> {
@@ -25,18 +25,12 @@ export class DnsService {
     }
 
     try {
-      const { stdout } = await execAsync('curl -s https://api.ipify.org', {
-        timeout: 10000,
-      });
-      this.cachedPublicIp = stdout.trim();
+      this.cachedPublicIp = await this.lookup.lookupPublicIp('ipify');
       this.ipCacheTime = Date.now();
       return this.cachedPublicIp;
     } catch {
       try {
-        const { stdout } = await execAsync('curl -s https://ifconfig.me', {
-          timeout: 10000,
-        });
-        this.cachedPublicIp = stdout.trim();
+        this.cachedPublicIp = await this.lookup.lookupPublicIp('ifconfig');
         this.ipCacheTime = Date.now();
         return this.cachedPublicIp;
       } catch {
@@ -83,7 +77,7 @@ export class DnsService {
           // CNAME 우선 감지 (예: projectepsilon.example.com → router.example.com)
           let cnameTarget: string | null = null;
           try {
-            const cnames = await dnsResolveCname(domain);
+            const cnames = await this.lookup.resolveAliases(domain);
             if (cnames.length > 0) cnameTarget = cnames[0];
           } catch {
             /* CNAME 없음 */
@@ -93,7 +87,7 @@ export class DnsService {
             record.type = 'CNAME';
             record.value = cnameTarget;
             try {
-              const addresses = await dnsResolve4(domain);
+              const addresses = await this.lookup.resolveAddresses(domain);
               record.actual = addresses[0] || '';
               record.status = addresses.includes(publicIp) ? 'ok' : 'mismatch';
             } catch {
@@ -101,7 +95,7 @@ export class DnsService {
               record.status = 'mismatch';
             }
           } else {
-            const addresses = await dnsResolve4(domain);
+            const addresses = await this.lookup.resolveAddresses(domain);
             record.actual = addresses.join(', ');
             if (addresses.includes(publicIp)) {
               record.status = 'ok';
@@ -112,7 +106,7 @@ export class DnsService {
             }
           }
         } else if (record.type === 'CNAME') {
-          const cnames = await dnsResolveCname(domain);
+          const cnames = await this.lookup.resolveAliases(domain);
           record.actual = cnames.join(', ');
           if (cnames.includes(record.value)) {
             record.status = 'ok';
