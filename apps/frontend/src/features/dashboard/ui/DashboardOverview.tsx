@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, type ReactNode } from 'react';
 import { RefreshCw } from 'lucide-react';
 import { useSystemInfo } from '../model/useSystemInfo';
 import { useLiveStats } from '../model/useLiveStats';
@@ -9,7 +9,8 @@ import { SystemStatsCard } from './SystemStatsCard';
 import { QuickActions } from './QuickActions';
 import { RemoteAccessCard } from './RemoteAccessCard';
 
-export function DashboardOverview() {
+/** summary: 다른 기능이 맨 위에 끼워 넣는 요약 카드(서비스 감시 등) */
+export function DashboardOverview({ summary }: { summary?: ReactNode } = {}) {
   const { systemInfo, loadSystemInfo, loading, error, lastLoadedAt } =
     useSystemInfo();
   const { liveStats, loading: liveStatsLoading } = useLiveStats();
@@ -70,6 +71,7 @@ export function DashboardOverview() {
       ) : null}
 
       {/* 해외에서 폰으로 볼 때 가장 먼저 확인할 것: 들어오는 길이 살아 있는지 */}
+      {summary}
       <RemoteAccessCard />
 
       {/* 통계 카드 */}
