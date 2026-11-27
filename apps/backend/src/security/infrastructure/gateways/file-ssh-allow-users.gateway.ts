@@ -27,8 +27,11 @@ export class FileSshAllowUsersGateway implements ISshAllowUsersGateway {
     config: string,
   ): Promise<'applied' | 'conflict' | 'failed'> {
     const helper = process.env.SSH_ALLOW_USERS_HELPER;
+    const target = process.env.SSH_ALLOW_USERS_CONFIG;
     if (
       !helper ||
+      !target ||
+      /[\r\n]/.test(target) ||
       !helper.startsWith('/') ||
       Buffer.byteLength(config) > 65_536
     ) {
@@ -54,7 +57,7 @@ export class FileSshAllowUsersGateway implements ISshAllowUsersGateway {
       child.stdin?.on('error', (error) => {
         this.logger.warn(`SSH 허용 규칙 적용 요청 전달 실패: ${String(error)}`);
       });
-      child.stdin?.end(`${revision}\n${config}`);
+      child.stdin?.end(`${target}\n${revision}\n${config}`);
     });
   }
 }
