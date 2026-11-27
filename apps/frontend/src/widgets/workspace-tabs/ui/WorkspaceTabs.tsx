@@ -1,11 +1,22 @@
+import { useState } from 'react';
 import { useClaudeTabs } from '@/features/claude-chat';
+import { LiveSessionsDialog } from '@/features/terminal';
 import { WorkspaceTabBar } from './WorkspaceTabBar';
 import { WorkspaceTabContent } from './WorkspaceTabContent';
 
 // 터미널 / Claude Code / Claude Chat / OpenAI 를 탭으로 묶어주는 작업 공간 위젯
 export function WorkspaceTabs() {
-  const { tabs, activeTabId, setActiveTabId, tabModes, createTab, closeTab } =
-    useClaudeTabs();
+  const {
+    tabs,
+    activeTabId,
+    setActiveTabId,
+    tabModes,
+    createTab,
+    closeTab,
+    attachTerminal,
+    openTerminalSessionIds,
+  } = useClaudeTabs();
+  const [attaching, setAttaching] = useState(false);
 
   return (
     <div className="h-full flex flex-col">
@@ -16,6 +27,16 @@ export function WorkspaceTabs() {
         onSelectTab={setActiveTabId}
         onCloseTab={closeTab}
         onCreateTab={createTab}
+        onAttach={() => setAttaching(true)}
+      />
+      <LiveSessionsDialog
+        open={attaching}
+        openSessionIds={attaching ? openTerminalSessionIds() : []}
+        onClose={() => setAttaching(false)}
+        onPick={(session) => {
+          attachTerminal(session.id, session.title || '이어 붙인 터미널');
+          setAttaching(false);
+        }}
       />
 
       {/* 탭은 언마운트하지 않고 숨겨서 세션 상태를 유지한다 */}

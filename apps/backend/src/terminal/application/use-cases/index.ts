@@ -23,3 +23,4 @@ export { RejectWorkspaceDiffHunkUseCase } from './reject-workspace-diff-hunk.use
 export { CommitWorkspaceChangesUseCase } from './commit-workspace-changes.use-case';
 export { CreateWorkspaceBranchUseCase } from './create-workspace-branch.use-case';
 export { PushWorkspaceBranchUseCase } from './push-workspace-branch.use-case';
+export * from './list-live-terminal-sessions.use-case';

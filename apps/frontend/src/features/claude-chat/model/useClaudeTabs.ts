@@ -51,6 +51,34 @@ export function useClaudeTabs() {
     setActiveTabId(newId);
   };
 
+  /**
+   * 살아 있는 터미널 세션에 새 탭으로 붙는다. 이미 붙은 탭이 있으면 그 탭을 연다.
+   * 탭이 그려지기 전에 세션 ID 를 저장해 두면 터미널이 새로 만들지 않고 그 세션으로 연결한다.
+   */
+  const attachTerminal = (sessionId: string, title: string) => {
+    const existing = tabs.find(
+      (tab) =>
+        tab.type === 'terminal' &&
+        localStorage.getItem(getTerminalSessionStorageKey(tab.id)) ===
+          sessionId,
+    );
+    if (existing) {
+      setActiveTabId(existing.id);
+      return;
+    }
+    const newId = `terminal-${crypto.randomUUID()}`;
+    localStorage.setItem(getTerminalSessionStorageKey(newId), sessionId);
+    setTabs((prev) => [...prev, { id: newId, title, type: 'terminal' }]);
+    setActiveTabId(newId);
+  };
+
+  /** 이 화면 탭들이 붙어 있는 터미널 세션 */
+  const openTerminalSessionIds = () =>
+    tabs
+      .filter((tab) => tab.type === 'terminal')
+      .map((tab) => localStorage.getItem(getTerminalSessionStorageKey(tab.id)))
+      .filter((id): id is string => Boolean(id));
+
   const closeTab = (id: string) => {
     localStorage.removeItem(getClaudeSessionStorageKey(id));
     localStorage.removeItem(getTerminalSessionStorageKey(id));
@@ -71,6 +99,8 @@ export function useClaudeTabs() {
     tabModes,
     setTabMode,
     createTab,
+    attachTerminal,
+    openTerminalSessionIds,
     closeTab,
   };
 }

@@ -5,6 +5,8 @@ export interface ISessionRepository {
   findWithMessages(sessionId: string): Promise<Session | null>;
   findById(sessionId: string): Promise<Session | null>;
   findByIdForUser(sessionId: string, userId: string): Promise<Session | null>;
+  /** 최근 활동 순 */
+  listActiveForUser(userId: string): Promise<Session[]>;
   create(data: Partial<Session>): Session;
   save(session: Session): Promise<Session>;
   updateActivity(sessionId: string): Promise<void>;
