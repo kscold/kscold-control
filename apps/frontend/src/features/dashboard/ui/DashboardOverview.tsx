@@ -39,7 +39,7 @@ export function DashboardOverview({ summary }: { summary?: ReactNode } = {}) {
     <div className="h-full overflow-auto p-4 sm:p-6 bg-gray-950">
       {/* 휴대폰에서는 수집 시각·가동 시간을 제목 아래 줄로 내린다 */}
       <div className="mb-4 flex flex-wrap items-center gap-x-3 gap-y-1 sm:mb-6">
-        <h2 className="mr-auto hidden text-xl font-bold text-white sm:text-2xl md:block">
+        <h2 className="mr-auto text-xl font-bold text-white sm:text-2xl">
           Dashboard
         </h2>
         <div className="mr-auto flex flex-wrap gap-x-3 text-xs text-gray-500 md:mr-0">

@@ -159,15 +159,7 @@ export function Layout() {
   const moreItems = visibleItems.filter(
     (item) => !(MOBILE_TABS as readonly string[]).includes(item.to),
   );
-  const current = visibleItems.find((item) =>
-    item.to === '/' ? pathname === '/' : pathname.startsWith(item.to),
-  );
-  const currentLabel =
-    current?.label ??
-    (pathname.startsWith('/account') ? '내 계정' : 'kscold-control');
   const inMoreMenu = moreItems.some((item) => pathname.startsWith(item.to));
-  // 터미널은 자체 탭 줄이 위 막대 역할을 한다. 막대를 하나 더 두면 화면이 좁아진다.
-  const ownHeader = pathname.startsWith('/terminal');
   const keyboardOpen = useKeyboardOpen();
   const showTabBar = !keyboardOpen;
 
@@ -232,15 +224,6 @@ export function Layout() {
 
   return (
     <div className="flex h-dvh">
-      {/* 휴대폰: 위에는 지금 화면 이름만, 이동은 엄지가 닿는 아래 탭으로 한다 */}
-      <header
-        className={`fixed inset-x-0 top-0 z-30 h-12 ${ownHeader ? 'hidden' : 'flex'} items-center border-b border-gray-800 bg-gray-900/95 px-4 pt-[env(safe-area-inset-top)] backdrop-blur md:hidden`}
-      >
-        <h1 className="truncate text-base font-semibold text-white">
-          {currentLabel}
-        </h1>
-      </header>
-
       <aside className="relative hidden h-dvh w-60 flex-col border-r border-gray-800 bg-gray-900 md:flex">
         <div className="hidden border-b border-gray-800 p-4 md:block">
           <h1 className="text-lg font-bold text-white">kscold-control</h1>
@@ -289,7 +272,7 @@ export function Layout() {
       <main
         className={`flex min-w-0 flex-1 flex-col overflow-hidden bg-gray-950 md:pb-0 md:pt-0 ${
           showTabBar ? 'pb-[calc(3.5rem+env(safe-area-inset-bottom))]' : ''
-        } ${ownHeader ? 'pt-[env(safe-area-inset-top)]' : 'pt-12'}`}
+        } pt-[env(safe-area-inset-top)]`}
       >
         {impersonation && (
           <div
