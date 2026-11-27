@@ -1,3 +1,4 @@
+import { mongoBackupContainers } from '../../../common/utils/ops-container-config.util';
 import { Injectable, Inject, Logger } from '@nestjs/common';
 import {
   IContainerRepository,
@@ -39,6 +40,7 @@ export class ListContainersUseCase {
     const composeServices = new Set(this.composeService.listServices());
 
     // 3. Docker 정보와 DB 정보를 합쳐 응답 DTO를 만듦.
+    const mongoTargets = mongoBackupContainers();
     const results = await Promise.all(
       dockerContainers.map(async (dc) => {
         const dbContainer = dbContainers.find((dbc) =>
@@ -94,6 +96,7 @@ export class ListContainersUseCase {
             isComposeManaged,
           );
           response.composeProject = composeProject;
+          response.mongoBackup = mongoTargets.has(dc.name);
           return response;
         }
 
@@ -111,6 +114,7 @@ export class ListContainersUseCase {
           isComposeManaged,
         );
         response.composeProject = composeProject;
+        response.mongoBackup = mongoTargets.has(dc.name);
         return response;
       }),
     );

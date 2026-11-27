@@ -24,6 +24,8 @@ describe('DockerTopologyService', () => {
   let nginxRepository: Mocked<Pick<INginxConfigRepository, 'list'>>;
 
   beforeEach(async () => {
+    // 블로그 보조 컨테이너 묶기는 설정된 부모 이름으로만 한다
+    process.env.BLOG_CONTAINER = 'ubuntu-blog';
     layoutRepository = {
       upsertPositions: vi.fn().mockResolvedValue(undefined),
       findPositionsByUser: vi.fn().mockResolvedValue([]),

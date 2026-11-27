@@ -3,9 +3,9 @@ import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import type { IBlogLogReader } from '../../domain/repositories/log-reader.repository.interface';
 import type { BlogLogType } from '../../domain/types/log.type';
+import { blogContainerName } from '../../../common/utils/ops-container-config.util';
 
 const execFileAsync = promisify(execFile);
-const BLOG_CONTAINER_NAME = 'ubuntu-blog';
 const BLOG_LOG_MAX_BUFFER = 10 * 1024 * 1024;
 const BLOG_LOG_FILES: Record<BlogLogType, string> = {
   'blog-backend': '/var/log/sample-blog-backend.log',
@@ -25,11 +25,17 @@ export class DockerBlogLogReaderRepository implements IBlogLogReader {
       return [`Unknown blog log type: ${logType}`];
     }
 
+    const container = blogContainerName();
+    if (!container) {
+      return [
+        '블로그 컨테이너가 설정되지 않았습니다. .env 의 BLOG_CONTAINER 를 채우세요.',
+      ];
+    }
     const tail = Math.max(1, Math.floor(lines) || 200);
     try {
       const { stdout } = await execFileAsync(
         'docker',
-        ['exec', BLOG_CONTAINER_NAME, 'tail', '-n', String(tail), filePath],
+        ['exec', container, 'tail', '-n', String(tail), filePath],
         {
           env: {
             ...process.env,

@@ -17,7 +17,6 @@ import { backupService } from '../api/mongodb-backup.service';
 import { ContainerLogsDialog } from './ContainerLogsDialog';
 import { containerOpsService } from '../api/container-ops.service';
 
-const MONGO_CONTAINERS = ['ubuntu-blog', 'ubuntu-projectepsilon'];
 
 interface ContainerCardProps {
   container: Container;
@@ -69,7 +68,7 @@ export function ContainerCard({
       ),
     );
 
-  const hasMongo = MONGO_CONTAINERS.includes(container.name);
+  const hasMongo = container.mongoBackup === true;
 
   const handleBackup = async () => {
     setBackupState('loading');
