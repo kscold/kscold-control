@@ -184,7 +184,7 @@ it('보기 권한만 있으면 바꾸는 버튼을 숨긴다', async () => {
   renderPanel();
 
   const rules = await screen.findByRole('table', {
-    name: 'SSH 로그인 허용 규칙',
+    name: '연결된 파일의 SSH 로그인 허용 규칙',
   });
   expect(within(rules).getByText('192.0.2.0/24')).toBeInTheDocument();
   expect(screen.queryByRole('button', { name: /끊기/ })).toBeNull();

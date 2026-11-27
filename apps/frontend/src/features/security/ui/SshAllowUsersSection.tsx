@@ -63,7 +63,7 @@ export function SshAllowUsersSection() {
   if (policy.kind === 'managed') {
     return (
       <table
-        aria-label="SSH 로그인 허용 규칙"
+        aria-label="연결된 파일의 SSH 로그인 허용 규칙"
         className="w-full table-fixed text-left text-sm"
       >
         <thead className="text-gray-400">

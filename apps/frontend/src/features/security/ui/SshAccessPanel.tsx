@@ -270,7 +270,7 @@ export function SshAccessPanel() {
         />
       )}
 
-      <Section title="SSH 로그인 허용 규칙">
+      <Section title="SSH 로그인 허용 규칙 · 연결된 파일">
         <SshAllowUsersSection />
       </Section>
 
