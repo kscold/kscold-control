@@ -57,7 +57,8 @@ export function TopologyLegend({
         </button>
       )}
 
-      <div className="ml-auto flex max-w-full flex-wrap items-center gap-x-2.5 gap-y-1 rounded-xl border border-gray-700 bg-gray-900/90 px-3 py-2 text-[10px] backdrop-blur">
+      {/* 색 범례는 휴대폰에서 노드를 가려 넓은 화면에서만 보인다 */}
+      <div className="ml-auto hidden max-w-full flex-wrap items-center gap-x-2.5 gap-y-1 rounded-xl border border-gray-700 bg-gray-900/90 px-3 py-2 text-[10px] backdrop-blur md:flex">
         {LEGEND_ITEMS.map((item) => (
           <span key={item.label} className="flex items-center gap-1">
             <span
