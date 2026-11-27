@@ -85,7 +85,7 @@ kscold-control/
 | Tool       | Min version   |
 | ---------- | ------------- |
 | Node.js    | 24 LTS        |
-| pnpm       | 10.29.3       |
+| pnpm       | 10.34.9       |
 | PostgreSQL | 14            |
 | Docker     | 24 (optional) |
 
