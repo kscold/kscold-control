@@ -46,27 +46,54 @@ export class ShellOsMetricsRepository implements IOsMetricsRepository {
     return cached.memory;
   }
 
-  async getDiskInfo(): Promise<DiskInfo & { breakdown: DiskBreakdown }> {
-    const now = Date.now();
+  private diskRefresh: Promise<DiskInfo & { breakdown: DiskBreakdown }> | null =
+    null;
 
-    if (
-      this.diskCache &&
-      now - this.diskCache.timestamp < this.DISK_CACHE_TTL
-    ) {
-      const { diskInfo, diskBreakdown } = this.diskCache.data;
-      return {
-        ...diskInfo,
-        breakdown: {
-          ...diskBreakdown,
-          dockerUsage: {
-            ...diskBreakdown.dockerUsage,
-            lastCollectedAt: this.diskCache.timestamp,
-            collectionState: 'fresh',
-            warning: null,
-          },
-        },
-      };
+  /** 서버가 뜨자마자 한 번 재 두어 첫 화면도 기다리지 않게 한다. */
+  onModuleInit() {
+    void this.getDiskInfo();
+  }
+
+  /**
+   * docker system df 는 몇 초씩 걸린다. 지난 값이 있으면 바로 돌려주고,
+   * 오래됐으면 뒤에서 한 번만 다시 잰다. 처음 한 번만 기다린다.
+   */
+  async getDiskInfo(): Promise<DiskInfo & { breakdown: DiskBreakdown }> {
+    const cache = this.diskCache;
+    const stale = !cache || Date.now() - cache.timestamp >= this.DISK_CACHE_TTL;
+    if (stale && !this.diskRefresh) {
+      this.diskRefresh = this.collectDiskInfo().finally(() => {
+        this.diskRefresh = null;
+      });
     }
+    if (!cache) return this.diskRefresh!;
+    return this.fromDiskCache(cache);
+  }
+
+  private fromDiskCache(
+    cached: NonNullable<typeof this.diskCache>,
+  ): DiskInfo & { breakdown: DiskBreakdown } {
+    const { diskInfo, diskBreakdown } = cached.data;
+    // 다시 재는 중이거나 실패해 1분이 넘은 값이면 화면에 '지난 값'이라고 알린다.
+    const stale = Date.now() - cached.timestamp >= this.DISK_CACHE_TTL;
+    return {
+      ...diskInfo,
+      breakdown: {
+        ...diskBreakdown,
+        dockerUsage: {
+          ...diskBreakdown.dockerUsage,
+          lastCollectedAt: cached.timestamp,
+          collectionState: stale ? 'stale' : 'fresh',
+          warning: stale ? '최근 수집값을 유지하고 있습니다.' : null,
+        },
+      },
+    };
+  }
+
+  private async collectDiskInfo(): Promise<
+    DiskInfo & { breakdown: DiskBreakdown }
+  > {
+    const now = Date.now();
 
     let diskInfo: DiskInfo = {
       total: 0,
