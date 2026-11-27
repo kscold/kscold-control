@@ -206,6 +206,8 @@ Failed logins are counted per IP and per account (`login_attempts`). An IP with 
 
 Set `SSH_ALLOW_USERS_CONFIG` to a single included file under
 `/etc/ssh/sshd_config.d` to display its `AllowUsers` rules in 접속 보안.
+Use that exact absolute path for editing so both the backend and helper target
+the same file.
 Use a file containing only comments and `AllowUsers user@IP-or-CIDR` rules.
 
 To enable editing, an administrator installs `scripts/apply-ssh-allow-users.pl`

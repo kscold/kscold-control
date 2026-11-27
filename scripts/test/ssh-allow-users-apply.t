@@ -21,12 +21,16 @@ sub write_config {
 
 sub apply_config {
     my ($revision, $candidate, $validator) = @_;
-    return apply_change($target, $dir, $>, $protected, "$revision\n$candidate", $validator);
+    return apply_change($target, $dir, $>, $protected, "$target\n$revision\n$candidate", $validator);
 }
 
 write_config();
 is(apply_config(sha256_hex('different'), $next, sub { die 'unexpected validation' }), 75,
     'stale request leaves the file untouched');
+is(read_owned_file($target, $>, 1024), $current);
+is(apply_change($target, $dir, $>, $protected,
+    "$dir/other.conf\n" . sha256_hex($current) . "\n$next",
+    sub { die 'unexpected validation' }), 75, 'a different target cannot be updated');
 is(read_owned_file($target, $>, 1024), $current);
 
 for my $invalid ("AllowUsers operator\@198.51.100.10\n", $next . "Include /tmp/example\n") {

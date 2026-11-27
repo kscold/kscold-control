@@ -60,8 +60,9 @@ sub require_protected_rule {
 
 sub apply_change {
     my ($target, $temp_dir, $owner, $protected, $input, $validate) = @_;
-    my ($revision, $next) = split /\n/, $input, 2;
+    my ($requested_target, $revision, $next) = split /\n/, $input, 3;
     die "invalid revision\n" unless defined($next) && $revision =~ /\A[a-f0-9]{64}\z/;
+    return 75 if $requested_target ne $target;
     die "invalid candidate size\n" if length($next) > $limit;
     die "invalid protected rule\n" unless valid_rule($protected);
     my $current = read_owned_file($target, $owner, $limit);
@@ -91,8 +92,9 @@ sub main {
     sysopen(my $lock, '/var/run/kscold-control-allow-users.lock', O_CREAT | O_NOFOLLOW | O_RDWR, 0600)
         or die "cannot open lock\n";
     return 75 unless flock($lock, LOCK_EX | LOCK_NB);
-    my $input = read_bounded(\*STDIN, $limit + 65);
-    return apply_change("/etc/ssh/sshd_config.d/$filename", '/etc/ssh', 0, $protected // '', $input,
+    my $target = "/etc/ssh/sshd_config.d/$filename";
+    my $input = read_bounded(\*STDIN, $limit + length($target) + 66);
+    return apply_change($target, '/etc/ssh', 0, $protected // '', $input,
         sub {
             my ($candidate) = @_;
             # 임시 파일은 Include 대상 폴더 밖에 두어 검증 전에 sshd가 읽지 않게 한다.
