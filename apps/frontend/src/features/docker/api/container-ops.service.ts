@@ -15,4 +15,11 @@ export const containerOpsService = {
       `/docker/containers/${encodeURIComponent(dockerId)}/restart`,
     );
   },
+
+  async restartStack(project: string): Promise<string[]> {
+    const { data } = await api.post<{ restarted: string[] }>(
+      `/docker/stacks/${encodeURIComponent(project)}/restart`,
+    );
+    return data.restarted;
+  },
 };

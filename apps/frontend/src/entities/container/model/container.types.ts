@@ -28,6 +28,8 @@ export interface Container {
   externalAccess?: ExternalAccess;
   isManaged: boolean; // 이 시스템이 생성한 컨테이너면 true, 외부 컨테이너면 false
   isComposeManaged: boolean;
+  /** docker compose 로 띄운 컨테이너의 스택(project) 이름 */
+  composeProject?: string | null;
 }
 
 export interface ComposeProvisioningTemplate {
@@ -38,4 +40,3 @@ export interface ComposeProvisioningTemplate {
   command: string;
   ports: Record<string, number>;
 }
-
