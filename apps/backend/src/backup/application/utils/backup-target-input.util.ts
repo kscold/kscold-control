@@ -3,7 +3,7 @@ import {
   SAME_HOST_ALIAS,
   isValidMongodbUri,
   usesLoopbackHost,
-} from '../../domain/policies/backup-target.policy';
+} from '../../domain/policies/mongodb-connection.policy';
 
 /** 오류 메시지에는 URI 를 싣지 않는다. 자격증명이 응답과 로그에 남기 때문이다. */
 export function assertValidMongodbUri(

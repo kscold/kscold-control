@@ -16,8 +16,8 @@ import {
   isValidDumpImage,
   isValidNetworkContainer,
   isValidRetentionDays,
-  summarizeMongodbUri,
 } from '../../domain/policies/backup-target.policy';
+import { summarizeMongodbUri } from '../../domain/policies/mongodb-connection.policy';
 import {
   BACKUP_TARGET_REPOSITORY,
   type IBackupTargetRepository,
