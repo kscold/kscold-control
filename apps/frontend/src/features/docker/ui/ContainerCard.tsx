@@ -1,10 +1,19 @@
-import { Play, Square, Trash2, Download, Globe, Database } from 'lucide-react';
+import {
+  Play,
+  Square,
+  Trash2,
+  Download,
+  Globe,
+  Database,
+  ScrollText,
+} from 'lucide-react';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { usePermissions } from '@/shared/model';
 import { PERMISSIONS } from '@/shared/config/permissions';
 import type { Container } from '@/entities/container';
 import { backupService } from '../api/mongodb-backup.service';
+import { ContainerLogsDialog } from './ContainerLogsDialog';
 
 const MONGO_CONTAINERS = ['ubuntu-blog', 'ubuntu-projectepsilon'];
 
@@ -32,6 +41,7 @@ export function ContainerCard({
     'idle' | 'loading' | 'done' | 'error'
   >('idle');
   const [backupMsg, setBackupMsg] = useState('');
+  const [logsOpen, setLogsOpen] = useState(false);
 
   const hasMongo = MONGO_CONTAINERS.includes(container.name);
 
@@ -209,6 +219,15 @@ export function ContainerCard({
           </button>
         )}
         <button
+          type="button"
+          onClick={() => setLogsOpen(true)}
+          className="px-3 py-2 bg-sky-700 text-white rounded hover:bg-sky-600 transition-colors"
+          title="로그 보기"
+          aria-label={`${container.name} 로그 보기`}
+        >
+          <ScrollText size={16} />
+        </button>
+        <button
           onClick={handleConnectProxy}
           className="px-3 py-2 bg-purple-600 text-white rounded hover:bg-purple-700 transition-colors"
           title="프록시 연결"
@@ -254,6 +273,12 @@ export function ContainerCard({
           <Trash2 size={16} />
         </button>
       </div>
+      <ContainerLogsDialog
+        open={logsOpen}
+        dockerId={container.dockerId}
+        name={container.name}
+        onClose={() => setLogsOpen(false)}
+      />
     </div>
   );
 }

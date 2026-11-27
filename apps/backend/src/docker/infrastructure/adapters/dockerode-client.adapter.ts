@@ -201,6 +201,16 @@ export class DockerodeClientAdapter implements IDockerClient, OnModuleInit {
     }
   }
 
+  async getContainerLogs(dockerId: string, tail: number): Promise<string> {
+    const raw = await this.docker.getContainer(dockerId).logs({
+      stdout: true,
+      stderr: true,
+      tail,
+      follow: false,
+    });
+    return demuxDockerLogs(raw as unknown as Buffer);
+  }
+
   async getContainerProcesses(
     dockerId: string,
   ): Promise<DockerContainerProcesses> {
@@ -350,4 +360,27 @@ export class DockerodeClientAdapter implements IDockerClient, OnModuleInit {
       0,
     ) as number;
   }
+}
+
+/**
+ * TTY 없이 만든 컨테이너의 로그는 줄마다 8바이트 머리(스트림 종류·길이)가 붙어 온다.
+ * 그대로 보여 주면 깨진 글자가 섞이므로 머리를 떼고 본문만 잇는다. TTY 컨테이너는 머리가 없다.
+ */
+export function demuxDockerLogs(raw: Buffer | string): string {
+  const buffer = typeof raw === 'string' ? Buffer.from(raw, 'utf8') : raw;
+  const framed =
+    buffer.length >= 8 &&
+    buffer[0] <= 2 &&
+    buffer[1] === 0 &&
+    buffer[2] === 0 &&
+    buffer[3] === 0;
+  if (!framed) return buffer.toString('utf8');
+  const parts: Buffer[] = [];
+  let offset = 0;
+  while (offset + 8 <= buffer.length) {
+    const size = buffer.readUInt32BE(offset + 4);
+    parts.push(buffer.subarray(offset + 8, offset + 8 + size));
+    offset += 8 + size;
+  }
+  return Buffer.concat(parts).toString('utf8');
 }

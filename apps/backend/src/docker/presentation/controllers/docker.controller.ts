@@ -6,6 +6,7 @@ import {
   Delete,
   Body,
   Param,
+  Query,
   UseGuards,
   Request,
 } from '@nestjs/common';
@@ -20,6 +21,7 @@ import {
   CreateContainerUseCase,
   ListContainersUseCase,
   GetContainerProcessesUseCase,
+  GetContainerLogsUseCase,
   StartContainerUseCase,
   StopContainerUseCase,
   RemoveContainerUseCase,
@@ -76,6 +78,7 @@ export class DockerController {
     private readonly pruneBuildCacheUseCase: PruneBuildCacheUseCase,
     private readonly pruneExitedContainersUseCase: PruneExitedContainersUseCase,
     private readonly pruneDanglingVolumesUseCase: PruneDanglingVolumesUseCase,
+    private readonly getContainerLogsUseCase: GetContainerLogsUseCase,
   ) {}
 
   /**
@@ -132,6 +135,21 @@ export class DockerController {
   ) {
     return this.getContainerProcessesUseCase.execute(
       dockerId,
+      getContainerOwnerScope(req),
+    );
+  }
+
+  /** 컨테이너 로그 마지막 몇 줄 (?tail=300, 최대 2000) */
+  @Get('containers/:dockerId/logs')
+  @RequirePermissions(PERMISSIONS.DOCKER_READ)
+  async getContainerLogs(
+    @Param('dockerId') dockerId: string,
+    @Query('tail') tail: string | undefined,
+    @Request() req: JwtRequest,
+  ) {
+    return this.getContainerLogsUseCase.execute(
+      dockerId,
+      tail,
       getContainerOwnerScope(req),
     );
   }
