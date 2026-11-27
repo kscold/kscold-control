@@ -67,7 +67,8 @@ export function TopologyCanvas({ snapshot }: TopologyCanvasProps) {
       <MiniMap
         nodeColor={miniMapNodeColor}
         maskColor="rgba(0,0,0,0.7)"
-        className="!rounded-xl !border-gray-700 !bg-gray-900"
+        // 휴대폰에서는 미니맵이 화면 4분의 1을 덮어 노드를 가린다. 손가락으로 움직이면 되므로 숨긴다
+        className="!hidden !rounded-xl !border-gray-700 !bg-gray-900 md:!block"
       />
     </ReactFlow>
   );
