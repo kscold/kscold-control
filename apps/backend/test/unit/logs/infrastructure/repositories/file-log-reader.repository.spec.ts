@@ -38,4 +38,16 @@ describe('FileLogReaderRepository', () => {
       join(cwd, 'apps/backend/logs/out.log'),
     );
   });
+
+  it('PM2 가 알려 준 실제 로그 파일을 옛 위치 파일보다 먼저 쓴다', () => {
+    const cwd = '/workspace/apps/backend';
+    vi.spyOn(process, 'cwd').mockReturnValue(cwd);
+    vi.stubEnv('pm_out_log_path', '/home/me/.pm2/logs/app-out.log');
+    vi.mocked(fs.existsSync).mockReturnValue(true);
+
+    expect((repository as any).getLogPath('backend')).toBe(
+      '/home/me/.pm2/logs/app-out.log',
+    );
+    vi.unstubAllEnvs();
+  });
 });

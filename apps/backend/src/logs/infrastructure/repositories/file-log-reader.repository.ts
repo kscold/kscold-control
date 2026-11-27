@@ -55,7 +55,14 @@ export class FileLogReaderRepository implements ILogReader {
   private findBackendLog(filename: 'out.log' | 'error.log'): string {
     const cwd = process.cwd();
     const dataLogs = controlDataPath('logs');
+    // PM2 로 띄우면 실제로 쓰는 로그 파일 경로를 환경 변수로 알려 준다. 이걸 먼저 써야
+    // 옛 위치에 남은 오래된 파일을 지금 로그처럼 보여 주지 않는다.
+    const pm2Path =
+      filename === 'out.log'
+        ? process.env.pm_out_log_path
+        : process.env.pm_err_log_path;
     const candidates = [
+      ...(pm2Path ? [pm2Path] : []),
       ...(dataLogs ? [join(dataLogs, filename)] : []),
       join(cwd, 'logs', filename),
       join(cwd, 'apps/backend/logs', filename),
