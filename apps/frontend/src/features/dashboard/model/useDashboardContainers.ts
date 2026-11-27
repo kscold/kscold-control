@@ -6,14 +6,18 @@ export function useDashboardContainers() {
   const [containerSummary, setContainerSummary] =
     useState<DashboardContainerSummary | null>(null);
   const [loading, setLoading] = useState(true);
+  // 실패를 숨기면 0 이나 옛 값이 지금 값처럼 보인다
+  const [failed, setFailed] = useState(false);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const loadContainers = useCallback(async () => {
     try {
       setLoading(true);
       setContainerSummary(await dashboardService.getContainerSummary());
+      setFailed(false);
     } catch (e) {
       console.error(e);
+      setFailed(true);
     } finally {
       setLoading(false);
     }
@@ -54,5 +58,5 @@ export function useDashboardContainers() {
     };
   }, [loadContainers]);
 
-  return { containerSummary, loading };
+  return { containerSummary, loading, failed };
 }

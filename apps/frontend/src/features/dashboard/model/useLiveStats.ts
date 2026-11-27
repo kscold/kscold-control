@@ -5,14 +5,18 @@ import type { LiveStats } from './dashboard.types';
 export function useLiveStats() {
   const [liveStats, setLiveStats] = useState<LiveStats | null>(null);
   const [loading, setLoading] = useState(true);
+  // 실패를 숨기면 0 이나 옛 값이 지금 값처럼 보인다
+  const [failed, setFailed] = useState(false);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const loadLiveStats = useCallback(async () => {
     try {
       setLoading(true);
       setLiveStats(await dashboardService.getLiveStats());
+      setFailed(false);
     } catch (e) {
       console.error(e);
+      setFailed(true);
     } finally {
       setLoading(false);
     }
@@ -53,5 +57,5 @@ export function useLiveStats() {
     };
   }, [loadLiveStats]);
 
-  return { liveStats, loading };
+  return { liveStats, loading, failed };
 }

@@ -14,9 +14,16 @@ import { MetricHistoryCard } from './MetricHistoryCard';
 export function DashboardOverview({ summary }: { summary?: ReactNode } = {}) {
   const { systemInfo, loadSystemInfo, loading, error, lastLoadedAt } =
     useSystemInfo();
-  const { liveStats, loading: liveStatsLoading } = useLiveStats();
-  const { containerSummary, loading: containersLoading } =
-    useDashboardContainers();
+  const {
+    liveStats,
+    loading: liveStatsLoading,
+    failed: liveStatsFailed,
+  } = useLiveStats();
+  const {
+    containerSummary,
+    loading: containersLoading,
+    failed: containersFailed,
+  } = useDashboardContainers();
 
   useEffect(() => {
     loadSystemInfo();
@@ -65,6 +72,13 @@ export function DashboardOverview({ summary }: { summary?: ReactNode } = {}) {
         </button>
       </div>
 
+      {liveStatsFailed || containersFailed ? (
+        <div className="mb-4 rounded-xl border border-amber-500/30 bg-amber-950/30 px-4 py-2 text-xs text-amber-200">
+          실시간 갱신에 실패했습니다. 아래 값은 마지막으로 받은 값일 수
+          있습니다.
+        </div>
+      ) : null}
+
       {error ? (
         <div className="mb-4 rounded-xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-100">
           {error}
@@ -77,8 +91,8 @@ export function DashboardOverview({ summary }: { summary?: ReactNode } = {}) {
 
       {/* 통계 카드 */}
       <SystemStatsCard
-        containerCount={containerSummary?.total ?? 0}
-        runningCount={containerSummary?.running ?? 0}
+        containerCount={containerSummary?.total ?? null}
+        runningCount={containerSummary?.running ?? null}
         systemInfo={systemInfo}
         liveStats={liveStats}
       />

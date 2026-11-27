@@ -10,8 +10,9 @@ import { MetricCard } from './MetricCard';
 import { DockerStorageDetailsCard } from './DockerStorageDetailsCard';
 
 interface SystemStatsCardProps {
-  containerCount: number;
-  runningCount: number;
+  /** 불러오지 못했으면 null — 0 으로 보이지 않게 한다 */
+  containerCount: number | null;
+  runningCount: number | null;
   systemInfo: SystemInfo | null;
   liveStats: LiveStats | null;
 }
@@ -36,11 +37,13 @@ export function SystemStatsCard({
           label="Containers"
           value={
             <p className="text-xl sm:text-3xl font-bold text-white">
-              {containerCount}
+              {containerCount ?? '…'}
             </p>
           }
           footer={
-            <p className="text-xs text-green-400">{runningCount} running</p>
+            <p className="text-xs text-green-400">
+              {runningCount === null ? '확인 중' : `${runningCount} running`}
+            </p>
           }
         />
         <MetricCard
