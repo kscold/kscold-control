@@ -202,6 +202,23 @@ Failed logins are counted per IP and per account (`login_attempts`). An IP with 
 - Automatic IP bans and the allowlist exemption only apply when `CONTROL_PROXY_SECRET` is set, because without it a local process can forge `X-Real-IP`. Without the secret only account locks apply, internet logins and LAN logins keep separate locks, LAN and Tailscale logins share theirs with local processes, and the backend logs a warning at startup.
 - Manual and automatic firewall entries must be at least /24 (IPv4) or /48 (IPv6) and must not cover an internal, allowlisted, or SSH known address.
 
+#### OpenSSH login allow rules on macOS
+
+Set `SSH_ALLOW_USERS_CONFIG` to a single included file under
+`/etc/ssh/sshd_config.d` to display its `AllowUsers` rules in 접속 보안.
+Use a file containing only comments and `AllowUsers user@IP-or-CIDR` rules.
+
+To enable editing, an administrator installs `scripts/apply-ssh-allow-users.pl`
+as a root-owned executable under a root-controlled directory. Create
+`/etc/ssh/kscold-control-allow-users` with owner root and mode `0600`.
+Put the managed file's basename on the first line and one existing
+`user@IP-or-CIDR` rule for a verified recovery connection on the second.
+Grant only the Control service account `NOPASSWD` permission in `visudo` to
+run this exact executable without arguments (use `""` in the command entry).
+Set `SSH_ALLOW_USERS_HELPER` to the installed executable's absolute path and
+`SSH_ALLOW_USERS_PROTECTED_RULE` to the same recovery rule. Keep a local console
+available for the initial setup and verify a fresh SSH connection.
+
 Emergency unlock, run on the host (the HTTP API is not used, since the admin may be locked out):
 
 ```bash
