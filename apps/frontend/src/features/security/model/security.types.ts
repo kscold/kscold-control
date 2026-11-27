@@ -176,3 +176,7 @@ export type AttackMapView =
       points: AttackPoint[];
       countries: AttackCountry[];
     };
+export type SshAllowUsersPolicy =
+  | { kind: 'unconfigured' | 'empty' }
+  | { kind: 'unsupported'; line: number }
+  | { kind: 'managed'; rules: { user: string; source: string }[] };

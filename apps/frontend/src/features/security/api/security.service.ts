@@ -5,6 +5,7 @@ import type {
   IpBan,
   CreateIpBanInput,
   SshAccessOverview,
+  SshAllowUsersPolicy,
   SshBlock,
   SshBlockScope,
   SshCountryGuard,
@@ -56,6 +57,19 @@ export class SecurityService extends BaseApiService {
     } catch (error) {
       this.logError('SecurityService', 'resync', error);
       this.handleError(error, 'nginx 재동기화 실패');
+    }
+  }
+
+  async getSshAllowUsers(signal?: AbortSignal): Promise<SshAllowUsersPolicy> {
+    try {
+      const { data } = await api.get<SshAllowUsersPolicy>(
+        `${this.basePath}/ssh/allow-users`,
+        { signal, timeout: 15_000 },
+      );
+      return data;
+    } catch (error) {
+      if (signal?.aborted) throw error;
+      this.handleError(error, 'SSH 로그인 허용 규칙 조회 실패');
     }
   }
 

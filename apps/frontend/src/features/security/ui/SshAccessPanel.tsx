@@ -15,6 +15,7 @@ import {
 import { useModalStore } from '@/shared/model/modal.store';
 import { FirewallBlockList } from './FirewallBlockList';
 import { CountryGuardSection } from './CountryGuardSection';
+import { SshAllowUsersSection } from './SshAllowUsersSection';
 import { smallButton, usePaged } from '../lib/paging';
 import { Pager } from './Pager';
 import { GeoLabel } from './GeoLabel';
@@ -269,7 +270,10 @@ export function SshAccessPanel() {
         />
       )}
 
-      {/* 내 IP — 자주 보는 정보라 위에 둠 */}
+      <Section title="SSH 로그인 허용 규칙 · 연결된 파일">
+        <SshAllowUsersSection />
+      </Section>
+
       <Section title="내 IP" count={data.knownIps.length}>
         <p className="mb-2 text-xs text-gray-500">
           내가 쓰는 공인 IP 입니다. 여기서 성공한 접속은 경고(★)를 띄우지 않고
