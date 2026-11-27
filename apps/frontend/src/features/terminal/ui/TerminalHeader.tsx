@@ -31,7 +31,7 @@ export function TerminalHeader({
           <button
             onClick={onCodexCommand}
             disabled={!isConnected}
-            title="Codex 실행"
+            title="Codex 실행 (승인 없이)"
             aria-label="Codex 실행"
             className="rounded-md border border-sky-400/30 p-1.5 text-sky-300 hover:bg-sky-400/15 disabled:opacity-50"
           >
@@ -40,7 +40,7 @@ export function TerminalHeader({
           <button
             onClick={onClaudeCommand}
             disabled={!isConnected}
-            title="Claude 실행"
+            title="Claude 실행 (권한 확인 없이)"
             aria-label="Claude 실행"
             className="rounded-md border border-orange-400/30 p-1.5 text-orange-300 hover:bg-orange-400/15 disabled:opacity-50"
           >

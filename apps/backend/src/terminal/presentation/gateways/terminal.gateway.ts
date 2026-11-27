@@ -45,6 +45,14 @@ import {
   UpdateTerminalActivityUseCase,
 } from '../../application/use-cases';
 
+const MAX_IMAGE_BYTES = 12 * 1024 * 1024;
+const IMAGE_EXTENSIONS: Record<string, string> = {
+  'image/png': 'png',
+  'image/jpeg': 'jpg',
+  'image/gif': 'gif',
+  'image/webp': 'webp',
+};
+
 /**
  * 터미널 게이트웨이
  * Presentation 계층 — 웹소켓 연결만 담당한다.
@@ -55,6 +63,8 @@ import {
 @WebSocketGateway({
   cors: { origin: process.env.FRONTEND_URL || 'http://localhost:3000' },
   namespace: '/terminal',
+  // 휴대폰 화면 캡처를 붙여 넣을 수 있게 메시지 한도를 이미지 한도보다 조금 크게 둔다
+  maxHttpBufferSize: 16 * 1024 * 1024,
 })
 export class TerminalGateway
   implements OnGatewayConnection, OnGatewayDisconnect
@@ -299,6 +309,25 @@ export class TerminalGateway
 
     this.ptyManager.write(sessionId, data.message);
     await this.updateTerminalActivity.execute(sessionId, userId);
+  }
+
+  @SubscribeMessage('terminal:upload-image')
+  handleUploadImage(
+    @ConnectedSocket() client: AuthenticatedSocket,
+    @MessageBody() data: { mimeType?: unknown; base64?: unknown },
+  ): { path: string } | { error: string } {
+    if (!this.sessionMapper.getSessionId(client.id) || !client.user?.sub) {
+      return { error: '세션이 없습니다.' };
+    }
+    const extension = IMAGE_EXTENSIONS[String(data?.mimeType)];
+    if (!extension || typeof data.base64 !== 'string') {
+      return { error: 'PNG·JPEG·GIF·WEBP 이미지만 올릴 수 있습니다.' };
+    }
+    const buffer = Buffer.from(data.base64, 'base64');
+    if (buffer.length === 0 || buffer.length > MAX_IMAGE_BYTES) {
+      return { error: '이미지는 12MB 까지 올릴 수 있습니다.' };
+    }
+    return { path: this.ptyManager.saveImageUpload(buffer, extension) };
   }
 
   @SubscribeMessage('terminal:interrupt')

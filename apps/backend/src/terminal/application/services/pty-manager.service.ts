@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
+import { randomUUID } from 'node:crypto';
 import path from 'node:path';
 import * as pty from 'node-pty';
 import { resolveTerminalShell } from '../../domain/policies/terminal-shell.policy';
@@ -47,6 +48,26 @@ export class PtyManagerService implements IPtyManager {
 
   getClaudeLaunchCommand(): string {
     return resolveClaudeBinary(getHomeDirectory()).launchCommand;
+  }
+
+  /**
+   * 휴대폰에서 붙여 넣은 이미지를 저장하고 경로를 돌려준다.
+   * 터미널에는 이미지를 직접 넣을 수 없어서, Claude·Codex 가 읽을 수 있게 파일 경로를 넘긴다.
+   */
+  saveImageUpload(data: Buffer, extension: string): string {
+    const dir = path.join(
+      getHomeDirectory(),
+      '.kscold-control',
+      'terminal-uploads',
+    );
+    mkdirSync(dir, { recursive: true, mode: 0o700 });
+    const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+    const file = path.join(
+      dir,
+      `${stamp}-${randomUUID().slice(0, 8)}.${extension}`,
+    );
+    writeFileSync(file, data, { mode: 0o600 });
+    return file;
   }
 
   private sourceIfExists(targetPath: string): string {
