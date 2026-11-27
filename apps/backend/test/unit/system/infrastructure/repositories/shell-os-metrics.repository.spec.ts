@@ -1,5 +1,11 @@
 import type { Mock } from 'vitest';
+import * as os from 'os';
 import { ShellOsMetricsRepository } from '@/system/infrastructure/repositories/shell-os-metrics.repository';
+
+vi.mock('os', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('os')>();
+  return { ...actual, cpus: vi.fn(actual.cpus) };
+});
 
 describe('ShellOsMetricsRepository', () => {
   it('디스크 수집 실패 시 마지막 성공값을 stale 상태로 반환한다', async () => {
@@ -81,4 +87,20 @@ describe('ShellOsMetricsRepository', () => {
     expect(first.used).toBe(30);
     expect(collect).toHaveBeenCalledTimes(1);
   });
+  it('처음 재도 그 사이 쓴 만큼 CPU 사용률을 낸다 (0% 고정 아님)', async () => {
+    const cpu = (user: number, idle: number) => ({
+      model: 'm',
+      speed: 1,
+      times: { user, nice: 0, sys: 0, irq: 0, idle },
+    });
+    const spy = vi.mocked(os.cpus).mockReturnValue([cpu(100, 100)]);
+    const repository = new ShellOsMetricsRepository();
+    spy.mockReturnValue([cpu(150, 150)]);
+
+    const stats = await repository.getCpuStats();
+
+    expect(stats.usage).toBe(50);
+    spy.mockRestore();
+  });
 });
+

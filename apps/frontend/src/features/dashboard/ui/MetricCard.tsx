@@ -22,11 +22,11 @@ export function MetricCard({
 }: MetricCardProps) {
   return (
     <div
-      className={`rounded-xl border border-gray-800 bg-gray-900 p-4 sm:p-5 ${className ?? 'min-h-[176px]'}`}
+      className={`rounded-xl border border-gray-800 bg-gray-900 p-3 sm:p-5 ${className ?? 'min-h-[128px] sm:min-h-[176px]'}`}
     >
-      <div className="flex items-center gap-2 sm:gap-3 mb-2">
+      <div className="flex min-w-0 items-center gap-1.5 sm:gap-3 mb-2">
         <div className="flex-shrink-0">{icon}</div>
-        <span className="text-gray-400 text-xs sm:text-sm">{label}</span>
+        <span className="min-w-0 truncate text-gray-400 text-xs sm:text-sm">{label}</span>
       </div>
       <div className="min-h-[48px]">{value}</div>
       {progress ? (
