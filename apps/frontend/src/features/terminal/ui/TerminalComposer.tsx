@@ -141,7 +141,7 @@ export function TerminalComposer({
           autoCapitalize="off"
           autoCorrect="off"
           spellCheck={false}
-          placeholder="여기에 입력 (빈 칸으로 보내면 Enter)"
+          placeholder="입력 (빈 칸은 Enter)"
           onChange={(event) => setText(event.target.value)}
           onKeyDown={handleKeyDown}
           onPaste={handlePaste}
