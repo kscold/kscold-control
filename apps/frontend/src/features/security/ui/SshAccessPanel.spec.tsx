@@ -118,6 +118,12 @@ function renderPanel() {
   );
 }
 
+beforeEach(() => {
+  vi.spyOn(securityService, 'getSshAllowUsers').mockResolvedValue({
+    kind: 'unconfigured',
+  });
+});
+
 afterEach(() => {
   vi.restoreAllMocks();
   useModalStore.getState().close();
@@ -150,12 +156,37 @@ it('세션 끊기는 확인을 받은 뒤 요청한다', async () => {
   await waitFor(() => expect(terminate).toHaveBeenCalledWith(4634));
 });
 
+it('SSH 허용 규칙을 다시 조회해도 접속 현황을 계속 표시한다', async () => {
+  signIn([PERMISSIONS.SECURITY_READ]);
+  vi.spyOn(securityService, 'getSshAccess').mockResolvedValue(overview());
+  vi.mocked(securityService.getSshAllowUsers)
+    .mockRejectedValueOnce(new Error('SSH 허용 규칙 조회 실패'))
+    .mockResolvedValueOnce({ kind: 'empty' });
+  renderPanel();
+
+  expect(await screen.findByRole('alert')).toHaveTextContent(
+    'SSH 허용 규칙 조회 실패',
+  );
+  expect(screen.getByText('처음 보는 외부 성공')).toBeInTheDocument();
+  await userEvent.click(screen.getByRole('button', { name: '다시 시도' }));
+  expect(
+    await screen.findByText('연결된 설정 파일에 허용 규칙이 없습니다.'),
+  ).toBeInTheDocument();
+});
+
 it('보기 권한만 있으면 바꾸는 버튼을 숨긴다', async () => {
   signIn([PERMISSIONS.SECURITY_READ]);
   vi.spyOn(securityService, 'getSshAccess').mockResolvedValue(overview());
+  vi.mocked(securityService.getSshAllowUsers).mockResolvedValue({
+    kind: 'managed',
+    rules: [{ user: 'operator', source: '192.0.2.0/24' }],
+  });
   renderPanel();
 
-  await screen.findByText('처음 보는 외부 성공');
+  const rules = await screen.findByRole('table', {
+    name: 'SSH 로그인 허용 규칙',
+  });
+  expect(within(rules).getByText('192.0.2.0/24')).toBeInTheDocument();
   expect(screen.queryByRole('button', { name: /끊기/ })).toBeNull();
   expect(screen.queryByRole('button', { name: '해제' })).toBeNull();
   expect(screen.queryByPlaceholderText('막을 IP')).toBeNull();
