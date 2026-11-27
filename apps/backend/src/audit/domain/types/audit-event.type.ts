@@ -6,7 +6,8 @@ export type AuditDomain =
   | 'security'
   | 'secrets'
   | 'backup'
-  | 'maintenance';
+  | 'maintenance'
+  | 'uptime';
 
 export interface AuditDiffSummary {
   changeCount: number;

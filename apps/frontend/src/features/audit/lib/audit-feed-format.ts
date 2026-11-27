@@ -13,6 +13,7 @@ export const AUDIT_DOMAIN_LABEL: Record<AuditEventDomain, string> = {
   repository: '소스 저장소',
   backup: '백업',
   maintenance: '유지보수',
+  uptime: '서비스 감시',
 };
 
 export const AUDIT_PERIOD_LABEL: Record<AuditFeedPeriod, string> = {

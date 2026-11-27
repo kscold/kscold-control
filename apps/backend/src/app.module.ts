@@ -46,6 +46,9 @@ import { WorktreeCleanupRun } from './maintenance/domain/entities/worktree-clean
 import { StorageTrimRun } from './maintenance/domain/entities/storage-trim-run.entity';
 import { AuthSession } from './auth/domain/entities/auth-session.entity';
 import { UserMfa } from './auth/mfa/domain/entities/user-mfa.entity';
+import { ServiceMonitor } from './uptime/domain/entities/service-monitor.entity';
+import { ServiceMonitorCheck } from './uptime/domain/entities/service-monitor-check.entity';
+import { UptimeModule } from './uptime/uptime.module';
 
 import { HttpLoggerMiddleware } from './common/middleware/http-logger.middleware';
 import {
@@ -93,6 +96,8 @@ import { frontendServingOptions } from './common/utils/frontend-serving.util';
         StorageTrimRun,
         AuthSession,
         UserMfa,
+        ServiceMonitor,
+        ServiceMonitorCheck,
       ],
       synchronize: shouldSynchronizeDatabase(),
       logging: process.env.NODE_ENV !== 'production',
@@ -102,6 +107,7 @@ import { frontendServingOptions } from './common/utils/frontend-serving.util';
     AuthModule,
     TerminalModule,
     RemoteDesktopModule,
+    UptimeModule,
     DockerModule,
     SystemModule,
     RbacModule,
