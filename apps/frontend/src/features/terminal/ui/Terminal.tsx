@@ -128,10 +128,14 @@ export function Terminal({ terminalId, launch, onLaunch }: TerminalProps) {
         onCloseSession={handleCloseSession}
       />
       <div className="relative flex min-h-0 flex-1">
-        <div
-          ref={terminalRef}
-          className="min-w-0 flex-1 overflow-hidden p-2 sm:p-4 bg-[#1e1e1e]"
-        />
+        {/* FitAddon 은 부모의 width·height 를 그대로 재는데 border-box 라 안쪽 여백까지 들어간다.
+            여백은 바깥 틀에 두고 터미널 틀은 여백 없이 둬야 칸 수가 화면보다 커지지 않는다. */}
+        <div className="flex min-w-0 flex-1 bg-[#1e1e1e] p-2 sm:p-4">
+          <div
+            ref={terminalRef}
+            className="min-h-0 min-w-0 flex-1 overflow-hidden"
+          />
+        </div>
         <TerminalCopySheet xterm={xterm} />
       </div>
       <TerminalKeyBar
