@@ -22,6 +22,19 @@ export class SshIpDto {
   label?: string;
 }
 
+export class ChangeSshAllowUsersDto {
+  @IsIn(['add', 'remove'])
+  kind: 'add' | 'remove';
+
+  @IsString()
+  @MaxLength(256)
+  rule: string;
+
+  @Matches(/^[a-f0-9]{64}$/)
+  @MaxLength(64)
+  revision: string;
+}
+
 export class SshKnownLabelDto {
   @IsOptional()
   @IsString()

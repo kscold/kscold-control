@@ -21,6 +21,7 @@ import {
 } from '../../application/services/ssh-access.service';
 import {
   SshBlockDto,
+  ChangeSshAllowUsersDto,
   SshBlockScopeDto,
   SshCountryGuardDto,
   SshIpDto,
@@ -28,6 +29,7 @@ import {
 } from '../../application/dto/ssh-access.dto';
 import { SshCountryGuardService } from '../../application/services/ssh-country-guard.service';
 import { GetSshAllowUsersUseCase } from '../../application/use-cases/get-ssh-allow-users.use-case';
+import { ChangeSshAllowUsersUseCase } from '../../application/use-cases/change-ssh-allow-users.use-case';
 import type { CountryGuardSettings } from '../../domain/policies/country-guard.policy';
 
 /**
@@ -41,12 +43,28 @@ export class SshAccessController {
     private readonly ssh: SshAccessService,
     private readonly countryGuard: SshCountryGuardService,
     private readonly getAllowUsers: GetSshAllowUsersUseCase,
+    private readonly changeAllowUsers: ChangeSshAllowUsersUseCase,
   ) {}
 
   @Get('allow-users')
   @RequirePermissions(PERMISSIONS.SECURITY_READ)
   allowUsers() {
     return this.getAllowUsers.execute();
+  }
+
+  @Patch('allow-users')
+  @RequirePermissions(PERMISSIONS.SECURITY_MANAGE)
+  @Audit({
+    domain: 'security',
+    action: 'ssh.allow-users.change',
+    summary: 'SSH 로그인 허용 규칙 변경 요청',
+    targetType: 'ssh-allow-users',
+  })
+  updateAllowUsers(@Body() dto: ChangeSshAllowUsersDto) {
+    return this.changeAllowUsers.execute(
+      { kind: dto.kind, rule: dto.rule },
+      dto.revision,
+    );
   }
 
   @Get()
