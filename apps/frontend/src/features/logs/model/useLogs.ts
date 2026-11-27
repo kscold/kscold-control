@@ -107,7 +107,8 @@ export function useLogs({
   const [isLoading, setIsLoading] = useState(false);
   const [isArchiveLoading, setIsArchiveLoading] = useState(false);
   const logsEndRef = useRef<HTMLDivElement>(null);
-  const isNginxContainer = selectedContainerName === 'kscold-nginx';
+  // 설치마다 이름이 달라 이름에 nginx 가 든 컨테이너를 nginx 로 본다
+  const isNginxContainer = /nginx/i.test(selectedContainerName ?? '');
   const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastSeenAtRef = useRef<string | null>(null);
   const selectedArchiveSource =

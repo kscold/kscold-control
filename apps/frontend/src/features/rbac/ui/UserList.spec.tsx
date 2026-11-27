@@ -159,10 +159,14 @@ describe('UserList QA preview', () => {
       renderList(vi.fn(), vi.fn(), { users: [backupViewer], onUpdate });
 
       await user.click(screen.getByRole('button', { name: '열람 범위 변경' }));
-      await user.click(screen.getByRole('checkbox', { name: /projectbeta-prod/ }));
+      await user.click(
+        screen.getByRole('checkbox', { name: /projectbeta-prod/ }),
+      );
       await user.click(screen.getByRole('button', { name: '열람 범위 저장' }));
 
-      expect(onUpdate).toHaveBeenCalledWith(backupViewer.id, ['projectbeta-id']);
+      expect(onUpdate).toHaveBeenCalledWith(backupViewer.id, [
+        'projectbeta-id',
+      ]);
       // 저장에 성공하면 편집 영역이 닫힌다.
       expect(
         screen.queryByRole('button', { name: '열람 범위 저장' }),
@@ -193,7 +197,9 @@ describe('UserList QA preview', () => {
       });
 
       await user.click(screen.getByRole('button', { name: '열람 범위 변경' }));
-      await user.click(screen.getByRole('checkbox', { name: /projectbeta-prod/ }));
+      await user.click(
+        screen.getByRole('checkbox', { name: /projectbeta-prod/ }),
+      );
       await user.click(screen.getByRole('button', { name: '열람 범위 저장' }));
 
       expect(onUpdate).toHaveBeenCalledWith(backupViewer.id, []);

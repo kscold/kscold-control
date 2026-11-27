@@ -734,11 +734,11 @@ export class DockerTopologyService {
   private buildLocalGateway(domains: string[]): ContainerGatewayInfo {
     return {
       mode: domains.length > 0 ? 'host-nginx' : 'direct',
-      label: domains.length > 0 ? '공용 kscold-nginx 프록시' : '직접 접근',
+      label: domains.length > 0 ? '공용 nginx 프록시' : '직접 접근',
       details:
         domains.length > 0
           ? [
-              '실제 도메인은 공용 kscold-nginx가 host.docker.internal:4000으로 프록시합니다.',
+              '실제 도메인은 공용 nginx 가 host.docker.internal:4000으로 프록시합니다.',
               'kscold-control은 컨테이너가 아니라 호스트 PM2 프로세스로 실행 중입니다.',
             ]
           : ['현재 연결된 공용 도메인을 찾지 못했습니다.'],
@@ -771,9 +771,9 @@ export class DockerTopologyService {
     if (domains.length > 0) {
       return {
         mode: 'host-nginx',
-        label: '공용 kscold-nginx 프록시',
+        label: '공용 nginx 프록시',
         details: [
-          '실제 웹 도메인은 공용 kscold-nginx가 앞단에서 종료합니다.',
+          '실제 웹 도메인은 공용 nginx 가 앞단에서 종료합니다.',
           '이 Ubuntu 컨테이너 안에는 별도 Nginx가 없고, 앱 포트만 직접 노출됩니다.',
           upstreamPort
             ? `대표 업스트림 포트는 :${upstreamPort} 입니다.`

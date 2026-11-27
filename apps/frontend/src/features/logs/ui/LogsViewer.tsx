@@ -62,7 +62,7 @@ function formatLineOption(option: LogLineCount) {
 }
 
 function getDockerBadgeTone(name: string) {
-  if (name === 'kscold-nginx') {
+  if (/nginx/i.test(name)) {
     return 'border-amber-500/40 bg-amber-500/10 text-amber-200';
   }
 
@@ -103,6 +103,7 @@ export function LogsViewer() {
     selectedContainer,
     setSelectedContainer,
     loadDockerContainers,
+    loadError: containersError,
   } = useDockerContainers();
   const selectedContainerInfo = dockerContainers.find(
     (container) => container.id === selectedContainer,
@@ -633,6 +634,11 @@ export function LogsViewer() {
               <div className="mt-1 text-xs text-gray-400">
                 {streamStatusMeta.detail}
               </div>
+              {containersError && (
+                <div className="mt-2 text-xs text-red-300">
+                  {containersError}
+                </div>
+              )}
               {streamError && (
                 <div className="mt-2 text-xs text-red-300">{streamError}</div>
               )}

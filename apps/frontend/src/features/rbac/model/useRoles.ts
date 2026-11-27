@@ -30,6 +30,10 @@ export function useRoles() {
       setPermissions(data);
     } catch (err) {
       console.error('Failed to load permissions:', err);
+      // 권한 목록이 비면 역할 편집에서 권한을 다 뺀 것처럼 저장될 수 있다
+      setError(
+        '권한 목록을 불러오지 못했습니다. 역할을 고치기 전에 새로고침하세요.',
+      );
     }
   };
 

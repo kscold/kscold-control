@@ -24,6 +24,7 @@ export function useDockerContainers() {
     [],
   );
   const [selectedContainer, setSelectedContainer] = useState<string>('');
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const loadDockerContainers = async () => {
     try {
@@ -38,15 +39,18 @@ export function useDockerContainers() {
 
       if (!selectedStillExists) {
         const preferredDefault =
-          sorted.find((container) => container.name === 'kscold-nginx') ??
+          // 설치마다 이름이 다르니 이름에 nginx 가 든 컨테이너(대개 입구 프록시)를 먼저 고른다
+          sorted.find((container) => /nginx/i.test(container.name)) ??
           sorted[0];
 
         if (preferredDefault) {
           setSelectedContainer(preferredDefault.id);
         }
       }
+      setLoadError(null);
     } catch (error) {
       console.error('Failed to load docker containers:', error);
+      setLoadError('컨테이너 목록을 불러오지 못했습니다.');
     }
   };
 
@@ -55,5 +59,6 @@ export function useDockerContainers() {
     selectedContainer,
     setSelectedContainer,
     loadDockerContainers,
+    loadError,
   };
 }
