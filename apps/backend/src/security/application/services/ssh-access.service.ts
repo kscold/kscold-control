@@ -13,9 +13,11 @@ import { join } from 'node:path';
 import { promisify } from 'node:util';
 import {
   classifySshIp,
+  formatLocal,
   parseRemoteEndpoint,
   parseSshAuditLine,
   parseSshSessionCommand,
+  sinceDate,
   summarizeSshAudit,
   type SshAuditEvent,
   type SshAuditSummary,
@@ -888,20 +890,6 @@ function normalizeIp(ip: string): string {
   return value;
 }
 
-/** 조회 기간 시작 시각. 1~90일로 자른다. */
-export function sinceDate(days: number): Date {
-  const safeDays = Math.min(Math.max(Math.trunc(days) || 7, 1), 90);
-  return new Date(Date.now() - safeDays * 86_400_000);
-}
-
 function sinceOf(days: number): string {
   return formatLocal(sinceDate(days));
-}
-
-/** 기록 파일과 같은 이 서버 로컬 시각 형식 (YYYY-MM-DD HH:MM:SS) */
-export function formatLocal(d: Date): string {
-  const p = (n: number) => String(n).padStart(2, '0');
-  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(
-    d.getHours(),
-  )}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
 }

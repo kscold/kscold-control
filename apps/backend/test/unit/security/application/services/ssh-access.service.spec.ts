@@ -3,10 +3,8 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { IpAllowlistService } from '@/security/application/services/ip-allowlist.service';
-import {
-  SshAccessService,
-  formatLocal,
-} from '@/security/application/services/ssh-access.service';
+import { SshAccessService } from '@/security/application/services/ssh-access.service';
+import { formatLocal } from '@/security/domain/models/ssh-audit.model';
 import { fakeIpGeo, geo } from '../../fakes/ip-geo.fake';
 
 describe('SshAccessService', () => {

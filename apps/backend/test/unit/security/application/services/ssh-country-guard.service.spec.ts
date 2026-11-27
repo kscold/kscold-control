@@ -4,10 +4,8 @@ import { join } from 'node:path';
 import type { AuditLogService } from '@/audit/application/services/audit-log.service';
 import type { CreateAuditEventInput } from '@/audit/domain/types/audit-event.type';
 import { IpAllowlistService } from '@/security/application/services/ip-allowlist.service';
-import {
-  SshAccessService,
-  formatLocal,
-} from '@/security/application/services/ssh-access.service';
+import { SshAccessService } from '@/security/application/services/ssh-access.service';
+import { formatLocal } from '@/security/domain/models/ssh-audit.model';
 import { SshCountryGuardService } from '@/security/application/services/ssh-country-guard.service';
 import type {
   IIpGeoReader,
