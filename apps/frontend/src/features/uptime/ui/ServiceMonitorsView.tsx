@@ -54,7 +54,7 @@ export function ServiceMonitorsView() {
     <div className="h-full overflow-auto bg-gray-950 p-4 sm:p-6">
       <div className="mb-4 flex items-center gap-3">
         <div className="mr-auto">
-          <h2 className="hidden text-2xl font-bold text-white md:block">
+          <h2 className="text-xl font-bold text-white sm:text-2xl">
             서비스 감시
           </h2>
           <p className="text-sm text-gray-400">
