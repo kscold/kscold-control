@@ -64,6 +64,7 @@
     "test:e2e:control": "bash ./scripts/run-control-e2e.sh",
     "check:architecture": "node ./scripts/check-architecture.mjs",
     "check:mobile-layout": "node ./scripts/check-mobile-layout.mjs",
+    "setup:check": "node ./scripts/setup-check.mjs",
     "check:nginx": "bash ./scripts/check-nginx-config.sh",
     "check:runtime-contracts": "node ./scripts/check-runtime-contracts.mjs",
     "check:public-source": "node ./scripts/check-public-source.mjs",
