@@ -82,19 +82,19 @@ export function BackupSummary({ items, now }: BackupSummaryProps) {
   ];
 
   return (
-    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+    <div className="grid grid-cols-2 gap-2 sm:gap-3 xl:grid-cols-4">
       {cards.map((card) => {
         const Icon = card.icon;
         return (
           <div
             key={card.label}
-            className="rounded-2xl border border-gray-800 bg-gray-900/70 p-4"
+            className="min-w-0 rounded-2xl border border-gray-800 bg-gray-900/70 p-3 sm:p-4"
           >
             <div className="flex items-center gap-2 text-xs font-medium text-gray-400">
               <Icon size={14} className={card.tone} />
               {card.label}
             </div>
-            <p className={`mt-2 text-xl font-semibold ${card.tone}`}>
+            <p className={`mt-2 text-base font-semibold sm:text-xl ${card.tone}`}>
               {card.value}
             </p>
             <p className="mt-1 truncate text-xs text-gray-500">{card.detail}</p>
