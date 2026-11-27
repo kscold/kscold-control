@@ -38,4 +38,17 @@ describe('CurrentIpBanner', () => {
     expect(screen.getByText('내 IP')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /내 IP 로 등록/ })).toBeNull();
   });
+
+  it('내부 주소면 등록 버튼 없이 막히지 않는다고 알린다', () => {
+    render(
+      <CurrentIpBanner
+        data={base({ requesterIp: '127.0.0.1' })}
+        canManage
+        onAddKnown={() => {}}
+        onUnblock={() => {}}
+      />,
+    );
+    expect(screen.getByText('내부 주소 · 막히지 않음')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /내 IP 로 등록/ })).toBeNull();
+  });
 });
