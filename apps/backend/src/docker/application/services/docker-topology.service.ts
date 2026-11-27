@@ -1,5 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { ComposeService } from './compose.service';
+import { classifyTopologyCompanion } from '../../domain/policies/topology-companion.policy';
 import type {
   TopologySnapshot,
   TopologySnapshotEdge,
@@ -612,14 +613,8 @@ export class DockerTopologyService {
     const companionEntries = appContainers
       .filter((container) => !usedContainerIds.has(container.id))
       .map((container) => {
-        const parentName = this.getCompanionParentName(container.name);
-        return parentName
-          ? {
-              container,
-              parentName,
-              order: this.getCompanionOrder(container.name),
-            }
-          : null;
+        const companion = classifyTopologyCompanion(container.name);
+        return companion ? { container, ...companion } : null;
       })
       .filter(
         (
@@ -654,29 +649,6 @@ export class DockerTopologyService {
         columnIndex: sortedSites.length + index,
       })),
     ];
-  }
-
-  private getCompanionParentName(containerName: string): string | null {
-    const normalizedName = containerName.toLowerCase();
-
-    if (
-      normalizedName.includes('vault-agent') ||
-      normalizedName.includes('blog-agent') ||
-      normalizedName.includes('vault-qdrant') ||
-      normalizedName.includes('blog-qdrant')
-    ) {
-      return 'ubuntu-blog';
-    }
-
-    return null;
-  }
-
-  private getCompanionOrder(containerName: string): number {
-    const normalizedName = containerName.toLowerCase();
-
-    if (normalizedName.includes('agent')) return 0;
-    if (normalizedName.includes('qdrant')) return 1;
-    return 10;
   }
 
   private resolveUpstreamTarget(
