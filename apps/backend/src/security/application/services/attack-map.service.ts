@@ -19,7 +19,8 @@ import {
   LOGIN_ATTEMPT_REPOSITORY,
   type ILoginAttemptRepository,
 } from '../../domain/repositories/login-attempt.repository.interface';
-import { SshAccessService, formatLocal, sinceDate } from './ssh-access.service';
+import { formatLocal, sinceDate } from '../../domain/models/ssh-audit.model';
+import { SshAccessService } from './ssh-access.service';
 
 export type AttackMapView =
   | { enabled: false; reason: Exclude<IpGeoStatus['state'], 'ready'> }

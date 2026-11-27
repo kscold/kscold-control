@@ -3,10 +3,8 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { AttackMapService } from '@/security/application/services/attack-map.service';
 import { IpAllowlistService } from '@/security/application/services/ip-allowlist.service';
-import {
-  SshAccessService,
-  formatLocal,
-} from '@/security/application/services/ssh-access.service';
+import { SshAccessService } from '@/security/application/services/ssh-access.service';
+import { formatLocal } from '@/security/domain/models/ssh-audit.model';
 import type { IIpGeoReader } from '@/security/domain/gateways/ip-geo.gateway.interface';
 import {
   InMemoryIpBanRepository,
