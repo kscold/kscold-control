@@ -25,6 +25,9 @@ export class ShellOsMetricsRepository implements IOsMetricsRepository {
   private readonly logger = new Logger(ShellOsMetricsRepository.name);
   private readonly STATS_CACHE_TTL = 3 * 1000; // 3초
   private readonly DISK_CACHE_TTL = 60 * 1000; // 1분
+  private readonly DISK_STALE_AFTER = 3 * 60 * 1000; // 3분
+  /** docker·du 가 멈춰도 다음 측정을 막지 않도록 끊는 시간 */
+  private readonly COMMAND_TIMEOUT = 90 * 1000;
 
   private statsCache: {
     data: { cpu: CpuStats; memory: MemoryStats };
@@ -49,9 +52,23 @@ export class ShellOsMetricsRepository implements IOsMetricsRepository {
   private diskRefresh: Promise<DiskInfo & { breakdown: DiskBreakdown }> | null =
     null;
 
-  /** 서버가 뜨자마자 한 번 재 두어 첫 화면도 기다리지 않게 한다. */
+  private diskTimer: NodeJS.Timeout | null = null;
+
+  /**
+   * 서버가 뜨자마자 한 번 재고, 그 뒤로는 화면을 열지 않아도 1분마다 다시 잰다.
+   * 그래야 화면을 열 때 늘 1분 안쪽 값이 나온다.
+   */
   onModuleInit() {
     void this.getDiskInfo();
+    this.diskTimer = setInterval(
+      () => void this.getDiskInfo(),
+      this.DISK_CACHE_TTL,
+    );
+    this.diskTimer.unref();
+  }
+
+  onModuleDestroy() {
+    if (this.diskTimer) clearInterval(this.diskTimer);
   }
 
   /**
@@ -74,8 +91,8 @@ export class ShellOsMetricsRepository implements IOsMetricsRepository {
     cached: NonNullable<typeof this.diskCache>,
   ): DiskInfo & { breakdown: DiskBreakdown } {
     const { diskInfo, diskBreakdown } = cached.data;
-    // 다시 재는 중이거나 실패해 1분이 넘은 값이면 화면에 '지난 값'이라고 알린다.
-    const stale = Date.now() - cached.timestamp >= this.DISK_CACHE_TTL;
+    // 1분마다 다시 재므로, 세 번 넘게 못 잰 값일 때만 '지난 값'이라고 알린다.
+    const stale = Date.now() - cached.timestamp >= this.DISK_STALE_AFTER;
     return {
       ...diskInfo,
       breakdown: {
@@ -283,7 +300,9 @@ export class ShellOsMetricsRepository implements IOsMetricsRepository {
   private async measureDirectorySize(directory: string): Promise<number> {
     if (!existsSync(directory)) return 0;
     try {
-      const { stdout } = await execFileAsync('du', ['-sk', directory]);
+      const { stdout } = await execFileAsync('du', ['-sk', directory], {
+        timeout: this.COMMAND_TIMEOUT,
+      });
       return (parseInt(stdout.trim().split(/\s+/)[0], 10) || 0) * 1024;
     } catch (error) {
       // 조회 실패를 0으로 돌려주면 디스크 사용량이 실제보다 적게 보인다.
@@ -323,7 +342,10 @@ export class ShellOsMetricsRepository implements IOsMetricsRepository {
       const { stdout } = await execFileAsync(
         'docker',
         ['system', 'df', '--format', '{{json .}}'],
-        { env: { ...process.env, DOCKER_HOST: dockerHost } },
+        {
+          env: { ...process.env, DOCKER_HOST: dockerHost },
+          timeout: this.COMMAND_TIMEOUT,
+        },
       );
       Object.assign(dockerUsage, parseDockerSystemDfOutput(stdout));
     } catch (error) {
