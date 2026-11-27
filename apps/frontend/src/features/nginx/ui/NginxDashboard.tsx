@@ -166,19 +166,29 @@ export function NginxDashboard() {
 
       {/* ===== 프록시 탭 ===== */}
       {tab === 'proxy' && (
-        <SiteList
-          sites={sitesHook.sites}
-          loading={sitesHook.loading}
-          proxyDnsStatus={sitesHook.proxyDnsStatus}
-          proxyDnsLoading={sitesHook.proxyDnsLoading}
-          onOpenCreate={sitesHook.openCreate}
-          onOpenEdit={sitesHook.openEdit}
-          onDelete={sitesHook.handleDelete}
-          onToggle={sitesHook.handleToggle}
-          onLoadProxyDnsStatus={sitesHook.loadProxyDnsStatus}
-          onOpenCertModal={certsHook.openCertModal}
-          onNavigateDns={handleNavigateDns}
-        />
+        <>
+          {sitesHook.loadError && (
+            <p
+              role="alert"
+              className="mb-3 rounded-lg border border-red-800 bg-red-950/30 px-3 py-2 text-sm text-red-200"
+            >
+              사이트 목록을 불러오지 못했습니다: {sitesHook.loadError}
+            </p>
+          )}
+          <SiteList
+            sites={sitesHook.sites}
+            loading={sitesHook.loading}
+            proxyDnsStatus={sitesHook.proxyDnsStatus}
+            proxyDnsLoading={sitesHook.proxyDnsLoading}
+            onOpenCreate={sitesHook.openCreate}
+            onOpenEdit={sitesHook.openEdit}
+            onDelete={sitesHook.handleDelete}
+            onToggle={sitesHook.handleToggle}
+            onLoadProxyDnsStatus={sitesHook.loadProxyDnsStatus}
+            onOpenCertModal={certsHook.openCertModal}
+            onNavigateDns={handleNavigateDns}
+          />
+        </>
       )}
 
       {/* ===== SSL 탭 ===== */}

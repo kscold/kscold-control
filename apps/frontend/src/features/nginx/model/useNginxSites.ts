@@ -21,6 +21,7 @@ export function useNginxSites() {
   >({});
   const [proxyDnsLoading, setProxyDnsLoading] = useState(false);
 
+  const [loadError, setLoadError] = useState<string | null>(null);
   const { showAlert, showConfirm } = useModalStore();
 
   const loadSites = async () => {
@@ -28,8 +29,13 @@ export function useNginxSites() {
       setLoading(true);
       const data = await nginxService.listSites();
       setSites(data);
+      setLoadError(null);
     } catch (e) {
       console.error(e);
+      // 빈 목록으로 두면 사이트가 없는 것처럼 보인다
+      setLoadError(
+        e instanceof Error ? e.message : '사이트 목록을 불러오지 못했습니다.',
+      );
     } finally {
       setLoading(false);
     }
@@ -135,6 +141,7 @@ export function useNginxSites() {
   return {
     sites,
     loading,
+    loadError,
     showModal,
     setShowModal,
     editingName,
