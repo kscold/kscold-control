@@ -8,13 +8,16 @@ import {
   Patch,
   Post,
   Query,
+  Req,
   UseGuards,
 } from '@nestjs/common';
+import type { Request } from 'express';
 import { AuthGuard } from '@nestjs/passport';
 import { PermissionsGuard } from '../../../common/guards/permissions.guard';
 import { RequirePermissions } from '../../../common/decorators/permissions.decorator';
 import { Audit } from '../../../common/decorators/audit.decorator';
 import { PERMISSIONS } from '../../../common/constants/permissions';
+import { clientIp } from '../../../common/utils/client-ip.util';
 import {
   SshAccessService,
   type SshSession,
@@ -69,10 +72,12 @@ export class SshAccessController {
 
   @Get()
   @RequirePermissions(PERMISSIONS.SECURITY_READ)
-  async overview(@Query('days') days?: string) {
+  async overview(@Query('days') days: string | undefined, @Req() req: Request) {
     const overview = await this.ssh.overview(Number(days ?? 7));
     return {
       ...overview,
+      // 휴대폰·해외에서 지금 이 화면을 연 주소. 내 IP 등록·차단 해제를 바로 하게 한다
+      requesterIp: clientIp(req) ?? null,
       countryGuard: await this.countryGuard.status(overview.blocks),
     };
   }

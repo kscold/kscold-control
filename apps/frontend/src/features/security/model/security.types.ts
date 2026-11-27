@@ -143,6 +143,8 @@ export interface SshAccessOverview {
   knownIps: SshKnownIp[];
   blocks: SshBlock[];
   countryGuard: SshCountryGuard;
+  /** 지금 이 화면을 연 주소 (서버가 본 값) */
+  requesterIp?: string | null;
 }
 
 // ---- 공격 지도 ----
