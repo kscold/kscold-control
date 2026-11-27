@@ -1,3 +1,6 @@
+import { posix, win32 } from 'node:path';
+import { hasControlCharacter } from '../../../common/utils/safe-path.util';
+
 const SENSITIVE_FILE_NAMES = new Set([
   '.env',
   '.envrc',
@@ -68,6 +71,31 @@ export function isSensitiveRepositoryPath(relativePath: string): boolean {
 
 export function isReservedRepositoryPath(relativePath: string): boolean {
   return RESERVED_ROOT_NAMES.has(relativePath.split('/')[0]?.toLowerCase());
+}
+
+export function isSafeRepositoryPath(relativePath: string): boolean {
+  if (
+    !relativePath ||
+    relativePath.includes('\0') ||
+    relativePath.includes('\\') ||
+    relativePath.length > 4096 ||
+    hasControlCharacter(relativePath) ||
+    posix.isAbsolute(relativePath) ||
+    win32.isAbsolute(relativePath)
+  ) {
+    return false;
+  }
+
+  const normalized = posix.normalize(relativePath);
+  return (
+    normalized === relativePath &&
+    normalized.split('/').every(
+      (segment) =>
+        segment && segment !== '.' && segment !== '..' && segment.length <= 255,
+    ) &&
+    !isReservedRepositoryPath(normalized) &&
+    !normalized.startsWith('/')
+  );
 }
 
 export function containsPrivateKeyMaterial(text: string): boolean {
