@@ -133,6 +133,9 @@ export interface IDockerClient {
    * 어댑터가 실행 명령의 결과를 이 안정적인 형태로 정규화해야 함.
    */
   getContainerProcesses(dockerId: string): Promise<DockerContainerProcesses>;
+
+  /** 컨테이너 표준 출력·오류의 마지막 tail 줄을 시간 순서대로 하나의 글로 돌려줌. */
+  getContainerLogs(dockerId: string, tail: number): Promise<string>;
 }
 
 /** Nest 의존성 주입에서 Docker 게이트웨이 구현체를 연결하는 토큰임. */

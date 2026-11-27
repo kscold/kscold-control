@@ -17,3 +17,4 @@ export * from './prune-dangling-images.use-case';
 export * from './prune-build-cache.use-case';
 export * from './prune-exited-containers.use-case';
 export * from './prune-dangling-volumes.use-case';
+export * from './get-container-logs.use-case';
