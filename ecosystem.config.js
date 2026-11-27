@@ -92,6 +92,8 @@ module.exports = {
           'AUTOMATION_RELEASE_DIRS',
           'SSH_AUDIT_DIR',
           'SSH_ALLOW_USERS_CONFIG',
+          'SSH_ALLOW_USERS_HELPER',
+          'SSH_ALLOW_USERS_PROTECTED_RULE',
           'CONTROL_IP_GEO_DB_PATH',
           'CONTROL_MFA_ENCRYPTION_KEY',
           'CONTROL_MFA_REQUIRED_ROLES',
