@@ -14,6 +14,7 @@ describe('SystemController', () => {
     backupMongodbUseCase as any,
     listBackupsUseCase as any,
     getRemoteAccessUseCase as any,
+    { execute: vi.fn() } as any,
   );
 
   beforeEach(() => {

@@ -8,6 +8,7 @@ import { DashboardOverviewSkeleton } from './DashboardOverviewSkeleton';
 import { SystemStatsCard } from './SystemStatsCard';
 import { QuickActions } from './QuickActions';
 import { RemoteAccessCard } from './RemoteAccessCard';
+import { MetricHistoryCard } from './MetricHistoryCard';
 
 /** summary: 다른 기능이 맨 위에 끼워 넣는 요약 카드(서비스 감시 등) */
 export function DashboardOverview({ summary }: { summary?: ReactNode } = {}) {
@@ -81,6 +82,8 @@ export function DashboardOverview({ summary }: { summary?: ReactNode } = {}) {
         systemInfo={systemInfo}
         liveStats={liveStats}
       />
+
+      <MetricHistoryCard />
 
       {/* 빠른 액션 */}
       <QuickActions />
