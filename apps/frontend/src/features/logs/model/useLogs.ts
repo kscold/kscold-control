@@ -570,15 +570,15 @@ export function useLogs({
     setLineCount(DEFAULT_LINE_COUNT);
   };
 
-  const filteredLogs = useMemo(
-    () =>
-      searchTerm
-        ? logs.filter((log) =>
-            log.toLowerCase().includes(searchTerm.toLowerCase()),
-          )
-        : logs,
-    [logs, searchTerm],
-  );
+  // 터미널 색 코드(ESC[32m 등)는 화면에서 깨진 글자로 보이고 검색도 방해해 먼저 지운다
+  const filteredLogs = useMemo(() => {
+    const plain = logs.map(stripAnsi);
+    return searchTerm
+      ? plain.filter((log) =>
+          log.toLowerCase().includes(searchTerm.toLowerCase()),
+        )
+      : plain;
+  }, [logs, searchTerm]);
 
   const canLoadOlderLogs = logType === 'docker' && lineCount !== 'all';
 
@@ -626,4 +626,11 @@ export function useLogs({
     dockerWindow,
     canUseLiveStream,
   };
+}
+
+// eslint-disable-next-line no-control-regex
+const ANSI_PATTERN = /\u001b\[[0-9;?]*[A-Za-z]/g;
+
+export function stripAnsi(line: string): string {
+  return line.replace(ANSI_PATTERN, '');
 }
