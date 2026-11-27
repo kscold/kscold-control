@@ -70,6 +70,9 @@ jobs:
       - name: Login unlock script tests
         run: pnpm test:login-unlock
 
+      - name: SSH allow rules apply tests
+        run: pnpm test:ssh-allow-users
+
       - name: Build
         run: pnpm build
 
