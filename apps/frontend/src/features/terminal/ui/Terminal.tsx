@@ -7,12 +7,26 @@ import { useTerminalSocket } from '../model/useTerminalSocket';
 import { getTerminalSessionStorageKey } from '../lib/terminal.constants';
 import { TerminalCopySheet } from './TerminalCopySheet';
 import { TerminalHeader } from './TerminalHeader';
+import { TerminalComposer } from './TerminalComposer';
 import { TerminalKeyBar } from './TerminalKeyBar';
 
 interface TerminalProps {
   terminalId: string;
   launch?: 'codex' | 'claude';
   onLaunch?: (agent: 'codex' | 'claude') => void;
+}
+
+// 버튼으로 실행할 때는 매번 권한 확인을 묻지 않는 모드로 띄운다 (휴대폰에서 승인 누르기가 번거로움)
+const CLAUDE_BYPASS_FLAG = '--dangerously-skip-permissions';
+const CODEX_LAUNCH = 'codex --dangerously-bypass-approvals-and-sandbox';
+
+function agentCommand(
+  agent: 'codex' | 'claude',
+  claudeCommand?: string | null,
+) {
+  return agent === 'claude'
+    ? `${claudeCommand || 'claude'} ${CLAUDE_BYPASS_FLAG}`
+    : CODEX_LAUNCH;
 }
 
 /**
@@ -50,9 +64,7 @@ export function Terminal({ terminalId, launch, onLaunch }: TerminalProps) {
       const reconnected = handleSessionReady(data);
       if (launch && !reconnected && !launched.current) {
         launched.current = true;
-        socket.sendInput(
-          `${launch === 'claude' ? data.claudeLaunchCommand || 'claude' : 'codex'}\r`,
-        );
+        socket.sendInput(`${agentCommand(launch, data.claudeLaunchCommand)}\r`);
         xterm?.focus();
       }
       return reconnected;
@@ -69,7 +81,9 @@ export function Terminal({ terminalId, launch, onLaunch }: TerminalProps) {
     if (onLaunch) {
       onLaunch('claude');
     } else if (session.isConnected) {
-      socket.sendInput(session.claudeLaunchCommand || 'claude');
+      socket.sendInput(
+        `${agentCommand('claude', session.claudeLaunchCommand)}\r`,
+      );
       xterm?.focus();
     }
   };
@@ -100,7 +114,7 @@ export function Terminal({ terminalId, launch, onLaunch }: TerminalProps) {
             return;
           }
           if (!session.isConnected) return;
-          socket.sendInput('codex');
+          socket.sendInput(`${agentCommand('codex')}\r`);
           xterm?.focus();
         }}
         onCloseSession={handleCloseSession}
@@ -114,10 +128,17 @@ export function Terminal({ terminalId, launch, onLaunch }: TerminalProps) {
       </div>
       <TerminalKeyBar
         disabled={!session.isConnected}
-        onKey={(sequence) => {
-          socket.sendInput(sequence);
-          xterm?.focus();
+        // 포커스를 옮기지 않아야 입력칸에 떠 있는 휴대폰 키보드가 내려가지 않는다
+        onKey={(sequence) => socket.sendInput(sequence)}
+      />
+      <TerminalComposer
+        disabled={!session.isConnected}
+        onSend={(text) => {
+          if (text) socket.sendInput(text);
+          // 글자와 Enter 를 한 번에 보내면 Claude·Codex 가 붙여넣기로 보고 줄바꿈만 넣는다
+          window.setTimeout(() => socket.sendInput('\r'), text ? 80 : 0);
         }}
+        onUploadImage={socket.uploadImage}
       />
     </div>
   );

@@ -248,8 +248,39 @@ export function useTerminalSocket({
     }
   };
 
+  /**
+   * 이미지를 서버에 저장하고 그 파일 경로를 받는다
+   */
+  const uploadImage = (file: Blob): Promise<string> =>
+    new Promise((resolve, reject) => {
+      const socket = socketRef.current;
+      if (!socket) {
+        reject(new Error('터미널이 연결되지 않았습니다.'));
+        return;
+      }
+      const reader = new FileReader();
+      reader.onerror = () => reject(new Error('이미지를 읽지 못했습니다.'));
+      reader.onload = () => {
+        const base64 = String(reader.result).split(',')[1] ?? '';
+        socket
+          .timeout(30_000)
+          .emit(
+            'terminal:upload-image',
+            { mimeType: file.type, base64 },
+            (err: Error | null, res: { path?: string; error?: string }) => {
+              if (err) reject(new Error('이미지 업로드 시간이 지났습니다.'));
+              else if (res?.path) resolve(res.path);
+              else
+                reject(new Error(res?.error ?? '이미지를 올리지 못했습니다.'));
+            },
+          );
+      };
+      reader.readAsDataURL(file);
+    });
+
   return {
     sendInput,
+    uploadImage,
     resize,
     interrupt,
     closeSession,
