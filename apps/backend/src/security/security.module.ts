@@ -25,6 +25,9 @@ import { SecurityController } from './presentation/controllers/security.controll
 import { SshAccessController } from './presentation/controllers/ssh-access.controller';
 import { SshAccessService } from './application/services/ssh-access.service';
 import { SshCountryGuardService } from './application/services/ssh-country-guard.service';
+import { GetSshAllowUsersUseCase } from './application/use-cases/get-ssh-allow-users.use-case';
+import { SSH_ALLOW_USERS } from './domain/gateways/ssh-allow-users.gateway.interface';
+import { FileSshAllowUsersGateway } from './infrastructure/gateways/file-ssh-allow-users.gateway';
 
 @Module({
   imports: [
@@ -43,6 +46,8 @@ import { SshCountryGuardService } from './application/services/ssh-country-guard
     CreateIpBanUseCase,
     DeleteIpBanUseCase,
     ResyncBlocklistUseCase,
+    GetSshAllowUsersUseCase,
+    { provide: SSH_ALLOW_USERS, useClass: FileSshAllowUsersGateway },
     { provide: IP_BAN_REPOSITORY, useClass: TypeOrmIpBanRepository },
     { provide: LOGIN_ATTEMPT_REPOSITORY, useClass: TypeOrmLoginAttemptRepository },
     { provide: NGINX_BLOCKLIST_WRITER, useClass: FileNginxBlocklistGateway },

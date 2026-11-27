@@ -27,6 +27,7 @@ import {
   SshKnownLabelDto,
 } from '../../application/dto/ssh-access.dto';
 import { SshCountryGuardService } from '../../application/services/ssh-country-guard.service';
+import { GetSshAllowUsersUseCase } from '../../application/use-cases/get-ssh-allow-users.use-case';
 import type { CountryGuardSettings } from '../../domain/policies/country-guard.policy';
 
 /**
@@ -39,7 +40,14 @@ export class SshAccessController {
   constructor(
     private readonly ssh: SshAccessService,
     private readonly countryGuard: SshCountryGuardService,
+    private readonly getAllowUsers: GetSshAllowUsersUseCase,
   ) {}
+
+  @Get('allow-users')
+  @RequirePermissions(PERMISSIONS.SECURITY_READ)
+  allowUsers() {
+    return this.getAllowUsers.execute();
+  }
 
   @Get()
   @RequirePermissions(PERMISSIONS.SECURITY_READ)
