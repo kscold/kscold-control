@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Param, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Param, Query, UseGuards } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { PermissionsGuard } from '../../../common/guards';
 import { RequirePermissions } from '../../../common/decorators';
@@ -6,6 +6,7 @@ import { PERMISSIONS } from '../../../common/constants/permissions';
 
 import {
   BackupMongodbUseCase,
+  GetMetricHistoryUseCase,
   GetRemoteAccessUseCase,
   GetStatsUseCase,
   GetSystemInfoUseCase,
@@ -21,6 +22,7 @@ export class SystemController {
     private readonly backupMongodbUseCase: BackupMongodbUseCase,
     private readonly listBackupsUseCase: ListBackupsUseCase,
     private readonly getRemoteAccessUseCase: GetRemoteAccessUseCase,
+    private readonly getMetricHistoryUseCase: GetMetricHistoryUseCase,
   ) {}
 
   @Get('dashboard/stats')
@@ -39,6 +41,13 @@ export class SystemController {
   @RequirePermissions(PERMISSIONS.DASHBOARD_READ)
   async getRemoteAccess() {
     return this.getRemoteAccessUseCase.execute();
+  }
+
+  /** CPU·메모리·디스크 사용률 추이 (?hours=24, 최대 72) */
+  @Get('dashboard/history')
+  @RequirePermissions(PERMISSIONS.DASHBOARD_READ)
+  getHistory(@Query('hours') hours?: string) {
+    return this.getMetricHistoryUseCase.execute(hours);
   }
 
   @Get('stats')

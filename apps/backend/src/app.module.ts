@@ -49,6 +49,7 @@ import { UserMfa } from './auth/mfa/domain/entities/user-mfa.entity';
 import { ServiceMonitor } from './uptime/domain/entities/service-monitor.entity';
 import { ServiceMonitorCheck } from './uptime/domain/entities/service-monitor-check.entity';
 import { UptimeModule } from './uptime/uptime.module';
+import { SystemMetricSample } from './system/domain/entities/system-metric-sample.entity';
 
 import { HttpLoggerMiddleware } from './common/middleware/http-logger.middleware';
 import {
@@ -98,6 +99,7 @@ import { frontendServingOptions } from './common/utils/frontend-serving.util';
         UserMfa,
         ServiceMonitor,
         ServiceMonitorCheck,
+        SystemMetricSample,
       ],
       synchronize: shouldSynchronizeDatabase(),
       logging: process.env.NODE_ENV !== 'production',

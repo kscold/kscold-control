@@ -58,3 +58,10 @@ export interface RemoteAccessPath {
   state: 'ok' | 'down' | 'unknown';
   detail: string | null;
 }
+
+export interface MetricPoint {
+  at: string;
+  cpu: number;
+  memory: number;
+  disk: number | null;
+}

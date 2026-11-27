@@ -1,8 +1,14 @@
 import { Module } from '@nestjs/common';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { SystemMetricSample } from './domain/entities/system-metric-sample.entity';
+import { METRIC_SAMPLE_REPOSITORY } from './domain/repositories/metric-sample.repository.interface';
+import { TypeormMetricSampleRepository } from './infrastructure/repositories/typeorm-metric-sample.repository';
+import { MetricSamplerService } from './application/services/metric-sampler.service';
 
 import {
   BackupMongodbUseCase,
   GetStatsUseCase,
+  GetMetricHistoryUseCase,
   GetRemoteAccessUseCase,
   GetSystemInfoUseCase,
   ListBackupsUseCase,
@@ -16,6 +22,7 @@ import { DockerMongodbBackupRepository } from './infrastructure/repositories/doc
 import { SystemController } from './presentation/controllers/system.controller';
 
 @Module({
+  imports: [TypeOrmModule.forFeature([SystemMetricSample])],
   controllers: [SystemController],
   providers: [
     GetStatsUseCase,
@@ -23,6 +30,12 @@ import { SystemController } from './presentation/controllers/system.controller';
     BackupMongodbUseCase,
     ListBackupsUseCase,
     GetRemoteAccessUseCase,
+    GetMetricHistoryUseCase,
+    MetricSamplerService,
+    {
+      provide: METRIC_SAMPLE_REPOSITORY,
+      useClass: TypeormMetricSampleRepository,
+    },
     {
       provide: REMOTE_ACCESS_REPOSITORY,
       useClass: ShellRemoteAccessRepository,
