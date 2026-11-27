@@ -90,15 +90,15 @@ function BackupRow({
 }) {
   const status = STATUS[backup.status];
   return (
-    <article className="rounded-xl border border-slate-800 bg-slate-950/60 p-4">
+    <article className="min-w-0 rounded-xl border border-slate-800 bg-slate-950/60 p-4">
       <div className="flex flex-wrap items-start justify-between gap-2">
-        <div>
-          <div className="flex items-center gap-2 text-sm font-semibold text-slate-100">
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-x-2 break-all text-sm font-semibold text-slate-100">
             <span>{formatVersion(backup.sourceVersion)}</span>
             <span className="text-slate-600">to</span>
             <span>{formatVersion(backup.newVersion)}</span>
           </div>
-          <p className="mt-1 text-xs text-slate-500">
+          <p className="mt-1 break-all text-xs text-slate-500">
             {formatDate(backup.createdAt)} · {backup.actorEmail ?? 'system'}
           </p>
         </div>
@@ -586,7 +586,7 @@ curl -X PUT '${apiOrigin}/api/key-management/targets/${target.id}/environment' \
                 </div>
                 <FileClock size={18} className="text-amber-300" />
               </div>
-              <div className="mt-4 max-h-[650px] space-y-3 overflow-auto pr-1">
+              <div className="mt-4 max-h-[650px] space-y-3 overflow-y-auto overflow-x-hidden pr-1">
                 {backups.length === 0 ? (
                   <p className="rounded-xl border border-dashed border-slate-700 p-5 text-center text-xs text-slate-500">
                     아직 control에서 만든 백업이 없습니다.
