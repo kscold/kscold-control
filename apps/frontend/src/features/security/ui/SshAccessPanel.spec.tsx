@@ -174,11 +174,68 @@ it('SSH 허용 규칙을 다시 조회해도 접속 현황을 계속 표시한�
   ).toBeInTheDocument();
 });
 
+it('관리자는 추가한 SSH 허용 규칙을 다시 읽고 보호 규칙을 삭제할 수 없다', async () => {
+  signIn([PERMISSIONS.SECURITY_READ, PERMISSIONS.SECURITY_MANAGE]);
+  vi.spyOn(securityService, 'getSshAccess').mockResolvedValue(overview());
+  const protectedRule = 'operator@192.0.2.10';
+  const initial = {
+    kind: 'managed' as const,
+    revision: 'initial',
+    protectedRule,
+    rules: [{ user: 'operator', source: '192.0.2.10' }],
+  };
+  vi.mocked(securityService.getSshAllowUsers)
+    .mockResolvedValueOnce(initial)
+    .mockResolvedValue({
+      ...initial,
+      revision: 'updated',
+      rules: [
+        ...initial.rules,
+        { user: 'operator', source: '198.51.100.0/24' },
+      ],
+    });
+  const edit = vi
+    .spyOn(securityService, 'editSshAllowUsers')
+    .mockResolvedValue({ changed: true });
+  renderPanel();
+
+  const form = await screen.findByRole('form', {
+    name: 'SSH 로그인 허용 규칙 추가',
+  });
+  expect(
+    screen.queryByRole('button', { name: `${protectedRule} 삭제` }),
+  ).toBeNull();
+  await userEvent.type(within(form).getByLabelText('계정'), 'operator');
+  await userEvent.type(
+    within(form).getByLabelText('출발지 IP·대역'),
+    '198.51.100.0/24',
+  );
+  await userEvent.click(within(form).getByRole('button', { name: '추가' }));
+  expect(edit).toHaveBeenCalledWith({
+    kind: 'add',
+    rule: 'operator@198.51.100.0/24',
+    revision: 'initial',
+  });
+  await userEvent.click(
+    await screen.findByRole('button', { name: 'operator@198.51.100.0/24 삭제' }),
+  );
+  expect(edit).toHaveBeenCalledTimes(1);
+  const confirm = await screen.findByRole('alertdialog');
+  await userEvent.click(within(confirm).getByRole('button', { name: '확인' }));
+  expect(edit).toHaveBeenLastCalledWith({
+    kind: 'remove',
+    rule: 'operator@198.51.100.0/24',
+    revision: 'updated',
+  });
+});
+
 it('보기 권한만 있으면 바꾸는 버튼을 숨긴다', async () => {
   signIn([PERMISSIONS.SECURITY_READ]);
   vi.spyOn(securityService, 'getSshAccess').mockResolvedValue(overview());
   vi.mocked(securityService.getSshAllowUsers).mockResolvedValue({
     kind: 'managed',
+    revision: 'current',
+    protectedRule: 'operator@192.0.2.0/24',
     rules: [{ user: 'operator', source: '192.0.2.0/24' }],
   });
   renderPanel();
@@ -187,6 +244,9 @@ it('보기 권한만 있으면 바꾸는 버튼을 숨긴다', async () => {
     name: '연결된 파일의 SSH 로그인 허용 규칙',
   });
   expect(within(rules).getByText('192.0.2.0/24')).toBeInTheDocument();
+  expect(
+    screen.queryByRole('form', { name: 'SSH 로그인 허용 규칙 추가' }),
+  ).toBeNull();
   expect(screen.queryByRole('button', { name: /끊기/ })).toBeNull();
   expect(screen.queryByRole('button', { name: '해제' })).toBeNull();
   expect(screen.queryByPlaceholderText('막을 IP')).toBeNull();

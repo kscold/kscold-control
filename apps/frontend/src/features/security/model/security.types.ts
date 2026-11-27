@@ -179,4 +179,15 @@ export type AttackMapView =
 export type SshAllowUsersPolicy =
   | { kind: 'unconfigured' | 'empty' }
   | { kind: 'unsupported'; line: number }
-  | { kind: 'managed'; rules: { user: string; source: string }[] };
+  | {
+      kind: 'managed';
+      rules: { user: string; source: string }[];
+      revision?: string;
+      protectedRule?: string;
+    };
+
+export interface EditSshAllowUsersInput {
+  kind: 'add' | 'remove';
+  rule: string;
+  revision: string;
+}

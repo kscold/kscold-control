@@ -4,6 +4,7 @@ import type {
   AttackMapView,
   IpBan,
   CreateIpBanInput,
+  EditSshAllowUsersInput,
   SshAccessOverview,
   SshAllowUsersPolicy,
   SshBlock,
@@ -70,6 +71,20 @@ export class SecurityService extends BaseApiService {
     } catch (error) {
       if (signal?.aborted) throw error;
       this.handleError(error, 'SSH 로그인 허용 규칙 조회 실패');
+    }
+  }
+
+  async editSshAllowUsers(
+    input: EditSshAllowUsersInput,
+  ): Promise<{ changed: boolean }> {
+    try {
+      const { data } = await api.patch<{ changed: boolean }>(
+        `${this.basePath}/ssh/allow-users`,
+        input,
+      );
+      return data;
+    } catch (error) {
+      this.handleError(error, 'SSH 로그인 허용 규칙 저장 실패');
     }
   }
 
