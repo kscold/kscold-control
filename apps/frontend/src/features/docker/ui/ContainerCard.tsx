@@ -6,14 +6,16 @@ import {
   Globe,
   Database,
   ScrollText,
+  RotateCw,
 } from 'lucide-react';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { usePermissions } from '@/shared/model';
+import { useModalStore, usePermissions } from '@/shared/model';
 import { PERMISSIONS } from '@/shared/config/permissions';
 import type { Container } from '@/entities/container';
 import { backupService } from '../api/mongodb-backup.service';
 import { ContainerLogsDialog } from './ContainerLogsDialog';
+import { containerOpsService } from '../api/container-ops.service';
 
 const MONGO_CONTAINERS = ['ubuntu-blog', 'ubuntu-projectepsilon'];
 
@@ -42,6 +44,30 @@ export function ContainerCard({
   >('idle');
   const [backupMsg, setBackupMsg] = useState('');
   const [logsOpen, setLogsOpen] = useState(false);
+  const [restarting, setRestarting] = useState(false);
+  const { showConfirm, showAlert } = useModalStore();
+
+  const handleRestart = () =>
+    checkPermission(PERMISSIONS.DOCKER_UPDATE, () =>
+      showConfirm(
+        `${container.name} 컨테이너를 재시작할까요? 잠깐 접속이 끊길 수 있습니다.`,
+        async () => {
+          setRestarting(true);
+          try {
+            await containerOpsService.restart(container.dockerId);
+            showAlert(`${container.name} 를 재시작했습니다.`);
+          } catch (e) {
+            showAlert(
+              e instanceof Error ? e.message : '재시작하지 못했습니다.',
+              '재시작 실패',
+            );
+          } finally {
+            setRestarting(false);
+          }
+        },
+        '컨테이너 재시작',
+      ),
+    );
 
   const hasMongo = MONGO_CONTAINERS.includes(container.name);
 
@@ -216,6 +242,18 @@ export function ContainerCard({
           >
             <Play size={16} />
             <span className="hidden @[17rem]:inline">시작</span>
+          </button>
+        )}
+        {container.liveStatus === 'running' && (
+          <button
+            type="button"
+            onClick={handleRestart}
+            disabled={restarting}
+            className="px-3 py-2 bg-blue-600 text-white rounded hover:bg-blue-500 transition-colors disabled:opacity-50"
+            title="재시작"
+            aria-label={`${container.name} 재시작`}
+          >
+            <RotateCw size={16} className={restarting ? 'animate-spin' : ''} />
           </button>
         )}
         <button

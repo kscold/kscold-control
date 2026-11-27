@@ -125,6 +125,14 @@ export class DockerodeClientAdapter implements IDockerClient, OnModuleInit {
     }
   }
 
+  async restartContainer(dockerId: string): Promise<void> {
+    try {
+      await this.docker.getContainer(dockerId).restart();
+    } catch (error) {
+      throw new DockerOperationException('restart container', error.message);
+    }
+  }
+
   async removeContainer(dockerId: string): Promise<void> {
     try {
       const container = this.docker.getContainer(dockerId);

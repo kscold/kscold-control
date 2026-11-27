@@ -111,6 +111,9 @@ export interface IDockerClient {
   /** 지정한 Docker ID의 컨테이너 중지함. */
   stopContainer(dockerId: string): Promise<void>;
 
+  /** 멈췄다 다시 켬. 이미 멈춘 컨테이너는 켜기만 함. */
+  restartContainer(dockerId: string): Promise<void>;
+
   /** 지정한 Docker ID의 컨테이너 삭제함. */
   removeContainer(dockerId: string): Promise<void>;
 
