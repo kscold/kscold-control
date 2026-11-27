@@ -1,3 +1,5 @@
+import { TerminalSessionsController } from './presentation/controllers/terminal-sessions.controller';
+import { ListLiveTerminalSessionsUseCase } from './application/use-cases/list-live-terminal-sessions.use-case';
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
@@ -61,7 +63,7 @@ import { AuthModule } from '../auth/auth.module';
     AuthModule,
     RbacModule,
   ],
-  controllers: [WorkspaceFileController],
+  controllers: [WorkspaceFileController, TerminalSessionsController],
   providers: [
     // 인프라 (리포지토리 구현체 바인딩)
     { provide: SESSION_REPOSITORY, useClass: TypeOrmSessionRepository },
@@ -69,6 +71,7 @@ import { AuthModule } from '../auth/auth.module';
 
     // 애플리케이션 서비스
     PtyManagerService,
+    ListLiveTerminalSessionsUseCase,
     SessionMapperService,
     TerminalLimitService,
     TerminalSessionService,

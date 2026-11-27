@@ -17,6 +17,14 @@ export class TypeOrmSessionRepository implements ISessionRepository {
     });
   }
 
+  listActiveForUser(userId: string): Promise<Session[]> {
+    return this.repo.find({
+      where: { userId, isActive: true },
+      order: { lastActivityAt: 'DESC', createdAt: 'DESC' },
+      take: 50,
+    });
+  }
+
   async findWithMessages(sessionId: string): Promise<Session | null> {
     return this.repo.findOne({
       where: { id: sessionId },

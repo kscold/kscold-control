@@ -1,5 +1,6 @@
 import {
   BotMessageSquare,
+  Link2,
   MessageCircle,
   Plus,
   TerminalSquare,
@@ -19,6 +20,8 @@ interface WorkspaceTabBarProps {
   onSelectTab: (id: string) => void;
   onCloseTab: (id: string) => void;
   onCreateTab: (type: TabType) => void;
+  /** 다른 기기에서 연 터미널 세션에 이어 붙기 */
+  onAttach: () => void;
 }
 
 export function WorkspaceTabBar({
@@ -28,6 +31,7 @@ export function WorkspaceTabBar({
   onSelectTab,
   onCloseTab,
   onCreateTab,
+  onAttach,
 }: WorkspaceTabBarProps) {
   return (
     <div className="flex items-center gap-1 px-2 bg-gray-900 border-b border-gray-800 overflow-x-auto">
@@ -85,6 +89,14 @@ export function WorkspaceTabBar({
         >
           <TerminalSquare size={14} />
           <Plus size={12} />
+        </button>
+        <button
+          onClick={onAttach}
+          className="flex items-center gap-1 px-2 py-2 text-xs text-gray-400 hover:text-white hover:bg-gray-800 rounded transition-colors"
+          title="열린 세션에 이어 붙기"
+          aria-label="열린 세션에 이어 붙기"
+        >
+          <Link2 size={14} />
         </button>
       </div>
     </div>
