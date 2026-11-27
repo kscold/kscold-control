@@ -10,4 +10,3 @@ export interface CreateContainerRequest {
   };
   environment?: Record<string, string>;
 }
-

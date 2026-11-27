@@ -23,6 +23,7 @@ import {
   GetContainerProcessesUseCase,
   GetContainerLogsUseCase,
   RestartContainerUseCase,
+  RestartStackUseCase,
   StartContainerUseCase,
   StopContainerUseCase,
   RemoveContainerUseCase,
@@ -81,6 +82,7 @@ export class DockerController {
     private readonly pruneDanglingVolumesUseCase: PruneDanglingVolumesUseCase,
     private readonly getContainerLogsUseCase: GetContainerLogsUseCase,
     private readonly restartContainerUseCase: RestartContainerUseCase,
+    private readonly restartStackUseCase: RestartStackUseCase,
   ) {}
 
   /**
@@ -174,6 +176,22 @@ export class DockerController {
       getContainerOwnerScope(req),
     );
     return { restarted: true };
+  }
+
+  @Post('stacks/:project/restart')
+  @RequirePermissions(PERMISSIONS.DOCKER_UPDATE)
+  @Audit({
+    domain: 'docker',
+    action: 'stack.restart',
+    summary: (ctx) => `compose 스택 ${ctx.params.project}를 재시작했습니다.`,
+    targetType: 'stack',
+    targetId: (ctx) => ctx.params.project,
+  })
+  restartStack(@Param('project') project: string, @Request() req: JwtRequest) {
+    return this.restartStackUseCase.execute(
+      project,
+      getContainerOwnerScope(req),
+    );
   }
 
   @Get('topology/snapshot')
