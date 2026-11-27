@@ -62,6 +62,13 @@ export function Terminal({ terminalId, launch, onLaunch }: TerminalProps) {
     savedSessionId: getSavedSessionId(),
     onSessionReady: (data) => {
       const reconnected = handleSessionReady(data);
+      if (reconnected && xterm) {
+        // 다른 화면 크기로 쓰던 세션이면 Claude·Codex 화면이 옛 폭으로 그려져 겹친다.
+        // 지금 크기를 알리고, 크기가 같아도 다시 그리도록 한 줄 줄였다가 되돌린다.
+        const { cols, rows } = xterm;
+        socket.resize(cols, Math.max(rows - 1, 1));
+        window.setTimeout(() => socket.resize(cols, rows), 120);
+      }
       if (launch && !reconnected && !launched.current) {
         launched.current = true;
         socket.sendInput(`${agentCommand(launch, data.claudeLaunchCommand)}\r`);

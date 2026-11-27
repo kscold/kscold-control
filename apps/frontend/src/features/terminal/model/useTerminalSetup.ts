@@ -80,6 +80,17 @@ export function useTerminalSetup({
       if (unmounted || opened) return;
       opened = true;
       xterm.open(container);
+      // 휴대폰 키보드로 xterm 에 바로 치면 한글 조합 중간 글자가 그대로 가서 자모로 쪼개진다.
+      // 터미널을 눌러도 아래 입력 줄로 보내 조합이 끝난 글자만 보내게 한다.
+      xterm.textarea?.addEventListener('focus', () => {
+        if (!isMobile()) return;
+        const composer = document.querySelector<HTMLTextAreaElement>(
+          '[data-terminal-composer]',
+        );
+        if (!composer) return;
+        xterm.textarea?.blur();
+        composer.focus();
+      });
       setXtermInstance(xterm);
       scheduleFit();
     };
