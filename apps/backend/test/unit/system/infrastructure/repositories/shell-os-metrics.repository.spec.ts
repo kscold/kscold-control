@@ -7,7 +7,7 @@ describe('ShellOsMetricsRepository', () => {
     const now = Date.now();
 
     (repository as any).diskCache = {
-      timestamp: now - 61_000,
+      timestamp: now - 181_000,
       data: {
         diskInfo: {
           total: 100,
@@ -25,7 +25,7 @@ describe('ShellOsMetricsRepository', () => {
             storageLabel: 'Colima VM',
             storagePath: '/Users/test/.colima',
             storagePathSize: 20,
-            lastCollectedAt: now - 61_000,
+            lastCollectedAt: now - 181_000,
             collectionState: 'fresh',
             warning: null,
             images: { size: 1, reclaimable: 1, active: 1, totalCount: 1 },
