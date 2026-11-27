@@ -492,7 +492,7 @@ describe('DockerTopologyService', () => {
         domains: expect.arrayContaining(['blog.example.com', 'example.com']),
         gateway: expect.objectContaining({
           mode: 'host-nginx',
-          label: '공용 kscold-nginx 프록시',
+          label: '공용 nginx 프록시',
         }),
       }),
     );

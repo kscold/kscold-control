@@ -12,13 +12,7 @@ export type LogType =
 
 export type LogLineCount = number | 'all';
 export type DockerLogSince =
-  | 'none'
-  | '15m'
-  | '1h'
-  | '6h'
-  | '24h'
-  | '168h'
-  | 'custom';
+  'none' | '15m' | '1h' | '6h' | '24h' | '168h' | 'custom';
 export type DockerLogFilter = 'all' | 'errors' | 'nginx-access' | 'nginx-error';
 
 /** 컨테이너 역할 — 서버가 분류해서 내려준다 */
