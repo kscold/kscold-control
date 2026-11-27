@@ -103,4 +103,3 @@ describe('ShellOsMetricsRepository', () => {
     spy.mockRestore();
   });
 });
-

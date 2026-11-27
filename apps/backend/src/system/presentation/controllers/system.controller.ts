@@ -6,6 +6,7 @@ import { PERMISSIONS } from '../../../common/constants/permissions';
 
 import {
   BackupMongodbUseCase,
+  GetRemoteAccessUseCase,
   GetStatsUseCase,
   GetSystemInfoUseCase,
   ListBackupsUseCase,
@@ -19,6 +20,7 @@ export class SystemController {
     private readonly getSystemInfoUseCase: GetSystemInfoUseCase,
     private readonly backupMongodbUseCase: BackupMongodbUseCase,
     private readonly listBackupsUseCase: ListBackupsUseCase,
+    private readonly getRemoteAccessUseCase: GetRemoteAccessUseCase,
   ) {}
 
   @Get('dashboard/stats')
@@ -31,6 +33,12 @@ export class SystemController {
   @RequirePermissions(PERMISSIONS.DASHBOARD_READ)
   async getDashboardInfo() {
     return this.getSystemInfoUseCase.execute();
+  }
+
+  @Get('dashboard/remote-access')
+  @RequirePermissions(PERMISSIONS.DASHBOARD_READ)
+  async getRemoteAccess() {
+    return this.getRemoteAccessUseCase.execute();
   }
 
   @Get('stats')

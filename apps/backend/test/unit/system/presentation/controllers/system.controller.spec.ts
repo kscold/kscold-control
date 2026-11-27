@@ -6,12 +6,14 @@ describe('SystemController', () => {
   const getSystemInfoUseCase = { execute: vi.fn() };
   const backupMongodbUseCase = { execute: vi.fn() };
   const listBackupsUseCase = { execute: vi.fn() };
+  const getRemoteAccessUseCase = { execute: vi.fn() };
 
   const controller = new SystemController(
     getStatsUseCase as any,
     getSystemInfoUseCase as any,
     backupMongodbUseCase as any,
     listBackupsUseCase as any,
+    getRemoteAccessUseCase as any,
   );
 
   beforeEach(() => {
