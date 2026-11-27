@@ -89,6 +89,11 @@ kscold-control/
 | PostgreSQL | 14            |
 | Docker     | 24 (optional) |
 
+### AI 에이전트로 설치 (소스에서)
+
+Claude Code·Codex 에게 [`docs/ai-setup.md`](docs/ai-setup.md) 를 읽히고 "이대로 설치해 줘"라고 하면 됩니다.
+단계마다 `pnpm setup:check` 가 남은 일을 ✗ 와 다음 할 일로 알려 줍니다 (`--secrets` 로 비밀값 생성).
+
 ### One-click install (macOS · Windows · Linux)
 
 설치 프로그램(`.dmg` · `.exe` · `.AppImage`/`.deb`)을 받아 실행하면 처음 한 번 설치 마법사가 뜹니다.

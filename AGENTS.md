@@ -25,6 +25,10 @@
 - 로컬 금지어는 `$(git rev-parse --git-common-dir)/public-source-denylist` 에 한 줄씩 둡니다. 이 파일은 커밋되지 않고 작업트리끼리 공유됩니다.
 - 정말 필요한 예외 줄에는 `public-source-allow` 를 주석으로 붙이고 PR 에 이유를 적습니다.
 
+## 설치를 맡았을 때
+
+- `docs/ai-setup.md` 순서를 따르고, 단계마다 `pnpm setup:check` 의 ✗ 안내를 처리합니다.
+
 ## 그 밖의 규칙
 
 - 기능은 브랜치 → PR → main 머지로 진행합니다.
