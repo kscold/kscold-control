@@ -174,17 +174,23 @@ export class TerminalGateway
         try {
           shell = this.ptyManager.createPty(session.id);
 
-          shell.onData(async (data) => {
-            try {
-              await this.saveTerminalMessage.execute(
-                session.id,
-                payload.sub,
-                'system',
-                data,
-              );
-            } catch (err) {
-              this.logger.error('[Terminal] Failed to save output to DB:', err);
-            }
+          // 출력 조각마다 DB 저장을 기다린 뒤 보내면 저장이 끝나는 순서대로 화면에 가서
+          // 커서 이동·다시 그리기 조각이 뒤섞인다(입력 줄 겹침, Claude 화면 깨짐).
+          // 화면에는 받은 순서대로 바로 보내고, 저장은 한 줄로 이어 순서를 지킨다.
+          let saveQueue: Promise<void> = Promise.resolve();
+          shell.onData((data) => {
+            saveQueue = saveQueue.then(() =>
+              this.saveTerminalMessage
+                .execute(session.id, payload.sub, 'system', data)
+                .then(
+                  () => undefined,
+                  (err: unknown) =>
+                    this.logger.error(
+                      '[Terminal] Failed to save output to DB:',
+                      err,
+                    ),
+                ),
+            );
 
             const clients = this.sessionMapper.getClients(session.id);
             if (clients) {
