@@ -122,7 +122,21 @@
 /* xterm.js 컨테이너 */
 .xterm {
   padding: 8px;
+  /* 여백 부분이 검게 보여 액자처럼 떠 보이지 않게 터미널 배경색과 맞춘다 */
+  background-color: #1e1e1e;
   /* iOS Safari 가 셀 안 글자를 자동 확대하면 셀 너비와 어긋나 깨져 보인다 */
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;
 }
+
+/* allowTransparency 를 켜 두면 스크롤 영역이 검정으로 칠해져 여백이 검은 액자처럼 보인다 */
+.xterm .xterm-viewport {
+  background-color: #1e1e1e !important;
+}
+
+@media (max-width: 767px) {
+  .xterm {
+    padding: 4px;
+  }
+}
+
