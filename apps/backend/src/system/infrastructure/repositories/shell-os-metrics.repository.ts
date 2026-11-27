@@ -37,7 +37,8 @@ export class ShellOsMetricsRepository implements IOsMetricsRepository {
     data: { diskInfo: DiskInfo; diskBreakdown: DiskBreakdown };
     timestamp: number;
   } | null = null;
-  private prevCpuTimes: { idle: number; total: number } | null = null;
+  // 사용률은 두 시점의 차이로만 알 수 있다. 처음 부를 때 비교할 값이 없어 늘 0% 가 나오지 않도록 만들 때 한 번 재 둔다.
+  private prevCpuTimes: { idle: number; total: number } = readCpuTimes();
 
   async getCpuStats(): Promise<CpuStats> {
     const cached = await this.getStatsFromCache();
@@ -233,26 +234,11 @@ export class ShellOsMetricsRepository implements IOsMetricsRepository {
 
   private calculateCpuUsage(): CpuStats {
     const cpus = os.cpus();
-    let idle = 0;
-    let total = 0;
-
-    for (const cpu of cpus) {
-      idle += cpu.times.idle;
-      total +=
-        cpu.times.user +
-        cpu.times.nice +
-        cpu.times.sys +
-        cpu.times.irq +
-        cpu.times.idle;
-    }
-
-    let cpuUsage = 0;
-    if (this.prevCpuTimes) {
-      const idleDelta = idle - this.prevCpuTimes.idle;
-      const totalDelta = total - this.prevCpuTimes.total;
-      cpuUsage =
-        totalDelta > 0 ? ((totalDelta - idleDelta) / totalDelta) * 100 : 0;
-    }
+    const { idle, total } = readCpuTimes(cpus);
+    const idleDelta = idle - this.prevCpuTimes.idle;
+    const totalDelta = total - this.prevCpuTimes.total;
+    const cpuUsage =
+      totalDelta > 0 ? ((totalDelta - idleDelta) / totalDelta) * 100 : 0;
     this.prevCpuTimes = { idle, total };
 
     return {
@@ -387,4 +373,17 @@ export class ShellOsMetricsRepository implements IOsMetricsRepository {
 
     return dockerUsage;
   }
+}
+
+function readCpuTimes(cpus: os.CpuInfo[] = os.cpus()): {
+  idle: number;
+  total: number;
+} {
+  let idle = 0;
+  let total = 0;
+  for (const { times } of cpus) {
+    idle += times.idle;
+    total += times.user + times.nice + times.sys + times.irq + times.idle;
+  }
+  return { idle, total };
 }

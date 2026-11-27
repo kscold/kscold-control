@@ -29,12 +29,13 @@ export function SystemStatsCard({
 
   return (
     <>
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-4 sm:mb-5">
+      {/* 휴대폰에서 2열로 두면 키 큰 디스크 카드 옆 칸이 길게 빈다. 작은 지표 셋을 한 줄에, 디스크는 다음 줄 전체에 둔다. */}
+      <div className="grid grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-4 mb-4 sm:mb-5">
         <MetricCard
           icon={<Container size={18} className="text-blue-400" />}
           label="Containers"
           value={
-            <p className="text-2xl sm:text-3xl font-bold text-white">
+            <p className="text-xl sm:text-3xl font-bold text-white">
               {containerCount}
             </p>
           }
@@ -46,8 +47,8 @@ export function SystemStatsCard({
           icon={<Cpu size={18} className={cpuTone.iconClassName} />}
           label="CPU"
           value={
-            <p className="text-2xl sm:text-3xl font-bold text-white">
-              {cpuUsage.toFixed(1)}%
+            <p className="text-xl sm:text-3xl font-bold text-white">
+              {liveStats ? `${cpuUsage.toFixed(1)}%` : '…'}
             </p>
           }
           footer={
@@ -64,8 +65,8 @@ export function SystemStatsCard({
           icon={<Activity size={18} className={memoryTone.iconClassName} />}
           label="Memory"
           value={
-            <p className="text-2xl sm:text-3xl font-bold text-white">
-              {memUsage.toFixed(1)}%
+            <p className="text-xl sm:text-3xl font-bold text-white">
+              {liveStats ? `${memUsage.toFixed(1)}%` : '…'}
             </p>
           }
           footer={
@@ -80,7 +81,9 @@ export function SystemStatsCard({
             colorClassName: memoryTone.barClassName,
           }}
         />
-        <DiskUsageCard systemInfo={systemInfo} />
+        <div className="col-span-3 lg:col-span-1">
+          <DiskUsageCard systemInfo={systemInfo} />
+        </div>
       </div>
       <DockerStorageDetailsCard systemInfo={systemInfo} />
     </>

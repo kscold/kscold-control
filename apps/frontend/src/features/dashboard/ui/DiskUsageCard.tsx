@@ -26,7 +26,7 @@ export function DiskUsageCard({ systemInfo }: DiskUsageCardProps) {
           </div>
         }
         footer={
-          <div className="mt-2 grid grid-cols-1 gap-2 text-xs sm:grid-cols-2">
+          <div className="mt-2 grid grid-cols-2 gap-2 text-xs">
             {Array.from({ length: 4 }).map((_, index) => (
               <div
                 key={index}
@@ -121,7 +121,7 @@ export function DiskUsageCard({ systemInfo }: DiskUsageCardProps) {
           <p className="text-xs text-gray-400">
             {disk.usedPercent.toFixed(1)}% used
           </p>
-          <div className="mt-2 grid grid-cols-1 gap-2 text-xs sm:grid-cols-2">
+          <div className="mt-2 grid grid-cols-2 gap-2 text-xs">
             {detailItems.map((item) => (
               <div
                 key={item.label}
