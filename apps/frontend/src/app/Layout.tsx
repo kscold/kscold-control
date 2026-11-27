@@ -159,6 +159,10 @@ export function Layout() {
     current?.label ??
     (pathname.startsWith('/account') ? '내 계정' : 'kscold-control');
   const inMoreMenu = moreItems.some((item) => pathname.startsWith(item.to));
+  // 터미널은 자체 탭 줄이 위 막대 역할을 한다. 막대를 하나 더 두면 화면이 좁아진다.
+  const ownHeader = pathname.startsWith('/terminal');
+  const keyboardOpen = useKeyboardOpen();
+  const showTabBar = !keyboardOpen;
 
   // 다른 화면으로 가면 더보기 시트를 닫는다
   useEffect(() => {
@@ -222,7 +226,9 @@ export function Layout() {
   return (
     <div className="flex h-dvh">
       {/* 휴대폰: 위에는 지금 화면 이름만, 이동은 엄지가 닿는 아래 탭으로 한다 */}
-      <header className="fixed inset-x-0 top-0 z-30 flex h-12 items-center border-b border-gray-800 bg-gray-900/95 px-4 pt-[env(safe-area-inset-top)] backdrop-blur md:hidden">
+      <header
+        className={`fixed inset-x-0 top-0 z-30 h-12 ${ownHeader ? 'hidden' : 'flex'} items-center border-b border-gray-800 bg-gray-900/95 px-4 pt-[env(safe-area-inset-top)] backdrop-blur md:hidden`}
+      >
         <h1 className="truncate text-base font-semibold text-white">
           {currentLabel}
         </h1>
@@ -273,7 +279,11 @@ export function Layout() {
         </div>
       </aside>
 
-      <main className="flex min-w-0 flex-1 flex-col overflow-hidden bg-gray-950 pb-[calc(3.5rem+env(safe-area-inset-bottom))] pt-12 md:pb-0 md:pt-0">
+      <main
+        className={`flex min-w-0 flex-1 flex-col overflow-hidden bg-gray-950 md:pb-0 md:pt-0 ${
+          showTabBar ? 'pb-[calc(3.5rem+env(safe-area-inset-bottom))]' : ''
+        } ${ownHeader ? 'pt-[env(safe-area-inset-top)]' : 'pt-12'}`}
+      >
         {impersonation && (
           <div
             role="status"
@@ -309,6 +319,7 @@ export function Layout() {
 
       <nav
         aria-label="주요 화면"
+        hidden={!showTabBar}
         className="fixed inset-x-0 bottom-0 z-30 grid border-t border-gray-800 bg-gray-900/95 pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden"
         style={{
           gridTemplateColumns: `repeat(${mobileTabs.length + 1}, minmax(0, 1fr))`,
@@ -410,4 +421,21 @@ export function Layout() {
       )}
     </div>
   );
+}
+
+/**
+ * 휴대폰 키보드가 올라오면 화면 높이가 크게 줄어든다. 그때는 아래 탭을 숨겨 입력할 자리를 넓힌다.
+ * (visualViewport 가 창 높이의 3/4 아래로 줄면 키보드가 열린 것으로 본다)
+ */
+function useKeyboardOpen(): boolean {
+  const [open, setOpen] = useState(false);
+  useEffect(() => {
+    const viewport = window.visualViewport;
+    if (!viewport) return;
+    const update = () => setOpen(viewport.height < window.innerHeight * 0.75);
+    viewport.addEventListener('resize', update);
+    update();
+    return () => viewport.removeEventListener('resize', update);
+  }, []);
+  return open;
 }
