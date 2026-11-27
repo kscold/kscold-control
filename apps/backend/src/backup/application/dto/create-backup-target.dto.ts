@@ -13,9 +13,11 @@ import {
   DUMP_IMAGE_PATTERN,
   MAX_BACKUP_DESCRIPTION_LENGTH,
   MAX_BACKUP_RETENTION_DAYS,
+} from '../../domain/policies/backup-target.policy';
+import {
   MAX_MONGODB_URI_LENGTH,
   MONGODB_URI_PATTERN,
-} from '../../domain/policies/backup-target.policy';
+} from '../../domain/policies/mongodb-connection.policy';
 import { BACKUP_SCHEDULE_TIME_PATTERN } from '../../domain/policies/backup-schedule.policy';
 
 export class CreateBackupTargetDto {

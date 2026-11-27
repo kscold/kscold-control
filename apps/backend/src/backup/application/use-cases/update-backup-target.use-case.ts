@@ -10,9 +10,11 @@ import {
   isValidDumpImage,
   isValidNetworkContainer,
   isValidRetentionDays,
+} from '../../domain/policies/backup-target.policy';
+import {
   summarizeMongodbUri,
   usesLoopbackHost,
-} from '../../domain/policies/backup-target.policy';
+} from '../../domain/policies/mongodb-connection.policy';
 import {
   BACKUP_TARGET_REPOSITORY,
   type IBackupTargetRepository,

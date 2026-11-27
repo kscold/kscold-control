@@ -2,11 +2,13 @@ import {
   backupTargetAssociatedData,
   isValidBackupTargetName,
   isValidDumpImage,
-  isValidMongodbUri,
   isValidRetentionDays,
+} from '@/backup/domain/policies/backup-target.policy';
+import {
+  isValidMongodbUri,
   summarizeMongodbUri,
   usesLoopbackHost,
-} from '@/backup/domain/policies/backup-target.policy';
+} from '@/backup/domain/policies/mongodb-connection.policy';
 
 describe('백업 대상 입력 규칙', () => {
   it.each(['my-app-prod', 'app_1.db', 'A'])(
